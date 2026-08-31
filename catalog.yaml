@@ -1,0 +1,28 @@
+# Índice do catálogo.
+#
+# É o que o Reporter lê para MOSTRAR os documentos disponíveis sem baixar todos:
+# o cliente filtra por país, regulador e tipo de instituição, e só o que ele ativar
+# é buscado por inteiro.
+#
+# Cada entrada é um resumo do `metadata` do contrato correspondente. A duplicação é
+# deliberada e tem um preço: pode divergir. A curadoria deve conferir os dois, e a
+# fonte de verdade em caso de divergência é sempre o contrato.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: Catalog
+
+documents:
+  - id: br.bcb.cadoc-4010
+    path: br/bcb/cadoc-4010
+    country: BR
+    regulator: BCB
+    document: "4010"
+    title: Balancete Patrimonial Analítico
+    version: 1.0.0
+    status: draft            # draft | published | deprecated
+    periodicity: monthly
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Saldos por rubrica COSIF na data-base, acumulados desde a abertura e
+      expressos na natureza de cada conta.

@@ -1,0 +1,35 @@
+# Natureza contábil por rubrica COSIF — dado de CATÁLOGO (decisão do TRD:
+# o ledger não expõe `nature` no AccountingRubric, e o sinal do arquivo não pode
+# depender disso).
+#
+# Resolução: procura a entrada mais específica; se não houver, cai no prefixo;
+# se nem isso, o render FALHA nomeando a rubrica (um sinal errado é uma
+# declaração errada — adivinhar é pior que parar).
+default_resolution: [explicit, prefix, fail]
+
+# Grupos de 1º nível do plano COSIF.
+prefixes:
+  "1": debit    # Circulante e Realizável a Longo Prazo
+  "2": debit    # Permanente
+  "3": debit    # Compensação (devedora) — inclui 3.0.9.70.xx (volume de transações)
+  "4": credit   # Circulante e Exigível a Longo Prazo
+  "5": credit   # Resultados de Exercícios Futuros
+  "6": credit   # Patrimônio Líquido
+  "7": credit   # Contas de Resultado Credoras (receitas)
+  "8": debit    # Contas de Resultado Devedoras (despesas)
+  "9": credit   # Compensação (credora)
+
+# Exceções e rubricas de uso frequente, explícitas para não depender do prefixo.
+explicit:
+  "1100000002": debit    # Disponibilidades
+  "1110000009": debit    # Caixa
+  "1120000006": debit    # Depósitos Bancários
+  "4110000006": credit   # Depósitos à Vista
+  "4193000009": credit   # Conta de Pagamento Pré-paga
+  "4192500005": credit   # Recursos Disponíveis de Clientes
+  "4992700005": credit   # Obrigações de Pagamento em Nome de Terceiros
+  "9096600006": credit   # Controle — Conta de Pagamento Pré-Paga no fechamento do STR
+
+# Rubricas de saldo devedor/credor conforme o elenco COSIF vigente devem ser
+# adicionadas aqui à medida que forem usadas pelos clientes. A ausência é
+# detectada em tempo de geração, não em produção silenciosa.

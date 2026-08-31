@@ -1,0 +1,56 @@
+# Binding do Cadoc 4010 — QUEM PREENCHE É O CLIENTE.
+#
+# Este é o único dos três arquivos que fala de base, tabela e coluna. O contrato
+# diz o que o documento precisa; o template diz onde aparece; este diz de onde vem.
+#
+# Exemplo preenchido contra o Midaz para mostrar o encaixe. Um cliente com razão
+# próprio preenche as mesmas chaves apontando para o esquema dele — o contrato e o
+# template não mudam, que é o ponto de toda a separação.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.cadoc-4010
+contractVersion: 1.0.0     # a versão adotada; o catálogo pode publicar 1.1.0 sem
+                           # mudar o que este cliente gera até ele adotar
+
+datasets:
+  institution:
+    # Grão singleton: uma linha. Aqui o cliente não tem tabela — a raiz do CNPJ é
+    # um dado cadastral estável, então amarra como CONSTANTE.
+    #
+    # É uma das quatro formas de resolver um campo, e existe justamente para a
+    # geração não travar por falta de origem: fonte, constante, parâmetro ou
+    # edição manual antes do envio.
+    fields:
+      cnpj8:
+        from: constant
+        value: "12345678"
+
+  cosif_balances:
+    # O contrato declara grão [cosifCode] e acumulação `unbounded` fechada por
+    # dataBase. O binding não repete nada disso: só diz onde estão os lançamentos
+    # que serão acumulados.
+    source:
+      dataSource: midaz_transaction
+      table: operation
+    fields:
+      cosifCode:
+        from: source
+        # No Midaz o plano de contas do cliente é materializado aqui: a rota de
+        # operação carrega a rubrica contábil que ele cadastrou em operation_route.
+        column: route_code
+      saldo:
+        from: source
+        column: amount
+        # O contrato pede soma COM SINAL, e o sinal do lançamento vem desta coluna.
+        # Sem declará-la, todo débito entraria positivo e o saldo sairia errado.
+        signColumn: direction
+        signMap:
+          debit: "-"
+          credit: "+"
+
+# Campos que o cliente decidiu editar à mão antes de enviar, em vez de amarrar a
+# uma origem. Vazio aqui; existe para que um campo sem fonte nunca impeça a
+# geração — o arquivo sai como rascunho e ele completa antes de aprovar.
+manualOverrides: []

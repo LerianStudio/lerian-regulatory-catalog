@@ -1,0 +1,175 @@
+# Contrato do Cadoc 4010 — Balancete Patrimonial Analítico.
+#
+# QUEM CURA: a Lerian. Escrito a partir do manual do leiaute e do XSD publicados
+# pelo BACEN. O cliente não edita este arquivo; ele preenche o binding.
+#
+# O QUE ESTE ARQUIVO É: a definição dos dados do documento — quais conjuntos
+# existem, com que grão, quais campos cada um tem, o que cada campo significa, que
+# formato tem e que regras obedece.
+#
+# O QUE ESTE ARQUIVO NÃO É: não diz de onde o dado vem (isso é o binding, do
+# cliente) nem onde ele aparece no arquivo final (isso é o template).
+#
+# O motor confia neste contrato. Não há conferência contra o XSD do BACEN em
+# tempo de execução: o XSD fica no repositório como fonte para escrever e revisar
+# este arquivo. Consequência assumida: um erro aqui gera arquivo errado com
+# confiança, então mudança de contrato exige revisão.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.bcb.cadoc-4010
+  country: BR
+  regulator: BCB
+  document: "4010"
+  title: Balancete Patrimonial Analítico
+  # Publicação é tag git (br.bcb.cadoc-4010/v1.0.0). A instalação do cliente fixa a
+  # versão adotada, então uma correção publicada aqui não muda o que ele gera até
+  # ele adotar.
+  version: 1.0.0
+  status: draft
+  # A quem o documento se aplica. É o que permite filtrar o catálogo por tipo de
+  # instituição em vez de o cliente adivinhar o que precisa entregar.
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  periodicity: monthly
+  sourceOfTruth:
+    layoutManual: https://www.bcb.gov.br/estabilidadefinanceira/leiautedocumentoscrd
+    schema: schema/XSD_4010_v0.xsd   # material de curadoria, não é executado
+
+# ---------------------------------------------------------------------------
+# Parâmetros de geração
+#
+# Respondidos por requisição, não pelo binding: mudam a cada emissão. O motor os
+# publica no contexto de render sob o nome reservado `system`.
+# ---------------------------------------------------------------------------
+parameters:
+  - name: dataBase
+    type: month              # AAAA-MM
+    required: true
+    description: Mês de competência do balancete.
+    # Fecha o período de todo conjunto marcado com `accumulation`. O instante de
+    # fechamento é calculado no calendário do relatório, não com aritmética de
+    # offset fixo — um horário de verão histórico deslocaria a hora do corte.
+    closesPeriod: true
+
+  - name: tipoRemessa
+    type: string
+    required: true
+    default: I
+    domain: [I, S]           # I = inicial, S = substitutiva
+    description: Natureza da remessa ao BACEN.
+
+# ---------------------------------------------------------------------------
+# Conjuntos de dados
+#
+# Nomes LÓGICOS. Nenhuma base, tabela ou coluna de cliente aparece aqui — é o que
+# torna um contrato reaproveitável entre todos os clientes.
+# ---------------------------------------------------------------------------
+datasets:
+  - name: institution
+    description: Identificação da instituição declarante.
+    grain: singleton         # uma linha, sempre
+    fields:
+      - name: cnpj8
+        type: string
+        length: 8
+        required: true
+        # O XSD aceita alfanumérico: o CNPJ alfanumérico entra em vigor e a raiz
+        # deixa de ser garantidamente numérica. Não restringir a dígitos.
+        pattern: '^[A-Za-z0-9]{8}$'
+        description: Raiz do CNPJ (oito primeiras posições).
+
+  - name: cosif_balances
+    description: Saldo por rubrica COSIF na data-base.
+    # Uma linha por rubrica. É o grão que o BACEN espera e é o que a regra de
+    # unicidade abaixo protege.
+    grain: [cosifCode]
+    # ESTE É O CASO DIFÍCIL. O saldo não é uma coluna que o cliente mapeia: é um
+    # cálculo sobre o razão dele. O binding diz de ONDE vêm os lançamentos; a
+    # agregação abaixo diz o que fazer com eles. Sem isto no contrato, o cálculo
+    # voltaria para o template — onde não pode ser conferido nem reaproveitado.
+    aggregation:
+      groupBy: [cosifCode]
+      accumulation: unbounded    # estoque: acumula desde a abertura até o corte
+      closedBy: dataBase         # o parâmetro que fecha o período
+    fields:
+      - name: cosifCode
+        type: string
+        length: 10
+        required: true
+        # Dez dígitos desde jan/2025 (IN BCB 426-433); oito na grafia anterior,
+        # ainda usada por retificação de data-base antiga.
+        pattern: '^[0-9]{10}$|^[0-9]{8}$'
+        # Aceita a grafia mascarada na origem e normaliza para dígitos na saída,
+        # porque o cliente pode ter a rubrica gravada de qualquer uma das formas.
+        normalize: digits
+        description: Rubrica do elenco COSIF vigente para a data-base.
+
+      - name: saldo
+        type: decimal
+        required: true
+        # FORMATO MORA AQUI, NÃO NO TEMPLATE. O template diz apenas onde o saldo
+        # entra; o motor aplica isto ao popular. Ter a mesma decisão nos dois
+        # lugares permitiria que discordassem, sem árbitro e sem ninguém perceber.
+        format:
+          scale: 2
+          scaleIsExact: true     # o XSD declara fractionDigits como MÁXIMO, então
+                                 # `0` passa no schema e é errado no arquivo — esta
+                                 # regra existe exatamente porque o schema não pega
+          decimalSeparator: "."
+          groupSeparator: ""
+        measure:
+          # Soma com sinal contábil: o lançamento a débito entra negativo na
+          # convenção do razão.
+          aggregation: signed_sum
+          # E o resultado é reexpresso na natureza da própria conta, senão toda
+          # conta de ativo sai negativa no arquivo. A natureza vem da tabela de
+          # referência, indexada pela rubrica desta mesma linha.
+          statedIn:
+            accountNature:
+              from: cosifCode
+              table: account-nature.yaml
+        description: Saldo da rubrica em reais na data-base.
+
+# ---------------------------------------------------------------------------
+# Regras que não cabem num campo isolado
+#
+# Regra de campo vive no campo (acima). Aqui ficam só as que atravessam linhas ou
+# conjuntos. Cada uma tem severidade, porque nem toda divergência deve impedir a
+# geração — a que é `error` bloqueia, a que é `warning` gera e avisa.
+# ---------------------------------------------------------------------------
+rules:
+  - id: no-duplicate-account
+    severity: error
+    appliesTo: cosif_balances
+    assert: unique(cosifCode)
+    message: >-
+      Uma linha por rubrica. Duplicidade indica falha de agrupamento na origem e
+      viola a chave que o BACEN aplica na recepção.
+
+  - id: cosif-code-known
+    severity: error
+    appliesTo: cosif_balances.cosifCode
+    assert: existsIn(account-nature.yaml)
+    message: >-
+      Rubrica fora do elenco vigente para a data-base. É erro de mapeamento, não
+      de digitação — e sem ela a natureza contábil não pode ser determinada, o que
+      tornaria o sinal um chute.
+
+  - id: zero-balance-optional
+    severity: info
+    appliesTo: cosif_balances
+    assert: always
+    message: >-
+      Rubrica com saldo zero pode ser omitida (manual §3.2.2.a). Emitir ou não é
+      decisão do cliente; as duas formas são aceitas.
+
+  - id: sequential-data-base
+    severity: warning
+    appliesTo: parameters.dataBase
+    assert: previousDataBaseAccepted
+    message: >-
+      O BACEN só recepciona a data-base N se a N-1 já foi aceita. Gerar fora de
+      ordem não torna o arquivo inválido, mas a remessa será rejeitada.
