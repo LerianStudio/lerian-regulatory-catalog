@@ -159,14 +159,25 @@ knownGaps:
   - id: cosif-elenco-ausente
     description: >-
       Não há regra conferindo que a rubrica emitida existe no elenco COSIF vigente
-      para a data-base, porque não temos o elenco. Uma versão anterior deste
-      contrato tinha essa regra apontando para account-nature.yaml, o que estava
-      ERRADO: aquele arquivo é tabela de natureza contábil, com oito rubricas
-      explícitas mais os prefixos de grupo — não é o elenco. A regra teria
-      rejeitado quase toda rubrica válida.
-      Enquanto o elenco não entra no catálogo, o que resta é o `pattern` do campo,
-      que confere forma e não existência. Uma rubrica inexistente passa daqui e é
-      rejeitada pelo BACEN na recepção.
+      para a data-base, e provavelmente não deve haver aqui: a rubrica precisa
+      estar contemplada no plano de contas do cliente, e conferir isso é obrigação
+      da FONTE, não do gerador de arquivo. O que resta no contrato é o `pattern`,
+      que confere forma e não existência. Uma rubrica que o plano de contas não
+      contempla passa daqui e é rejeitada pelo BACEN na recepção.
+      Registrado como lacuna e não como pendência de implementação: fechá-la no
+      motor significaria o Reporter manter uma cópia do elenco COSIF, que é
+      exatamente a segunda fonte de verdade que a separação em camadas evita.
+
+  - id: natureza-contabil-nao-vem-da-fonte
+    description: >-
+      O sinal de cada saldo depende da natureza da conta — devedora ou credora — e
+      isso é propriedade do PLANO DE CONTAS, não deste contrato nem do motor. Hoje
+      o Midaz não expõe natureza: existe `operation.route_code`, materializado de
+      `operation_route`, e nada carrega o lado da conta.
+      Enquanto isso, o binding declara a natureza como configuração do cliente, o
+      que é verboso mas está na camada certa. Quando o Midaz expuser, vira mais uma
+      coluna da consulta. A lacuna é do Midaz e deve ser levantada lá — contorná-la
+      no Reporter congelaria o defeito.
 
   - id: ordem-de-remessa
     description: >-

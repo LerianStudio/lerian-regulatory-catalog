@@ -30,7 +30,6 @@ com o número de clientes.
 <país>/<regulador>/<documento>/
 ├── contract.yaml          o contrato (a definição dos dados)
 ├── template.tpl           a forma de saída
-├── account-nature.yaml    dado de referência, quando o documento precisa
 ├── binding.example.yaml   exemplo preenchido, para orientar o cliente
 └── schema/                material de curadoria (ver abaixo)
 ```
@@ -52,6 +51,16 @@ gente, na curadoria.
 
 Uma etapa automática de validação contra o regulador pode vir depois. Ela não é
 pré-requisito para gerar.
+
+## O que este repositório NÃO publica
+
+Tabela sobre o plano de contas do cliente. A natureza contábil de uma conta —
+devedora ou credora — é propriedade do plano de contas dele, e uma tabela nossa
+seria uma segunda fonte de verdade que ninguém reconcilia. Isso é declarado no
+binding, do lado do cliente. O validador recusa um arquivo desses aqui.
+
+Tabelas de código do REGULADOR são outra coisa e cabem aqui, porque são parte do
+que o documento é.
 
 ## Curadoria
 

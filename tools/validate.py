@@ -241,6 +241,16 @@ def check_references(doc_dir: Path, contract: dict) -> None:
                         f"cita {lookup}, que não existe"
                     )
 
+    # O catálogo publica contrato, template e — quando o documento precisa —
+    # tabela de código do REGULADOR. Não publica tabela sobre o plano de contas
+    # do cliente: a natureza contábil é propriedade do plano de contas dele, e
+    # uma tabela nossa seria uma segunda fonte de verdade que ninguém reconcilia.
+    for stray in doc_dir.glob("*nature*.yaml"):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: {stray.name} descreve o plano de contas "
+            f"do cliente, que é dado dele — declare no binding, não no catálogo"
+        )
+
 
 def check_rules(doc_dir: Path, contract: dict) -> None:
     """Severidade é obrigatória e o alvo tem de existir.

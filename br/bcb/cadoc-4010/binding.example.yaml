@@ -59,10 +59,32 @@ queries:
             debit: "-"
             credit: "+"
           # Reexpressa o resultado na natureza da própria conta, senão toda conta
-          # de ativo sai negativa. A tabela é dado de referência do CATÁLOGO,
-          # curado pela Lerian — o cliente a referencia, não a mantém.
+          # de ativo sai negativa no arquivo.
+          #
+          # A natureza é propriedade do PLANO DE CONTAS, não do gerador de arquivo
+          # nem do catálogo. Ela está aqui porque é dado do cliente: é o plano de
+          # contas DELE que diz quais contas são devedoras.
+          #
+          # LACUNA CONHECIDA: o Midaz não expõe natureza hoje. O que existe é
+          # `operation.route_code`, materializado de `operation_route`, e nada
+          # carrega o lado devedor/credor da conta. Enquanto o Midaz não expuser,
+          # o cliente declara aqui — o que é verboso mas está na camada certa.
+          # Quando expuser, isto vira mais uma coluna da consulta e estas linhas
+          # somem. Contornar no motor ou no catálogo congelaria a lacuna e criaria
+          # a segunda fonte de verdade que a separação existe para evitar.
           statedIn:
-            lookup: account-nature.yaml
+            # Grupos de 1º nível do plano COSIF. Nove linhas, não uma tabela de
+            # milhares de rubricas: quem tem exceção acrescenta a rubrica inteira.
+            natureByPrefix:
+              "1": debit    # Circulante e Realizável a Longo Prazo
+              "2": debit    # Permanente
+              "3": debit    # Compensação devedora
+              "4": credit   # Circulante e Exigível a Longo Prazo
+              "5": credit   # Resultados de Exercícios Futuros
+              "6": credit   # Patrimônio Líquido
+              "7": credit   # Contas de Resultado Credoras
+              "8": debit    # Contas de Resultado Devedoras
+              "9": credit   # Compensação credora
             key: route_code
 
       # Estoque: acumula desde a abertura até o fechamento da data-base. O corte
