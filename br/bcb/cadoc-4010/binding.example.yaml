@@ -1,56 +1,104 @@
 # Binding do Cadoc 4010 — QUEM PREENCHE É O CLIENTE.
 #
-# Este é o único dos três arquivos que fala de base, tabela e coluna. O contrato
-# diz o que o documento precisa; o template diz onde aparece; este diz de onde vem.
+# É o único dos três arquivos que fala de base, tabela e coluna. O contrato diz o
+# que o arquivo precisa; o template diz onde aparece; este diz DE ONDE VEM e COMO
+# É EXTRAÍDO.
 #
-# Exemplo preenchido contra o Midaz para mostrar o encaixe. Um cliente com razão
-# próprio preenche as mesmas chaves apontando para o esquema dele — o contrato e o
-# template não mudam, que é o ponto de toda a separação.
+# Exemplo preenchido contra o Midaz, para mostrar o encaixe. Um cliente com razão
+# próprio preenche as mesmas chaves apontando para o esquema dele — contrato e
+# template não mudam. Esse é o ponto de toda a separação.
+#
+# A UNIDADE AQUI É A CONSULTA, NÃO O CAMPO. Uma consulta traz vários campos de uma
+# vez, e um agrupamento com soma não teria como ser expresso campo a campo sem
+# repetir o mesmo `groupBy` em cada um. Cada consulta é NOMEADA: hoje elas vivem
+# neste arquivo, e quando a mesma consulta servir vários documentos — a de
+# identificação da instituição serve todos — ela é movida para um arquivo
+# compartilhado sem reescrever nada, porque os campos já a referenciam por nome.
 
 apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4010
-contractVersion: 1.0.0     # a versão adotada; o catálogo pode publicar 1.1.0 sem
-                           # mudar o que este cliente gera até ele adotar
+contractVersion: 1.0.0     # o catálogo pode publicar 1.1.0 sem mudar o que este
+                           # cliente gera até ele adotar
 
+# ---------------------------------------------------------------------------
+# Consultas
+#
+# Cada uma extrai um conjunto de linhas da origem. Vocabulário reaproveitado do
+# product-console: `dataSource` é o configName da fonte, `table` é a chave da
+# tabela (`schema__tabela` no PostgreSQL, nome puro no MongoDB), e os operadores
+# de filtro são os mesmos que o Reporter já aceita na API de relatórios —
+# eq, gt, gte, lt, lte, between, in, nin.
+# ---------------------------------------------------------------------------
+queries:
+  - name: saldos_cosif
+    description: Lançamentos do razão, agregados em saldo por rubrica.
+    dataSource: midaz_transaction
+    table: operation
+
+    # Recorte de linhas ANTES de agregar.
+    filters:
+      - field: status
+        operator: eq
+        values: ["APPROVED"]
+
+    # A agregação vive aqui e não no contrato porque depende da forma da origem:
+    # um cliente que já mantém tabela de saldos por rubrica não agrega nada, ele
+    # lê — e o contrato dos dois é o mesmo.
+    aggregate:
+      groupBy: [route_code]
+      measures:
+        - as: saldo
+          fn: sum
+          of: amount
+          # Soma COM SINAL: no razão o lançamento a débito entra negativo, e a
+          # coluna que diz o lado é esta.
+          sign:
+            column: direction
+            debit: "-"
+            credit: "+"
+          # Reexpressa o resultado na natureza da própria conta, senão toda conta
+          # de ativo sai negativa. A tabela é dado de referência do CATÁLOGO,
+          # curado pela Lerian — o cliente a referencia, não a mantém.
+          statedIn:
+            lookup: account-nature.yaml
+            key: route_code
+
+      # Estoque: acumula desde a abertura até o fechamento da data-base. O corte
+      # referencia o parâmetro de geração declarado no contrato.
+      accumulate:
+        until: system.dataBase
+
+# ---------------------------------------------------------------------------
+# Conjuntos
+#
+# Amarra o resultado das consultas aos conjuntos e campos que o contrato declara.
+# Um campo se resolve de quatro formas — `query`, `constant`, `parameter` ou
+# `manual` — e as três últimas existem para que a falta de origem nunca impeça a
+# geração: o arquivo sai como rascunho e o cliente completa antes de aprovar.
+# ---------------------------------------------------------------------------
 datasets:
   institution:
-    # Grão singleton: uma linha. Aqui o cliente não tem tabela — a raiz do CNPJ é
-    # um dado cadastral estável, então amarra como CONSTANTE.
-    #
-    # É uma das quatro formas de resolver um campo, e existe justamente para a
-    # geração não travar por falta de origem: fonte, constante, parâmetro ou
-    # edição manual antes do envio.
+    # Sem consulta: a raiz do CNPJ é cadastral e estável, então vale um valor
+    # fixo. O contrato pede grão `singleton` e uma linha de constantes o atende.
     fields:
       cnpj8:
         from: constant
         value: "12345678"
 
   cosif_balances:
-    # O contrato declara grão [cosifCode] e acumulação `unbounded` fechada por
-    # dataBase. O binding não repete nada disso: só diz onde estão os lançamentos
-    # que serão acumulados.
-    source:
-      dataSource: midaz_transaction
-      table: operation
+    from:
+      query: saldos_cosif
     fields:
       cosifCode:
-        from: source
+        from: query
         # No Midaz o plano de contas do cliente é materializado aqui: a rota de
-        # operação carrega a rubrica contábil que ele cadastrou em operation_route.
+        # operação carrega a rubrica contábil cadastrada em operation_route.
         column: route_code
       saldo:
-        from: source
-        column: amount
-        # O contrato pede soma COM SINAL, e o sinal do lançamento vem desta coluna.
-        # Sem declará-la, todo débito entraria positivo e o saldo sairia errado.
-        signColumn: direction
-        signMap:
-          debit: "-"
-          credit: "+"
+        from: query
+        column: saldo        # a medida nomeada em `aggregate.measures[].as`
 
-# Campos que o cliente decidiu editar à mão antes de enviar, em vez de amarrar a
-# uma origem. Vazio aqui; existe para que um campo sem fonte nunca impeça a
-# geração — o arquivo sai como rascunho e ele completa antes de aprovar.
+# Campos que o cliente decidiu completar à mão antes de enviar. Vazio aqui.
 manualOverrides: []

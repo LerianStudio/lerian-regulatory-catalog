@@ -127,25 +127,119 @@ def check_formatting_not_duplicated(doc_dir: Path) -> None:
             )
 
 
+EXTRACTION_KEYS = {
+    "aggregation": "agregação depende da forma da origem",
+    "aggregate": "agregação depende da forma da origem",
+    "measure": "medida é cálculo sobre a origem",
+    "accumulation": "acumulação depende do que a origem entrega",
+    "accumulate": "acumulação depende do que a origem entrega",
+    "statedIn": "reexpressão é transformação sobre a origem",
+    "dataSource": "fonte de dados é do cliente",
+    "table": "tabela é do cliente",
+    "column": "coluna é do cliente",
+    "signColumn": "a coluna de sinal é do cliente",
+}
+
+
+def check_no_extraction_in_contract(doc_dir: Path, contract: dict) -> None:
+    """Regra de EXTRAÇÃO não pode voltar para o contrato.
+
+    O teste que separa as duas: a resposta muda de cliente para cliente? Se muda,
+    é binding. Um cliente que já mantém tabela de saldos por rubrica não acumula
+    nada — lê — e o contrato dos dois é o mesmo. Uma regra de extração aqui
+    congelaria a forma da origem de UM cliente dentro de um arquivo que serve
+    todos, e o próximo cliente com origem diferente não teria como usar o
+    documento.
+    """
+
+    def walk(node, path: str) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in EXTRACTION_KEYS:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: contrato usa '{key}' em "
+                        f"{path or '<raiz>'} — {EXTRACTION_KEYS[key]}, então "
+                        f"pertence ao binding"
+                    )
+                walk(value, f"{path}.{key}" if path else key)
+        elif isinstance(node, list):
+            for index, item in enumerate(node):
+                walk(item, f"{path}[{index}]")
+
+    walk(contract, "")
+
+
+def check_binding_example(doc_dir: Path, contract: dict) -> None:
+    """O exemplo de binding tem de resolver todo campo que o contrato declara.
+
+    Ele orienta o cliente, então um exemplo incompleto ensina errado. Também
+    confere que campo resolvido por consulta nomeia uma consulta que existe: um
+    nome trocado renderiza célula vazia num arquivo que parece completo.
+    """
+    example = doc_dir / "binding.example.yaml"
+    if not example.exists():
+        warn(f"{doc_dir.relative_to(ROOT)}: sem binding.example.yaml para orientar o cliente")
+        return
+
+    binding = load(example)
+    if binding is None:
+        return
+
+    if binding.get("contract") != contract.get("metadata", {}).get("id"):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: binding.example aponta para "
+            f"'{binding.get('contract')}', não para este contrato"
+        )
+
+    queries = {q.get("name") for q in binding.get("queries", [])}
+    declared, _ = declared_names(contract)
+    bound = binding.get("datasets", {})
+
+    for dataset, fields in declared.items():
+        entry = bound.get(dataset)
+        if entry is None:
+            fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve o conjunto '{dataset}'")
+            continue
+
+        source = entry.get("from", {}).get("query")
+        if source is not None and source not in queries:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: conjunto '{dataset}' vem da consulta "
+                f"'{source}', que não está declarada em queries"
+            )
+
+        resolved = entry.get("fields", {})
+        for field in sorted(fields):
+            spec = resolved.get(field)
+            if spec is None:
+                fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}")
+                continue
+
+            how = spec.get("from")
+            if how not in {"query", "constant", "parameter", "manual"}:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
+                    f"{how!r}; use query, constant, parameter ou manual"
+                )
+
+
 def check_references(doc_dir: Path, contract: dict) -> None:
     """Todo arquivo que o contrato cita tem de existir."""
     schema = contract.get("metadata", {}).get("sourceOfTruth", {}).get("schema")
     if schema and not (doc_dir / schema).exists():
         fail(f"{doc_dir.relative_to(ROOT)}: contrato cita {schema}, que não existe")
 
-    for dataset in contract.get("datasets", []):
-        for field in dataset.get("fields", []):
-            table = (
-                field.get("measure", {})
-                .get("statedIn", {})
-                .get("accountNature", {})
-                .get("table")
-            )
-            if table and not (doc_dir / table).exists():
-                fail(
-                    f"{doc_dir.relative_to(ROOT)}: {dataset['name']}.{field['name']} "
-                    f"cita {table}, que não existe"
-                )
+    example = doc_dir / "binding.example.yaml"
+    if example.exists():
+        binding = load(example) or {}
+        for query in binding.get("queries", []):
+            for measure in query.get("aggregate", {}).get("measures", []):
+                lookup = measure.get("statedIn", {}).get("lookup")
+                if lookup and not (doc_dir / lookup).exists():
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: consulta '{query.get('name')}' "
+                        f"cita {lookup}, que não existe"
+                    )
 
 
 def check_rules(doc_dir: Path, contract: dict) -> None:
@@ -236,6 +330,8 @@ def main() -> int:
         contracts[doc_id] = contract
         check_template(doc_dir, contract)
         check_formatting_not_duplicated(doc_dir)
+        check_no_extraction_in_contract(doc_dir, contract)
+        check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_rules(doc_dir, contract)
 

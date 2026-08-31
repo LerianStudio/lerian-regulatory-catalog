@@ -3,17 +3,22 @@
 # QUEM CURA: a Lerian. Escrito a partir do manual do leiaute e do XSD publicados
 # pelo BACEN. O cliente não edita este arquivo; ele preenche o binding.
 #
-# O QUE ESTE ARQUIVO É: a definição dos dados do documento — quais conjuntos
-# existem, com que grão, quais campos cada um tem, o que cada campo significa, que
-# formato tem e que regras obedece.
+# O QUE ESTE ARQUIVO DIZ: o que o ARQUIVO precisa — quais conjuntos existem, com
+# que grão, quais campos, o que cada um significa, que formato e domínio tem, e o
+# que precisa valer no arquivo pronto.
 #
-# O QUE ESTE ARQUIVO NÃO É: não diz de onde o dado vem (isso é o binding, do
-# cliente) nem onde ele aparece no arquivo final (isso é o template).
+# O QUE ELE NÃO DIZ: de onde o dado vem nem como é extraído. Agregação, soma com
+# sinal, consulta à tabela de natureza — tudo isso é binding.
 #
-# O motor confia neste contrato. Não há conferência contra o XSD do BACEN em
-# tempo de execução: o XSD fica no repositório como fonte para escrever e revisar
-# este arquivo. Consequência assumida: um erro aqui gera arquivo errado com
-# confiança, então mudança de contrato exige revisão.
+# A LINHA QUE SEPARA: a resposta muda de cliente para cliente? Se muda, é binding.
+# "Saldo tem duas casas exatas" não muda — o BACEN manda. "Acumule os lançamentos
+# de midaz_transaction.operation somando com sinal de direction" muda: um cliente
+# que já mantém tabela de saldos por rubrica não acumula nada, ele lê.
+#
+# O motor confia neste contrato. Não há conferência contra o XSD do BACEN em tempo
+# de execução: o XSD fica no repositório como fonte para escrever e revisar este
+# arquivo. Consequência assumida: um erro aqui gera arquivo errado com confiança,
+# então mudança de contrato exige revisão.
 
 apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentContract
@@ -42,17 +47,14 @@ metadata:
 # Parâmetros de geração
 #
 # Respondidos por requisição, não pelo binding: mudam a cada emissão. O motor os
-# publica no contexto de render sob o nome reservado `system`.
+# publica no contexto de render sob o nome reservado `system`, e o binding pode
+# referenciá-los na extração (`until: system.dataBase`).
 # ---------------------------------------------------------------------------
 parameters:
   - name: dataBase
     type: month              # AAAA-MM
     required: true
     description: Mês de competência do balancete.
-    # Fecha o período de todo conjunto marcado com `accumulation`. O instante de
-    # fechamento é calculado no calendário do relatório, não com aritmética de
-    # offset fixo — um horário de verão histórico deslocaria a hora do corte.
-    closesPeriod: true
 
   - name: tipoRemessa
     type: string
@@ -66,6 +68,12 @@ parameters:
 #
 # Nomes LÓGICOS. Nenhuma base, tabela ou coluna de cliente aparece aqui — é o que
 # torna um contrato reaproveitável entre todos os clientes.
+#
+# `grain` é a única coisa de forma-do-dado que fica no contrato, e fica porque é
+# exigência do ARQUIVO, não da origem: o BACEN espera uma linha por rubrica. É
+# também o que o motor consegue conferir contra o resultado que o binding
+# produziu, antes de renderizar. Sem isso, um agrupamento errado no binding gera
+# um arquivo com uma linha só, formatado perfeitamente e completamente errado.
 # ---------------------------------------------------------------------------
 datasets:
   - name: institution
@@ -83,62 +91,46 @@ datasets:
 
   - name: cosif_balances
     description: Saldo por rubrica COSIF na data-base.
-    # Uma linha por rubrica. É o grão que o BACEN espera e é o que a regra de
-    # unicidade abaixo protege.
-    grain: [cosifCode]
-    # ESTE É O CASO DIFÍCIL. O saldo não é uma coluna que o cliente mapeia: é um
-    # cálculo sobre o razão dele. O binding diz de ONDE vêm os lançamentos; a
-    # agregação abaixo diz o que fazer com eles. Sem isto no contrato, o cálculo
-    # voltaria para o template — onde não pode ser conferido nem reaproveitado.
-    aggregation:
-      groupBy: [cosifCode]
-      accumulation: unbounded    # estoque: acumula desde a abertura até o corte
-      closedBy: dataBase         # o parâmetro que fecha o período
+    grain: [cosifCode]       # uma linha por rubrica — exigência do arquivo
     fields:
       - name: cosifCode
         type: string
-        length: 10
         required: true
         # Dez dígitos desde jan/2025 (IN BCB 426-433); oito na grafia anterior,
         # ainda usada por retificação de data-base antiga.
         pattern: '^[0-9]{10}$|^[0-9]{8}$'
-        # Aceita a grafia mascarada na origem e normaliza para dígitos na saída,
-        # porque o cliente pode ter a rubrica gravada de qualquer uma das formas.
+        # Normalização é regra de POPULAÇÃO: o valor que a extração entregou pode
+        # vir mascarado (`1.1.0.00.00.00-2`), e o arquivo leva só dígitos.
         normalize: digits
         description: Rubrica do elenco COSIF vigente para a data-base.
 
       - name: saldo
         type: decimal
         required: true
-        # FORMATO MORA AQUI, NÃO NO TEMPLATE. O template diz apenas onde o saldo
-        # entra; o motor aplica isto ao popular. Ter a mesma decisão nos dois
-        # lugares permitiria que discordassem, sem árbitro e sem ninguém perceber.
         format:
           scale: 2
-          scaleIsExact: true     # o XSD declara fractionDigits como MÁXIMO, então
-                                 # `0` passa no schema e é errado no arquivo — esta
-                                 # regra existe exatamente porque o schema não pega
+          # O XSD declara fractionDigits como MÁXIMO, então `0` passa no schema e
+          # é errado no arquivo. Esta regra existe exatamente porque o schema não
+          # pega — é o exemplo de por que o contrato não é substituível pelo XSD.
+          scaleIsExact: true
           decimalSeparator: "."
           groupSeparator: ""
-        measure:
-          # Soma com sinal contábil: o lançamento a débito entra negativo na
-          # convenção do razão.
-          aggregation: signed_sum
-          # E o resultado é reexpresso na natureza da própria conta, senão toda
-          # conta de ativo sai negativa no arquivo. A natureza vem da tabela de
-          # referência, indexada pela rubrica desta mesma linha.
-          statedIn:
-            accountNature:
-              from: cosifCode
-              table: account-nature.yaml
+        # SIGNIFICADO, não cálculo. Quem escreve o binding precisa saber o que
+        # produzir; COMO produzir depende da origem dele. O motor não consegue
+        # conferir se o binding acertou o sinal — quem confere é o cliente olhando
+        # o rascunho antes de aprovar, que é para isso que o rascunho existe.
+        means: >-
+          Saldo de fechamento da rubrica na data-base, acumulado desde a abertura
+          e expresso na NATUREZA DA PRÓPRIA CONTA: conta devedora com saldo devedor
+          sai positiva, conta credora com saldo credor sai positiva. A convenção
+          crédito-menos-débito do razão não deve vazar para o arquivo.
         description: Saldo da rubrica em reais na data-base.
 
 # ---------------------------------------------------------------------------
-# Regras que não cabem num campo isolado
+# Regras do arquivo pronto
 #
-# Regra de campo vive no campo (acima). Aqui ficam só as que atravessam linhas ou
-# conjuntos. Cada uma tem severidade, porque nem toda divergência deve impedir a
-# geração — a que é `error` bloqueia, a que é `warning` gera e avisa.
+# Só o que atravessa linhas. Regra de campo vive no campo. Regra de extração não
+# vive aqui — vive no binding.
 # ---------------------------------------------------------------------------
 rules:
   - id: no-duplicate-account
@@ -146,17 +138,8 @@ rules:
     appliesTo: cosif_balances
     assert: unique(cosifCode)
     message: >-
-      Uma linha por rubrica. Duplicidade indica falha de agrupamento na origem e
+      Uma linha por rubrica. Duplicidade indica agrupamento errado no binding e
       viola a chave que o BACEN aplica na recepção.
-
-  - id: cosif-code-known
-    severity: error
-    appliesTo: cosif_balances.cosifCode
-    assert: existsIn(account-nature.yaml)
-    message: >-
-      Rubrica fora do elenco vigente para a data-base. É erro de mapeamento, não
-      de digitação — e sem ela a natureza contábil não pode ser determinada, o que
-      tornaria o sinal um chute.
 
   - id: zero-balance-optional
     severity: info
@@ -166,10 +149,27 @@ rules:
       Rubrica com saldo zero pode ser omitida (manual §3.2.2.a). Emitir ou não é
       decisão do cliente; as duas formas são aceitas.
 
-  - id: sequential-data-base
-    severity: warning
-    appliesTo: parameters.dataBase
-    assert: previousDataBaseAccepted
-    message: >-
-      O BACEN só recepciona a data-base N se a N-1 já foi aceita. Gerar fora de
-      ordem não torna o arquivo inválido, mas a remessa será rejeitada.
+# ---------------------------------------------------------------------------
+# Pendências conhecidas
+#
+# Declaradas em vez de silenciadas: um contrato que finge estar completo é pior
+# que um que diz o que ainda não cobre.
+# ---------------------------------------------------------------------------
+knownGaps:
+  - id: cosif-elenco-ausente
+    description: >-
+      Não há regra conferindo que a rubrica emitida existe no elenco COSIF vigente
+      para a data-base, porque não temos o elenco. Uma versão anterior deste
+      contrato tinha essa regra apontando para account-nature.yaml, o que estava
+      ERRADO: aquele arquivo é tabela de natureza contábil, com oito rubricas
+      explícitas mais os prefixos de grupo — não é o elenco. A regra teria
+      rejeitado quase toda rubrica válida.
+      Enquanto o elenco não entra no catálogo, o que resta é o `pattern` do campo,
+      que confere forma e não existência. Uma rubrica inexistente passa daqui e é
+      rejeitada pelo BACEN na recepção.
+
+  - id: ordem-de-remessa
+    description: >-
+      O BACEN só recepciona a data-base N se a N-1 já foi aceita. Isso não é regra
+      do arquivo — é regra de protocolo de remessa, e o arquivo gerado fora de
+      ordem é válido. Sai daqui quando existir a etapa de remessa.
