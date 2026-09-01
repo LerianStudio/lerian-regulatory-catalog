@@ -1,0 +1,462 @@
+# Contrato da DIMP — Declaração de Informações de Meios de Pagamento.
+#
+# QUEM CURA: a Lerian, a partir do leiaute oficial v10 (Anexo II, Ato COTEPE/ICMS
+# 81/25, em schema/leiaute-v10.pdf) e do manual de orientação do CONFAZ. As
+# referências "L p.N" abaixo apontam páginas desse leiaute.
+#
+# ESCOPO DESTA VERSÃO: o fluxo mensal ordinário de uma credenciadora/instituição de
+# pagamento — finalidade 1, sem intermediador, sem VAN, sem cancelamento
+# extemporâneo. Registros: 0000, 0001, 0005, 0100, 0200, 0990, 1001, 1100→1110→1115,
+# 1990, 9001, 9900, 9990, 9999. O leiaute completo tem 27 tipos; os excluídos estão
+# em knownGaps com a condição que os tornaria necessários.
+#
+# Este documento estreia quatro construções do formato, cada uma forçada por uma
+# exigência real do leiaute:
+#   childOf        — hierarquia de conjuntos (1100→1110→1115), com adjacência
+#   refersTo       — integridade referencial entre conjuntos (L exige que códigos
+#                    de um bloco existam no outro)
+#   requiredWhen / forbiddenWhen — obrigatoriedade condicional declarativa
+#   equalsSumOf    — reconciliação aritmética pai↔filhos
+# E uma seção nova, controlRecords: totalizadores derivados do PRÓPRIO arquivo
+# renderizado — no template anterior eram OITO contagens digitadas à mão.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.confaz.dimp
+  country: BR
+  regulator: CONFAZ            # fisco estadual — primeiro documento não-BACEN do catálogo
+  document: DIMP
+  title: Declaração de Informações de Meios de Pagamento
+  version: 10.0.0              # espelha a versão 10 do leiaute (Ato COTEPE/ICMS 81/25)
+  status: draft
+  appliesTo:
+    institutionTypes: [IP]     # credenciadoras, subcredenciadoras e IPs que capturam pagamentos
+  periodicity: monthly
+  # O leiaute é VERSIONADO POR ATO e a versão vigente depende da competência: v10 é
+  # obrigatória a partir do movimento 06/2025; retificação de competência anterior
+  # usa a versão vigente NAQUELA competência (COD_VER validado contra DT_FIN, L p.10).
+  layout:
+    version: "10"
+    mandatoryFrom: "2025-06"
+  sourceOfTruth:
+    layoutManual: https://www.confaz.fazenda.gov.br/legislacao/arquivo-manuais/a19-anexo-ii-dimp-v10.pdf
+    schema: schema/leiaute-v10.pdf   # material de curadoria, não é executado
+
+# ---------------------------------------------------------------------------
+# Parâmetros de geração
+# ---------------------------------------------------------------------------
+parameters:
+  - name: dataBase
+    type: month
+    required: true
+    description: Competência do movimento declarado.
+
+  # UM ARQUIVO POR UF (L p.11): a mesma competência gera até 27 arquivos, um por
+  # fisco de destino. A UF é parâmetro porque muda por emissão, não por cliente.
+  - name: ufFisco
+    type: string
+    required: true
+    domain: [AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO]
+    description: UF do fisco de destino deste arquivo.
+
+  - name: tipoAmbiente
+    type: string
+    required: true
+    default: "1"
+    domain: ["1", "2"]          # 1 produção, 2 homologação
+    description: Ambiente de entrega.
+
+# ---------------------------------------------------------------------------
+# Conjuntos de dados
+# ---------------------------------------------------------------------------
+datasets:
+  - name: declarante
+    description: Identificação e contato da instituição declarante (registros 0000 e 0005).
+    grain: singleton
+    fields:
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        pattern: '^[0-9]{14}$'   # DV validado na recepção (L p.11)
+        description: CNPJ completo da declarante.
+      - name: razaoSocial
+        type: string
+        required: true
+      - name: nomeContato
+        type: string
+        required: true
+      - name: endereco
+        type: string
+        required: true
+      - name: cep
+        type: string
+        length: 8
+        required: true
+      - name: codigoMunicipio
+        type: string
+        length: 7
+        required: true
+        description: Código IBGE de 7 dígitos do município da declarante.
+      - name: uf
+        type: string
+        length: 2
+        required: true
+      - name: nomeResponsavel
+        type: string
+        required: true
+      - name: telefone
+        type: string
+        required: true
+      - name: email
+        type: string
+        required: true
+
+  - name: escrituracao
+    description: Janela da competência (registro 0000).
+    grain: singleton
+    fields:
+      - name: dtIni
+        type: date
+        required: true
+        format: { pattern: aaaammdd }
+        means: Primeiro dia da competência declarada em dataBase (L p.12).
+      - name: dtFin
+        type: date
+        required: true
+        format: { pattern: aaaammdd }
+        means: Último dia da mesma competência — mesmo mês e ano de dtIni (L p.12).
+      - name: mesValidacao
+        type: month
+        required: true
+        format: { pattern: aaaamm }
+        means: Mês em que o arquivo foi validado/gerado (L p.12).
+
+  - name: titulares
+    description: Clientes credenciados com movimento no período (registro 0100).
+    grain: [codCliente]
+    fields:
+      - name: codCliente
+        type: string
+        required: true
+        description: Código único no arquivo, de atribuição livre da declarante (L p.17).
+      # CPF ⊕ CNPJ, exatamente como o leiaute enuncia — pela PRESENÇA do irmão, sem
+      # inventar um discriminador que o arquivo não tem (L pp.17-18).
+      - name: cnpj
+        type: string
+        length: 14
+        requiredWhen:  { field: cpf, is: blank }
+        forbiddenWhen: { field: cpf, is: filled }
+      - name: cpf
+        type: string
+        length: 11
+        requiredWhen:  { field: cnpj, is: blank }
+        forbiddenWhen: { field: cnpj, is: filled }
+      - name: nomeFantasia
+        type: string
+        required: true
+      - name: endereco
+        type: string
+        required: true
+      - name: cep
+        type: string
+        length: 8
+        required: true
+      - name: codigoMunicipio
+        type: string
+        length: 7
+        required: true
+      - name: uf
+        type: string
+        length: 2
+        required: true
+      # O leiaute marca NOME_RESP como obrigatório E manda deixá-lo em branco para
+      # pessoa física (L p.18) — contradição do próprio leiaute, resolvida aqui como
+      # condicional. knownGaps registra a leitura.
+      - name: nomeResponsavel
+        type: string
+        requiredWhen:  { field: cnpj, is: filled }
+        forbiddenWhen: { field: cpf, is: filled }
+      - name: telefone
+        type: string
+        required: false
+      - name: email
+        type: string
+        required: false
+      - name: dtCredenciamento
+        type: date
+        required: true
+        format: { pattern: aaaammdd }
+        means: Data do credenciamento mais antigo do cliente (L p.18).
+      - name: indSubadquirencia
+        type: string
+        required: true
+        domain: ["0", "1"]
+
+  - name: meiosCaptura
+    description: Meios de captura usados no período (registro 0200).
+    grain: [codMeioCaptura]
+    fields:
+      - name: codMeioCaptura
+        type: string
+        required: true
+        description: Código único no arquivo; deve ser usado por ao menos um 1110 (L p.20).
+      - name: numeroLogico
+        type: string
+        required: true
+      - name: tipoTecnologia
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "6", "7", "8", "9"]   # 5 excluído na v10 (L pp.21-22)
+      - name: terminalProprio
+        type: string
+        required: true
+        domain: ["0", "1"]
+      - name: marca
+        type: string
+        requiredWhen: { field: terminalProprio, equals: "1" }   # L p.22
+      - name: smartpos
+        type: string
+        domain: ["0", "1"]
+        requiredWhen:  { field: tipoTecnologia, equals: "3" }   # L p.22
+        forbiddenWhen: { field: tipoTecnologia, notIn: ["3"] }
+
+  - name: resumosMensais
+    description: Resumo mensal de pagamentos por cliente (registro 1100).
+    # Chave de unicidade do leiaute, menos codIpPar (fora do escopo) — L p.30.
+    grain: [codCliente, indComex, indExtemporaneo]
+    means: >-
+      Um resumo por cliente e recorte no mês. ATENÇÃO ao piso de PF: só entram
+      recebedores pessoa física com total mensal ≥ R$ 3.375,00 E ≥ 30 transações,
+      somados por CPF através de todos os codCliente (L pp.28-30). Esse recorte é
+      pertinência por agregado — a MESMA classe do corte de R$ 200 do Cadoc 3040,
+      em forma branda — e vive na CONSULTA do binding (filtro pós-agregação), não
+      aqui. knownGaps registra uma ambiguidade do leiaute sobre esse piso.
+    fields:
+      - name: codCliente
+        type: string
+        required: true
+        refersTo: { dataset: titulares, field: codCliente }   # L p.31
+      - name: indComex
+        type: string
+        required: true
+        domain: ["0", "1"]
+      - name: indExtemporaneo
+        type: string
+        required: true
+        domain: ["0", "1"]
+      - name: dtIni
+        type: date
+        required: true
+        format: { pattern: aaaammdd }
+      - name: dtFin
+        type: date
+        required: true
+        format: { pattern: aaaammdd }
+      - name: valor
+        type: decimal
+        required: true
+        format: { scale: 2, scaleIsExact: true, decimalSeparator: ",", groupSeparator: "" }
+        equalsSumOf: { dataset: operacoesDiarias, field: valor }   # L p.32, nos dois sentidos
+      - name: qtd
+        type: integer
+        required: true
+        equalsSumOf: { dataset: operacoesDiarias, field: qtd }     # L p.32
+
+  - name: operacoesDiarias
+    description: Operações por dia e meio de captura (registro 1110).
+    # HIERARQUIA: cada linha pertence a um resumo mensal, e no ARQUIVO as filhas
+    # ficam imediatamente abaixo do pai (adjacência exigida em L pp.28, 32-33).
+    # O template realiza a adjacência com loops aninhados; o motor confere o grão.
+    childOf: { dataset: resumosMensais }
+    grain: [codMeioCaptura, dtOperacao]
+    fields:
+      - name: codMeioCaptura
+        type: string
+        required: true
+        refersTo: { dataset: meiosCaptura, field: codMeioCaptura }   # L p.33
+      - name: dtOperacao
+        type: date
+        required: true
+        format: { pattern: aaaammdd }
+        means: Dentro da janela do pai; naturezas 4/6/8/11 pela data de LIQUIDAÇÃO (L p.33).
+      - name: valor
+        type: decimal
+        required: true
+        format: { scale: 2, scaleIsExact: true, decimalSeparator: ",", groupSeparator: "" }
+        equalsSumOf: { dataset: detalhesOperacao, field: valor }     # L p.33
+      - name: qtd
+        type: integer
+        required: true
+        means: >-
+          Quantidade de operações do dia. O leiaute NÃO a amarra à contagem de
+          linhas 1115 — ausência deliberadamente registrada, não um esquecimento
+          deste contrato (ver knownGaps).
+      # Condicional de UM SALTO: proibido quando o meio de captura REFERENCIADO tem
+      # tecnologia 7 (L p.33). O `via` percorre o refersTo declarado acima.
+      - name: cnpjLiquidante
+        type: string
+        length: 14
+        forbiddenWhen: { via: codMeioCaptura, field: tipoTecnologia, equals: "7" }
+        requiredWhen:  { via: codMeioCaptura, field: tipoTecnologia, notIn: ["7"] }
+
+  - name: detalhesOperacao
+    description: Operações por comprovante (registro 1115).
+    childOf: { dataset: operacoesDiarias }
+    grain: [codAutorizacao, idTransacao]
+    fields:
+      - name: nsu
+        type: string
+        required: false
+      - name: codAutorizacao
+        type: string
+        required: true
+        means: Código de autorização; para PIX, o endToEndId (L p.35).
+      - name: idTransacao
+        type: string
+        required: true
+      - name: indSplit
+        type: string
+        required: true
+        domain: ["0", "1"]
+      - name: bandeira
+        type: string
+        length: 2
+        required: false
+        means: >-
+          Tabela de bandeiras da NF-e — domínio EXTERNO ao leiaute; 98 private
+          label, 99 outras, vazio sem bandeira (L p.36). O elenco não é reproduzido
+          aqui: ver knownGaps.
+      - name: hora
+        type: string
+        length: 6
+        required: true
+        format: { pattern: hhmmss }
+      - name: valor
+        type: decimal
+        required: true
+        format: { scale: 2, scaleIsExact: true, decimalSeparator: ",", groupSeparator: "" }
+        means: Regime de competência, inclui tarifas de intermediação, sem juros de financiamento (L p.36).
+      - name: naturezaOperacao
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5", "6", "7", "8", "11"]   # 9 e 10 excluídos na v10
+      - name: geolocalizacao
+        type: string
+        requiredWhen: { field: naturezaOperacao, in: ["1", "2", "7"] }   # L pp.36-37
+      - name: indNaturezaJuridica
+        type: string
+        requiredWhen: { field: naturezaOperacao, in: ["4", "6"] }        # L p.37
+      # O caso iff completo do leiaute: obrigatório para PIX e PROIBIDO fora dele.
+      - name: indTipoPix
+        type: string
+        requiredWhen:  { field: naturezaOperacao, equals: "6" }          # L p.37
+        forbiddenWhen: { field: naturezaOperacao, notIn: ["6"] }
+
+# ---------------------------------------------------------------------------
+# Registros de controle — derivados do PRÓPRIO arquivo renderizado
+#
+# Não são conjuntos de dados: nenhum binding os resolve e nenhuma consulta os
+# produz. O motor os conta durante o render (tags counter/counter_show), e o
+# template os posiciona. Estão no contrato porque as REGRAS de contagem são
+# exigência do arquivo — e são assimétricas de um jeito que já foi digitado errado:
+# no template anterior eram oito parâmetros contados à mão pelo operador.
+# ---------------------------------------------------------------------------
+controlRecords:
+  - record: "0990"
+    counts: linhas do bloco 0, INCLUINDO 0001, o próprio 0990 e — "mesmo não
+      pertencendo ao bloco 0" — o registro 0000 (L p.27).
+  - record: "1990"
+    counts: linhas do bloco 1, incluindo 1001 e o próprio 1990. Nada de fora
+      (assimetria com 0990/9990 — L p.52).
+  - record: "9900"
+    counts: uma linha totalizadora por TIPO de registro presente, "inclusive os
+      posteriores a este registro" — as linhas de 9900, 9990 e 9999 também ganham
+      totalizador, e o do próprio 9900 conta a si mesmo (L p.52).
+  - record: "9990"
+    counts: linhas do bloco 9, incluindo 9001, as 9900, o próprio 9990 E o 9999,
+      "apesar de não pertencer ao Bloco 9" (L p.53).
+  - record: "9999"
+    counts: todas as linhas do arquivo, "considerar também o próprio registro
+      9999" (L p.54). Nenhum documento oficial traz exemplo numérico.
+
+# ---------------------------------------------------------------------------
+# Regras do arquivo pronto
+# ---------------------------------------------------------------------------
+rules:
+  - id: resumo-unico-por-recorte
+    severity: error
+    appliesTo: resumosMensais
+    assert: unique(codCliente, indComex, indExtemporaneo)
+    message: Chave de unicidade do 1100 (L p.30); duplicidade indica agrupamento errado no binding.
+
+  - id: extemporaneo-zerado-no-fluxo-ordinario
+    severity: error
+    appliesTo: resumosMensais
+    assert: always
+    message: >-
+      Este contrato cobre a finalidade 1 (movimento ordinário): indExtemporaneo
+      deve ser "0" em todas as linhas — transação extemporânea entra em arquivo
+      próprio, fora deste escopo (L p.31).
+
+# ---------------------------------------------------------------------------
+# Pendências conhecidas
+# ---------------------------------------------------------------------------
+knownGaps:
+  - id: registros-fora-do-escopo
+    description: >-
+      Excluídos desta versão, com a condição que os exigiria: 0002 (liquidantes de
+      terceiros), 0006 (dados complementares), 0105 (VAN), 0201 (conta conjunta,
+      tipoTecnologia 9), 0300 (instituição parceira), 0600 (finalidade 6),
+      0700 (intimação, finalidade 3), 1120 (intermediador/marketplace — exige
+      composição de consulta com UF de destino e um-de-três CNPJ/CPF/ID),
+      1200/1220/1600 (cancelamento extemporâneo, finalidade 1 com IND_EXTEMP) e
+      1500 (instituições financeiras). Finalidades 2 (retificação), 3 e 6 idem.
+
+  - id: piso-pf-ambiguo-no-leiaute
+    description: >-
+      A regra narrativa do piso (R$ 3.375,00 E 30 transações) é escopada a pessoa
+      física e somada por CPF (L pp.28-30), mas a frase de REJEIÇÃO do validador é
+      escrita sem o qualificador de PF (L p.30). Lido aqui como PF-somente, que é a
+      única leitura compatível com o resto do texto — se a recepção rejeitar PJ
+      abaixo do piso, a consulta do binding precisa mudar, não este contrato.
+
+  - id: nome-resp-contradicao-do-leiaute
+    description: >-
+      NOME_RESP do 0100 é marcado "O" (obrigatório) e o mesmo leiaute manda
+      deixá-lo em branco para pessoa física (L p.18). Modelado como condicional
+      pela presença de CPF/CNPJ.
+
+  - id: qtd-diaria-sem-amarra
+    description: >-
+      O leiaute NÃO amarra 1110.QTD à contagem de linhas 1115 sob ele — só os
+      valores reconciliam. Registrado para ninguém "corrigir" o contrato
+      inventando uma regra que o leiaute não tem.
+
+  - id: bandeira-tabela-externa
+    description: >-
+      O domínio de bandeira é a tabela da NF-e, publicada fora do leiaute. O
+      catálogo ainda não carrega tabelas de código de terceiros; até lá o campo
+      valida só forma.
+
+  - id: nomes-do-registro-0005
+    description: >-
+      Os campos de contato do declarante (0005) foram nomeados a partir do resumo
+      da análise; conferir nomes e ordem exatos contra L pp.14-16 antes de
+      publicar (status draft até lá).
+
+  - id: encoding-e-transporte
+    description: >-
+      O arquivo é ISO 8859-1, pipe-delimited com pipe inicial e final + CRLF
+      (L p.3). Nenhum dos três documentos oficiais define convenção de NOME de
+      arquivo — empacotamento e transmissão são do TED-TEF, fora do escopo de
+      geração. Suporte do motor a ISO 8859-1 na saída: verificar na fase do motor.
+
+  - id: retificacao-usa-versao-da-competencia
+    description: >-
+      COD_VER é validado contra DT_FIN (L p.10): retificar competência ≤ 05/2025
+      exige o leiaute v9, ou seja, o contrato 9.x correspondente — o catálogo
+      precisará publicar as duas versões com vigência quando a retificação entrar
+      no escopo.

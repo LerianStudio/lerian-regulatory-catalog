@@ -26,3 +26,19 @@ documents:
     summary: >-
       Saldos por rubrica COSIF na data-base, acumulados desde a abertura e
       expressos na natureza de cada conta.
+
+  - id: br.confaz.dimp
+    path: br/confaz/dimp
+    country: BR
+    regulator: CONFAZ
+    document: DIMP
+    title: Declaração de Informações de Meios de Pagamento
+    version: 10.0.0
+    status: draft
+    periodicity: monthly
+    appliesTo:
+      institutionTypes: [IP]
+    summary: >-
+      Movimento mensal de pagamentos por titular, meio de captura e comprovante,
+      em arquivo posicional por UF de destino, com totalizadores de controle
+      derivados do próprio arquivo.

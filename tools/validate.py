@@ -18,8 +18,8 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-FAILURES: list[str] = []
-WARNINGS: list[str] = []
+FAILURES = []
+WARNINGS = []
 
 
 def fail(msg: str) -> None:
@@ -38,7 +38,7 @@ def load(path: Path):
         return None
 
 
-def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
+def declared_names(contract: dict):
     """Conjuntos e seus campos, mais os parâmetros de geração."""
     datasets = {
         ds["name"]: {f["name"] for f in ds.get("fields", [])}
@@ -66,14 +66,43 @@ def check_template(doc_dir: Path, contract: dict) -> None:
     body = re.sub(r"\{#.*?#\}", "", body, flags=re.DOTALL)  # comentários não contam
 
     datasets, parameters = declared_names(contract)
-    loops = dict(re.findall(r"\{%-?\s*for\s+(\w+)\s+in\s+(\w+)", body))
+    children = {
+        ds["name"]: ds.get("childOf", {}).get("dataset")
+        for ds in contract.get("datasets", [])
+        if ds.get("childOf")
+    }
+    loops = dict(re.findall(r"\{%-?\s*for\s+(\w+)\s+in\s+([\w.]+)", body))
+
+    def dataset_of(head, depth=0):
+        """Resolve um iterador até o conjunto que ele percorre.
+
+        Um conjunto childOf é alcançado como lista aninhada na linha do pai
+        (`{% for d in r.operacoesDiarias %}`), então o iterável pode ser
+        `<iterador-pai>.<conjunto-filho>` — e o filho só é legítimo se o contrato
+        declara exatamente essa filiação. Um `.filho` sobre o pai errado é um
+        conjunto que o render nunca vai popular, e a seção sai vazia num arquivo
+        que parece completo.
+        """
+        if depth > 8 or head not in loops:
+            return head if head in datasets else None
+
+        iterable = loops[head]
+        if "." not in iterable:
+            return iterable if iterable in datasets else None
+
+        parent_iter, child = iterable.split(".", 1)
+        parent_ds = dataset_of(parent_iter, depth + 1)
+
+        if child in children and children[child] == parent_ds:
+            return child
+
+        return None
+
     refs = set(re.findall(r"\{\{\s*([A-Za-z_]\w*)\.(\w+)", body))
 
-    placed: set[tuple[str, str]] = set()
+    placed = set()
     for head, field in sorted(refs):
-        dataset = loops.get(head, head)
-
-        if dataset == "system":
+        if head == "system":
             if field not in parameters:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: template usa system.{field}, "
@@ -81,10 +110,12 @@ def check_template(doc_dir: Path, contract: dict) -> None:
                 )
             continue
 
-        if dataset not in datasets:
+        dataset = dataset_of(head)
+        if dataset is None:
             fail(
-                f"{doc_dir.relative_to(ROOT)}: template itera sobre '{dataset}', "
-                f"que o contrato não declara em datasets"
+                f"{doc_dir.relative_to(ROOT)}: template lê {head}.{field}, e "
+                f"'{head}' não resolve para nenhum conjunto do contrato "
+                f"(loop aninhado só alcança um conjunto childOf do pai certo)"
             )
             continue
 
@@ -191,8 +222,14 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             f"'{binding.get('contract')}', não para este contrato"
         )
 
+    check_binding_queries(doc_dir, binding)
+
     queries = {q.get("name") for q in binding.get("queries", [])}
     declared, _ = declared_names(contract)
+    required = {
+        ds["name"]: {f["name"] for f in ds.get("fields", []) if f.get("required") is True}
+        for ds in contract.get("datasets", [])
+    }
     bound = binding.get("datasets", {})
 
     for dataset, fields in declared.items():
@@ -212,7 +249,15 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
         for field in sorted(fields):
             spec = resolved.get(field)
             if spec is None:
-                fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}")
+                # Um campo INCONDICIONALMENTE obrigatório sem origem é erro: toda
+                # geração falharia. Um condicional/opcional pode legitimamente não se
+                # resolver quando o binding torna a condição impossível (marca com
+                # terminalProprio fixo em 0) — mas fica em aviso, para o exemplo ser
+                # omisso por decisão e não por esquecimento.
+                if field in required.get(dataset, set()):
+                    fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}, que é obrigatório incondicional")
+                else:
+                    warn(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve o condicional {dataset}.{field} — confirme que a condição nunca vale neste binding")
                 continue
 
             how = spec.get("from")
@@ -220,6 +265,139 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
                     f"{how!r}; use query, constant, parameter ou manual"
+                )
+
+
+CONDITION_OPS = {"equals", "in", "notIn", "is"}
+
+
+def check_structure(doc_dir: Path, contract: dict) -> None:
+    """As construções estruturais do contrato apontam para coisas que existem.
+
+    Cada uma nasceu de uma exigência real e cada referência quebrada tem um modo de
+    falha silencioso próprio: um childOf para pai errado é uma seção que o render
+    nunca popula; um refersTo para campo inexistente é integridade referencial que
+    ninguém confere; um equalsSumOf órfão é uma reconciliação que diz sempre sim; e
+    um requiredWhen sobre campo fantasma é uma condicional que nunca dispara — o
+    campo vira opcional de fato num arquivo em que era obrigatório.
+    """
+    datasets, _ = declared_names(contract)
+    by_name = {ds["name"]: ds for ds in contract.get("datasets", [])}
+
+    for ds in contract.get("datasets", []):
+        name = ds["name"]
+
+        parent = ds.get("childOf", {}).get("dataset")
+        if parent is not None and parent not in datasets:
+            fail(f"{doc_dir.relative_to(ROOT)}: {name} é childOf de '{parent}', que não existe")
+
+        for field in ds.get("fields", []):
+            fname = field["name"]
+
+            ref = field.get("refersTo")
+            if ref:
+                target = ref.get("dataset")
+                if target not in datasets:
+                    fail(f"{doc_dir.relative_to(ROOT)}: {name}.{fname} refersTo conjunto '{target}', que não existe")
+                elif ref.get("field") not in datasets[target]:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {name}.{fname} refersTo "
+                        f"{target}.{ref.get('field')}, campo que não existe"
+                    )
+
+            sum_of = field.get("equalsSumOf")
+            if sum_of:
+                target = sum_of.get("dataset")
+                target_ds = by_name.get(target)
+                if target_ds is None:
+                    fail(f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf conjunto '{target}', que não existe")
+                else:
+                    if target_ds.get("childOf", {}).get("dataset") != name:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf "
+                            f"'{target}', que não é childOf de {name} — uma soma de "
+                            f"não-filhos reconcilia coisa nenhuma"
+                        )
+                    if sum_of.get("field") not in datasets.get(target, set()):
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf "
+                            f"{target}.{sum_of.get('field')}, campo que não existe"
+                        )
+
+            for kind in ("requiredWhen", "forbiddenWhen"):
+                cond = field.get(kind)
+                if not cond:
+                    continue
+
+                ops = set(cond) & CONDITION_OPS
+                if len(ops) != 1:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} precisa de "
+                        f"exatamente uma condição dentre {sorted(CONDITION_OPS)}"
+                    )
+
+                via = cond.get("via")
+                if via is not None:
+                    via_field = next((f for f in ds.get("fields", []) if f["name"] == via), None)
+                    ref = (via_field or {}).get("refersTo")
+                    if ref is None:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} usa "
+                            f"via '{via}', que não é um campo com refersTo deste conjunto"
+                        )
+                    elif cond.get("field") not in datasets.get(ref.get("dataset"), set()):
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} via "
+                            f"{via} aponta para {ref.get('dataset')}.{cond.get('field')}, "
+                            f"campo que não existe"
+                        )
+                elif cond.get("field") not in datasets[name]:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} condiciona "
+                        f"em '{cond.get('field')}', campo que este conjunto não declara"
+                    )
+
+
+def check_binding_queries(doc_dir: Path, binding: dict) -> None:
+    """Consultas compostas e joins apontam para consultas que existem.
+
+    Um `from` para consulta inexistente, ou um join por nome trocado, não falha na
+    escrita — falha na geração, do jeito silencioso: conjunto vazio, arquivo
+    completo na aparência.
+    """
+    names = [q.get("name") for q in binding.get("queries", [])]
+
+    for duplicate in {n for n in names if names.count(n) > 1}:
+        fail(f"{doc_dir.relative_to(ROOT)}: consulta '{duplicate}' declarada duas vezes")
+
+    known = set(names)
+
+    for query in binding.get("queries", []):
+        qname = query.get("name", "<sem nome>")
+
+        base = query.get("from")
+        if base is not None and base not in known:
+            fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' compõe sobre '{base}', que não existe")
+
+        if base is None and not query.get("dataSource"):
+            fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' não tem nem dataSource nem from")
+
+        for join in query.get("join", []) or []:
+            target_query = join.get("query")
+            if target_query is not None and target_query not in known:
+                fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' junta com '{target_query}', que não existe")
+
+            if target_query is None and not join.get("table"):
+                fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' não nomeia nem table nem query")
+
+            # `match`, não `on`: YAML 1.1 lê `on` como booleano — inclusive como
+            # CHAVE — e a cláusula sumiria no parse sem erro nenhum.
+            if not join.get("match"):
+                fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' sem cláusula match")
+            if join.get(True) is not None or "on" in join:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: join de '{qname}' usa a chave 'on', "
+                    f"que YAML 1.1 lê como booleano — use 'match'"
                 )
 
 
@@ -260,7 +438,7 @@ def check_rules(doc_dir: Path, contract: dict) -> None:
     entregar arquivo errado.
     """
     datasets, parameters = declared_names(contract)
-    seen: set[str] = set()
+    seen = set()
 
     for rule in contract.get("rules", []):
         rule_id = rule.get("id", "<sem id>")
@@ -341,6 +519,7 @@ def main() -> int:
         check_template(doc_dir, contract)
         check_formatting_not_duplicated(doc_dir)
         check_no_extraction_in_contract(doc_dir, contract)
+        check_structure(doc_dir, contract)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_rules(doc_dir, contract)
