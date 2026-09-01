@@ -56,3 +56,20 @@ versão anterior do contrato, que é como um erro se perpetua.
 - Campo novo, domínio novo, regra nova: minor.
 - Mudança que altera arquivos já gerados e aceitos: major, e explique na descrição
   da tag o que muda para quem já adotou.
+
+## Branches
+
+O consumo do catálogo é por **tag** (`br.bcb.cadoc-4010/v1.0.0`): é o que a
+instalação do cliente fixa, e é o que faz uma correção publicada aqui não mudar o
+que ele gera até ele adotar. As branches existem para o que acontece antes disso.
+
+| Branch | Papel |
+|---|---|
+| `develop` | onde um documento é curado; é o que um Reporter de desenvolvimento acompanha, para o documento ser exercitado de ponta a ponta antes de virar tag |
+| `main` | o que já passou por revisão e está pronto para virar tag |
+| tags | o que o cliente fixa |
+
+Trabalho novo sai de `develop`, volta por **PR**, e a conferência do CI é
+obrigatória. Sem isso o processo desta página é convenção de honra: os três
+primeiros commits deste repositório foram empurrados direto na `main`, passando por
+cima do CI que roda em pull request — e foi o que motivou escrever esta seção.
