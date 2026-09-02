@@ -400,6 +400,24 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
         if base is not None and base not in known:
             fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' compõe sobre '{base}', que não existe")
 
+        # Ciclo em `from`: produced_columns o detecta e responde "não sei", que
+        # esconderia um binding quebrado atrás de uma conferência que se cala.
+        # Reportado aqui, onde é um erro e não uma dúvida.
+        by_name = {q["name"]: q for q in binding.get("queries", []) if q.get("name")}
+        chain = []
+        cursor = qname
+
+        while cursor in by_name:
+            if cursor in chain:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `from`: "
+                    f"{' -> '.join(chain + [cursor])}"
+                )
+                break
+
+            chain.append(cursor)
+            cursor = by_name[cursor].get("from")
+
         if base is None and not query.get("dataSource"):
             fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' não tem nem dataSource nem from")
 
@@ -500,39 +518,101 @@ def check_parent_match(doc_dir: Path, contract: dict, binding: dict) -> None:
                 )
 
 
-def produced_columns(query: dict) -> set[str] | None:
+def produced_columns(
+    query: dict,
+    queries: dict[str, dict],
+    seen: frozenset[str] = frozenset(),
+) -> set[str] | None:
     """As colunas que uma consulta ENTREGA a quem se apoia nela.
 
-    Uma consulta AGREGADA entrega exatamente o que entrou no groupBy mais as
-    medidas nomeadas: tudo o mais é descartado pela agregação. Uma consulta sem
-    agregação repassa o esquema da origem, que este repositório não conhece — então
-    responde None e não há o que conferir.
+    Resolve a cadeia de `from` inteira, e não um nível. Uma consulta SEM agregação
+    no meio do caminho repassa a origem: parar nela devolvia None e apagava a
+    conferência de tudo o que viesse depois — uma coluna descartada três consultas
+    atrás passava sem sinal.
+
+    Uma consulta AGREGADA entrega exatamente o groupBy mais as medidas nomeadas
+    mais as derivadas, independentemente do que a base entregue: agregar é projetar,
+    então o conjunto é conhecido mesmo sobre origem desconhecida.
+
+    Responde None — "não sei, não confira" — quando a raiz é uma tabela crua, cujo
+    esquema este repositório não conhece, ou quando um join reintroduz esquema cru.
+    Conservador de propósito: um None a mais deixa passar um erro, um falso positivo
+    reprova um binding correto e ensina a ignorar a ferramenta.
     """
-    aggregate = query.get("aggregate")
-    if not aggregate:
+    name = query.get("name")
+
+    # Proteção de ciclo: um `from` circular não tem conjunto de colunas.
+    if name and name in seen:
         return None
 
-    columns = set(aggregate.get("groupBy", []) or [])
-    columns |= {m["as"] for m in aggregate.get("measures", []) or [] if m.get("as")}
-    columns |= {d["as"] for d in query.get("derive", []) or [] if d.get("as")}
+    if name:
+        seen = seen | {name}
 
-    return columns
+    derived = {d["as"] for d in query.get("derive") or [] if d.get("as")}
+
+    aggregate = query.get("aggregate")
+    if aggregate:
+        columns = set(aggregate.get("groupBy") or [])
+        columns |= {m["as"] for m in aggregate.get("measures") or [] if m.get("as")}
+
+        return columns | derived
+
+    base_name = query.get("from")
+    if base_name is None or base_name not in queries:
+        return None
+
+    base = produced_columns(queries[base_name], queries, seen)
+    if base is None:
+        return None
+
+    # Um join que traz TABELA crua reintroduz esquema desconhecido; um que traz
+    # outra consulta soma o que ela entrega.
+    for join in query.get("join") or []:
+        if join.get("table"):
+            return None
+
+        joined = queries.get(join.get("query"))
+        if joined is None:
+            return None
+
+        joined_columns = produced_columns(joined, queries, seen)
+        if joined_columns is None:
+            return None
+
+        base = base | joined_columns
+
+    return base | derived
 
 
-def condition_fields(node: object) -> set[str]:
-    """Todo `field` de uma árvore de condições (anyOf/allOf/folha)."""
-    found: set[str] = set()
+def condition_fields(node: object) -> tuple[set[str], list[object]]:
+    """Todo `field` de uma árvore de condições, mais o que não é nome de campo.
+
+    Devolve os malformados em vez de estourar: `field: [valor]` fazia `set.add`
+    levantar TypeError e a ferramenta MORRIA no meio da conferência, em vez de
+    reprovar a condição e seguir. Um validador que quebra com entrada malformada é
+    pior que um que reprova — quem escreveu não descobre o que estava errado.
+    """
+    fields: set[str] = set()
+    malformed: list[object] = []
 
     if isinstance(node, dict):
         if "field" in node:
-            found.add(node["field"])
+            if isinstance(node["field"], str):
+                fields.add(node["field"])
+            else:
+                malformed.append(node["field"])
+
         for value in node.values():
-            found |= condition_fields(value)
+            nested_fields, nested_malformed = condition_fields(value)
+            fields |= nested_fields
+            malformed += nested_malformed
     elif isinstance(node, list):
         for value in node:
-            found |= condition_fields(value)
+            nested_fields, nested_malformed = condition_fields(value)
+            fields |= nested_fields
+            malformed += nested_malformed
 
-    return found
+    return fields, malformed
 
 
 def check_column_survival(doc_dir: Path, binding: dict) -> None:
@@ -551,7 +631,12 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
     queries = {q["name"]: q for q in binding.get("queries", []) if q.get("name")}
 
     for name, query in queries.items():
-        available = produced_columns(queries[query["from"]]) if query.get("from") in queries else None
+        base_name = query.get("from")
+        available = (
+            produced_columns(queries[base_name], queries)
+            if base_name in queries
+            else None
+        )
 
         if available is not None:
             aggregate = query.get("aggregate", {}) or {}
@@ -561,13 +646,21 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
             for column in sorted(used - available):
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: consulta '{name}' usa a coluna "
-                    f"'{column}', que '{query['from']}' não entrega — uma coluna só "
+                    f"'{column}', que '{base_name}' não entrega — uma coluna só "
                     f"sobrevive ao groupBy se entrar nele"
                 )
 
-        own = produced_columns(query)
+        having_fields, malformed = condition_fields(query.get("having", []))
+
+        for value in malformed:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: o having de '{name}' tem um `field` "
+                f"que não é nome de coluna: {value!r}"
+            )
+
+        own = produced_columns(query, queries)
         if own is not None:
-            for column in sorted(condition_fields(query.get("having", [])) - own):
+            for column in sorted(having_fields - own):
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: o having de '{name}' compara "
                     f"'{column}', que a própria consulta não entrega após agregar"
@@ -578,7 +671,7 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
         if source not in queries:
             continue
 
-        available = produced_columns(queries[source])
+        available = produced_columns(queries[source], queries)
         if available is None:
             continue
 
