@@ -236,6 +236,7 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
 
     check_binding_queries(doc_dir, binding)
     check_parent_match(doc_dir, contract, binding)
+    check_column_survival(doc_dir, binding)
 
     queries = {q.get("name") for q in binding.get("queries", [])}
     declared, _ = declared_names(contract)
@@ -497,6 +498,98 @@ def check_parent_match(doc_dir: Path, contract: dict, binding: dict) -> None:
                     f"{doc_dir.relative_to(ROOT)}: {name}.parentMatch aninha por "
                     f"'{parent_field}', que o conjunto pai {parent} não declara"
                 )
+
+
+def produced_columns(query: dict) -> set[str] | None:
+    """As colunas que uma consulta ENTREGA a quem se apoia nela.
+
+    Uma consulta AGREGADA entrega exatamente o que entrou no groupBy mais as
+    medidas nomeadas: tudo o mais é descartado pela agregação. Uma consulta sem
+    agregação repassa o esquema da origem, que este repositório não conhece — então
+    responde None e não há o que conferir.
+    """
+    aggregate = query.get("aggregate")
+    if not aggregate:
+        return None
+
+    columns = set(aggregate.get("groupBy", []) or [])
+    columns |= {m["as"] for m in aggregate.get("measures", []) or [] if m.get("as")}
+    columns |= {d["as"] for d in query.get("derive", []) or [] if d.get("as")}
+
+    return columns
+
+
+def condition_fields(node: object) -> set[str]:
+    """Todo `field` de uma árvore de condições (anyOf/allOf/folha)."""
+    found: set[str] = set()
+
+    if isinstance(node, dict):
+        if "field" in node:
+            found.add(node["field"])
+        for value in node.values():
+            found |= condition_fields(value)
+    elif isinstance(node, list):
+        for value in node:
+            found |= condition_fields(value)
+
+    return found
+
+
+def check_column_survival(doc_dir: Path, binding: dict) -> None:
+    """Uma coluna referenciada tem de sobreviver até o ponto onde é usada.
+
+    Esta é a conferência que faltava, e a ausência dela custou duas rodadas de
+    revisão na MESMA classe de erro: primeiro o having comparava uma coluna com
+    outro nome, depois comparava o nome certo de uma coluna que duas agregações já
+    haviam descartado. Nos dois casos o modo de falha é o mesmo e é silencioso — sem
+    discriminador, ou a consulta quebra, ou todas as linhas passam e o arquivo sai
+    com recebedor que devia estar fora.
+
+    Uma coluna só sobrevive a um groupBy se entrar nele. A regra estava escrita em
+    comentário no exemplo e violada duas linhas abaixo; agora é executável.
+    """
+    queries = {q["name"]: q for q in binding.get("queries", []) if q.get("name")}
+
+    for name, query in queries.items():
+        available = produced_columns(queries[query["from"]]) if query.get("from") in queries else None
+
+        if available is not None:
+            aggregate = query.get("aggregate", {}) or {}
+            used = set(aggregate.get("groupBy", []) or [])
+            used |= {m["of"] for m in aggregate.get("measures", []) or [] if m.get("of")}
+
+            for column in sorted(used - available):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: consulta '{name}' usa a coluna "
+                    f"'{column}', que '{query['from']}' não entrega — uma coluna só "
+                    f"sobrevive ao groupBy se entrar nele"
+                )
+
+        own = produced_columns(query)
+        if own is not None:
+            for column in sorted(condition_fields(query.get("having", [])) - own):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: o having de '{name}' compara "
+                    f"'{column}', que a própria consulta não entrega após agregar"
+                )
+
+    for name, entry in (binding.get("datasets") or {}).items():
+        source = (entry.get("from") or {}).get("query")
+        if source not in queries:
+            continue
+
+        available = produced_columns(queries[source])
+        if available is None:
+            continue
+
+        used = {f["column"] for f in (entry.get("fields") or {}).values() if isinstance(f, dict) and f.get("column")}
+        used |= set((entry.get("parentMatch") or {}).values())
+
+        for column in sorted(used - available):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' mapeia a coluna "
+                f"'{column}', que a consulta '{source}' não entrega"
+            )
 
 
 def check_references(doc_dir: Path, contract: dict) -> None:

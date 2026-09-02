@@ -45,13 +45,24 @@ queries:
     join:
       - query: titulares_com_conta
         match: { account_id: account_id }
+    # Colunas DERIVADAS: o dia e a hora saem do mesmo created_at. Declaradas aqui
+    # porque o agregado abaixo agrupa por dia e o conjunto de comprovantes imprime a
+    # hora — uma coluna usada e não declarada é uma célula vazia num arquivo que
+    # parece completo.
+    derive:
+      - { as: created_at_day,  from: created_at, apply: date }
+      - { as: created_at_time, from: created_at, apply: timeOfDay }
 
   # 3. Agregado diário, POR TITULAR e conta — holder_id sobrevive ao groupBy porque
   #    entra nele.
   - name: movimento_diario
     from: operacoes_por_comprovante
     aggregate:
-      groupBy: [holder_id, account_id, created_at_day]
+      # `type` entra no groupBy para SOBREVIVER a ele. É a regra que o comentário do
+      # having enuncia, e que eu violei aqui: `type` vem do CRM e era descartada
+      # nesta agregação e na seguinte, deixando o piso de PF sem discriminador.
+      # Não fragmenta grupo — é funcionalmente dependente de holder_id.
+      groupBy: [holder_id, type, account_id, created_at_day]
       measures:
         - { as: valor, fn: sum, of: amount }
         - { as: qtd,   fn: count }
@@ -60,7 +71,7 @@ queries:
   - name: resumo_mensal_por_titular
     from: movimento_diario
     aggregate:
-      groupBy: [holder_id]
+      groupBy: [holder_id, type]
       measures:
         - { as: valor, fn: sum, of: valor }
         - { as: qtd,   fn: sum, of: qtd }
