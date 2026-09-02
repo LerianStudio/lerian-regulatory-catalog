@@ -1,14 +1,21 @@
 # Binding da DIMP — QUEM PREENCHE É O CLIENTE.
 # Exemplo contra o ecossistema Lerian (CRM + Midaz), para mostrar o encaixe.
 #
-# A DIMP força três construções de binding que o 4010 não tinha, todas marcadas
-# onde aparecem:
-#   join     — consulta juntando duas tabelas da MESMA fonte
-#   from     — consulta composta sobre OUTRA consulta nomeada (correlação entre
-#              fontes diferentes: CRM ↔ Midaz)
-#   having   — filtro PÓS-agregação: o piso de PF é pertinência por agregado, a
-#              mesma classe do corte de R$ 200 do 3040, em forma branda
-#   derive   — campo derivado de um parâmetro (primeiro/último dia da competência)
+# A DIMP força construções de binding que o 4010 não tinha, todas marcadas onde
+# aparecem:
+#   join         consulta juntando duas tabelas da MESMA fonte
+#   from         consulta composta sobre OUTRA consulta nomeada — é o que permite
+#                correlacionar fontes diferentes (CRM ↔ Midaz)
+#   having       filtro PÓS-agregação (o piso de PF)
+#   parentMatch  a chave que aninha um conjunto childOf sob a linha certa do pai
+#   derive       campo derivado de um parâmetro
+#   match        chave de join. NÃO se chama `on`: YAML 1.1 lê `on` como o booleano
+#                True — até como chave — e a cláusula sumiria em silêncio no parse.
+#
+# A CADEIA DE CONSULTAS é desenhada de baixo para cima, e essa ordem não é estética:
+# cada agregado se apoia no grão mais fino, então a coluna de ligação com o pai
+# existe em todos os níveis. Sem isso não há como aninhar 1110 sob o 1100 certo, e a
+# adjacência que o leiaute exige (L pp.28, 32-33) fica impossível de produzir.
 
 apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
@@ -17,50 +24,54 @@ contract: br.confaz.dimp
 contractVersion: 10.0.0
 
 queries:
-  # Titulares com conta: JOIN dentro da mesma fonte (CRM).
+  # 1. Titulares com conta: JOIN dentro da mesma fonte (CRM).
   - name: titulares_com_conta
     dataSource: plugin_crm
     table: holders
     join:
       - table: aliases
-        # `match`, não `on`: YAML 1.1 lê `on` como o booleano True — até
-        # como chave — e a cláusula de join sumiria em silêncio no parse.
-        match: { holder_id: _id }     # aliases.holder_id = holders._id
+        match: { holder_id: _id }        # aliases.holder_id = holders._id
 
-  # Movimento agregado por conta e dia, no razão.
-  - name: movimento_diario
+  # 2. GRÃO MAIS FINO — uma linha por comprovante, já carregando o titular.
+  #    A junção com o CRM é o que traz holder_id para dentro do movimento; sem ela
+  #    nenhum agregado abaixo teria a chave do pai.
+  - name: operacoes_por_comprovante
     dataSource: midaz_transaction
     table: operation
     filters:
       - field: status
         operator: eq
         values: ["APPROVED"]
+    join:
+      - query: titulares_com_conta
+        match: { account_id: account_id }
+
+  # 3. Agregado diário, POR TITULAR e conta — holder_id sobrevive ao groupBy porque
+  #    entra nele.
+  - name: movimento_diario
+    from: operacoes_por_comprovante
     aggregate:
-      groupBy: [account_id, created_at_day]
+      groupBy: [holder_id, account_id, created_at_day]
       measures:
         - { as: valor, fn: sum, of: amount }
         - { as: qtd,   fn: count }
 
-  # CONSULTA COMPOSTA: correlaciona o movimento (Midaz) com o titular (CRM) via a
-  # conta. É a construção que fontes diferentes exigem — uma consulta não atravessa
-  # fontes, mas pode se apoiar em OUTRA consulta nomeada.
+  # 4. Agregado mensal por titular.
   - name: resumo_mensal_por_titular
     from: movimento_diario
-    join:
-      - query: titulares_com_conta
-        match: { account_id: account_id }
     aggregate:
       groupBy: [holder_id]
       measures:
         - { as: valor, fn: sum, of: valor }
         - { as: qtd,   fn: sum, of: qtd }
     # O PISO DE PF (L pp.28-30): recebedor pessoa física só entra com total mensal
-    # ≥ R$ 3.375,00 E ≥ 30 transações. Filtro PÓS-agregação — antes dela não há
-    # total para comparar. PJ não tem piso; a condição discrimina pela presença de
-    # CPF, como o contrato faz.
+    # ≥ R$ 3.375,00 E ≥ 30 transações. Filtro PÓS-agregação — antes dela não há total
+    # para comparar. PJ não tem piso, e o discriminador é a coluna `type` do CRM, a
+    # MESMA que os campos de titulares usam: dois nomes diferentes para o mesmo
+    # discriminador deixariam o piso sem efeito e o arquivo sairia com PF abaixo dele.
     having:
       - anyOf:
-          - { field: document_type, operator: eq, values: ["LEGAL_PERSON"] }
+          - { field: type, operator: eq, values: ["LEGAL_PERSON"] }
           - allOf:
               - { field: valor, operator: gte, values: ["3375.00"] }
               - { field: qtd,   operator: gte, values: ["30"] }
@@ -85,7 +96,7 @@ datasets:
     fields:
       dtIni:        { from: parameter, name: dataBase, derive: monthStart }
       dtFin:        { from: parameter, name: dataBase, derive: monthEnd }
-      mesValidacao: { from: parameter, name: dataBase }   # gerado na própria competência
+      mesValidacao: { from: parameter, name: dataBase }
 
   titulares:
     from: { query: titulares_com_conta }
@@ -108,13 +119,13 @@ datasets:
     from: { query: titulares_com_conta }
     fields:
       codMeioCaptura:  { from: query, column: account_id }
-      # Conta de pagamento (tecnologia 8): número lógico é a concatenação
+      # Conta de pagamento (tecnologia 8): o número lógico é a concatenação
       # tipo-banco-agência-conta que o leiaute manda (L pp.20-22) — o cliente monta.
       numeroLogico:    { from: query, column: banking_details_account }
       tipoTecnologia:  { from: constant, value: "8" }
       terminalProprio: { from: constant, value: "0" }
-      # marca: requiredWhen terminalProprio=1 — aqui é 0, então não se resolve.
-      # smartpos: requiredWhen tipoTecnologia=3 — idem.
+      # marca: requiredWhen terminalProprio=1 — fixo em 0 aqui, condição nunca vale.
+      # smartpos: requiredWhen tipoTecnologia=3 — fixo em 8 aqui, idem.
 
   resumosMensais:
     from: { query: resumo_mensal_por_titular }
@@ -129,6 +140,11 @@ datasets:
 
   operacoesDiarias:
     from: { query: movimento_diario }
+    # AQUI a linha se liga ao pai. O contrato declara operacoesDiarias childOf
+    # resumosMensais; esta chave diz COM QUE COLUNA. Sem ela o motor teria linhas
+    # 1110 soltas e nenhum critério para colocá-las sob o 1100 certo — o arquivo
+    # sairia com a hierarquia embaralhada, cada bloco somando o que não é dele.
+    parentMatch: { codCliente: holder_id }
     fields:
       codMeioCaptura: { from: query, column: account_id }
       dtOperacao:     { from: query, column: created_at_day }
@@ -137,20 +153,30 @@ datasets:
       cnpjLiquidante: { from: constant, value: "12345678000199" }
 
   detalhesOperacao:
-    # Grão de comprovante: as operações cruas, sem agregação.
-    source:
-      dataSource: midaz_transaction
-      table: operation
+    # Grão de comprovante, da MESMA cadeia: a consulta nomeada, e não um `source`
+    # solto, porque a unidade do binding é a consulta e é ela que carrega as colunas
+    # de ligação com o pai.
+    from: { query: operacoes_por_comprovante }
+    # Duas colunas para aninhar, porque o pai é (meio de captura, dia).
+    parentMatch:
+      codMeioCaptura: account_id
+      dtOperacao: created_at_day
     fields:
       nsu:                  { from: manual }
-      codAutorizacao:       { from: query, column: id }
+      # PIX: o leiaute pede o endToEndId em codAutorizacao e em idTransacao (L p.35).
+      # O razão do Midaz não expõe o endToEndId como coluna neste exemplo, então o
+      # campo fica manual em vez de apontar para `id`: mapear o identificador interno
+      # da operação entregaria ao fisco um código que não é de autorização — e, sendo
+      # o mesmo `id` nos dois campos, colapsaria o grão declarado
+      # [codAutorizacao, idTransacao] a uma dimensão só.
+      codAutorizacao:       { from: manual }
       idTransacao:          { from: query, column: id }
       indSplit:             { from: constant, value: "0" }
       bandeira:             { from: manual }
       hora:                 { from: query, column: created_at_time }
       valor:                { from: query, column: amount }
       naturezaOperacao:     { from: constant, value: "6" }   # PIX
-      # geolocalizacao: requiredWhen natureza in 1,2,7 — natureza 6 aqui, não se resolve.
+      # geolocalizacao: requiredWhen natureza in 1,2,7 — natureza 6 aqui, não vale.
       indNaturezaJuridica:  { from: manual }                 # requiredWhen natureza in 4,6
       indTipoPix:           { from: constant, value: "1" }   # requiredWhen natureza = 6
 

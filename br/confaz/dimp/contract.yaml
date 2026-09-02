@@ -246,7 +246,11 @@ datasets:
       - name: indExtemporaneo
         type: string
         required: true
-        domain: ["0", "1"]
+        # O leiaute admite "0" e "1", mas ESTE contrato cobre a finalidade 1
+        # (movimento ordinário): transação extemporânea entra em arquivo próprio.
+        # Restringir o domínio é executável; uma regra descrevendo a restrição sem
+        # assertá-la deixaria passar "1" sem sinal nenhum.
+        domain: ["0"]
       - name: dtIni
         type: date
         required: true
@@ -392,19 +396,18 @@ rules:
     assert: unique(codCliente, indComex, indExtemporaneo)
     message: Chave de unicidade do 1100 (L p.30); duplicidade indica agrupamento errado no binding.
 
-  - id: extemporaneo-zerado-no-fluxo-ordinario
-    severity: error
-    appliesTo: resumosMensais
-    assert: always
-    message: >-
-      Este contrato cobre a finalidade 1 (movimento ordinário): indExtemporaneo
-      deve ser "0" em todas as linhas — transação extemporânea entra em arquivo
-      próprio, fora deste escopo (L p.31).
-
 # ---------------------------------------------------------------------------
 # Pendências conhecidas
 # ---------------------------------------------------------------------------
 knownGaps:
+  - id: extemporaneo-fora-do-dominio
+    description: >-
+      indExtemporaneo tem o domínio restrito a "0" neste contrato, e não ao
+      ["0","1"] do leiaute, porque o escopo é a finalidade 1. Quando o
+      cancelamento extemporâneo entrar (registros 1200/1220/1600), o domínio
+      volta a dois valores e as regras que dependem dele precisam ser escritas —
+      inclusive a de que ele deve ser "0" em arquivo de retificação (L p.31).
+
   - id: registros-fora-do-escopo
     description: >-
       Excluídos desta versão, com a condição que os exigiria: 0002 (liquidantes de

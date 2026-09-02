@@ -11,6 +11,8 @@ reflete o manual. Isso é revisão humana contra a fonte primária, e nenhum scr
 substitui.
 """
 
+from __future__ import annotations
+
 import re
 import sys
 from pathlib import Path
@@ -18,8 +20,8 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-FAILURES = []
-WARNINGS = []
+FAILURES: list[str] = []
+WARNINGS: list[str] = []
 
 
 def fail(msg: str) -> None:
@@ -38,7 +40,7 @@ def load(path: Path):
         return None
 
 
-def declared_names(contract: dict):
+def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
     """Conjuntos e seus campos, mais os parâmetros de geração."""
     datasets = {
         ds["name"]: {f["name"] for f in ds.get("fields", [])}
@@ -71,9 +73,15 @@ def check_template(doc_dir: Path, contract: dict) -> None:
         for ds in contract.get("datasets", [])
         if ds.get("childOf")
     }
-    loops = dict(re.findall(r"\{%-?\s*for\s+(\w+)\s+in\s+([\w.]+)", body))
+    # Multimapa, não dict: `dict(findall(...))` guardaria só a ÚLTIMA ocorrência de
+    # cada nome de iterador, e dois `for r in ...` em blocos irmãos — comum — passariam
+    # a resolver ambos pelo último iterável, aprovando ou reprovando a referência
+    # errada em silêncio.
+    loops: dict[str, list[str]] = {}
+    for head, iterable in re.findall(r"\{%-?\s*for\s+(\w+)\s+in\s+([\w.]+)", body):
+        loops.setdefault(head, []).append(iterable)
 
-    def dataset_of(head, depth=0):
+    def dataset_of(head: str, depth: int = 0) -> str | None:
         """Resolve um iterador até o conjunto que ele percorre.
 
         Um conjunto childOf é alcançado como lista aninhada na linha do pai
@@ -86,21 +94,25 @@ def check_template(doc_dir: Path, contract: dict) -> None:
         if depth > 8 or head not in loops:
             return head if head in datasets else None
 
-        iterable = loops[head]
-        if "." not in iterable:
-            return iterable if iterable in datasets else None
+        # Um nome de iterador pode ser reusado; aceita se QUALQUER um dos iteráveis
+        # resolver, para não reprovar um template legítimo por homonímia.
+        for iterable in loops[head]:
+            if "." not in iterable:
+                if iterable in datasets:
+                    return iterable
+                continue
 
-        parent_iter, child = iterable.split(".", 1)
-        parent_ds = dataset_of(parent_iter, depth + 1)
+            parent_iter, child = iterable.split(".", 1)
+            parent_ds = dataset_of(parent_iter, depth + 1)
 
-        if child in children and children[child] == parent_ds:
-            return child
+            if child in children and children[child] == parent_ds:
+                return child
 
         return None
 
     refs = set(re.findall(r"\{\{\s*([A-Za-z_]\w*)\.(\w+)", body))
 
-    placed = set()
+    placed: set[tuple[str, str]] = set()
     for head, field in sorted(refs):
         if head == "system":
             if field not in parameters:
@@ -223,6 +235,7 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
         )
 
     check_binding_queries(doc_dir, binding)
+    check_parent_match(doc_dir, contract, binding)
 
     queries = {q.get("name") for q in binding.get("queries", [])}
     declared, _ = declared_names(contract)
@@ -365,7 +378,14 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
     escrita — falha na geração, do jeito silencioso: conjunto vazio, arquivo
     completo na aparência.
     """
-    names = [q.get("name") for q in binding.get("queries", [])]
+    # Consulta sem nome não pode ser referenciada por `from`, por `join.query` nem
+    # por `datasets.<conjunto>.from.query` — é inalcançável, então é erro aqui em vez
+    # de virar `None` no conjunto de nomes conhecidos.
+    for index, query in enumerate(binding.get("queries", [])):
+        if not query.get("name"):
+            fail(f"{doc_dir.relative_to(ROOT)}: consulta #{index + 1} não declara name")
+
+    names = [q["name"] for q in binding.get("queries", []) if q.get("name")]
 
     for duplicate in {n for n in names if names.count(n) > 1}:
         fail(f"{doc_dir.relative_to(ROOT)}: consulta '{duplicate}' declarada duas vezes")
@@ -394,10 +414,88 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
             # CHAVE — e a cláusula sumiria no parse sem erro nenhum.
             if not join.get("match"):
                 fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' sem cláusula match")
-            if join.get(True) is not None or "on" in join:
+            # YAML 1.1 converte a chave `on` no booleano True, então `"on" in join`
+            # nunca é verdadeiro. Testar a PRESENÇA da chave True e não o valor: um
+            # `on:` sem valor produziria True->None e escaparia de um teste por valor.
+            if True in join or "on" in join:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: join de '{qname}' usa a chave 'on', "
                     f"que YAML 1.1 lê como booleano — use 'match'"
+                )
+
+
+def check_template_parses(doc_dir: Path) -> None:
+    """Regras do MOTOR de template que uma leitura por regex não pega.
+
+    Existe porque um template pode passar em toda conferência desta ferramenta e
+    ser irreceptível pelo motor. Aconteceu: o pongo2 não aceita salto de linha
+    dentro de `{# ... #}`, e os dois primeiros templates deste repositório foram
+    commitados com cabeçalho multi-linha — ilegíveis pelo renderer, com o CI verde,
+    porque a conferência apenas REMOVIA os comentários por regex sem nunca parsear.
+
+    Não é um parser: é a lista das regras do motor que já nos morderam. Cada nova
+    entra aqui quando morder.
+    """
+    template = doc_dir / "template.tpl"
+    if not template.exists():
+        return
+
+    body = template.read_text(encoding="utf-8")
+
+    for match in re.finditer(r"\{#.*?#\}", body, flags=re.DOTALL):
+        if "\n" in match.group(0):
+            line = body[: match.start()].count("\n") + 1
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: comentário multi-linha na linha {line} — "
+                f"o pongo2 recusa salto de linha dentro de {{# #}} "
+                f'("Newline not permitted in a single-line comment"). '
+                f"Use um comentário por linha."
+            )
+
+    # Um `{#` sem fechamento leva o resto do arquivo embora, silenciosamente.
+    if body.count("{#") != body.count("#}"):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: comentários desbalanceados "
+            f"({body.count('{#')} aberturas, {body.count('#}')} fechamentos)"
+        )
+
+
+def check_parent_match(doc_dir: Path, contract: dict, binding: dict) -> None:
+    """Todo conjunto childOf declara COM QUE COLUNA se aninha sob o pai.
+
+    Sem isso o motor tem linhas filhas soltas e nenhum critério para colocá-las sob
+    a linha certa do pai: o arquivo sai com a hierarquia embaralhada, cada bloco
+    somando o que não é dele — e a adjacência que o leiaute exige é impossível de
+    produzir. O exemplo original tinha três consultas planas sem chave de ligação,
+    e nenhuma conferência daqui reclamou.
+    """
+    declared, _ = declared_names(contract)
+    bound = binding.get("datasets", {})
+
+    for ds in contract.get("datasets", []):
+        parent = ds.get("childOf", {}).get("dataset")
+        if parent is None:
+            continue
+
+        name = ds["name"]
+        entry = bound.get(name)
+        if entry is None:
+            continue
+
+        parent_match = entry.get("parentMatch")
+        if not parent_match:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {name} é childOf de {parent} e o "
+                f"binding não declara parentMatch — as linhas filhas não têm como "
+                f"ser aninhadas sob a linha certa do pai"
+            )
+            continue
+
+        for parent_field in parent_match:
+            if parent_field not in declared.get(parent, set()):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {name}.parentMatch aninha por "
+                    f"'{parent_field}', que o conjunto pai {parent} não declara"
                 )
 
 
@@ -438,7 +536,7 @@ def check_rules(doc_dir: Path, contract: dict) -> None:
     entregar arquivo errado.
     """
     datasets, parameters = declared_names(contract)
-    seen = set()
+    seen: set[str] = set()
 
     for rule in contract.get("rules", []):
         rule_id = rule.get("id", "<sem id>")
@@ -520,6 +618,7 @@ def main() -> int:
         check_formatting_not_duplicated(doc_dir)
         check_no_extraction_in_contract(doc_dir, contract)
         check_structure(doc_dir, contract)
+        check_template_parses(doc_dir)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_rules(doc_dir, contract)
