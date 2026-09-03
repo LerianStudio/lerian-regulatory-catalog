@@ -251,25 +251,64 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `from`")
             continue
 
+        # accountSet e rowSet.from têm de ser o MESMO conjunto: dois arquivos válidos
+        # mas diferentes passariam cada um em sua conferência isolada enquanto o
+        # binding resolve um conjunto e o contrato anuncia outro.
+        if set_path and ref != set_path:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.from é '{ref}' e "
+                f"metadata.accountSet é '{set_path}' — o conjunto anunciado e o usado "
+                f"têm de ser o mesmo arquivo"
+            )
+
         ref_file = doc_dir / ref
         if not ref_file.exists():
             fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.from cita {ref}, que não existe")
             continue
 
-        rows = (load(ref_file) or {}).get("accounts", [])
+        # Robustez de forma: um conjunto com raiz que não é mapa, `accounts` que não é
+        # lista, ou uma linha que não é mapa faria os .get() abaixo estourarem em vez
+        # de reprovar. Um validador que quebra com entrada malformada é pior que um
+        # que reprova.
+        loaded = load(ref_file)
+        if not isinstance(loaded, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não é um mapa YAML na raiz")
+            continue
+
+        rows = loaded.get("accounts")
+        if not isinstance(rows, list):
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não tem uma lista `accounts`")
+            continue
+
+        malformed = [r for r in rows if not isinstance(r, dict)]
+        for r in malformed:
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} tem uma conta que não é mapa: {r!r}")
+        rows = [r for r in rows if isinstance(r, dict)]
+
         key = ds["rowSet"].get("key")
         key_field = next((f for f in ds.get("fields", []) if f["name"] == key), None)
         pattern = key_field.get("pattern") if key_field else None
 
-        if pattern:
-            bad = [r.get("code") for r in rows if not re.fullmatch(pattern, str(r.get("code", "")))]
-            for code in bad:
+        for r in rows:
+            code = str(r.get("code", ""))
+
+            # O código de dez dígitos é o mascarado sem pontuação. Conferir isso é o
+            # que pega a transcrição manual errada — que já aconteceu (um código de
+            # controle e os cinco de fluxo saíram trocados na primeira versão).
+            masked = r.get("masked")
+            if masked and code != re.sub(r"[.\-]", "", str(masked)):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, code '{code}' não é o "
+                    f"masked '{masked}' sem pontuação — transcrição do código diverge"
+                )
+
+            if pattern and not re.fullmatch(pattern, code):
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: conta '{code}' em {ref} não bate com o "
                     f"pattern de {ds['name']}.{key} — deriva de formato do código"
                 )
 
-        codes = [r.get("code") for r in rows]
+        codes = [str(r.get("code")) for r in rows]
         for dup in {c for c in codes if codes.count(c) > 1}:
             fail(f"{doc_dir.relative_to(ROOT)}: conta '{dup}' duplicada em {ref}")
 

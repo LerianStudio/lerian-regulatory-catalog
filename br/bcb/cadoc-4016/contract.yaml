@@ -33,7 +33,12 @@ parameters:
   - name: dataBase
     type: month              # AAAA-MM
     required: true
-    description: Data-base de referência do balanço.
+    # O 4016 é esperado APENAS para junho e dezembro (L §2.1.4). Diferente do
+    # `domain` de um enum fechado, aqui restringimos o MÊS de um valor aberto: só
+    # AAAA-06 e AAAA-12 são aceitos. Sem isto, um 4016 para 2026-01 é gerável e o
+    # BACEN o rejeita.
+    allowedMonths: ["06", "12"]
+    description: Data-base do balanço — apenas junho ou dezembro.
 
   - name: tipoRemessa
     type: string
@@ -127,8 +132,10 @@ knownGaps:
       Como no 4010, não há regra conferindo que a rubrica existe no elenco COSIF
       vigente — isso é obrigação da fonte. O pattern confere forma, não existência.
 
-  - id: periodicidade-semestral-nao-conferida-aqui
+  - id: ordem-sequencial-de-data-base
     description: >-
-      A periodicidade semestral (§2.1.4) governa QUANDO o documento é devido, não a
-      forma do arquivo. Calendário/remessa está fora do escopo desta fase; entra
-      quando a etapa de remessa existir.
+      O leiaute exige critério SEQUENCIAL: o BACEN só recepciona a data-base N se a
+      N-1 (junho antes de dezembro, dezembro antes do junho seguinte) já foi aceita
+      (§2.1.4). Isso é regra de protocolo de remessa, não da forma do arquivo; entra
+      quando a etapa de remessa existir. A restrição de meses (allowedMonths) fica no
+      parâmetro porque essa SIM é conferível na geração.
