@@ -27,7 +27,7 @@
 {%- counter "b0" %}
 |0001|1|
 {%- counter "b0" %}
-|0005|{{ declarante.nomeContato }}|{{ declarante.endereco }}|{{ declarante.cep }}|{{ declarante.codigoMunicipio }}|{{ declarante.uf }}|{{ declarante.nomeResponsavel }}|{{ declarante.telefone }}|{{ declarante.email }}|
+|0005|{{ declarante.nomeFantasia }}|{{ declarante.endereco }}|{{ declarante.cep }}|{{ declarante.codigoMunicipio }}|{{ declarante.uf }}|{{ declarante.nomeResponsavel }}|{{ declarante.telefone }}|{{ declarante.email }}|
 {%- for t in titulares %}
 {%- counter "b0" -%}{%- counter "0100" %}
 |0100|{{ t.codCliente }}|{{ t.cnpj }}|{{ t.cpf }}|{{ t.nomeFantasia }}|{{ t.endereco }}|{{ t.cep }}|{{ t.codigoMunicipio }}|{{ t.uf }}|{{ t.nomeResponsavel }}|{{ t.telefone }}|{{ t.email }}|{{ t.dtCredenciamento }}|{{ t.indSubadquirencia }}|

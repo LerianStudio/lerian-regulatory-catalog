@@ -93,7 +93,7 @@ datasets:
     fields:
       cnpj:             { from: constant, value: "12345678000199" }
       razaoSocial:      { from: constant, value: "Exemplo Instituição de Pagamento S.A." }
-      nomeContato:      { from: constant, value: "Fulano de Tal" }
+      nomeFantasia:     { from: constant, value: "Fulano de Tal" }
       endereco:         { from: constant, value: "Av. Exemplo, 100" }
       cep:              { from: constant, value: "01310100" }
       codigoMunicipio:  { from: constant, value: "3550308" }

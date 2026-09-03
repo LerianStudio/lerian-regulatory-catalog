@@ -85,9 +85,13 @@ datasets:
       - name: razaoSocial
         type: string
         required: true
-      - name: nomeContato
+      - name: nomeFantasia
         type: string
         required: true
+        means: >-
+          Campo FANT do registro 0005 — nome fantasia como aparece no equipamento,
+          site ou aplicativo; sem nome fantasia, a parte da razão social pela qual a
+          instituição é conhecida (L p.15).
       - name: endereco
         type: string
         required: true

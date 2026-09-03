@@ -393,33 +393,37 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
 
     known = set(names)
 
+    # Ciclo em `from`: produced_columns o detecta e responde "não sei", que
+    # esconderia um binding quebrado atrás de uma conferência que se cala. Uma
+    # varredura só, FORA do laço: dentro dele o mapa era reconstruído por consulta e
+    # um ciclo de k consultas saía reportado k vezes, uma por rotação da cadeia.
+    by_name = {q["name"]: q for q in binding.get("queries", []) if q.get("name")}
+    reported: set[frozenset[str]] = set()
+
+    for start in by_name:
+        chain: list[str] = []
+        cursor = start
+
+        while cursor in by_name:
+            if cursor in chain:
+                cycle = frozenset(chain[chain.index(cursor):])
+                if cycle not in reported:
+                    reported.add(cycle)
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `from`: "
+                        f"{' -> '.join([*chain, cursor])}"
+                    )
+                break
+
+            chain.append(cursor)
+            cursor = by_name[cursor].get("from")
+
     for query in binding.get("queries", []):
         qname = query.get("name", "<sem nome>")
 
         base = query.get("from")
         if base is not None and base not in known:
             fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' compõe sobre '{base}', que não existe")
-
-        # Ciclo em `from`: produced_columns o detecta e responde "não sei", que
-        # esconderia um binding quebrado atrás de uma conferência que se cala.
-        # Reportado aqui, onde é um erro e não uma dúvida.
-        by_name = {q["name"]: q for q in binding.get("queries", []) if q.get("name")}
-        chain = []
-        cursor = qname
-
-        while cursor in by_name:
-            if cursor in chain:
-                fail(
-                    f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `from`: "
-                    f"{' -> '.join(chain + [cursor])}"
-                )
-                break
-
-            chain.append(cursor)
-            cursor = by_name[cursor].get("from")
-
-        if base is None and not query.get("dataSource"):
-            fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' não tem nem dataSource nem from")
 
         for join in query.get("join", []) or []:
             target_query = join.get("query")
