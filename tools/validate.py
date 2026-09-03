@@ -251,6 +251,17 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `from`")
             continue
 
+        # rowSet sem accountSet: a consistência abaixo só roda quando o contrato
+        # ANUNCIA o conjunto em metadata; sem isso a conferência se apaga e o
+        # conjunto usado nunca é confrontado com o declarado. Um rowSet obriga o
+        # accountSet.
+        if not set_path:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ds['name']} tem rowSet mas o contrato "
+                f"não declara metadata.sourceOfTruth.accountSet — o conjunto usado "
+                f"precisa ser o anunciado"
+            )
+
         # accountSet e rowSet.from têm de ser o MESMO conjunto: dois arquivos válidos
         # mas diferentes passariam cada um em sua conferência isolada enquanto o
         # binding resolve um conjunto e o contrato anuncia outro.
@@ -294,9 +305,16 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
 
             # O código de dez dígitos é o mascarado sem pontuação. Conferir isso é o
             # que pega a transcrição manual errada — que já aconteceu (um código de
-            # controle e os cinco de fluxo saíram trocados na primeira versão).
+            # controle e os cinco de fluxo saíram trocados na primeira versão). Por
+            # isso `masked` é OBRIGATÓRIO: sem ele o code não tem contra o que ser
+            # conferido e a conta escapa exatamente da checagem que mais importa.
             masked = r.get("masked")
-            if masked and code != re.sub(r"[.\-]", "", str(masked)):
+            if not masked:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, a conta '{code}' não tem "
+                    f"`masked` — o code fica sem a forma oficial contra a qual conferir"
+                )
+            elif code != re.sub(r"[.\-]", "", str(masked)):
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: em {ref}, code '{code}' não é o "
                     f"masked '{masked}' sem pontuação — transcrição do código diverge"
