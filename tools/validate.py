@@ -216,11 +216,63 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                 continue
 
             how = spec.get("from")
-            if how not in {"query", "constant", "parameter", "manual"}:
+            # rowSet: o valor da linha vem do conjunto fechado que o catálogo
+            # declara (contas.yaml), não da consulta — é a origem própria de um
+            # documento cujo conjunto de linhas é do catálogo e não do cliente.
+            if how not in {"query", "constant", "parameter", "manual", "rowSet"}:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
-                    f"{how!r}; use query, constant, parameter ou manual"
+                    f"{how!r}; use query, constant, parameter, manual ou rowSet"
                 )
+
+
+def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
+    """Um documento de conjunto FECHADO declara suas linhas num arquivo do catálogo,
+    e esse arquivo tem de existir e bater com o contrato.
+
+    Diferente do balancete, onde as linhas são do cliente, aqui elas são do catálogo
+    (contas.yaml). Um arquivo ausente é um documento que sai VAZIO em silêncio; um
+    código no conjunto que não bate com o pattern do campo é a deriva 8-vs-10 dígitos
+    entrando pela porta dos fundos.
+    """
+    set_path = contract.get("metadata", {}).get("sourceOfTruth", {}).get("accountSet")
+
+    row_datasets = [ds for ds in contract.get("datasets", []) if ds.get("rowSet")]
+
+    if not set_path and not row_datasets:
+        return
+
+    if set_path and not (doc_dir / set_path).exists():
+        fail(f"{doc_dir.relative_to(ROOT)}: metadata.accountSet cita {set_path}, que não existe")
+
+    for ds in row_datasets:
+        ref = ds["rowSet"].get("from")
+        if not ref:
+            fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `from`")
+            continue
+
+        ref_file = doc_dir / ref
+        if not ref_file.exists():
+            fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.from cita {ref}, que não existe")
+            continue
+
+        rows = (load(ref_file) or {}).get("accounts", [])
+        key = ds["rowSet"].get("key")
+        key_field = next((f for f in ds.get("fields", []) if f["name"] == key), None)
+        pattern = key_field.get("pattern") if key_field else None
+
+        if pattern:
+            bad = [r.get("code") for r in rows if not re.fullmatch(pattern, str(r.get("code", "")))]
+            for code in bad:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: conta '{code}' em {ref} não bate com o "
+                    f"pattern de {ds['name']}.{key} — deriva de formato do código"
+                )
+
+        codes = [r.get("code") for r in rows]
+        for dup in {c for c in codes if codes.count(c) > 1}:
+            fail(f"{doc_dir.relative_to(ROOT)}: conta '{dup}' duplicada em {ref}")
+
 
 
 def check_references(doc_dir: Path, contract: dict) -> None:
@@ -341,6 +393,7 @@ def main() -> int:
         check_template(doc_dir, contract)
         check_formatting_not_duplicated(doc_dir)
         check_no_extraction_in_contract(doc_dir, contract)
+        check_closed_account_set(doc_dir, contract)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_rules(doc_dir, contract)

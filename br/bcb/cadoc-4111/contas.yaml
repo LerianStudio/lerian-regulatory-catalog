@@ -1,0 +1,51 @@
+# Conjunto FECHADO de contas do Cadoc 4111 — dado de referência do CATÁLOGO.
+#
+# Aqui está a diferença estrutural do 4111 frente ao 4010/4016. No balancete, o
+# conjunto de rubricas é do CLIENTE (o plano de contas dele, aberto) e o contrato só
+# restringe a forma de cada linha. No 4111 o BACEN FIXA quais contas entram — estas,
+# e só estas (instruções §4.2.2.a). Então o conjunto é conhecimento do catálogo, não
+# do cliente: o contrato declara as linhas, e o binding fornece o VALOR de cada uma.
+#
+# Códigos em dez dígitos (sem ponto/traço), vigentes desde a data-base 02/01/2025
+# (instruções, changelog 26/09/2024; IN BCB 426-433). A grafia mascarada ao lado é
+# só para leitura humana.
+#
+# measure classifica o que o saldoDia significa em cada conta:
+#   stock — saldo contábil ao final do dia, no sinal da natureza da conta. No último
+#           dia do mês coincide com o 4010 (instruções §4.2.2.b).
+#   flow  — somatório do valor ABSOLUTO das transações do dia, acumulado ao longo do
+#           mês e REINICIADO a cada mês (instruções §4.2.2.a, IN 644/2025). É medida
+#           de volume, não de posição — depende da acumulação com reinício mensal,
+#           que é a Fase 4 do motor. Ver knownGap flow-precisa-da-fase-4.
+
+accounts:
+  # --- Estoque: patrimoniais e de compensação ---
+  - { code: "1100000002", masked: "1.1.0.00.00.00-2", measure: stock, description: "Disponibilidades" }
+  - { code: "1110000009", masked: "1.1.1.00.00.00-9", measure: stock, description: "Caixa" }
+  - { code: "1120000006", masked: "1.1.2.00.00.00-6", measure: stock, description: "Depósitos Bancários" }
+  - { code: "1841000000", masked: "1.8.4.10.00.00-0", measure: stock, description: "Caixa de Registro e Liquidação" }
+  - { code: "1843000008", masked: "1.8.4.30.00.00-8", measure: stock, description: "Devedores - Contas Liquidação Pendentes" }
+  - { code: "1849000002", masked: "1.8.4.90.00.00-2", measure: stock, description: "Outros Créditos por Negociação e Intermediação de Valores" }
+  - { code: "4110000006", masked: "4.1.1.00.00.00-6", measure: stock, description: "Depósitos à Vista" }
+  - { code: "4110500001", masked: "4.1.1.05.00.00-1", measure: stock, description: "Depósitos à Vista de Ligadas" }
+  - { code: "4111000005", masked: "4.1.1.10.00.00-5", measure: stock, description: "Depósitos de Pessoas Naturais" }
+  - { code: "4112000004", masked: "4.1.1.20.00.00-4", measure: stock, description: "Depósitos de Pessoas Jurídicas" }
+  - { code: "4119000007", masked: "4.1.1.90.00.00-7", measure: stock, description: "Saldos Credores em Contas de Empréstimos e Financiamentos" }
+  - { code: "4119800001", masked: "4.1.1.98.00.00-1", measure: stock, description: "Contas Encerradas" }
+  - { code: "4151000003", masked: "4.1.5.10.00.00-3", measure: stock, description: "Depósitos a Prazo" }
+  - { code: "4155000009", masked: "4.1.5.50.00.00-9", measure: stock, description: "Depósitos Judiciais e Administrativos Mantidos na Instituição" }
+  - { code: "4192500005", masked: "4.1.9.25.00.00-5", measure: stock, description: "Recursos Disponíveis de Clientes" }
+  - { code: "4193000009", masked: "4.1.9.30.00.00-9", measure: stock, description: "Conta de Pagamento Pré-paga" }
+  - { code: "4310000002", masked: "4.3.1.00.00.00-2", measure: stock, description: "Recursos de Aceites Cambiais" }
+  - { code: "4951000007", masked: "4.9.5.10.00.00-7", measure: stock, description: "Caixas de Registro e Liquidação" }
+  - { code: "4953000005", masked: "4.9.5.30.00.00-5", measure: stock, description: "Credores - Conta Liquidações Pendentes" }
+  - { code: "4959000009", masked: "4.9.5.90.00.00-9", measure: stock, description: "Outras Obrigações por Negociação e Intermediação de Valores" }
+  - { code: "4992700005", masked: "4.9.9.27.00.00-5", measure: stock, description: "Obrigações de Pagamento em Nome de Terceiros" }
+  - { code: "9099660006", masked: "9.0.9.66.00.00-6", measure: stock, description: "Controle - Conta de Pagamento Pré-Paga (IN 644/2025)" }
+
+  # --- Fluxo: volume de transações de pagamento (3.0.9.70.XX), acumulado no mês ---
+  - { code: "3097010000", masked: "3.0.9.70.10.00-0", measure: flow, description: "Transações realizadas no mês - Emissor de Instrumento Pós-pago" }
+  - { code: "3097020000", masked: "3.0.9.70.20.00-7", measure: flow, description: "Transações realizadas no mês - Emissor de Instrumento Pré-pago" }
+  - { code: "3097030000", masked: "3.0.9.70.30.00-4", measure: flow, description: "Transações realizadas no mês - Processadas como Credenciador" }
+  - { code: "3097035000", masked: "3.0.9.70.35.00-9", measure: flow, description: "Transações realizadas no mês - Processadas como Subcredenciador" }
+  - { code: "3097040000", masked: "3.0.9.70.40.00-1", measure: flow, description: "Transações realizadas no mês - Processadas como Iniciador (ITP)" }

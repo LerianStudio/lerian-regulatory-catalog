@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+<!-- +  BANCO CENTRAL DO BRASIL                                                                      + -->
+<!-- +  Saldos Contábeis Diarios                                                                     + -->
+<!-- +  Documento 4111 - definicao xml schema                                                        + -->
+<!-- +  Versao 1.0                                                                                   + -->
+<!-- +  Criado em 30/03/2023                                                                         + -->
+<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+
+<!-- ********************************** -->
+<!-- Definicao para o Documento         -->
+<!-- ********************************** -->
+
+    <xs:element name="documento">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="contas" minOccurs="1" maxOccurs="1">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="conta" minOccurs="1" maxOccurs="25" type="tipoConta">
+							</xs:element>						
+						</xs:sequence>
+					</xs:complexType>
+					<xs:key name="pkConta">
+						<xs:selector xpath="conta" />
+						<xs:field xpath="@codigoConta" />
+					</xs:key>
+				</xs:element>
+            </xs:sequence>
+            
+            <xs:attribute name="codigoDocumento" use="required">
+                <xs:simpleType>
+                    <xs:restriction base="xs:integer">
+						<xs:whiteSpace value="collapse"/>
+                        <xs:pattern value="4111"/>
+					</xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="cnpj" use="required">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:whiteSpace value="collapse"/>
+                        <xs:pattern value="[0-9]{8}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="dataBase" use="required">
+                <xs:simpleType>
+                    <xs:restriction base="xs:date">
+                        <xs:minInclusive value="2023-06-01"/>                                                      
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="tipoRemessa" use="required">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:whiteSpace value="collapse" />
+                        <xs:enumeration value="I"/>
+                        <xs:enumeration value="S"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+        </xs:complexType>
+	</xs:element>
+    
+    <!-- ********************************** -->
+    <!-- Definicao para as Contas           -->
+    <!-- ********************************** -->
+
+    <xs:complexType name="tipoConta">
+        <xs:attribute name="codigoConta" type="tipoCodigoConta" use="required"/>
+        <xs:attribute name="saldoDia" type="tipoSaldoDia" use="required"/>                               
+    </xs:complexType>
+    <xs:simpleType name="tipoCodigoConta">
+        <xs:restriction base="xs:integer">
+            <xs:whiteSpace value="collapse"/>
+            <xs:pattern value="[0-9]{8,8}" />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="tipoSaldoDia">
+        <xs:restriction base="xs:decimal">
+            <xs:totalDigits value="18" />
+            <xs:fractionDigits value="2" />
+            <xs:minInclusive value="0" />
+            <xs:maxExclusive value="100000000000000000" />            
+        </xs:restriction>
+    </xs:simpleType>
+
+</xs:schema>

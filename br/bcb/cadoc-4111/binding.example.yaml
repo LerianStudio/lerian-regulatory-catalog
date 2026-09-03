@@ -1,0 +1,72 @@
+# Binding do Cadoc 4111 — QUEM PREENCHE É O CLIENTE.
+# Exemplo contra o Midaz, cobrindo as contas de ESTOQUE. As de fluxo (3.0.9.70.XX)
+# dependem da acumulação com reinício mensal da Fase 4 e ficam pendentes — ver o
+# knownGap flow-precisa-da-fase-4 no contrato.
+#
+# A diferença estrutural frente ao 4010: as LINHAS do dataset vêm do conjunto
+# fechado (contas.yaml), não desta consulta. A consulta fornece o VALOR (saldoDia)
+# de cada conta declarada; contas.yaml diz quais existem e o que cada saldo
+# significa. O motor casa as duas pela chave cosifCode.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.cadoc-4111
+contractVersion: 1.0.0
+
+queries:
+  - name: saldos_estoque
+    description: Saldo diário por rubrica das contas de ESTOQUE.
+    dataSource: midaz_transaction
+    table: operation
+    aggregate:
+      groupBy: [route_code]
+      measures:
+        - as: saldoDia
+          fn: sum
+          of: amount
+          sign:
+            column: direction
+            debit: "-"
+            credit: "+"
+          statedIn:
+            natureByPrefix:
+              "1": debit
+              "2": debit
+              "3": debit
+              "4": credit
+              "5": credit
+              "6": credit
+              "9": credit
+            key: route_code
+      # Estoque acumula desde a abertura até o FIM DO DIA da data-base (diário).
+      accumulate:
+        until: system.dataBase
+
+datasets:
+  institution:
+    fields:
+      cnpj8:
+        from: constant
+        value: "12345678"
+
+  saldos_diarios:
+    # As linhas vêm do conjunto fechado; a consulta fornece o valor por conta.
+    # rowSet casa contas.yaml.cosifCode com o route_code que a consulta agrega.
+    from:
+      query: saldos_estoque
+    rowKey:
+      cosifCode: route_code
+    fields:
+      cosifCode:
+        from: rowSet
+        column: code
+      saldoDia:
+        # Só as contas de estoque se resolvem por esta consulta. As de fluxo
+        # (measure=flow em contas.yaml) precisam da Fase 4; até lá saem omitidas
+        # (saldo zero é omissível), o que deixa o arquivo INCOMPLETO, não errado.
+        from: query
+        column: saldoDia
+        onlyWhere: { rowSet: measure, equals: stock }
+
+manualOverrides: []
