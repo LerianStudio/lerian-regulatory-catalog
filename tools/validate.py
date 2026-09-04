@@ -300,6 +300,17 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                             f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
                             f"resolve por {case.get('from')!r}; use {', '.join(sorted(valid))}"
                         )
+                    # A MESMA precondição do caminho direto: `rowSet` só significa
+                    # algo se o conjunto declarar rowSet no contrato. Aplicá-la num
+                    # caminho e não no outro é o furo de sempre — a origem existe em
+                    # dois lugares, a conferência tem de existir nos dois.
+                    if case.get("from") == "rowSet" and not contract_row_sets.get(dataset):
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                            f"resolve por rowSet, mas o contrato não declara rowSet no "
+                            f"conjunto '{dataset}'"
+                        )
+
                     if case.get("from") == "manual" and case.get("value") is None:
                         if not case.get("pendingReason"):
                             fail(
