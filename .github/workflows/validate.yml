@@ -17,4 +17,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install --require-hashes -r tools/requirements.txt || pip install pyyaml==6.0.2
+      # A suíte roda ANTES: ela prova que as conferências ainda pegam o que devem
+      # pegar. Uma conferência frouxa aprova um catálogo errado, então validar sem
+      # antes provar o validador é confiar numa rede sem olhar se tem buraco.
+      - run: python3 tools/test_validate.py
       - run: python3 tools/validate.py
