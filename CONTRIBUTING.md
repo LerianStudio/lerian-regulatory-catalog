@@ -73,3 +73,28 @@ Trabalho novo sai de `develop`, volta por **PR**, e a conferência do CI é
 obrigatória. Sem isso o processo desta página é convenção de honra: os três
 primeiros commits deste repositório foram empurrados direto na `main`, passando por
 cima do CI que roda em pull request — e foi o que motivou escrever esta seção.
+
+## A ferramenta de conferência
+
+`tools/validate.py` roda em todo PR e é a rede que impede um contrato errado de
+entrar. `tools/test_validate.py` é a suíte que prova que essa rede não tem buraco:
+cada conferência tem uma MUTAÇÃO correspondente — um catálogo de fixtures válido
+quebrado de propósito num ponto — que exige a reprovação com a mensagem daquela
+conferência.
+
+    python3 tools/test_validate.py      # prova as conferências
+    python3 tools/validate.py           # confere o catálogo
+
+**Ao acrescentar uma conferência, acrescente a mutação.** Sem ela a conferência pode
+ficar frouxa sem ninguém notar, e foi o que aconteceu quatro vezes seguidas antes da
+suíte existir: vocabulário novo (`rowSet`, `byRowClass`, `manualOverrides`) entrou no
+validador sem a precondição que o torna significativo, duas vezes no caminho gêmeo
+do que tinha acabado de ser corrigido.
+
+Ao acrescentar uma construção ao formato, ela nasce com três coisas:
+
+1. a **precondição** que a valida;
+2. a conferência em **todos os caminhos** onde a construção pode aparecer (um `from`
+   direto e o mesmo `from` dentro de `byRowClass` são dois caminhos);
+3. a **forma do valor** conferida antes do uso — YAML malformado deve reprovar, nunca
+   estourar a ferramenta.

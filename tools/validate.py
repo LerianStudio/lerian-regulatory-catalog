@@ -11,13 +11,19 @@ reflete o manual. Isso é revisão humana contra a fonte primária, e nenhum scr
 substitui.
 """
 
+from __future__ import annotations
+
+import os
 import re
 import sys
 from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parent.parent
+# A raiz do catálogo. Sobrescrevível por CATALOG_ROOT para a suíte de teste poder
+# apontar a ferramenta para uma árvore de fixtures — sem isso, as provas de mutação
+# só existiriam como comandos digitados à mão, que é como elas nasceram.
+ROOT = Path(os.environ.get("CATALOG_ROOT", Path(__file__).resolve().parent.parent)).resolve()
 FAILURES: list[str] = []
 WARNINGS: list[str] = []
 
@@ -31,8 +37,19 @@ def warn(msg: str) -> None:
 
 
 def load(path: Path):
+    """Lê um YAML do catálogo, reprovando em vez de estourar.
+
+    Arquivo ausente é reprovação e não exceção: a ferramenta é a rede que impede um
+    contrato errado de entrar, e uma rede que quebra não reprova nada.
+    """
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        fail(f"{path}: não foi possível ler — {exc.strerror}")
+        return None
+
+    try:
+        return yaml.safe_load(text)
     except yaml.YAMLError as exc:
         fail(f"{path.relative_to(ROOT)}: YAML inválido — {exc}")
         return None
@@ -66,14 +83,53 @@ def check_template(doc_dir: Path, contract: dict) -> None:
     body = re.sub(r"\{#.*?#\}", "", body, flags=re.DOTALL)  # comentários não contam
 
     datasets, parameters = declared_names(contract)
-    loops = dict(re.findall(r"\{%-?\s*for\s+(\w+)\s+in\s+(\w+)", body))
+    children = {
+        ds["name"]: ds.get("childOf", {}).get("dataset")
+        for ds in contract.get("datasets", [])
+        if ds.get("childOf")
+    }
+    # Multimapa, não dict: `dict(findall(...))` guardaria só a ÚLTIMA ocorrência de
+    # cada nome de iterador, e dois `for r in ...` em blocos irmãos — comum — passariam
+    # a resolver ambos pelo último iterável, aprovando ou reprovando a referência
+    # errada em silêncio.
+    loops: dict[str, list[str]] = {}
+    for head, iterable in re.findall(r"\{%-?\s*for\s+(\w+)\s+in\s+([\w.]+)", body):
+        loops.setdefault(head, []).append(iterable)
+
+    def dataset_of(head: str, depth: int = 0) -> str | None:
+        """Resolve um iterador até o conjunto que ele percorre.
+
+        Um conjunto childOf é alcançado como lista aninhada na linha do pai
+        (`{% for d in r.operacoesDiarias %}`), então o iterável pode ser
+        `<iterador-pai>.<conjunto-filho>` — e o filho só é legítimo se o contrato
+        declara exatamente essa filiação. Um `.filho` sobre o pai errado é um
+        conjunto que o render nunca vai popular, e a seção sai vazia num arquivo
+        que parece completo.
+        """
+        if depth > 8 or head not in loops:
+            return head if head in datasets else None
+
+        # Um nome de iterador pode ser reusado; aceita se QUALQUER um dos iteráveis
+        # resolver, para não reprovar um template legítimo por homonímia.
+        for iterable in loops[head]:
+            if "." not in iterable:
+                if iterable in datasets:
+                    return iterable
+                continue
+
+            parent_iter, child = iterable.split(".", 1)
+            parent_ds = dataset_of(parent_iter, depth + 1)
+
+            if child in children and children[child] == parent_ds:
+                return child
+
+        return None
+
     refs = set(re.findall(r"\{\{\s*([A-Za-z_]\w*)\.(\w+)", body))
 
     placed: set[tuple[str, str]] = set()
     for head, field in sorted(refs):
-        dataset = loops.get(head, head)
-
-        if dataset == "system":
+        if head == "system":
             if field not in parameters:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: template usa system.{field}, "
@@ -81,10 +137,12 @@ def check_template(doc_dir: Path, contract: dict) -> None:
                 )
             continue
 
-        if dataset not in datasets:
+        dataset = dataset_of(head)
+        if dataset is None:
             fail(
-                f"{doc_dir.relative_to(ROOT)}: template itera sobre '{dataset}', "
-                f"que o contrato não declara em datasets"
+                f"{doc_dir.relative_to(ROOT)}: template lê {head}.{field}, e "
+                f"'{head}' não resolve para nenhum conjunto do contrato "
+                f"(loop aninhado só alcança um conjunto childOf do pai certo)"
             )
             continue
 
@@ -191,8 +249,16 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             f"'{binding.get('contract')}', não para este contrato"
         )
 
+    check_binding_queries(doc_dir, binding)
+    check_parent_match(doc_dir, contract, binding)
+    check_column_survival(doc_dir, binding)
+
     queries = {q.get("name") for q in binding.get("queries", [])}
     declared, _ = declared_names(contract)
+    required = {
+        ds["name"]: {f["name"] for f in ds.get("fields", []) if f.get("required") is True}
+        for ds in contract.get("datasets", [])
+    }
     bound = binding.get("datasets", {})
 
     # Um campo OBRIGATÓRIO resolvido por `manual` sem valor é um regulatório saindo a
@@ -278,7 +344,15 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
         for field in sorted(fields):
             spec = resolved.get(field)
             if spec is None:
-                fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}")
+                # Um campo INCONDICIONALMENTE obrigatório sem origem é erro: toda
+                # geração falharia. Um condicional/opcional pode legitimamente não se
+                # resolver quando o binding torna a condição impossível (marca com
+                # terminalProprio fixo em 0) — mas fica em aviso, para o exemplo ser
+                # omisso por decisão e não por esquecimento.
+                if field in required.get(dataset, set()):
+                    fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}, que é obrigatório incondicional")
+                else:
+                    warn(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve o condicional {dataset}.{field} — confirme que a condição nunca vale neste binding")
                 continue
 
             valid = {"query", "constant", "parameter", "manual", "rowSet"}
@@ -488,6 +562,436 @@ def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrid
         )
 
 
+CONDITION_OPS = {"equals", "in", "notIn", "is"}
+
+
+def check_structure(doc_dir: Path, contract: dict) -> None:
+    """As construções estruturais do contrato apontam para coisas que existem.
+
+    Cada uma nasceu de uma exigência real e cada referência quebrada tem um modo de
+    falha silencioso próprio: um childOf para pai errado é uma seção que o render
+    nunca popula; um refersTo para campo inexistente é integridade referencial que
+    ninguém confere; um equalsSumOf órfão é uma reconciliação que diz sempre sim; e
+    um requiredWhen sobre campo fantasma é uma condicional que nunca dispara — o
+    campo vira opcional de fato num arquivo em que era obrigatório.
+    """
+    datasets, _ = declared_names(contract)
+    by_name = {ds["name"]: ds for ds in contract.get("datasets", [])}
+
+    for ds in contract.get("datasets", []):
+        name = ds["name"]
+
+        parent = ds.get("childOf", {}).get("dataset")
+        if parent is not None and parent not in datasets:
+            fail(f"{doc_dir.relative_to(ROOT)}: {name} é childOf de '{parent}', que não existe")
+
+        for field in ds.get("fields", []):
+            fname = field["name"]
+
+            ref = field.get("refersTo")
+            if ref:
+                target = ref.get("dataset")
+                if target not in datasets:
+                    fail(f"{doc_dir.relative_to(ROOT)}: {name}.{fname} refersTo conjunto '{target}', que não existe")
+                elif ref.get("field") not in datasets[target]:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {name}.{fname} refersTo "
+                        f"{target}.{ref.get('field')}, campo que não existe"
+                    )
+
+            sum_of = field.get("equalsSumOf")
+            if sum_of:
+                target = sum_of.get("dataset")
+                target_ds = by_name.get(target)
+                if target_ds is None:
+                    fail(f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf conjunto '{target}', que não existe")
+                else:
+                    if target_ds.get("childOf", {}).get("dataset") != name:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf "
+                            f"'{target}', que não é childOf de {name} — uma soma de "
+                            f"não-filhos reconcilia coisa nenhuma"
+                        )
+                    if sum_of.get("field") not in datasets.get(target, set()):
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf "
+                            f"{target}.{sum_of.get('field')}, campo que não existe"
+                        )
+
+            for kind in ("requiredWhen", "forbiddenWhen"):
+                cond = field.get(kind)
+                if not cond:
+                    continue
+
+                ops = set(cond) & CONDITION_OPS
+                if len(ops) != 1:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} precisa de "
+                        f"exatamente uma condição dentre {sorted(CONDITION_OPS)}"
+                    )
+
+                via = cond.get("via")
+                if via is not None:
+                    via_field = next((f for f in ds.get("fields", []) if f["name"] == via), None)
+                    ref = (via_field or {}).get("refersTo")
+                    if ref is None:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} usa "
+                            f"via '{via}', que não é um campo com refersTo deste conjunto"
+                        )
+                    elif cond.get("field") not in datasets.get(ref.get("dataset"), set()):
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} via "
+                            f"{via} aponta para {ref.get('dataset')}.{cond.get('field')}, "
+                            f"campo que não existe"
+                        )
+                elif cond.get("field") not in datasets[name]:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} condiciona "
+                        f"em '{cond.get('field')}', campo que este conjunto não declara"
+                    )
+
+
+def check_binding_queries(doc_dir: Path, binding: dict) -> None:
+    """Consultas compostas e joins apontam para consultas que existem.
+
+    Um `from` para consulta inexistente, ou um join por nome trocado, não falha na
+    escrita — falha na geração, do jeito silencioso: conjunto vazio, arquivo
+    completo na aparência.
+    """
+    # Consulta sem nome não pode ser referenciada por `from`, por `join.query` nem
+    # por `datasets.<conjunto>.from.query` — é inalcançável, então é erro aqui em vez
+    # de virar `None` no conjunto de nomes conhecidos.
+    for index, query in enumerate(binding.get("queries", [])):
+        if not query.get("name"):
+            fail(f"{doc_dir.relative_to(ROOT)}: consulta #{index + 1} não declara name")
+
+    names = [q["name"] for q in binding.get("queries", []) if q.get("name")]
+
+    for duplicate in {n for n in names if names.count(n) > 1}:
+        fail(f"{doc_dir.relative_to(ROOT)}: consulta '{duplicate}' declarada duas vezes")
+
+    known = set(names)
+
+    # Ciclo em `from`: produced_columns o detecta e responde "não sei", que
+    # esconderia um binding quebrado atrás de uma conferência que se cala. Uma
+    # varredura só, FORA do laço: dentro dele o mapa era reconstruído por consulta e
+    # um ciclo de k consultas saía reportado k vezes, uma por rotação da cadeia.
+    by_name = {q["name"]: q for q in binding.get("queries", []) if q.get("name")}
+    reported: set[frozenset[str]] = set()
+
+    for start in by_name:
+        chain: list[str] = []
+        cursor = start
+
+        while cursor in by_name:
+            if cursor in chain:
+                cycle = frozenset(chain[chain.index(cursor):])
+                if cycle not in reported:
+                    reported.add(cycle)
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `from`: "
+                        f"{' -> '.join([*chain, cursor])}"
+                    )
+                break
+
+            chain.append(cursor)
+            cursor = by_name[cursor].get("from")
+
+    for query in binding.get("queries", []):
+        qname = query.get("name", "<sem nome>")
+
+        base = query.get("from")
+        if base is not None and base not in known:
+            fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' compõe sobre '{base}', que não existe")
+
+        # Toda consulta precisa de ANCORAGEM: ou uma fonte de dados própria, ou outra
+        # consulta sobre a qual compor. Sem nenhuma das duas, ela não extrai de lugar
+        # nenhum e o conjunto que dela depende sai vazio.
+        if base is None and not query.get("dataSource"):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' não tem nem dataSource "
+                f"nem from — não extrai de lugar nenhum"
+            )
+
+        for join in query.get("join", []) or []:
+            target_query = join.get("query")
+            if target_query is not None and target_query not in known:
+                fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' junta com '{target_query}', que não existe")
+
+            if target_query is None and not join.get("table"):
+                fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' não nomeia nem table nem query")
+
+            # `match`, não `on`: YAML 1.1 lê `on` como booleano — inclusive como
+            # CHAVE — e a cláusula sumiria no parse sem erro nenhum.
+            if not join.get("match"):
+                fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' sem cláusula match")
+            # YAML 1.1 converte a chave `on` no booleano True, então `"on" in join`
+            # nunca é verdadeiro. Testar a PRESENÇA da chave True e não o valor: um
+            # `on:` sem valor produziria True->None e escaparia de um teste por valor.
+            if True in join or "on" in join:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: join de '{qname}' usa a chave 'on', "
+                    f"que YAML 1.1 lê como booleano — use 'match'"
+                )
+
+
+def check_template_parses(doc_dir: Path) -> None:
+    """Regras do MOTOR de template que uma leitura por regex não pega.
+
+    Existe porque um template pode passar em toda conferência desta ferramenta e
+    ser irreceptível pelo motor. Aconteceu: o pongo2 não aceita salto de linha
+    dentro de `{# ... #}`, e os dois primeiros templates deste repositório foram
+    commitados com cabeçalho multi-linha — ilegíveis pelo renderer, com o CI verde,
+    porque a conferência apenas REMOVIA os comentários por regex sem nunca parsear.
+
+    Não é um parser: é a lista das regras do motor que já nos morderam. Cada nova
+    entra aqui quando morder.
+    """
+    template = doc_dir / "template.tpl"
+    if not template.exists():
+        return
+
+    body = template.read_text(encoding="utf-8")
+
+    for match in re.finditer(r"\{#.*?#\}", body, flags=re.DOTALL):
+        if "\n" in match.group(0):
+            line = body[: match.start()].count("\n") + 1
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: comentário multi-linha na linha {line} — "
+                f"o pongo2 recusa salto de linha dentro de {{# #}} "
+                f'("Newline not permitted in a single-line comment"). '
+                f"Use um comentário por linha."
+            )
+
+    # Um `{#` sem fechamento leva o resto do arquivo embora, silenciosamente.
+    if body.count("{#") != body.count("#}"):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: comentários desbalanceados "
+            f"({body.count('{#')} aberturas, {body.count('#}')} fechamentos)"
+        )
+
+
+def check_parent_match(doc_dir: Path, contract: dict, binding: dict) -> None:
+    """Todo conjunto childOf declara COM QUE COLUNA se aninha sob o pai.
+
+    Sem isso o motor tem linhas filhas soltas e nenhum critério para colocá-las sob
+    a linha certa do pai: o arquivo sai com a hierarquia embaralhada, cada bloco
+    somando o que não é dele — e a adjacência que o leiaute exige é impossível de
+    produzir. O exemplo original tinha três consultas planas sem chave de ligação,
+    e nenhuma conferência daqui reclamou.
+    """
+    declared, _ = declared_names(contract)
+    bound = binding.get("datasets", {})
+
+    for ds in contract.get("datasets", []):
+        parent = ds.get("childOf", {}).get("dataset")
+        if parent is None:
+            continue
+
+        name = ds["name"]
+        entry = bound.get(name)
+        if entry is None:
+            continue
+
+        parent_match = entry.get("parentMatch")
+        if not parent_match:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {name} é childOf de {parent} e o "
+                f"binding não declara parentMatch — as linhas filhas não têm como "
+                f"ser aninhadas sob a linha certa do pai"
+            )
+            continue
+
+        for parent_field in parent_match:
+            if parent_field not in declared.get(parent, set()):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {name}.parentMatch aninha por "
+                    f"'{parent_field}', que o conjunto pai {parent} não declara"
+                )
+
+
+def produced_columns(
+    query: dict,
+    queries: dict[str, dict],
+    seen: frozenset[str] = frozenset(),
+) -> set[str] | None:
+    """As colunas que uma consulta ENTREGA a quem se apoia nela.
+
+    Resolve a cadeia de `from` inteira, e não um nível. Uma consulta SEM agregação
+    no meio do caminho repassa a origem: parar nela devolvia None e apagava a
+    conferência de tudo o que viesse depois — uma coluna descartada três consultas
+    atrás passava sem sinal.
+
+    Uma consulta AGREGADA entrega exatamente o groupBy mais as medidas nomeadas
+    mais as derivadas, independentemente do que a base entregue: agregar é projetar,
+    então o conjunto é conhecido mesmo sobre origem desconhecida.
+
+    Responde None — "não sei, não confira" — quando a raiz é uma tabela crua, cujo
+    esquema este repositório não conhece, ou quando um join reintroduz esquema cru.
+    Conservador de propósito: um None a mais deixa passar um erro, um falso positivo
+    reprova um binding correto e ensina a ignorar a ferramenta.
+    """
+    name = query.get("name")
+
+    # Proteção de ciclo: um `from` circular não tem conjunto de colunas.
+    if name and name in seen:
+        return None
+
+    if name:
+        seen = seen | {name}
+
+    derived = {d["as"] for d in query.get("derive") or [] if d.get("as")}
+
+    aggregate = query.get("aggregate")
+    if aggregate:
+        columns = set(aggregate.get("groupBy") or [])
+        columns |= {m["as"] for m in aggregate.get("measures") or [] if m.get("as")}
+
+        return columns | derived
+
+    base_name = query.get("from")
+    if base_name is None or base_name not in queries:
+        return None
+
+    base = produced_columns(queries[base_name], queries, seen)
+    if base is None:
+        return None
+
+    # Um join que traz TABELA crua reintroduz esquema desconhecido; um que traz
+    # outra consulta soma o que ela entrega.
+    for join in query.get("join") or []:
+        if join.get("table"):
+            return None
+
+        joined = queries.get(join.get("query"))
+        if joined is None:
+            return None
+
+        joined_columns = produced_columns(joined, queries, seen)
+        if joined_columns is None:
+            return None
+
+        base = base | joined_columns
+
+    return base | derived
+
+
+def condition_fields(node: object) -> tuple[set[str], list[object]]:
+    """Todo `field` de uma árvore de condições, mais o que não é nome de campo.
+
+    Devolve os malformados em vez de estourar: `field: [valor]` fazia `set.add`
+    levantar TypeError e a ferramenta MORRIA no meio da conferência, em vez de
+    reprovar a condição e seguir. Um validador que quebra com entrada malformada é
+    pior que um que reprova — quem escreveu não descobre o que estava errado.
+    """
+    fields: set[str] = set()
+    malformed: list[object] = []
+
+    if isinstance(node, dict):
+        if "field" in node:
+            if isinstance(node["field"], str):
+                fields.add(node["field"])
+            else:
+                malformed.append(node["field"])
+
+        for value in node.values():
+            nested_fields, nested_malformed = condition_fields(value)
+            fields |= nested_fields
+            malformed += nested_malformed
+    elif isinstance(node, list):
+        for value in node:
+            nested_fields, nested_malformed = condition_fields(value)
+            fields |= nested_fields
+            malformed += nested_malformed
+
+    return fields, malformed
+
+
+def check_column_survival(doc_dir: Path, binding: dict) -> None:
+    """Uma coluna referenciada tem de sobreviver até o ponto onde é usada.
+
+    Esta é a conferência que faltava, e a ausência dela custou duas rodadas de
+    revisão na MESMA classe de erro: primeiro o having comparava uma coluna com
+    outro nome, depois comparava o nome certo de uma coluna que duas agregações já
+    haviam descartado. Nos dois casos o modo de falha é o mesmo e é silencioso — sem
+    discriminador, ou a consulta quebra, ou todas as linhas passam e o arquivo sai
+    com recebedor que devia estar fora.
+
+    Uma coluna só sobrevive a um groupBy se entrar nele. A regra estava escrita em
+    comentário no exemplo e violada duas linhas abaixo; agora é executável.
+    """
+    queries = {q["name"]: q for q in binding.get("queries", []) if q.get("name")}
+
+    for name, query in queries.items():
+        base_name = query.get("from")
+        available = (
+            produced_columns(queries[base_name], queries)
+            if base_name in queries
+            else None
+        )
+
+        if available is not None:
+            aggregate = query.get("aggregate", {}) or {}
+            used = set(aggregate.get("groupBy", []) or [])
+            used |= {m["of"] for m in aggregate.get("measures", []) or [] if m.get("of")}
+
+            for column in sorted(used - available):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: consulta '{name}' usa a coluna "
+                    f"'{column}', que '{base_name}' não entrega — uma coluna só "
+                    f"sobrevive ao groupBy se entrar nele"
+                )
+
+        having_fields, malformed = condition_fields(query.get("having", []))
+
+        for value in malformed:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: o having de '{name}' tem um `field` "
+                f"que não é nome de coluna: {value!r}"
+            )
+
+        own = produced_columns(query, queries)
+        if own is not None:
+            for column in sorted(having_fields - own):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: o having de '{name}' compara "
+                    f"'{column}', que a própria consulta não entrega após agregar"
+                )
+
+    for name, entry in (binding.get("datasets") or {}).items():
+        source = (entry.get("from") or {}).get("query")
+        if source not in queries:
+            continue
+
+        available = produced_columns(queries[source], queries)
+        if available is None:
+            continue
+
+        # Só as colunas que a CONSULTA deve entregar. Um campo resolvido por
+        # `rowSet` vem do conjunto fechado do catálogo, e um `byRowClass` tem a
+        # origem por caso — conferir esses contra o que a consulta entrega acusaria
+        # falso positivo e ensinaria a ignorar a ferramenta.
+        used = {
+            f["column"]
+            for f in (entry.get("fields") or {}).values()
+            if isinstance(f, dict) and f.get("column") and f.get("from") == "query"
+        }
+        for f in (entry.get("fields") or {}).values():
+            if not isinstance(f, dict):
+                continue
+            for case in f.get("byRowClass") or []:
+                if isinstance(case, dict) and case.get("from") == "query" and case.get("column"):
+                    used.add(case["column"])
+        used |= set((entry.get("parentMatch") or {}).values())
+
+        for column in sorted(used - available):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' mapeia a coluna "
+                f"'{column}', que a consulta '{source}' não entrega"
+            )
+
+
 def check_references(doc_dir: Path, contract: dict) -> None:
     """Todo arquivo que o contrato cita tem de existir."""
     schema = contract.get("metadata", {}).get("sourceOfTruth", {}).get("schema")
@@ -583,6 +1087,9 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
 
 
 def main() -> int:
+    FAILURES.clear()
+    WARNINGS.clear()
+
     catalog = load(ROOT / "catalog.yaml")
     if catalog is None:
         print("\n".join(FAILURES), file=sys.stderr)
@@ -607,6 +1114,8 @@ def main() -> int:
         check_formatting_not_duplicated(doc_dir)
         check_no_extraction_in_contract(doc_dir, contract)
         check_closed_account_set(doc_dir, contract)
+        check_structure(doc_dir, contract)
+        check_template_parses(doc_dir)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_rules(doc_dir, contract)
