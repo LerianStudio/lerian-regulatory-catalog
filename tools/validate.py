@@ -45,7 +45,11 @@ def load(path: Path):
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        fail(f"{path}: não foi possível ler — {exc.strerror}")
+        try:
+            shown = path.relative_to(ROOT)
+        except ValueError:
+            shown = path
+        fail(f"{shown}: não foi possível ler — {exc.strerror}")
         return None
 
     try:
@@ -63,6 +67,24 @@ def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
     }
     parameters = {p["name"] for p in contract.get("parameters", [])}
     return datasets, parameters
+
+
+def query_list(binding: dict) -> list[dict]:
+    """As consultas de um binding, só as bem formadas.
+
+    UMA porta de leitura, e não uma guarda repetida em cada leitor: três funções
+    diferentes liam `binding["queries"]` e eu blindei duas, deixando a terceira
+    estourar. Caminho gêmeo esquecido é o defeito que mais se repetiu neste
+    validador — a resposta estrutural é não ter caminhos gêmeos.
+
+    Quem precisa REPROVAR a forma malformada faz isso explicitamente
+    (check_binding_queries); os demais leitores só querem a lista utilizável.
+    """
+    raw = binding.get("queries")
+    if not isinstance(raw, list):
+        return []
+
+    return [q for q in raw if isinstance(q, dict)]
 
 
 def check_template(doc_dir: Path, contract: dict) -> None:
@@ -253,12 +275,8 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
     check_parent_match(doc_dir, contract, binding)
     check_column_survival(doc_dir, binding)
 
-    queries = {q.get("name") for q in binding.get("queries", [])}
+    queries = {q.get("name") for q in query_list(binding)}
     declared, _ = declared_names(contract)
-    required = {
-        ds["name"]: {f["name"] for f in ds.get("fields", []) if f.get("required") is True}
-        for ds in contract.get("datasets", [])
-    }
     bound = binding.get("datasets", {})
 
     # Um campo OBRIGATÓRIO resolvido por `manual` sem valor é um regulatório saindo a
@@ -333,7 +351,15 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve o conjunto '{dataset}'")
             continue
 
-        source = entry.get("from", {}).get("query")
+        raw_from = entry.get("from")
+        if raw_from is not None and not isinstance(raw_from, dict):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: o `from` do conjunto '{dataset}' não é um "
+                f"mapa: {raw_from!r}"
+            )
+            raw_from = None
+
+        source = (raw_from or {}).get("query")
         if source is not None and source not in queries:
             fail(
                 f"{doc_dir.relative_to(ROOT)}: conjunto '{dataset}' vem da consulta "
@@ -349,7 +375,7 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                 # resolver quando o binding torna a condição impossível (marca com
                 # terminalProprio fixo em 0) — mas fica em aviso, para o exemplo ser
                 # omisso por decisão e não por esquecimento.
-                if field in required.get(dataset, set()):
+                if field in required_by_dataset.get(dataset, set()):
                     fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}, que é obrigatório incondicional")
                 else:
                     warn(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve o condicional {dataset}.{field} — confirme que a condição nunca vale neste binding")
@@ -659,14 +685,22 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
     escrita — falha na geração, do jeito silencioso: conjunto vazio, arquivo
     completo na aparência.
     """
-    # Consulta sem nome não pode ser referenciada por `from`, por `join.query` nem
-    # por `datasets.<conjunto>.from.query` — é inalcançável, então é erro aqui em vez
-    # de virar `None` no conjunto de nomes conhecidos.
-    for index, query in enumerate(binding.get("queries", [])):
+    # Forma antes do uso: `queries` que não é lista, ou item que não é mapa, faria
+    # todo `.get` abaixo estourar. A ferramenta é a rede que impede um contrato errado
+    # de entrar; rede que quebra não reprova nada.
+    raw_queries = binding.get("queries") or []
+    if not isinstance(raw_queries, list):
+        fail(f"{doc_dir.relative_to(ROOT)}: `queries` não é uma lista")
+        return
+
+    for index, query in enumerate(raw_queries):
+        if not isinstance(query, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: queries[{index}] não é um mapa")
+            continue
         if not query.get("name"):
             fail(f"{doc_dir.relative_to(ROOT)}: consulta #{index + 1} não declara name")
 
-    names = [q["name"] for q in binding.get("queries", []) if q.get("name")]
+    names = [q["name"] for q in query_list(binding) if q.get("name")]
 
     for duplicate in {n for n in names if names.count(n) > 1}:
         fail(f"{doc_dir.relative_to(ROOT)}: consulta '{duplicate}' declarada duas vezes")
@@ -677,7 +711,7 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
     # esconderia um binding quebrado atrás de uma conferência que se cala. Uma
     # varredura só, FORA do laço: dentro dele o mapa era reconstruído por consulta e
     # um ciclo de k consultas saía reportado k vezes, uma por rotação da cadeia.
-    by_name = {q["name"]: q for q in binding.get("queries", []) if q.get("name")}
+    by_name = {q["name"]: q for q in query_list(binding) if q.get("name")}
     reported: set[frozenset[str]] = set()
 
     for start in by_name:
@@ -698,7 +732,7 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
             chain.append(cursor)
             cursor = by_name[cursor].get("from")
 
-    for query in binding.get("queries", []):
+    for query in query_list(binding):
         qname = query.get("name", "<sem nome>")
 
         base = query.get("from")
@@ -714,7 +748,11 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
                 f"nem from — não extrai de lugar nenhum"
             )
 
-        for join in query.get("join", []) or []:
+        for join_index, join in enumerate(query.get("join") or []):
+            if not isinstance(join, dict):
+                fail(f"{doc_dir.relative_to(ROOT)}: join[{join_index}] de '{qname}' não é um mapa")
+                continue
+
             target_query = join.get("query")
             if target_query is not None and target_query not in known:
                 fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' junta com '{target_query}', que não existe")
@@ -921,7 +959,10 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
     Uma coluna só sobrevive a um groupBy se entrar nele. A regra estava escrita em
     comentário no exemplo e violada duas linhas abaixo; agora é executável.
     """
-    queries = {q["name"]: q for q in binding.get("queries", []) if q.get("name")}
+    # Mesma guarda de forma de check_binding_queries: esta função lê as MESMAS
+    # estruturas, e blindar um leitor e não o outro é o caminho gêmeo esquecido —
+    # o padrão que mais me pegou neste validador.
+    queries = {q["name"]: q for q in query_list(binding) if q.get("name")}
 
     for name, query in queries.items():
         base_name = query.get("from")
@@ -960,7 +1001,14 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
                 )
 
     for name, entry in (binding.get("datasets") or {}).items():
-        source = (entry.get("from") or {}).get("query")
+        if not isinstance(entry, dict):
+            continue
+
+        raw_from = entry.get("from")
+        if not isinstance(raw_from, dict):
+            continue
+
+        source = raw_from.get("query")
         if source not in queries:
             continue
 
@@ -1001,8 +1049,8 @@ def check_references(doc_dir: Path, contract: dict) -> None:
     example = doc_dir / "binding.example.yaml"
     if example.exists():
         binding = load(example) or {}
-        for query in binding.get("queries", []):
-            for measure in query.get("aggregate", {}).get("measures", []):
+        for query in query_list(binding):
+            for measure in (query.get("aggregate") or {}).get("measures") or []:
                 lookup = measure.get("statedIn", {}).get("lookup")
                 if lookup and not (doc_dir / lookup).exists():
                     fail(

@@ -42,6 +42,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -84,7 +85,13 @@ class Mutation:
     contrato, e a conferência existe para ajudar.
     """
 
-    def __init__(self, ident: str, why: str, apply, expect: str):
+    def __init__(
+        self,
+        ident: str,
+        why: str,
+        apply: Callable[[dict], object],
+        expect: str,
+    ) -> None:
         self.ident = ident
         self.why = why
         self.apply = apply
@@ -453,7 +460,9 @@ MUTATIONS: list[Mutation] = [
         "caso sem origem válida deixa a classe de linha sem resolução",
         lambda b: b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1]
         .update({"from": "magica"}),
-        "byRowClass",
+        # Fragmento INDEXADO: o token `byRowClass` sozinho casa com diagnóstico de
+        # outra conferência, e a prova passaria pelo motivo errado.
+        "byRowClass[1] resolve por 'magica'",
     ),
     Mutation(
         "byrowclass-sem-when",
@@ -462,21 +471,55 @@ MUTATIONS: list[Mutation] = [
         .pop("when"),
         "sem `when`",
     ),
+    # ------------------- forma antes do uso: malformado reprova, não estoura
+    Mutation(
+        "queries-nao-e-lista",
+        "queries que não é lista deve reprovar, não estourar a ferramenta",
+        lambda b: b[PLANO]["binding"].update({"queries": "naoEhLista"}),
+        "`queries` não é uma lista",
+    ),
+    Mutation(
+        "query-nao-e-mapa",
+        "item de queries que não é mapa deve reprovar, não estourar",
+        lambda b: b[PLANO]["binding"]["queries"].append("naoEhMapa"),
+        "não é um mapa",
+    ),
+    Mutation(
+        "join-nao-e-mapa",
+        "item de join que não é mapa deve reprovar, não estourar",
+        lambda b: query(b[HIER]["binding"], "base_titulares")["join"].append("naoEhMapa"),
+        "não é um mapa",
+    ),
+    Mutation(
+        "from-do-conjunto-nao-e-mapa",
+        "o `from` de um conjunto que não é mapa deve reprovar, não estourar",
+        lambda b: b[PLANO]["binding"]["datasets"]["saldos"].update({"from": "naoEhMapa"}),
+        "não é um mapa",
+    ),
+
     Mutation(
         "byrowclass-rowset-sem-declaracao",
         "o caminho gêmeo: from rowSet dentro de byRowClass sem o conjunto declarar rowSet",
         lambda b: (dataset(b[FECHADO]["contract"], "linhas").pop("rowSet"),
                    b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][0]
                    .update({"from": "rowSet", "column": "code"})),
-        "byRowClass",
+        "byRowClass[0] resolve por rowSet, mas o contrato não declara rowSet",
     ),
 ]
 
 
 def _run(root: Path) -> tuple[int, str]:
     env = dict(os.environ, CATALOG_ROOT=str(root))
-    proc = subprocess.run(
-        [sys.executable, str(VALIDATE)], env=env, capture_output=True, text=True, check=False)
+    # Timeout porque a suíte roda no CI antes do validador e abre um processo por
+    # mutação: sem ele, uma mudança que trave o validador prenderia o job até o
+    # limite do runner, em vez de falhar nomeando a mutação culpada.
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(VALIDATE)], env=env, capture_output=True, text=True,
+            check=False, timeout=60)
+    except subprocess.TimeoutExpired:
+        return 124, "a ferramenta não terminou em 60s"
+
     return proc.returncode, proc.stdout + proc.stderr
 
 
@@ -522,6 +565,15 @@ class ValidatorSuite(unittest.TestCase):
                 data = fixtures.bundle()
                 mutation.apply(data)
                 code, out = _run(self._write(data))
+
+                # Um traceback também sai com código 1, e o texto dele ecoa a linha
+                # ofensora — então `code == 1` mais um fragmento esperado aceitaria um
+                # CRASH como se fosse reprovação. Quatro destas mutações existem
+                # justamente para provar que entrada malformada reprova EM VEZ DE
+                # estourar; sem esta asserção elas provariam o contrário do que dizem.
+                self.assertNotIn(
+                    "Traceback", out,
+                    f"{mutation.ident}: a ferramenta ESTOUROU em vez de reprovar:\n{out}")
 
                 self.assertEqual(code, 1, f"{mutation.ident}: deveria REPROVAR e passou:\n{out}")
                 self.assertIn(
