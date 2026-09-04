@@ -195,6 +195,72 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
     declared, _ = declared_names(contract)
     bound = binding.get("datasets", {})
 
+    # Um campo OBRIGATÓRIO resolvido por `manual` sem valor é um regulatório saindo a
+    # que faltam dados obrigatórios. A regra tem de ser EXECUTÁVEL: dizer em
+    # comentário que "o motor deve bloquear" não bloqueia nada — era o que este
+    # repositório fazia.
+    #
+    # Um binding pode declarar-se `generatable: false` — o caso de um exemplo que
+    # exercita o formato antes de a fonte existir. Aí a incompletude tem de ser
+    # ENUMERADA (incompleteFields) e justificada (incompleteReason). Sem essa
+    # declaração, manual pendente em campo obrigatório REPROVA.
+    required_by_dataset = {
+        ds["name"]: {f["name"] for f in ds.get("fields", []) if f.get("required") is True}
+        for ds in contract.get("datasets", [])
+    }
+    contract_row_sets = {ds["name"]: ds.get("rowSet") for ds in contract.get("datasets", [])}
+    generatable = binding.get("generatable", True)
+
+    # Um override só LIMPA a pendência se trouxer VALOR. Aceitar
+    # `manualOverrides: [{field: x}]` sem valor reabria exatamente o furo que a regra
+    # de manual pendente fechou, uma camada abaixo: o campo saía de `blocking` e o
+    # arquivo seguia sem o dado obrigatório.
+    overrides: set[str] = set()
+    for i, override in enumerate(binding.get("manualOverrides") or []):
+        if not isinstance(override, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: manualOverrides[{i}] não é um mapa")
+            continue
+
+        field_ref = override.get("field")
+        if not isinstance(field_ref, str) or not field_ref.strip():
+            fail(f"{doc_dir.relative_to(ROOT)}: manualOverrides[{i}] não nomeia um `field`")
+            continue
+
+        value = override.get("value")
+        if value is None or (isinstance(value, str) and not value.strip()):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: manualOverrides de '{field_ref}' não traz "
+                f"`value` — um override sem valor não preenche o campo e não pode "
+                f"dispensar a pendência"
+            )
+            continue
+
+        overrides.add(field_ref)
+
+    # incompleteFields tem de ser lista de nomes: um aninhamento acidental
+    # (`[[campo]]`) fazia set() estourar em vez de reprovar.
+    raw_incomplete = binding.get("incompleteFields") or []
+    declared_incomplete: set[str] = set()
+    if not isinstance(raw_incomplete, list):
+        fail(f"{doc_dir.relative_to(ROOT)}: `incompleteFields` não é uma lista")
+    else:
+        for i, item in enumerate(raw_incomplete):
+            if not isinstance(item, str) or not item.strip():
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: incompleteFields[{i}] não é um nome de "
+                    f"campo: {item!r}"
+                )
+                continue
+            declared_incomplete.add(item)
+
+    pending: set[str] = set()
+
+    if generatable is False and not binding.get("incompleteReason"):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: binding declara generatable: false sem "
+            f"`incompleteReason` — a incompletude precisa ser justificada"
+        )
+
     for dataset, fields in declared.items():
         entry = bound.get(dataset)
         if entry is None:
@@ -215,12 +281,211 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                 fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}")
                 continue
 
+            valid = {"query", "constant", "parameter", "manual", "rowSet"}
+
+            # byRowClass: um campo cuja origem depende da CLASSE da linha (no 4111, o
+            # saldoDia vem da consulta para estoque e é manual para fluxo). Cada caso
+            # é uma origem própria, e todo caso precisa declarar `when` e um `from`
+            # válido — assim nenhuma linha fica sem origem em silêncio, que é
+            # justamente como um regulatório sai a que faltam contas obrigatórias.
+            cases = spec.get("byRowClass")
+            if isinstance(cases, list):
+                if not cases:
+                    fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass está vazio")
+                for i, case in enumerate(cases):
+                    if not case.get("when"):
+                        fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] sem `when`")
+                    if case.get("from") not in valid:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                            f"resolve por {case.get('from')!r}; use {', '.join(sorted(valid))}"
+                        )
+                    # A MESMA precondição do caminho direto: `rowSet` só significa
+                    # algo se o conjunto declarar rowSet no contrato. Aplicá-la num
+                    # caminho e não no outro é o furo de sempre — a origem existe em
+                    # dois lugares, a conferência tem de existir nos dois.
+                    if case.get("from") == "rowSet" and not contract_row_sets.get(dataset):
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                            f"resolve por rowSet, mas o contrato não declara rowSet no "
+                            f"conjunto '{dataset}'"
+                        )
+
+                    if case.get("from") == "manual" and case.get("value") is None:
+                        if not case.get("pendingReason"):
+                            fail(
+                                f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                                f"é manual sem valor e sem `pendingReason`"
+                            )
+                        if field in required_by_dataset.get(dataset, set()):
+                            pending.add(f"{dataset}.{field}")
+                continue
+
             how = spec.get("from")
-            if how not in {"query", "constant", "parameter", "manual"}:
+            # rowSet: o valor da linha vem do conjunto fechado que o catálogo
+            # declara (contas.yaml), não da consulta — é a origem própria de um
+            # documento cujo conjunto de linhas é do catálogo e não do cliente.
+            if how not in valid:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
-                    f"{how!r}; use query, constant, parameter ou manual"
+                    f"{how!r}; use query, constant, parameter, manual, rowSet ou byRowClass"
                 )
+
+            # `rowSet` só significa algo se o CONJUNTO declarar rowSet no contrato:
+            # aceitar o nome da origem sem conferir a precondição deixa o campo
+            # apontando para um conjunto de linhas que não existe.
+            if how == "rowSet" and not contract_row_sets.get(dataset):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por rowSet, "
+                    f"mas o contrato não declara rowSet no conjunto '{dataset}'"
+                )
+
+            if how == "manual" and spec.get("value") is None:
+                if not spec.get("pendingReason"):
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} é manual sem "
+                        f"valor e sem `pendingReason`"
+                    )
+                if field in required_by_dataset.get(dataset, set()):
+                    pending.add(f"{dataset}.{field}")
+
+    _verdict_on_pending(doc_dir, generatable, declared_incomplete, overrides, pending)
+
+
+def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
+    """Um documento de conjunto FECHADO declara suas linhas num arquivo do catálogo,
+    e esse arquivo tem de existir e bater com o contrato.
+
+    Diferente do balancete, onde as linhas são do cliente, aqui elas são do catálogo
+    (contas.yaml). Um arquivo ausente é um documento que sai VAZIO em silêncio; um
+    código no conjunto que não bate com o pattern do campo é a deriva 8-vs-10 dígitos
+    entrando pela porta dos fundos.
+    """
+    set_path = contract.get("metadata", {}).get("sourceOfTruth", {}).get("accountSet")
+
+    row_datasets = [ds for ds in contract.get("datasets", []) if ds.get("rowSet")]
+
+    if not set_path and not row_datasets:
+        return
+
+    if set_path and not (doc_dir / set_path).exists():
+        fail(f"{doc_dir.relative_to(ROOT)}: metadata.accountSet cita {set_path}, que não existe")
+
+    for ds in row_datasets:
+        ref = ds["rowSet"].get("from")
+        if not ref:
+            fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `from`")
+            continue
+
+        # rowSet sem accountSet: a consistência abaixo só roda quando o contrato
+        # ANUNCIA o conjunto em metadata; sem isso a conferência se apaga e o
+        # conjunto usado nunca é confrontado com o declarado. Um rowSet obriga o
+        # accountSet.
+        if not set_path:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ds['name']} tem rowSet mas o contrato "
+                f"não declara metadata.sourceOfTruth.accountSet — o conjunto usado "
+                f"precisa ser o anunciado"
+            )
+
+        # accountSet e rowSet.from têm de ser o MESMO conjunto: dois arquivos válidos
+        # mas diferentes passariam cada um em sua conferência isolada enquanto o
+        # binding resolve um conjunto e o contrato anuncia outro.
+        if set_path and ref != set_path:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.from é '{ref}' e "
+                f"metadata.accountSet é '{set_path}' — o conjunto anunciado e o usado "
+                f"têm de ser o mesmo arquivo"
+            )
+
+        ref_file = doc_dir / ref
+        if not ref_file.exists():
+            fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.from cita {ref}, que não existe")
+            continue
+
+        # Robustez de forma: um conjunto com raiz que não é mapa, `accounts` que não é
+        # lista, ou uma linha que não é mapa faria os .get() abaixo estourarem em vez
+        # de reprovar. Um validador que quebra com entrada malformada é pior que um
+        # que reprova.
+        loaded = load(ref_file)
+        if not isinstance(loaded, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não é um mapa YAML na raiz")
+            continue
+
+        rows = loaded.get("accounts")
+        if not isinstance(rows, list):
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não tem uma lista `accounts`")
+            continue
+
+        malformed = [r for r in rows if not isinstance(r, dict)]
+        for r in malformed:
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} tem uma conta que não é mapa: {r!r}")
+        rows = [r for r in rows if isinstance(r, dict)]
+
+        key = ds["rowSet"].get("key")
+        key_field = next((f for f in ds.get("fields", []) if f["name"] == key), None)
+        pattern = key_field.get("pattern") if key_field else None
+
+        for r in rows:
+            code = str(r.get("code", ""))
+
+            # O código de dez dígitos é o mascarado sem pontuação. Conferir isso é o
+            # que pega a transcrição manual errada — que já aconteceu (um código de
+            # controle e os cinco de fluxo saíram trocados na primeira versão). Por
+            # isso `masked` é OBRIGATÓRIO: sem ele o code não tem contra o que ser
+            # conferido e a conta escapa exatamente da checagem que mais importa.
+            masked = r.get("masked")
+            if not masked:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, a conta '{code}' não tem "
+                    f"`masked` — o code fica sem a forma oficial contra a qual conferir"
+                )
+            elif code != re.sub(r"[.\-]", "", str(masked)):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, code '{code}' não é o "
+                    f"masked '{masked}' sem pontuação — transcrição do código diverge"
+                )
+
+            if pattern and not re.fullmatch(pattern, code):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: conta '{code}' em {ref} não bate com o "
+                    f"pattern de {ds['name']}.{key} — deriva de formato do código"
+                )
+
+        codes = [str(r.get("code")) for r in rows]
+        for dup in {c for c in codes if codes.count(c) > 1}:
+            fail(f"{doc_dir.relative_to(ROOT)}: conta '{dup}' duplicada em {ref}")
+
+
+
+def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrides, pending) -> None:
+    """O veredito de gerabilidade: campo obrigatório manual sem valor bloqueia.
+
+    É a regra que a prosa do binding descrevia e nada impunha.
+    """
+    blocking = {f for f in pending if f not in overrides}
+
+    if generatable is False:
+        for field in sorted(blocking - declared_incomplete):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {field} é obrigatório e está manual sem "
+                f"valor, mas não consta em `incompleteFields` — a incompletude precisa "
+                f"ser enumerada, não vaga"
+            )
+        for field in sorted(declared_incomplete - blocking):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: `incompleteFields` lista {field}, que não "
+                f"é campo obrigatório pendente — lista desatualizada"
+            )
+        return
+
+    for field in sorted(blocking):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: {field} é obrigatório e resolve por manual sem "
+            f"valor: este binding NÃO gera documento válido. Forneça o valor em "
+            f"`manualOverrides`, ou declare `generatable: false` com `incompleteReason` e "
+            f"`incompleteFields`"
+        )
 
 
 def check_references(doc_dir: Path, contract: dict) -> None:
@@ -341,6 +606,7 @@ def main() -> int:
         check_template(doc_dir, contract)
         check_formatting_not_duplicated(doc_dir)
         check_no_extraction_in_contract(doc_dir, contract)
+        check_closed_account_set(doc_dir, contract)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_rules(doc_dir, contract)

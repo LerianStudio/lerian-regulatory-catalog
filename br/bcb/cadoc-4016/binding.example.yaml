@@ -1,0 +1,74 @@
+# Binding do Cadoc 4016 — QUEM PREENCHE É O CLIENTE.
+# Exemplo contra o Midaz. É o binding do 4010 com UM acréscimo: o filtro que
+# exclui as contas de resultado (grupos 7 e 8), que o Balanço não admite.
+#
+# É também a primeira evidência concreta do reuso entre documentos: esta consulta
+# saldos_cosif é a mesma do 4010, e a de identificação da instituição é idêntica em
+# todos os balancetes. Quando o mecanismo de consulta compartilhada existir, elas
+# saem para um arquivo comum sem reescrever nada — por isso já nascem nomeadas.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.cadoc-4016
+contractVersion: 1.0.0
+
+queries:
+  - name: saldos_cosif
+    description: Lançamentos do razão agregados em saldo por rubrica, SEM resultado.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - field: status
+        operator: eq
+        values: ["APPROVED"]
+      # A exclusão dos grupos 7 e 8: o primeiro caractere da rota contábil é o grupo
+      # COSIF. É filtro de EXTRAÇÃO — o 4016 não admite resultado — então vive aqui,
+      # não no contrato. A regra sem-contas-de-resultado do contrato confere o
+      # arquivo pronto; este filtro é o que faz o arquivo já sair certo.
+      - field: route_code
+        operator: nin
+        values: ["7", "8"]
+        match: firstChar
+    aggregate:
+      groupBy: [route_code]
+      measures:
+        - as: saldo
+          fn: sum
+          of: amount
+          sign:
+            column: direction
+            debit: "-"
+            credit: "+"
+          statedIn:
+            natureByPrefix:
+              "1": debit
+              "2": debit
+              "3": debit
+              "4": credit
+              "5": credit
+              "6": credit
+              "9": credit
+            key: route_code
+      accumulate:
+        until: system.dataBase
+
+datasets:
+  institution:
+    fields:
+      cnpj8:
+        from: constant
+        value: "12345678"
+
+  cosif_balances:
+    from:
+      query: saldos_cosif
+    fields:
+      cosifCode:
+        from: query
+        column: route_code
+      saldo:
+        from: query
+        column: saldo
+
+manualOverrides: []

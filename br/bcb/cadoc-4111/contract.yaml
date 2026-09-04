@@ -1,0 +1,155 @@
+# Contrato do Cadoc 4111 — Saldos Contábeis Diários.
+#
+# QUEM CURA: a Lerian, a partir das Instruções de Preenchimento oficiais
+# (schema/4111-instrucoes.pdf; "I p.N" abaixo) e do XSD publicado
+# (schema/XSD_4111.xsd — ATENÇÃO: desatualizado, ver knownGaps). Res. BCB 208/2022,
+# IN BCB 524/2024, 644/2025.
+#
+# NÃO É UM CLONE DO 4010. Três coisas o separam, e todas vêm da fonte primária:
+#
+#  1. O conjunto de contas é FECHADO e conhecido pelo CATÁLOGO (contas.yaml), não
+#     pelo cliente. O balancete reporta o plano de contas do cliente; o 4111 reporta
+#     estas 30 rubricas específicas e nenhuma outra (I §4.2.2.a). Por isso o dataset
+#     abaixo tem rowSet, e não grain aberto: as LINHAS vêm do catálogo, o cliente
+#     fornece o VALOR de cada uma.
+#
+#  2. Há DUAS medidas num só documento. As contas patrimoniais/compensação carregam
+#     ESTOQUE (saldo ao fim do dia, no sinal da natureza — como o 4010). As contas
+#     3.0.9.70.XX carregam FLUXO (volume absoluto acumulado no mês, reiniciando). A
+#     medida de cada conta está em contas.yaml.
+#
+#  3. É diário. dataBase = AAAA-MM-DD, a partir de 02/01/2025.
+#
+# O motor confia neste contrato; não há validação XSD em runtime.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.bcb.cadoc-4111
+  country: BR
+  regulator: BCB
+  document: "4111"
+  title: Saldos Contábeis Diários
+  version: 1.0.0
+  status: draft
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  periodicity: daily
+  layout:
+    version: "2025-01"        # rubricas e 10 dígitos a partir da data-base 02/01/2025
+    mandatoryFrom: "2025-01-02"
+  sourceOfTruth:
+    layoutManual: https://www.bcb.gov.br/content/estabilidadefinanceira/Documents/Leiaute_de_documentos/saldosDiariosInstrucoesPreenchimentoV2.pdf
+    schema: schema/XSD_4111.xsd            # material de curadoria — e desatualizado
+    accountSet: contas.yaml                # o conjunto fechado de rubricas
+
+parameters:
+  - name: dataBase
+    type: date               # AAAA-MM-DD — diário (I §4.1.2)
+    required: true
+    description: Dia útil de referência dos saldos.
+
+  - name: tipoRemessa
+    type: string
+    required: true
+    default: I
+    domain: [I, S]
+    description: Inclusão ou substituição.
+
+datasets:
+  - name: institution
+    description: Identificação da instituição declarante (cabeçalho).
+    grain: singleton
+    fields:
+      - name: cnpj8
+        type: string
+        length: 8
+        required: true
+        pattern: '^[A-Za-z0-9]{8}$'
+        description: Raiz do CNPJ (oito primeiras posições).
+
+  - name: saldos_diarios
+    description: Saldo ao fim do dia de cada conta do conjunto fechado do 4111.
+    # rowSet, NÃO grain: as linhas são o conjunto do catálogo, uma por conta
+    # declarada em contas.yaml. O binding fornece o saldoDia de cada uma; contas de
+    # saldo zero podem ser omitidas (I §4.2.2.a).
+    rowSet:
+      from: contas.yaml
+      key: cosifCode
+    fields:
+      - name: cosifCode
+        type: string
+        required: true
+        # Dez dígitos desde 02/01/2025 (I, changelog 26/09/2024). O XSD publicado
+        # ainda diz oito — é ele que está velho, não o contrato. Ver knownGaps.
+        pattern: '^[0-9]{10}$'
+        normalize: digits
+        description: Código COSIF da conta, do conjunto fechado (contas.yaml).
+      - name: saldoDia
+        type: decimal
+        required: true
+        format:
+          scale: 2
+          scaleIsExact: true
+          decimalSeparator: "."
+          groupSeparator: ""
+        means: >-
+          Para conta de ESTOQUE: saldo em R$ ao fim do dia, no sinal da natureza da
+          conta; no último dia do mês coincide com o 4010 (I §4.2.2.b). Para conta de
+          FLUXO (3.0.9.70.XX): somatório do valor ABSOLUTO das transações do dia,
+          acumulado no mês e reiniciado a cada mês (I §4.2.2.a). Qual medida vale
+          para cada conta está em contas.yaml.
+
+rules:
+  - id: conta-do-conjunto-fechado
+    severity: error
+    appliesTo: saldos_diarios.cosifCode
+    assert: existsIn(contas.yaml)
+    message: >-
+      O 4111 só admite as contas do conjunto fechado (I §4.2.2.a). Uma rubrica fora
+      de contas.yaml indica binding apontando para conta que o documento não prevê.
+
+  - id: uma-linha-por-conta
+    severity: error
+    appliesTo: saldos_diarios
+    assert: unique(cosifCode)
+    message: Uma linha por conta (I §4.2.1); duplicidade é agrupamento errado no binding.
+
+knownGaps:
+  - id: flow-precisa-da-fase-4
+    description: >-
+      As contas 3.0.9.70.XX (measure=flow em contas.yaml) exigem somatório do valor
+      absoluto das transações do dia ACUMULADO no mês com REINÍCIO mensal (I
+      §4.2.2.a). Isso é a acumulação com reinício da Fase 4 do motor, que ainda não
+      existe. O binding de exemplo resolve só as contas de estoque; as de fluxo ficam
+      pendentes, exatamente como o guia interno anterior já as havia deixado. Sem a
+      Fase 4, um 4111 gerado hoje sai sem as cinco contas de fluxo — arquivo
+      INVÁLIDO: a omissão de conta só é permitida quando o saldo é zero (I
+      §4.2.2.a), e uma instituição com volume de pagamento tem as contas de fluxo
+      diferentes de zero. Ou seja, o 4111 NÃO É GERÁVEL corretamente para essa
+      instituição até a Fase 4 existir. O binding de exemplo cobre o estoque para
+      exercitar o formato, mas não deve ser tratado como pronto para produção — a
+      geração real precisa ser bloqueada enquanto a fonte de fluxo não existir.
+
+  - id: xsd-publicado-desatualizado
+    description: >-
+      O XSD em schema/XSD_4111.xsd é a v1.0 de 30/03/2023 e CONTRADIZ as instruções
+      vigentes em três pontos: diz codigoConta de 8 dígitos (as instruções mandam 10
+      desde 02/01/2025), saldoDia com minInclusive=0 (as instruções mandam sinal pela
+      natureza, que admite negativo), e maxOccurs=25 contas (o conjunto atual tem 30
+      com as subcontas da IN 644/2025). Nos três, a instrução vigente prevalece e é o
+      que este contrato segue. Rebaixar para o XSD publicado geraria arquivo no
+      formato de 2023. Re-obter o XSD atualizado do BACEN antes de publicar (draft até
+      lá).
+
+  - id: natureza-contabil-nao-vem-da-fonte
+    description: >-
+      Como no 4010: o sinal do saldo de estoque depende da natureza da conta, que o
+      Midaz não expõe. Declarada no binding. Lacuna do Midaz.
+
+  - id: acumulo-fim-de-semana
+    description: >-
+      Volumes de sábado, domingo e feriado devem ser acumulados no próximo dia útil
+      (I §4.2.2.b). É regra de calendário de apuração, ligada à Fase 4; fora do
+      escopo desta versão.

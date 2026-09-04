@@ -1,0 +1,106 @@
+# Binding do Cadoc 4111 — QUEM PREENCHE É O CLIENTE.
+# Exemplo contra o Midaz, cobrindo as contas de ESTOQUE. As de fluxo (3.0.9.70.XX)
+# dependem da acumulação com reinício mensal da Fase 4 e ficam pendentes — ver o
+# knownGap flow-precisa-da-fase-4 no contrato.
+#
+# A diferença estrutural frente ao 4010: as LINHAS do dataset vêm do conjunto
+# fechado (contas.yaml), não desta consulta. A consulta fornece o VALOR (saldoDia)
+# de cada conta declarada; contas.yaml diz quais existem e o que cada saldo
+# significa. O motor casa as duas pela chave cosifCode.
+#
+# ⚠️ ESTE BINDING É INCOMPLETO E NÃO PODE GERAR ARQUIVO VÁLIDO. As cinco contas de
+# fluxo (measure=flow) não têm origem: o volume absoluto acumulado no mês com
+# reinício exige a Fase 4 do motor. Omitir conta só é permitido quando o saldo é
+# zero (I §4.2.2.a), e uma instituição com movimento tem essas contas diferentes de
+# zero — então o arquivo sairia INVÁLIDO, não apenas incompleto. Os campos de fluxo
+# abaixo são declarados `from: manual` (o operador teria de suprir), e o motor deve
+# BLOQUEAR a geração enquanto restar campo manual não preenchido num regulatório.
+# Serve para exercitar o formato do estoque, não para produção.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.cadoc-4111
+contractVersion: 1.0.0
+
+# NÃO GERA DOCUMENTO VÁLIDO, e isto é declarado em dado e não em comentário: o
+# validador recusa qualquer binding cujo campo obrigatório resolva por manual sem
+# valor, a menos que a incompletude seja declarada aqui, justificada e ENUMERADA.
+# Com isso a pendência é conferível por máquina — antes era prosa, que não bloqueia
+# nada.
+generatable: false
+incompleteReason: >-
+  As cinco contas de fluxo (measure=flow em contas.yaml) exigem o volume absoluto
+  das transações acumulado no mês com reinício mensal, que é a Fase 4 do motor e não
+  existe. Omitir conta só é permitido quando o saldo é zero (I §4.2.2.a), então uma
+  instituição com movimento produziria arquivo INVÁLIDO. Este exemplo existe para
+  exercitar o formato do estoque.
+incompleteFields:
+  - saldos_diarios.saldoDia
+
+queries:
+  - name: saldos_estoque
+    description: Saldo diário por rubrica das contas de ESTOQUE.
+    dataSource: midaz_transaction
+    table: operation
+    aggregate:
+      groupBy: [route_code]
+      measures:
+        - as: saldoDia
+          fn: sum
+          of: amount
+          sign:
+            column: direction
+            debit: "-"
+            credit: "+"
+          statedIn:
+            natureByPrefix:
+              "1": debit
+              "2": debit
+              "3": debit
+              "4": credit
+              "5": credit
+              "6": credit
+              "9": credit
+            key: route_code
+      # Estoque acumula desde a abertura até o FIM DO DIA da data-base (diário).
+      accumulate:
+        until: system.dataBase
+
+datasets:
+  institution:
+    fields:
+      cnpj8:
+        from: constant
+        value: "12345678"
+
+  saldos_diarios:
+    # As linhas vêm do conjunto fechado; a consulta fornece o valor por conta.
+    # rowSet casa contas.yaml.cosifCode com o route_code que a consulta agrega.
+    from:
+      query: saldos_estoque
+    rowKey:
+      cosifCode: route_code
+    fields:
+      cosifCode:
+        from: rowSet
+        column: code
+      # saldoDia se resolve por CLASSE de conta (contas.yaml.measure), e as duas
+      # classes têm origens diferentes — por isso é uma lista de casos, não uma
+      # origem só. Nenhuma linha fica SEM origem: a de fluxo é explicitamente manual
+      # (pendente da Fase 4), não silenciosamente descartada.
+      saldoDia:
+        byRowClass:
+          # Estoque: saldo do razão, no sinal da natureza.
+          - when: { rowSet: measure, equals: stock }
+            from: query
+            column: saldoDia
+          # Fluxo: sem fonte até a Fase 4. Declarado manual para ficar VISÍVEL como
+          # pendência; o motor bloqueia a geração enquanto houver manual pendente
+          # num regulatório, em vez de emitir um arquivo a que faltam contas
+          # obrigatórias.
+          - when: { rowSet: measure, equals: flow }
+            from: manual
+            pendingReason: "volume acumulado no mês com reinício — Fase 4 do motor"
+
+manualOverrides: []
