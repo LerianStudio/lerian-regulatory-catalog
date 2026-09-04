@@ -23,6 +23,21 @@ kind: DocumentBinding
 contract: br.bcb.cadoc-4111
 contractVersion: 1.0.0
 
+# NÃO GERA DOCUMENTO VÁLIDO, e isto é declarado em dado e não em comentário: o
+# validador recusa qualquer binding cujo campo obrigatório resolva por manual sem
+# valor, a menos que a incompletude seja declarada aqui, justificada e ENUMERADA.
+# Com isso a pendência é conferível por máquina — antes era prosa, que não bloqueia
+# nada.
+generatable: false
+incompleteReason: >-
+  As cinco contas de fluxo (measure=flow em contas.yaml) exigem o volume absoluto
+  das transações acumulado no mês com reinício mensal, que é a Fase 4 do motor e não
+  existe. Omitir conta só é permitido quando o saldo é zero (I §4.2.2.a), então uma
+  instituição com movimento produziria arquivo INVÁLIDO. Este exemplo existe para
+  exercitar o formato do estoque.
+incompleteFields:
+  - saldos_diarios.saldoDia
+
 queries:
   - name: saldos_estoque
     description: Saldo diário por rubrica das contas de ESTOQUE.

@@ -195,6 +195,31 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
     declared, _ = declared_names(contract)
     bound = binding.get("datasets", {})
 
+    # Um campo OBRIGATÓRIO resolvido por `manual` sem valor é um regulatório saindo a
+    # que faltam dados obrigatórios. A regra tem de ser EXECUTÁVEL: dizer em
+    # comentário que "o motor deve bloquear" não bloqueia nada — era o que este
+    # repositório fazia.
+    #
+    # Um binding pode declarar-se `generatable: false` — o caso de um exemplo que
+    # exercita o formato antes de a fonte existir. Aí a incompletude tem de ser
+    # ENUMERADA (incompleteFields) e justificada (incompleteReason). Sem essa
+    # declaração, manual pendente em campo obrigatório REPROVA.
+    required_by_dataset = {
+        ds["name"]: {f["name"] for f in ds.get("fields", []) if f.get("required") is True}
+        for ds in contract.get("datasets", [])
+    }
+    contract_row_sets = {ds["name"]: ds.get("rowSet") for ds in contract.get("datasets", [])}
+    generatable = binding.get("generatable", True)
+    overrides = {o.get("field") for o in binding.get("manualOverrides") or [] if isinstance(o, dict)}
+    declared_incomplete = set(binding.get("incompleteFields") or [])
+    pending: set[str] = set()
+
+    if generatable is False and not binding.get("incompleteReason"):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: binding declara generatable: false sem "
+            f"`incompleteReason` — a incompletude precisa ser justificada"
+        )
+
     for dataset, fields in declared.items():
         entry = bound.get(dataset)
         if entry is None:
@@ -234,6 +259,14 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                             f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
                             f"resolve por {case.get('from')!r}; use {', '.join(sorted(valid))}"
                         )
+                    if case.get("from") == "manual" and case.get("value") is None:
+                        if not case.get("pendingReason"):
+                            fail(
+                                f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                                f"é manual sem valor e sem `pendingReason`"
+                            )
+                        if field in required_by_dataset.get(dataset, set()):
+                            pending.add(f"{dataset}.{field}")
                 continue
 
             how = spec.get("from")
@@ -245,6 +278,26 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
                     f"{how!r}; use query, constant, parameter, manual, rowSet ou byRowClass"
                 )
+
+            # `rowSet` só significa algo se o CONJUNTO declarar rowSet no contrato:
+            # aceitar o nome da origem sem conferir a precondição deixa o campo
+            # apontando para um conjunto de linhas que não existe.
+            if how == "rowSet" and not contract_row_sets.get(dataset):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por rowSet, "
+                    f"mas o contrato não declara rowSet no conjunto '{dataset}'"
+                )
+
+            if how == "manual" and spec.get("value") is None:
+                if not spec.get("pendingReason"):
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} é manual sem "
+                        f"valor e sem `pendingReason`"
+                    )
+                if field in required_by_dataset.get(dataset, set()):
+                    pending.add(f"{dataset}.{field}")
+
+    _verdict_on_pending(doc_dir, generatable, declared_incomplete, overrides, pending)
 
 
 def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
@@ -351,6 +404,36 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
         for dup in {c for c in codes if codes.count(c) > 1}:
             fail(f"{doc_dir.relative_to(ROOT)}: conta '{dup}' duplicada em {ref}")
 
+
+
+def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrides, pending) -> None:
+    """O veredito de gerabilidade: campo obrigatório manual sem valor bloqueia.
+
+    É a regra que a prosa do binding descrevia e nada impunha.
+    """
+    blocking = {f for f in pending if f not in overrides}
+
+    if generatable is False:
+        for field in sorted(blocking - declared_incomplete):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {field} é obrigatório e está manual sem "
+                f"valor, mas não consta em `incompleteFields` — a incompletude precisa "
+                f"ser enumerada, não vaga"
+            )
+        for field in sorted(declared_incomplete - blocking):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: `incompleteFields` lista {field}, que não "
+                f"é campo obrigatório pendente — lista desatualizada"
+            )
+        return
+
+    for field in sorted(blocking):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: {field} é obrigatório e resolve por manual sem "
+            f"valor: este binding NÃO gera documento válido. Forneça o valor em "
+            f"`manualOverrides`, ou declare `generatable: false` com `incompleteReason` e "
+            f"`incompleteFields`"
+        )
 
 
 def check_references(doc_dir: Path, contract: dict) -> None:
