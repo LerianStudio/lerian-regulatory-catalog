@@ -84,7 +84,24 @@ def query_list(binding: dict) -> list[dict]:
     if not isinstance(raw, list):
         return []
 
-    return [q for q in raw if isinstance(q, dict)]
+    usable = []
+    for q in raw:
+        if not isinstance(q, dict):
+            continue
+
+        # Não basta a CONSULTA ser mapa: um `join` malformado dentro dela chega
+        # intacto a quem consome a lista, e produced_columns percorre os joins de uma
+        # consulta composta sem agregação. A porta só entrega o que é utilizável de
+        # ponta a ponta; quem REPROVA a forma é check_binding_queries, num lugar só.
+        join = q.get("join")
+        if join is not None and (
+            not isinstance(join, list) or any(not isinstance(j, dict) for j in join)
+        ):
+            continue
+
+        usable.append(q)
+
+    return usable
 
 
 def check_template(doc_dir: Path, contract: dict) -> None:
@@ -732,7 +749,13 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
             chain.append(cursor)
             cursor = by_name[cursor].get("from")
 
-    for query in query_list(binding):
+    # Este laço lê a lista CRUA de propósito: query_list() já exclui a consulta com
+    # join malformado, e quem tem de DENUNCIAR essa forma não pode recebê-la
+    # filtrada. A porta serve aos consumidores; o guardião olha o que entra.
+    for query in raw_queries:
+        if not isinstance(query, dict):
+            continue
+
         qname = query.get("name", "<sem nome>")
 
         base = query.get("from")
@@ -748,7 +771,15 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
                 f"nem from — não extrai de lugar nenhum"
             )
 
-        for join_index, join in enumerate(query.get("join") or []):
+        raw_join = query.get("join")
+        if raw_join is not None and not isinstance(raw_join, list):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: o `join` de '{qname}' não é uma lista: "
+                f"{raw_join!r}"
+            )
+            raw_join = []
+
+        for join_index, join in enumerate(raw_join or []):
             if not isinstance(join, dict):
                 fail(f"{doc_dir.relative_to(ROOT)}: join[{join_index}] de '{qname}' não é um mapa")
                 continue

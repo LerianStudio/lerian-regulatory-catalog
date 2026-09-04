@@ -491,6 +491,21 @@ MUTATIONS: list[Mutation] = [
         "não é um mapa",
     ),
     Mutation(
+        "join-item-malformado-em-consulta-consumida",
+        "join malformado numa consulta que outra COMPÕE: o consumidor recebia o item cru",
+        # `movimento` é base de `por_titular` (from), e é sem agregação — então
+        # produced_columns percorre os joins dela para somar colunas. Um item escalar
+        # ali estourava, porque a porta única garantia só que a CONSULTA é mapa.
+        lambda b: query(b[HIER]["binding"], "movimento")["join"].append("naoEhMapa"),
+        "não é um mapa",
+    ),
+    Mutation(
+        "join-nao-e-lista",
+        "join que não é lista deve reprovar, não ser normalizado em silêncio",
+        lambda b: query(b[HIER]["binding"], "movimento").update({"join": "naoEhLista"}),
+        "não é uma lista",
+    ),
+    Mutation(
         "from-do-conjunto-nao-e-mapa",
         "o `from` de um conjunto que não é mapa deve reprovar, não estourar",
         lambda b: b[PLANO]["binding"]["datasets"]["saldos"].update({"from": "naoEhMapa"}),
