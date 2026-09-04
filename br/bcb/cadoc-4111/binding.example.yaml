@@ -7,6 +7,15 @@
 # fechado (contas.yaml), não desta consulta. A consulta fornece o VALOR (saldoDia)
 # de cada conta declarada; contas.yaml diz quais existem e o que cada saldo
 # significa. O motor casa as duas pela chave cosifCode.
+#
+# ⚠️ ESTE BINDING É INCOMPLETO E NÃO PODE GERAR ARQUIVO VÁLIDO. As cinco contas de
+# fluxo (measure=flow) não têm origem: o volume absoluto acumulado no mês com
+# reinício exige a Fase 4 do motor. Omitir conta só é permitido quando o saldo é
+# zero (I §4.2.2.a), e uma instituição com movimento tem essas contas diferentes de
+# zero — então o arquivo sairia INVÁLIDO, não apenas incompleto. Os campos de fluxo
+# abaixo são declarados `from: manual` (o operador teria de suprir), e o motor deve
+# BLOQUEAR a geração enquanto restar campo manual não preenchido num regulatório.
+# Serve para exercitar o formato do estoque, não para produção.
 
 apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
@@ -61,12 +70,22 @@ datasets:
       cosifCode:
         from: rowSet
         column: code
+      # saldoDia se resolve por CLASSE de conta (contas.yaml.measure), e as duas
+      # classes têm origens diferentes — por isso é uma lista de casos, não uma
+      # origem só. Nenhuma linha fica SEM origem: a de fluxo é explicitamente manual
+      # (pendente da Fase 4), não silenciosamente descartada.
       saldoDia:
-        # Só as contas de estoque se resolvem por esta consulta. As de fluxo
-        # (measure=flow em contas.yaml) precisam da Fase 4; até lá saem omitidas
-        # (saldo zero é omissível), o que deixa o arquivo INCOMPLETO, não errado.
-        from: query
-        column: saldoDia
-        onlyWhere: { rowSet: measure, equals: stock }
+        byRowClass:
+          # Estoque: saldo do razão, no sinal da natureza.
+          - when: { rowSet: measure, equals: stock }
+            from: query
+            column: saldoDia
+          # Fluxo: sem fonte até a Fase 4. Declarado manual para ficar VISÍVEL como
+          # pendência; o motor bloqueia a geração enquanto houver manual pendente
+          # num regulatório, em vez de emitir um arquivo a que faltam contas
+          # obrigatórias.
+          - when: { rowSet: measure, equals: flow }
+            from: manual
+            pendingReason: "volume acumulado no mês com reinício — Fase 4 do motor"
 
 manualOverrides: []

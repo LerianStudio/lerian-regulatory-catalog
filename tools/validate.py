@@ -215,14 +215,35 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                 fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}")
                 continue
 
+            valid = {"query", "constant", "parameter", "manual", "rowSet"}
+
+            # byRowClass: um campo cuja origem depende da CLASSE da linha (no 4111, o
+            # saldoDia vem da consulta para estoque e é manual para fluxo). Cada caso
+            # é uma origem própria, e todo caso precisa declarar `when` e um `from`
+            # válido — assim nenhuma linha fica sem origem em silêncio, que é
+            # justamente como um regulatório sai a que faltam contas obrigatórias.
+            cases = spec.get("byRowClass")
+            if isinstance(cases, list):
+                if not cases:
+                    fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass está vazio")
+                for i, case in enumerate(cases):
+                    if not case.get("when"):
+                        fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] sem `when`")
+                    if case.get("from") not in valid:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                            f"resolve por {case.get('from')!r}; use {', '.join(sorted(valid))}"
+                        )
+                continue
+
             how = spec.get("from")
             # rowSet: o valor da linha vem do conjunto fechado que o catálogo
             # declara (contas.yaml), não da consulta — é a origem própria de um
             # documento cujo conjunto de linhas é do catálogo e não do cliente.
-            if how not in {"query", "constant", "parameter", "manual", "rowSet"}:
+            if how not in valid:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
-                    f"{how!r}; use query, constant, parameter, manual ou rowSet"
+                    f"{how!r}; use query, constant, parameter, manual, rowSet ou byRowClass"
                 )
 
 
