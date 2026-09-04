@@ -210,8 +210,49 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
     }
     contract_row_sets = {ds["name"]: ds.get("rowSet") for ds in contract.get("datasets", [])}
     generatable = binding.get("generatable", True)
-    overrides = {o.get("field") for o in binding.get("manualOverrides") or [] if isinstance(o, dict)}
-    declared_incomplete = set(binding.get("incompleteFields") or [])
+
+    # Um override só LIMPA a pendência se trouxer VALOR. Aceitar
+    # `manualOverrides: [{field: x}]` sem valor reabria exatamente o furo que a regra
+    # de manual pendente fechou, uma camada abaixo: o campo saía de `blocking` e o
+    # arquivo seguia sem o dado obrigatório.
+    overrides: set[str] = set()
+    for i, override in enumerate(binding.get("manualOverrides") or []):
+        if not isinstance(override, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: manualOverrides[{i}] não é um mapa")
+            continue
+
+        field_ref = override.get("field")
+        if not isinstance(field_ref, str) or not field_ref.strip():
+            fail(f"{doc_dir.relative_to(ROOT)}: manualOverrides[{i}] não nomeia um `field`")
+            continue
+
+        value = override.get("value")
+        if value is None or (isinstance(value, str) and not value.strip()):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: manualOverrides de '{field_ref}' não traz "
+                f"`value` — um override sem valor não preenche o campo e não pode "
+                f"dispensar a pendência"
+            )
+            continue
+
+        overrides.add(field_ref)
+
+    # incompleteFields tem de ser lista de nomes: um aninhamento acidental
+    # (`[[campo]]`) fazia set() estourar em vez de reprovar.
+    raw_incomplete = binding.get("incompleteFields") or []
+    declared_incomplete: set[str] = set()
+    if not isinstance(raw_incomplete, list):
+        fail(f"{doc_dir.relative_to(ROOT)}: `incompleteFields` não é uma lista")
+    else:
+        for i, item in enumerate(raw_incomplete):
+            if not isinstance(item, str) or not item.strip():
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: incompleteFields[{i}] não é um nome de "
+                    f"campo: {item!r}"
+                )
+                continue
+            declared_incomplete.add(item)
+
     pending: set[str] = set()
 
     if generatable is False and not binding.get("incompleteReason"):
