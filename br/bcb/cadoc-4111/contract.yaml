@@ -143,11 +143,12 @@ knownGaps:
       formato de 2023. Re-obter o XSD atualizado do BACEN antes de publicar (draft até
       lá).
 
-  - id: natureza-contabil-nao-vem-da-fonte
+  - id: natureza-contabil-e-configuracao-do-cliente
     description: >-
-      Como no 4010: o sinal do saldo de estoque depende da natureza da CONTA, que o
-      Midaz não expõe — ele informa o lado de cada lançamento (`operation.type`), que
-      é outra coisa. Declarada no binding. Lacuna do Midaz.
+      Como no 4010: o sinal do saldo de estoque segue da natureza da conta, que vem
+      do COSIF referenciado nas rotas contábeis do Midaz (`accountingEntries` da
+      `operation_route`, alcançada por `operation.route_code`). Precondição de
+      configuração do cliente, declarada no binding — não é lacuna do motor.
 
   - id: acumulo-fim-de-semana
     description: >-
