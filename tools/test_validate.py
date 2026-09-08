@@ -520,6 +520,138 @@ MUTATIONS: list[Mutation] = [
                    .update({"from": "rowSet", "column": "code"})),
         "byRowClass[0] resolve por rowSet, mas o contrato não declara rowSet",
     ),
+
+    # ------------------------------------- paridade com o motor (Reporter)
+    # Estas nasceram do lado de LÁ: implementar o carregador de contratos do motor
+    # (pkg/reporter/contract) levantou onze construções que este validador não lia e
+    # o motor recusa. Cada uma é um contrato que passava no CI daqui e parava na
+    # primeira geração — ou, pior, era aceito pelos dois e aplicado diferente.
+    Mutation(
+        "campo-tipo-desconhecido",
+        "tipo que o motor não sabe aplicar passava aqui e parava na geração",
+        lambda b: field(b[PLANO]["contract"], "saldos", "valor").update({"type": "money"}),
+        "o motor aplica",
+    ),
+    Mutation(
+        "campo-normalize-desconhecido",
+        "a mais perigosa: o campo sairia SEM normalizar num arquivo dado como concluído",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"normalize": "uppercase"}),
+        "não sabe aplicar",
+    ),
+    Mutation(
+        "campo-escala-negativa",
+        "escala negativa não é número de casas decimais de coisa nenhuma",
+        lambda b: field(b[PLANO]["contract"], "saldos", "valor")["format"].update({"scale": -1}),
+        "está entre 0 e",
+    ),
+    Mutation(
+        "campo-escala-absurda",
+        "o motor converte a escala para int32: acima do limite é wrap silencioso",
+        lambda b: field(b[PLANO]["contract"], "saldos", "valor")["format"].update({"scale": 2**32}),
+        "está entre 0 e",
+    ),
+    Mutation(
+        "campo-length-zero",
+        "campo de zero posições é campo que o arquivo não carrega",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"length": 0}),
+        "ao menos 1",
+    ),
+    Mutation(
+        "pattern-nao-compila",
+        "expressão quebrada só seria descoberta na primeira linha conferida contra ela",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"pattern": "([0-9]"}),
+        "não compila",
+    ),
+    Mutation(
+        "pattern-lookahead",
+        "lookahead compila no Python e a RE2 do Go não tem",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update(
+            {"pattern": "^(?=[0-9])[0-9]{10}$"}),
+        "RE2 do Go não tem",
+    ),
+    Mutation(
+        "pattern-retrorreferencia",
+        "retrorreferência compila no Python e a RE2 do Go não tem",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update(
+            {"pattern": r"^([0-9])\1{9}$"}),
+        "retrorreferência",
+    ),
+    Mutation(
+        "conjunto-sem-campos",
+        "conjunto sem campo é seção do arquivo que nada popula",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"fields": []}),
+        "não declara campo nenhum",
+    ),
+    Mutation(
+        "conjunto-sem-nome",
+        "sem nome, a ferramenta ESTOURAVA em vez de reprovar: declared_names lia name na fé",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").pop("name"),
+        "sem name",
+    ),
+    Mutation(
+        "campo-duplicado",
+        "dois campos de mesmo nome não podem ambos ser alcançados",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["fields"].append(
+            {"name": "codigo", "type": "string", "description": "Cópia."}),
+        "declarado duas vezes",
+    ),
+    Mutation(
+        "grao-sobre-campo-inexistente",
+        "grão sobre campo fantasma é a exigência de uma linha por combinação que ninguém confere",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"grain": ["naoDeclarado"]}),
+        "campo que o conjunto não declara",
+    ),
+    Mutation(
+        "childof-ciclo",
+        "ciclo de childOf deixa os conjuntos sem raiz, e nenhum é publicado",
+        lambda b: dataset(b[HIER]["contract"], "resumos").update(
+            {"childOf": {"dataset": "detalhes"}}),
+        "fecha um ciclo",
+    ),
+    Mutation(
+        "parametro-tipo-desconhecido",
+        "parâmetro de tipo desconhecido nunca poderia ser satisfeito por requisição nenhuma",
+        lambda b: b[PLANO]["contract"]["parameters"][0].update({"type": "competencia"}),
+        "o motor aceita",
+    ),
+    Mutation(
+        "parametro-default-fora-do-dominio",
+        "default que o próprio domínio recusa é declaração impossível",
+        lambda b: b[PLANO]["contract"]["parameters"][1].update({"default": "X"}),
+        "fora do próprio domain",
+    ),
+    Mutation(
+        "parametro-mes-inexistente",
+        "allowedMonths com mês que não existe torna o documento ingerável e ninguém sabe por quê",
+        lambda b: b[PLANO]["contract"]["parameters"][0].update({"allowedMonths": ["06", "13"]}),
+        "um mês é de '01' a '12'",
+    ),
+    Mutation(
+        "parametro-mes-em-tipo-errado",
+        "allowedMonths fora de um parâmetro month é restrição que não se aplica a nada",
+        lambda b: b[PLANO]["contract"]["parameters"][1].update({"allowedMonths": ["06"]}),
+        "não é do tipo month",
+    ),
+    Mutation(
+        "regra-sem-id",
+        "regra sem id não pode ser citada nem pela mensagem que ela mesma produz",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("id"),
+        "regra sem id",
+    ),
+    Mutation(
+        "regra-sem-assert",
+        "regra sem assert é lida em revisão como se protegesse algo e não confere nada",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("assert"),
+        "não tem assert",
+    ),
+    Mutation(
+        "regra-aponta-campo-inexistente",
+        "a cabeça de appliesTo era conferida e a CAUDA não: regra sobre campo fantasma nunca dispara",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update(
+            {"appliesTo": "saldos.naoDeclarado"}),
+        "campo que 'saldos' não declara",
+    ),
+
 ]
 
 

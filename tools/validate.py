@@ -59,13 +59,41 @@ def load(path: Path):
         return None
 
 
+def datasets_of(contract: dict) -> list[dict]:
+    """A única porta por onde os conjuntos de um contrato são LIDOS.
+
+    Existe como porta e não como conveniência porque o mesmo defeito entrou duas
+    vezes: um leitor que toma `ds["name"]` na fé ESTOURA num contrato que não o tem,
+    e uma ferramenta que estoura com entrada malformada não reprova nada. Guardei
+    declared_names, esqueci o `by_name` de check_structure, e a suíte de mutação
+    encontrou o gêmeo — que é exatamente o que ela existe para fazer.
+
+    Quem DENUNCIA a ausência é check_dataset_shapes, que lê a forma crua e roda
+    primeiro. Todo o resto lê por aqui.
+    """
+    return [ds for ds in contract.get("datasets", []) if isinstance(ds, dict) and ds.get("name")]
+
+
+def fields_of(ds: dict) -> list[dict]:
+    """Idem para os campos de um conjunto."""
+    return [f for f in ds.get("fields", []) if isinstance(f, dict) and f.get("name")]
+
 def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
-    """Conjuntos e seus campos, mais os parâmetros de geração."""
+    """Conjuntos e seus campos, mais os parâmetros de geração.
+
+    O que não tem nome é OMITIDO, e não tomado na fé de que exista: quase toda
+    conferência abaixo lê por aqui, então um conjunto sem `name` fazia a ferramenta
+    ESTOURAR — e uma ferramenta que estoura com entrada malformada não reprova nada.
+    Quem denuncia a ausência é check_dataset_shapes, que roda primeiro.
+    """
     datasets = {
-        ds["name"]: {f["name"] for f in ds.get("fields", [])}
-        for ds in contract.get("datasets", [])
+        ds["name"]: {f["name"] for f in fields_of(ds) if isinstance(f, dict) and f.get("name")}
+        for ds in datasets_of(contract)
+        if isinstance(ds, dict) and ds.get("name")
     }
-    parameters = {p["name"] for p in contract.get("parameters", [])}
+    parameters = {
+        p["name"] for p in contract.get("parameters", []) if isinstance(p, dict) and p.get("name")
+    }
     return datasets, parameters
 
 
@@ -124,7 +152,7 @@ def check_template(doc_dir: Path, contract: dict) -> None:
     datasets, parameters = declared_names(contract)
     children = {
         ds["name"]: ds.get("childOf", {}).get("dataset")
-        for ds in contract.get("datasets", [])
+        for ds in datasets_of(contract)
         if ds.get("childOf")
     }
     # Multimapa, não dict: `dict(findall(...))` guardaria só a ÚLTIMA ocorrência de
@@ -306,10 +334,10 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
     # ENUMERADA (incompleteFields) e justificada (incompleteReason). Sem essa
     # declaração, manual pendente em campo obrigatório REPROVA.
     required_by_dataset = {
-        ds["name"]: {f["name"] for f in ds.get("fields", []) if f.get("required") is True}
-        for ds in contract.get("datasets", [])
+        ds["name"]: {f["name"] for f in fields_of(ds) if f.get("required") is True}
+        for ds in datasets_of(contract)
     }
-    contract_row_sets = {ds["name"]: ds.get("rowSet") for ds in contract.get("datasets", [])}
+    contract_row_sets = {ds["name"]: ds.get("rowSet") for ds in datasets_of(contract)}
     generatable = binding.get("generatable", True)
 
     # Um override só LIMPA a pendência se trouxer VALOR. Aceitar
@@ -480,7 +508,7 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
     """
     set_path = contract.get("metadata", {}).get("sourceOfTruth", {}).get("accountSet")
 
-    row_datasets = [ds for ds in contract.get("datasets", []) if ds.get("rowSet")]
+    row_datasets = [ds for ds in datasets_of(contract) if ds.get("rowSet")]
 
     if not set_path and not row_datasets:
         return
@@ -540,7 +568,7 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
         rows = [r for r in rows if isinstance(r, dict)]
 
         key = ds["rowSet"].get("key")
-        key_field = next((f for f in ds.get("fields", []) if f["name"] == key), None)
+        key_field = next((f for f in fields_of(ds) if f["name"] == key), None)
         pattern = key_field.get("pattern") if key_field else None
 
         for r in rows:
@@ -619,16 +647,16 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
     campo vira opcional de fato num arquivo em que era obrigatório.
     """
     datasets, _ = declared_names(contract)
-    by_name = {ds["name"]: ds for ds in contract.get("datasets", [])}
+    by_name = {ds["name"]: ds for ds in datasets_of(contract)}
 
-    for ds in contract.get("datasets", []):
+    for ds in datasets_of(contract):
         name = ds["name"]
 
         parent = ds.get("childOf", {}).get("dataset")
         if parent is not None and parent not in datasets:
             fail(f"{doc_dir.relative_to(ROOT)}: {name} é childOf de '{parent}', que não existe")
 
-        for field in ds.get("fields", []):
+        for field in fields_of(ds):
             fname = field["name"]
 
             ref = field.get("refersTo")
@@ -675,7 +703,7 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
 
                 via = cond.get("via")
                 if via is not None:
-                    via_field = next((f for f in ds.get("fields", []) if f["name"] == via), None)
+                    via_field = next((f for f in fields_of(ds) if f["name"] == via), None)
                     ref = (via_field or {}).get("refersTo")
                     if ref is None:
                         fail(
@@ -853,7 +881,7 @@ def check_parent_match(doc_dir: Path, contract: dict, binding: dict) -> None:
     declared, _ = declared_names(contract)
     bound = binding.get("datasets", {})
 
-    for ds in contract.get("datasets", []):
+    for ds in datasets_of(contract):
         parent = ds.get("childOf", {}).get("dataset")
         if parent is None:
             continue
@@ -1100,6 +1128,260 @@ def check_references(doc_dir: Path, contract: dict) -> None:
         )
 
 
+
+# O vocabulário que o MOTOR aceita. Cada nome aqui é um nome que
+# pkg/reporter/contract sabe aplicar; um contrato que use outro é aceito por este
+# validador e recusado lá, que é a divergência que estas conferências existem para
+# fechar — ver check_engine_parity abaixo.
+FIELD_TYPES = {"string", "integer", "decimal", "boolean", "date", "month"}
+NORMALIZATIONS = {"digits"}
+MAX_SCALE = 34
+MONTHS_OF_YEAR = {f"{m:02d}" for m in range(1, 13)}
+
+# Construções que a biblioteca `re` do Python aceita e a RE2 do Go não tem. Um
+# `pattern` que use qualquer uma delas compila aqui e é recusado pelo motor, então o
+# contrato passa no CI do catálogo e para na primeira geração.
+#
+# É uma lista das construções que faltam na RE2, e não um parser dela: a alternativa
+# seria reimplementar a RE2 em Python para conferir contratos que ninguém escreveu
+# ainda. Estas quatro mais as retrorreferências cobrem tudo que um curador
+# plausivelmente escreveria sem saber.
+RE2_MISSING = (
+    ("(?=", "lookahead"),
+    ("(?!", "lookahead negativo"),
+    ("(?<=", "lookbehind"),
+    ("(?<!", "lookbehind negativo"),
+)
+# Uma barra que NÃO é ela mesma escapada, seguida de dígito: `\1` é
+# retrorreferência e `\\1` é uma barra literal seguida do algarismo um.
+BACKREFERENCE = re.compile(r"(?<!\\)\\[1-9]")
+
+
+def check_engine_parity(doc_dir: Path, contract: dict) -> None:
+    """O contrato usa apenas o vocabulário que o MOTOR sabe aplicar.
+
+    Por que existe: este validador e o carregador do Reporter
+    (pkg/reporter/contract) leem o mesmo arquivo, e onde um lê menos que o outro
+    nasce a pior categoria de defeito de catálogo — um contrato que passa no CI
+    daqui e é recusado na primeira geração, ou pior, aceito pelos dois e aplicado
+    diferente.
+
+    A mais perigosa das divergências que fecharam aqui era `normalize`: este
+    validador aceitava qualquer string e o motor só sabe aplicar `digits`. Uma
+    normalização desconhecida escreveria o campo SEM normalizar num arquivo dado
+    como concluído.
+    """
+    for ds in datasets_of(contract):
+        name = ds.get("name", "<sem nome>")
+        for field in fields_of(ds):
+            _check_field_shape(doc_dir, name, field)
+
+
+def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
+    where = f"{doc_dir.relative_to(ROOT)}: {dataset}.{field.get('name', '<sem nome>')}"
+
+    ftype = field.get("type")
+    if ftype not in FIELD_TYPES:
+        fail(f"{where} tem type {ftype!r}; o motor aplica {sorted(FIELD_TYPES)}")
+
+    normalize = field.get("normalize")
+    if normalize is not None and normalize not in NORMALIZATIONS:
+        fail(
+            f"{where} tem normalize {normalize!r}, que o motor não sabe aplicar "
+            f"({sorted(NORMALIZATIONS)}) — o campo sairia SEM normalizar num arquivo "
+            f"dado como concluído"
+        )
+
+    length = field.get("length")
+    if length is not None and (not isinstance(length, int) or isinstance(length, bool) or length < 1):
+        fail(f"{where} tem length {length!r}; é o número de posições que o arquivo dá ao campo, então é ao menos 1")
+
+    _check_pattern(f"{where}.pattern", field.get("pattern"))
+
+    fmt = field.get("format")
+    if not isinstance(fmt, dict):
+        return
+
+    scale = fmt.get("scale")
+    if scale is not None and (not isinstance(scale, int) or isinstance(scale, bool) or not 0 <= scale <= MAX_SCALE):
+        fail(
+            f"{where}.format.scale é {scale!r}; uma escala é quantas casas decimais o "
+            f"arquivo carrega, então está entre 0 e {MAX_SCALE} — acima disso é um "
+            f"número que fonte nenhuma responde, e o motor a converte para int32"
+        )
+
+    _check_pattern(f"{where}.format.pattern", fmt.get("pattern"))
+
+
+def _check_pattern(where: str, pattern) -> None:
+    """Um pattern compila, e compila também na RE2 que o motor usa."""
+    if pattern is None:
+        return
+
+    if not isinstance(pattern, str):
+        fail(f"{where} é {pattern!r}; um pattern é uma expressão regular escrita como texto")
+        return
+
+    try:
+        re.compile(pattern)
+    except re.error as exc:
+        fail(f"{where} não compila: {exc}")
+        return
+
+    for construct, spelled in RE2_MISSING:
+        if construct in pattern:
+            fail(
+                f"{where} usa {spelled} ({construct}), que a RE2 do Go não tem — "
+                f"compila aqui e é recusado pelo motor"
+            )
+
+    if BACKREFERENCE.search(pattern):
+        fail(f"{where} usa retrorreferência, que a RE2 do Go não tem — compila aqui e é recusado pelo motor")
+
+
+def check_dataset_shapes(doc_dir: Path, contract: dict) -> None:
+    """Cada conjunto tem nome, tem campos, não repete nome de campo e não gira.
+
+    Um conjunto sem nome fazia esta ferramenta ESTOURAR em vez de reprovar, que é o
+    modo de falha que a suíte de mutação existe para não deixar voltar. Um conjunto
+    sem campos é uma seção do arquivo que nada popula. Dois campos de mesmo nome não
+    podem ambos ser alcançados, e uma referência a ele resolve para o que foi lido
+    por último. E um childOf que fecha ciclo trava a montagem do contexto de render.
+    """
+    seen_datasets: set[str] = set()
+
+    for ds in contract.get("datasets", []):
+        if not isinstance(ds, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: um conjunto é um mapeamento de name, grain e fields")
+            continue
+
+        name = ds.get("name")
+        if not isinstance(name, str) or not name:
+            fail(f"{doc_dir.relative_to(ROOT)}: um conjunto sem name não pode ser referido por template nem binding")
+            continue
+
+        if name in seen_datasets:
+            fail(f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' declarado duas vezes")
+        seen_datasets.add(name)
+
+        fields = ds.get("fields")
+        if not isinstance(fields, list) or not fields:
+            fail(f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' não declara campo nenhum, então nada o popula")
+            continue
+
+        seen_fields: set[str] = set()
+        for field in fields:
+            if not isinstance(field, dict) or not field.get("name"):
+                fail(f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' tem campo sem name")
+                continue
+
+            if field["name"] in seen_fields:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {name}.{field['name']} declarado duas "
+                    f"vezes; os dois não podem ser alcançados e uma referência resolve "
+                    f"para o último lido"
+                )
+            seen_fields.add(field["name"])
+
+        _check_grain(doc_dir, ds, name, seen_fields)
+
+    _check_childof_cycles(doc_dir, contract)
+
+
+def _check_grain(doc_dir: Path, ds: dict, name: str, fields: set[str]) -> None:
+    """As chaves do grão são campos que o conjunto declara.
+
+    Um grão sobre campo inexistente é a exigência de uma linha por combinação que
+    nunca é conferida: o arquivo sai com a mesma rubrica duas vezes e nada acusa.
+    """
+    grain = ds.get("grain")
+
+    if grain is None or grain == "singleton":
+        return
+
+    if not isinstance(grain, list):
+        fail(f"{doc_dir.relative_to(ROOT)}: {name}.grain é {grain!r}; é 'singleton' ou uma lista de campos")
+        return
+
+    for key in grain:
+        if key not in fields:
+            fail(f"{doc_dir.relative_to(ROOT)}: {name}.grain nomeia '{key}', campo que o conjunto não declara")
+
+
+def _check_childof_cycles(doc_dir: Path, contract: dict) -> None:
+    parents = {
+        ds["name"]: ds.get("childOf", {}).get("dataset")
+        for ds in contract.get("datasets", [])
+        if isinstance(ds, dict) and isinstance(ds.get("name"), str)
+    }
+
+    for start in parents:
+        seen = {start}
+        current = parents.get(start)
+
+        while current is not None:
+            if current in seen:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: childOf fecha um ciclo em '{current}' — "
+                    f"nenhum desses conjuntos tem raiz, então nenhum é publicado"
+                )
+                break
+
+            seen.add(current)
+            current = parents.get(current)
+
+
+def check_parameters(doc_dir: Path, contract: dict) -> None:
+    """Os parâmetros de geração são declarações que o motor consegue satisfazer.
+
+    Um parâmetro é respondido pela requisição, então uma declaração impossível — tipo
+    desconhecido, default que o próprio domínio recusa, mês que não existe — só é
+    descoberta quando alguém tenta gerar o documento, na véspera do prazo.
+    """
+    seen: set[str] = set()
+
+    for param in contract.get("parameters", []):
+        if not isinstance(param, dict) or not param.get("name"):
+            fail(f"{doc_dir.relative_to(ROOT)}: um parâmetro sem name não pode ser respondido pela requisição")
+            continue
+
+        name = param["name"]
+        where = f"{doc_dir.relative_to(ROOT)}: parâmetro '{name}'"
+
+        if name in seen:
+            fail(f"{where} declarado duas vezes")
+        seen.add(name)
+
+        ptype = param.get("type")
+        if ptype not in FIELD_TYPES:
+            fail(f"{where} tem type {ptype!r}; o motor aceita {sorted(FIELD_TYPES)}")
+
+        domain = param.get("domain")
+        default = param.get("default")
+
+        if domain is not None and not isinstance(domain, list):
+            fail(f"{where} tem domain {domain!r}; um domínio é a lista fechada de valores aceitos")
+            domain = None
+
+        if default is not None and domain and default not in domain:
+            fail(f"{where} tem default {default!r} fora do próprio domain {domain!r} — nunca poderia ser satisfeito")
+
+        months = param.get("allowedMonths")
+        if months is None:
+            continue
+
+        if ptype != "month":
+            fail(f"{where} declara allowedMonths e não é do tipo month, então a restrição não se aplica a nada")
+
+        if not isinstance(months, list) or not months:
+            fail(f"{where} tem allowedMonths {months!r}; é a lista dos meses aceitos, como ['06', '12']")
+            continue
+
+        for month in months:
+            if month not in MONTHS_OF_YEAR:
+                fail(f"{where} tem allowedMonths com {month!r}; um mês é de '01' a '12', com dois dígitos")
+
+
 def check_rules(doc_dir: Path, contract: dict) -> None:
     """Severidade é obrigatória e o alvo tem de existir.
 
@@ -1111,11 +1393,25 @@ def check_rules(doc_dir: Path, contract: dict) -> None:
     seen: set[str] = set()
 
     for rule in contract.get("rules", []):
-        rule_id = rule.get("id", "<sem id>")
+        rule_id = rule.get("id")
+
+        # Sem id, a regra não pode ser citada por nada — nem pela mensagem que ela
+        # mesma produz quando reprova, que é onde alguém a procuraria. E duas regras
+        # sem id são indistinguíveis, então a conferência de duplicidade abaixo
+        # também deixaria de valer.
+        if not isinstance(rule_id, str) or not rule_id:
+            fail(f"{doc_dir.relative_to(ROOT)}: há regra sem id, que nada pode citar")
+            rule_id = "<sem id>"
 
         if rule_id in seen:
             fail(f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' duplicada")
         seen.add(rule_id)
+
+        # Sem assert, a regra não confere nada: ela aparece no contrato, é lida em
+        # revisão como se protegesse alguma coisa, e o arquivo sai sem a conferência
+        # que o leiaute pede.
+        if not rule.get("assert"):
+            fail(f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' não tem assert, então não confere nada")
 
         if rule.get("severity") not in {"error", "warning", "info"}:
             fail(
@@ -1124,11 +1420,20 @@ def check_rules(doc_dir: Path, contract: dict) -> None:
             )
 
         target = rule.get("appliesTo", "")
-        head = target.split(".", 1)[0]
+        head, _, tail = target.partition(".")
         if head and head not in datasets and head != "parameters":
             fail(
                 f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' aponta para "
                 f"'{target}', que o contrato não declara"
+            )
+        # A CAUDA também: `appliesTo: cosif_balances.natureza` tinha a cabeça certa e
+        # o campo inexistente, e passava — uma regra sobre campo que não existe é uma
+        # conferência que nunca dispara, o mesmo modo de falha silencioso do
+        # requiredWhen sobre campo fantasma.
+        elif tail and head in datasets and tail not in datasets[head] and head != "parameters":
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' aponta para "
+                f"'{target}', campo que '{head}' não declara"
             )
 
 
@@ -1189,10 +1494,13 @@ def main() -> int:
             continue
 
         contracts[doc_id] = contract
+        check_dataset_shapes(doc_dir, contract)
         check_template(doc_dir, contract)
         check_formatting_not_duplicated(doc_dir)
         check_no_extraction_in_contract(doc_dir, contract)
         check_closed_account_set(doc_dir, contract)
+        check_engine_parity(doc_dir, contract)
+        check_parameters(doc_dir, contract)
         check_structure(doc_dir, contract)
         check_template_parses(doc_dir)
         check_binding_example(doc_dir, contract)
