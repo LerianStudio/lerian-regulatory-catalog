@@ -145,8 +145,9 @@ knownGaps:
 
   - id: natureza-contabil-nao-vem-da-fonte
     description: >-
-      Como no 4010: o sinal do saldo de estoque depende da natureza da conta, que o
-      Midaz não expõe. Declarada no binding. Lacuna do Midaz.
+      Como no 4010: o sinal do saldo de estoque depende da natureza da CONTA, que o
+      Midaz não expõe — ele informa o lado de cada lançamento (`operation.type`), que
+      é outra coisa. Declarada no binding. Lacuna do Midaz.
 
   - id: acumulo-fim-de-semana
     description: >-

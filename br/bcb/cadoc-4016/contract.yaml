@@ -122,10 +122,11 @@ rules:
 knownGaps:
   - id: natureza-contabil-nao-vem-da-fonte
     description: >-
-      Idêntico ao 4010: o sinal do saldo depende da natureza da conta, que é
-      propriedade do plano de contas, e o Midaz não a expõe hoje
-      (operation.route_code sem o lado devedor/credor). O binding declara a
-      natureza como configuração do cliente; a lacuna é do Midaz.
+      Idêntico ao 4010: o sinal do saldo depende da natureza da CONTA — qual lado é
+      o saldo normal dela —, que é propriedade do plano de contas. O Midaz informa o
+      lado de cada LANÇAMENTO (`operation.type`), que é outra coisa, e não tem
+      entidade de plano de contas nenhuma. O binding declara a natureza como
+      configuração do cliente; a lacuna é do Midaz.
 
   - id: elenco-cosif-ausente
     description: >-

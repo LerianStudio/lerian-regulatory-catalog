@@ -170,14 +170,24 @@ knownGaps:
 
   - id: natureza-contabil-nao-vem-da-fonte
     description: >-
-      O sinal de cada saldo depende da natureza da conta — devedora ou credora — e
-      isso é propriedade do PLANO DE CONTAS, não deste contrato nem do motor. Hoje
-      o Midaz não expõe natureza: existe `operation.route_code`, materializado de
-      `operation_route`, e nada carrega o lado da conta.
-      Enquanto isso, o binding declara a natureza como configuração do cliente, o
-      que é verboso mas está na camada certa. Quando o Midaz expuser, vira mais uma
-      coluna da consulta. A lacuna é do Midaz e deve ser levantada lá — contorná-la
-      no Reporter congelaria o defeito.
+      O sinal de cada saldo depende da natureza da CONTA — devedora ou credora — e
+      isso é propriedade do PLANO DE CONTAS, não deste contrato nem do motor.
+
+      É preciso separar duas coisas que se confundem com facilidade. O LADO DE CADA
+      LANÇAMENTO o Midaz informa: `operation.type` é DEBIT ou CREDIT, e é o que
+      permite somar débitos e créditos e chegar a um líquido. A NATUREZA DA CONTA —
+      qual dos dois lados é o saldo normal dela — é outra coisa, e é ela que decide
+      se aquele líquido é escrito positivo ou negativo no arquivo. Uma conta do
+      ativo com 100 sai como 100, não como -100.
+
+      Essa segunda o Midaz não tem em lugar nenhum: não há entidade de plano de
+      contas, e `operation.chartOfAccounts` é um código livre de até 20 caracteres
+      carregado no LANÇAMENTO, sem propriedades. Enquanto for assim, o binding
+      declara a natureza como configuração do cliente — verboso, mas na camada
+      certa. Quando o Midaz expuser, vira mais uma coluna da consulta.
+
+      A lacuna é do Midaz e deve ser levantada lá; contorná-la no Reporter
+      congelaria o defeito.
 
   - id: ordem-de-remessa
     description: >-
