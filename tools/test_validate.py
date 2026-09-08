@@ -73,6 +73,10 @@ def query(binding: dict, name: str) -> dict:
     return next(q for q in binding["queries"] if q["name"] == name)
 
 
+def parameter(contract: dict, name: str) -> dict:
+    return next(p for p in contract["parameters"] if p["name"] == name)
+
+
 def rule(contract: dict, rule_id: str) -> dict:
     return next(r for r in contract["rules"] if r["id"] == rule_id)
 
@@ -586,7 +590,7 @@ MUTATIONS: list[Mutation] = [
         "conjunto-sem-nome",
         "sem nome, a ferramenta ESTOURAVA em vez de reprovar: declared_names lia name na fé",
         lambda b: dataset(b[PLANO]["contract"], "saldos").pop("name"),
-        "sem name",
+        "o name de um conjunto",
     ),
     Mutation(
         "campo-duplicado",
@@ -611,25 +615,25 @@ MUTATIONS: list[Mutation] = [
     Mutation(
         "parametro-tipo-desconhecido",
         "parâmetro de tipo desconhecido nunca poderia ser satisfeito por requisição nenhuma",
-        lambda b: b[PLANO]["contract"]["parameters"][0].update({"type": "competencia"}),
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"type": "competencia"}),
         "o motor aceita",
     ),
     Mutation(
         "parametro-default-fora-do-dominio",
         "default que o próprio domínio recusa é declaração impossível",
-        lambda b: b[PLANO]["contract"]["parameters"][1].update({"default": "X"}),
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"default": "X"}),
         "fora do próprio domain",
     ),
     Mutation(
         "parametro-mes-inexistente",
         "allowedMonths com mês que não existe torna o documento ingerável e ninguém sabe por quê",
-        lambda b: b[PLANO]["contract"]["parameters"][0].update({"allowedMonths": ["06", "13"]}),
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"allowedMonths": ["06", "13"]}),
         "um mês é de '01' a '12'",
     ),
     Mutation(
         "parametro-mes-em-tipo-errado",
         "allowedMonths fora de um parâmetro month é restrição que não se aplica a nada",
-        lambda b: b[PLANO]["contract"]["parameters"][1].update({"allowedMonths": ["06"]}),
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"allowedMonths": ["06"]}),
         "não é do tipo month",
     ),
     Mutation(
@@ -650,6 +654,69 @@ MUTATIONS: list[Mutation] = [
         lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update(
             {"appliesTo": "saldos.naoDeclarado"}),
         "campo que 'saldos' não declara",
+    ),
+
+
+    # ------------------ texto onde YAML pode entregar lista ou mapa
+    # Achadas pelo CodeRabbit no PR e confirmadas uma a uma: TODAS faziam a
+    # ferramenta ESTOURAR em vez de reprovar. `["a"] in {"string"}` levanta
+    # unhashable type, e uma lista usada como chave de dicionário faz o mesmo — não
+    # é um erro que Python reporte educadamente. Ferramenta que estoura com entrada
+    # malformada não reprova nada, que é a lição que esta suíte já carrega em três
+    # lugares.
+    Mutation(
+        "nome-de-conjunto-e-lista",
+        "nome que é lista vira chave de dicionário e estoura antes de qualquer conferência",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"name": ["saldos", "outro"]}),
+        "o name de um conjunto",
+    ),
+    Mutation(
+        "nome-de-campo-e-mapa",
+        "idem para campo, um passo adiante no mesmo leitor",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"name": {"a": 1}}),
+        "o name de um campo",
+    ),
+    Mutation(
+        "tipo-de-campo-e-lista",
+        "membership de lista em conjunto levanta unhashable, não reprova",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"type": ["string"]}),
+        "o tipo de um campo é uma palavra",
+    ),
+    Mutation(
+        "normalize-e-lista",
+        "idem para normalize, o caminho gêmeo do tipo",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"normalize": ["digits"]}),
+        "uma normalização é uma palavra",
+    ),
+    Mutation(
+        "nome-de-parametro-e-lista",
+        "o último leitor que ainda tomava nome na fé, e só a prova o encontrou",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"name": ["dataBase"]}),
+        "o name de um parâmetro",
+    ),
+    Mutation(
+        "tipo-de-parametro-e-lista",
+        "idem para o tipo do parâmetro",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"type": ["month"]}),
+        "o tipo de um parâmetro é uma palavra",
+    ),
+    Mutation(
+        "mes-permitido-e-lista",
+        "item de allowedMonths que não é texto",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"allowedMonths": [["06"]]}),
+        "um mês é de '01' a '12'",
+    ),
+    Mutation(
+        "regra-e-escalar",
+        "uma regra escrita como texto solto não tem .get, e o leitor não perguntava",
+        lambda b: b[PLANO]["contract"]["rules"].append("uma regra escrita errado"),
+        "uma regra é um mapeamento",
+    ),
+    Mutation(
+        "applies-to-e-lista",
+        "appliesTo que não é texto não tem .partition",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update({"appliesTo": ["saldos"]}),
+        "é o nome do que ela lê",
     ),
 
 ]

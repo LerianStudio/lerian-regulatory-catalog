@@ -59,6 +59,43 @@ def load(path: Path):
         return None
 
 
+def required_text(where: str, value: object, requirement: str) -> str | None:
+    """Lê um valor que TEM de ser texto, reprovando em vez de estourar.
+
+    A segunda porta guardada deste arquivo, e ela existe pelo mesmo motivo da
+    primeira: YAML entrega listas e mapas onde o leitor esperava uma palavra, e
+    Python NÃO reclama disso educadamente — `["a"] in {"string"}` levanta
+    `unhashable type`, e uma lista usada como chave de dicionário faz o mesmo. O
+    resultado é traceback, e ferramenta que estoura com entrada malformada não
+    reprova nada.
+
+    Nove lugares deste arquivo assumiam texto: nome de conjunto, nome de campo,
+    `type` e `normalize` de campo, nome e `type` de parâmetro, item de
+    `allowedMonths`, a própria regra e o `appliesTo` dela. Guardar um por um seria
+    escrever a mesma conferência nove vezes e esquecê-la na décima — que é
+    literalmente o que aconteceu quando guardei `declared_names` e esqueci o
+    `by_name` ao lado.
+
+    Devolve None quando não é texto, e a recusa já foi registrada.
+    """
+    if isinstance(value, str) and value:
+        return value
+
+    fail(f"{where} é {value!r}; {requirement}")
+
+    return None
+
+
+def mapping_at(where: str, value: object, requirement: str) -> dict | None:
+    """Idem para um valor que TEM de ser um mapeamento."""
+    if isinstance(value, dict):
+        return value
+
+    fail(f"{where} é {value!r}; {requirement}")
+
+    return None
+
+
 def datasets_of(contract: dict) -> list[dict]:
     """A única porta por onde os conjuntos de um contrato são LIDOS.
 
@@ -71,12 +108,12 @@ def datasets_of(contract: dict) -> list[dict]:
     Quem DENUNCIA a ausência é check_dataset_shapes, que lê a forma crua e roda
     primeiro. Todo o resto lê por aqui.
     """
-    return [ds for ds in contract.get("datasets", []) if isinstance(ds, dict) and ds.get("name")]
+    return [ds for ds in contract.get("datasets", []) if isinstance(ds, dict) and isinstance(ds.get("name"), str) and ds["name"]]
 
 
 def fields_of(ds: dict) -> list[dict]:
     """Idem para os campos de um conjunto."""
-    return [f for f in ds.get("fields", []) if isinstance(f, dict) and f.get("name")]
+    return [f for f in ds.get("fields", []) if isinstance(f, dict) and isinstance(f.get("name"), str) and f["name"]]
 
 def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
     """Conjuntos e seus campos, mais os parâmetros de geração.
@@ -92,7 +129,9 @@ def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
         if isinstance(ds, dict) and ds.get("name")
     }
     parameters = {
-        p["name"] for p in contract.get("parameters", []) if isinstance(p, dict) and p.get("name")
+        p["name"]
+        for p in contract.get("parameters", [])
+        if isinstance(p, dict) and isinstance(p.get("name"), str) and p["name"]
     }
     return datasets, parameters
 
@@ -1180,17 +1219,20 @@ def check_engine_parity(doc_dir: Path, contract: dict) -> None:
 def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
     where = f"{doc_dir.relative_to(ROOT)}: {dataset}.{field.get('name', '<sem nome>')}"
 
-    ftype = field.get("type")
-    if ftype not in FIELD_TYPES:
+    ftype = required_text(f"{where} type", field.get("type"),
+                          f"o tipo de um campo é uma palavra: {sorted(FIELD_TYPES)}")
+    if ftype is not None and ftype not in FIELD_TYPES:
         fail(f"{where} tem type {ftype!r}; o motor aplica {sorted(FIELD_TYPES)}")
 
-    normalize = field.get("normalize")
-    if normalize is not None and normalize not in NORMALIZATIONS:
-        fail(
-            f"{where} tem normalize {normalize!r}, que o motor não sabe aplicar "
-            f"({sorted(NORMALIZATIONS)}) — o campo sairia SEM normalizar num arquivo "
-            f"dado como concluído"
-        )
+    if field.get("normalize") is not None:
+        normalize = required_text(f"{where} normalize", field.get("normalize"),
+                                  f"uma normalização é uma palavra: {sorted(NORMALIZATIONS)}")
+        if normalize is not None and normalize not in NORMALIZATIONS:
+            fail(
+                f"{where} tem normalize {normalize!r}, que o motor não sabe aplicar "
+                f"({sorted(NORMALIZATIONS)}) — o campo sairia SEM normalizar num arquivo "
+                f"dado como concluído"
+            )
 
     length = field.get("length")
     if length is not None and (not isinstance(length, int) or isinstance(length, bool) or length < 1):
@@ -1255,9 +1297,9 @@ def check_dataset_shapes(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: um conjunto é um mapeamento de name, grain e fields")
             continue
 
-        name = ds.get("name")
-        if not isinstance(name, str) or not name:
-            fail(f"{doc_dir.relative_to(ROOT)}: um conjunto sem name não pode ser referido por template nem binding")
+        name = required_text(f"{doc_dir.relative_to(ROOT)}: o name de um conjunto", ds.get("name"),
+                             "um conjunto é nomeado por texto, para que template e binding possam referi-lo")
+        if name is None:
             continue
 
         if name in seen_datasets:
@@ -1271,17 +1313,22 @@ def check_dataset_shapes(doc_dir: Path, contract: dict) -> None:
 
         seen_fields: set[str] = set()
         for field in fields:
-            if not isinstance(field, dict) or not field.get("name"):
-                fail(f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' tem campo sem name")
+            if mapping_at(f"{doc_dir.relative_to(ROOT)}: um campo de '{name}'", field,
+                          "um campo é um mapeamento de name, type e o que mais o declara") is None:
                 continue
 
-            if field["name"] in seen_fields:
+            fname = required_text(f"{doc_dir.relative_to(ROOT)}: o name de um campo de '{name}'",
+                                  field.get("name"), "um campo é nomeado por texto")
+            if fname is None:
+                continue
+
+            if fname in seen_fields:
                 fail(
-                    f"{doc_dir.relative_to(ROOT)}: {name}.{field['name']} declarado duas "
+                    f"{doc_dir.relative_to(ROOT)}: {name}.{fname} declarado duas "
                     f"vezes; os dois não podem ser alcançados e uma referência resolve "
                     f"para o último lido"
                 )
-            seen_fields.add(field["name"])
+            seen_fields.add(fname)
 
         _check_grain(doc_dir, ds, name, seen_fields)
 
@@ -1341,19 +1388,24 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
     seen: set[str] = set()
 
     for param in contract.get("parameters", []):
-        if not isinstance(param, dict) or not param.get("name"):
-            fail(f"{doc_dir.relative_to(ROOT)}: um parâmetro sem name não pode ser respondido pela requisição")
+        if mapping_at(f"{doc_dir.relative_to(ROOT)}: um parâmetro", param,
+                      "um parâmetro é um mapeamento de name, type e o que mais o declara") is None:
             continue
 
-        name = param["name"]
+        name = required_text(f"{doc_dir.relative_to(ROOT)}: o name de um parâmetro", param.get("name"),
+                             "um parâmetro é nomeado por texto, que é como a requisição o responde")
+        if name is None:
+            continue
+
         where = f"{doc_dir.relative_to(ROOT)}: parâmetro '{name}'"
 
         if name in seen:
             fail(f"{where} declarado duas vezes")
         seen.add(name)
 
-        ptype = param.get("type")
-        if ptype not in FIELD_TYPES:
+        ptype = required_text(f"{where} type", param.get("type"),
+                              f"o tipo de um parâmetro é uma palavra: {sorted(FIELD_TYPES)}")
+        if ptype is not None and ptype not in FIELD_TYPES:
             fail(f"{where} tem type {ptype!r}; o motor aceita {sorted(FIELD_TYPES)}")
 
         domain = param.get("domain")
@@ -1378,7 +1430,7 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
             continue
 
         for month in months:
-            if month not in MONTHS_OF_YEAR:
+            if not isinstance(month, str) or month not in MONTHS_OF_YEAR:
                 fail(f"{where} tem allowedMonths com {month!r}; um mês é de '01' a '12', com dois dígitos")
 
 
@@ -1393,6 +1445,10 @@ def check_rules(doc_dir: Path, contract: dict) -> None:
     seen: set[str] = set()
 
     for rule in contract.get("rules", []):
+        if mapping_at(f"{doc_dir.relative_to(ROOT)}: uma regra", rule,
+                      "uma regra é um mapeamento de id, severity, appliesTo e assert") is None:
+            continue
+
         rule_id = rule.get("id")
 
         # Sem id, a regra não pode ser citada por nada — nem pela mensagem que ela
@@ -1420,6 +1476,10 @@ def check_rules(doc_dir: Path, contract: dict) -> None:
             )
 
         target = rule.get("appliesTo", "")
+        if not isinstance(target, str):
+            fail(f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' tem appliesTo {target!r}; é o nome do que ela lê, escrito como texto")
+            continue
+
         head, _, tail = target.partition(".")
         if head and head not in datasets and head != "parameters":
             fail(
