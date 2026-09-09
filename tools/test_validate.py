@@ -36,18 +36,24 @@ pyyaml:
 
 from __future__ import annotations
 
+import contextlib
+import copy
+import io
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import yaml  # noqa: E402
+
 import fixtures  # noqa: E402
+import validate  # noqa: E402
 
 TOOLS = Path(__file__).resolve().parent
 VALIDATE = TOOLS / "validate.py"
@@ -784,6 +790,89 @@ MUTATIONS: list[Mutation] = [
 ]
 
 
+def _value_paths(node: object, prefix: str = "") -> "Iterator[str]":
+    """Todo caminho até um valor dentro do contrato, incluindo os aninhados."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            here = f"{prefix}.{key}" if prefix else str(key)
+            yield here
+            yield from _value_paths(value, here)
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            here = f"{prefix}[{index}]"
+            yield here
+            yield from _value_paths(value, here)
+
+
+def _set_at(root: dict, path: str, value: object) -> bool:
+    """Escreve o valor no caminho, respondendo se conseguiu."""
+    steps: list[object] = []
+
+    for segment in path.split("."):
+        while "[" in segment:
+            head, _, rest = segment.partition("[")
+            if head:
+                steps.append(head)
+            index, _, segment = rest.partition("]")
+            steps.append(int(index))
+        if segment:
+            steps.append(segment)
+
+    cursor: object = root
+
+    try:
+        for step in steps[:-1]:
+            cursor = cursor[step]  # type: ignore[index]
+        cursor[steps[-1]] = value  # type: ignore[index]
+    except (KeyError, IndexError, TypeError):
+        return False
+
+    return True
+
+
+def _rewrite_contract(root: Path, doc: str, data: dict) -> bool:
+    """Reescreve só o contrato de um documento e o índice que deriva dele."""
+    try:
+        (root / doc / "contract.yaml").write_text(
+            yaml.safe_dump(data[doc]["contract"], sort_keys=False, allow_unicode=True),
+            encoding="utf-8")
+
+        documents = [
+            parts.get("indexEntry") or fixtures._index_entry(parts["contract"], path)
+            for path, parts in data.items()
+        ]
+        (root / "catalog.yaml").write_text(
+            yaml.safe_dump({"apiVersion": fixtures.APIV, "kind": "Catalog", "documents": documents},
+                           sort_keys=False, allow_unicode=True),
+            encoding="utf-8")
+    except Exception:  # noqa: BLE001 — fixture não serializável não é o alvo da varredura
+        return False
+
+    return True
+
+
+def _run_in_process(root: Path) -> str | None:
+    """Roda o validador nesta mesma máquina virtual, devolvendo a exceção se houver.
+
+    Aponta o ROOT do módulo para a árvore de fixtures — a mesma variável que
+    CATALOG_ROOT define no executável — e chama main(). Devolve None quando a
+    ferramenta terminou, tendo reprovado ou não; devolve o texto da exceção quando
+    ela estourou.
+    """
+    previous = validate.ROOT
+    validate.ROOT = root
+
+    try:
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            validate.main()
+    except Exception as exc:  # noqa: BLE001 — apanhar QUALQUER estouro é o objetivo
+        return f"{type(exc).__name__}: {exc}"
+    finally:
+        validate.ROOT = previous
+
+    return None
+
+
 def _run(root: Path) -> tuple[int, str]:
     env = dict(os.environ, CATALOG_ROOT=str(root))
     # Timeout porque a suíte roda no CI antes do validador e abre um processo por
@@ -856,6 +945,72 @@ class ValidatorSuite(unittest.TestCase):
                     mutation.expect, out,
                     f"{mutation.ident}: reprovou, mas sem nomear o problema.\n"
                     f"esperado conter: {mutation.expect!r}\nsaiu:\n{out}")
+
+    def test_no_shape_of_any_value_makes_the_tool_crash(self) -> None:
+        """VARREDURA: troca cada valor do contrato por formas erradas e exige que
+        nenhuma estoure.
+
+        Existe porque a mesma classe de defeito voltou em TRÊS rodadas de revisão
+        seguidas, e a terceira encontrou 84 combinações que estouravam. Corrigir uma
+        por uma é o jogo que já se perdeu três vezes: guardei `declared_names` e
+        esqueci o `by_name` ao lado; escrevi que `childOf` tinha dois leitores,
+        corrigi para três, eram quatro; guardei um laço de `check_index` e o segundo
+        laço DA MESMA FUNÇÃO tinha o mesmo defeito.
+
+        A conferência não é sobre qual valor: é sobre a propriedade de que YAML
+        entrega qualquer forma e a ferramenta REPROVA em vez de estourar. Uma
+        construção nova acrescentada ao contrato entra nesta varredura sozinha, sem
+        ninguém lembrar de escrever a mutação — que é o que ninguém lembrou três vezes.
+
+        Não afirma que cada forma errada é RECUSADA: algumas são legitimamente
+        ignoradas, como uma coleção opcional ausente. Afirma que nenhuma derruba a
+        ferramenta.
+
+        Roda EM PROCESSO, e é a única conferência daqui que não passa pelo executável:
+        são milhares de combinações, e um subprocesso cada levaria a suíte de sete
+        segundos para muitos minutos — uma suíte que ninguém espera é uma suíte que
+        ninguém roda. A exceção é apanhada direto, o que também é uma asserção mais
+        forte que procurar "Traceback" na saída.
+        """
+        shapes = {
+            "lista": ["x"],
+            "texto": "x",
+            "inteiro": 7,
+            "mapa": {"k": "v"},
+            "nulo": None,
+            "lista vazia": [],
+        }
+
+        crashes: list[str] = []
+
+        for doc in (PLANO, FECHADO, HIER):
+            # A árvore é escrita UMA vez e só o contrato mutado (e o índice, que
+            # deriva dele) é reescrito por combinação. Escrever as cinco fixturas
+            # inteiras mil e seiscentas vezes levava a suíte a mais de um minuto, e
+            # suíte que ninguém espera é suíte que ninguém roda.
+            root = self._write(fixtures.bundle())
+
+            for path in sorted(_value_paths(fixtures.bundle()[doc]["contract"])):
+                for name, shape in shapes.items():
+                    data = fixtures.bundle()
+
+                    if not _set_at(data[doc]["contract"], path, copy.deepcopy(shape)):
+                        continue
+
+                    if not _rewrite_contract(root, doc, data):
+                        continue
+
+                    crash = _run_in_process(root)
+
+                    if crash is not None:
+                        crashes.append(f"{doc} :: {path} = {name} -> {crash}")
+
+            _rewrite_contract(root, doc, fixtures.bundle())
+
+        self.assertEqual(
+            [], crashes,
+            "a ferramenta ESTOUROU em vez de reprovar para estes valores:\n  "
+            + "\n  ".join(crashes))
 
     def test_missing_catalog_fails_without_crashing(self) -> None:
         """Árvore sem catalog.yaml reprova em vez de estourar.

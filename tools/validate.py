@@ -96,6 +96,27 @@ def rules_of(contract: dict) -> list:
                        "rules é a lista das conferências sobre o arquivo pronto")
 
 
+def source_of_truth(contract: dict, key: str) -> str | None:
+    """O arquivo que o contrato ANUNCIA sob metadata.sourceOfTruth.
+
+    Porta porque `metadata` e `sourceOfTruth` eram encadeados com `.get({}).get()`
+    em dois lugares, e esse encadeamento só funciona quando cada degrau é mapeamento:
+    `sourceOfTruth: []` levantava AttributeError, e um caminho que não é texto
+    chegava inteiro ao operador `/` de Path.
+    """
+    metadata = contract.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+
+    declared = metadata.get("sourceOfTruth")
+    if not isinstance(declared, dict):
+        return None
+
+    value = declared.get(key)
+
+    return value if isinstance(value, str) and value else None
+
+
 def child_parent(ds: dict) -> str | None:
     """O conjunto de que este pende, quando ele pende de algum.
 
@@ -612,9 +633,9 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
     código no conjunto que não bate com o pattern do campo é a deriva 8-vs-10 dígitos
     entrando pela porta dos fundos.
     """
-    set_path = contract.get("metadata", {}).get("sourceOfTruth", {}).get("accountSet")
+    set_path = source_of_truth(contract, "accountSet")
 
-    row_datasets = [ds for ds in datasets_of(contract) if ds.get("rowSet")]
+    row_datasets = [ds for ds in datasets_of(contract) if isinstance(ds.get("rowSet"), dict)]
 
     if not set_path and not row_datasets:
         return
@@ -624,7 +645,7 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
 
     for ds in row_datasets:
         ref = ds["rowSet"].get("from")
-        if not ref:
+        if not isinstance(ref, str) or not ref:
             fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `from`")
             continue
 
@@ -676,6 +697,10 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
         key = ds["rowSet"].get("key")
         key_field = next((f for f in fields_of(ds) if f["name"] == key), None)
         pattern = key_field.get("pattern") if key_field else None
+        if pattern is not None and not isinstance(pattern, str):
+            # _check_field_shape já recusa isto nomeando o campo; aqui só não se
+            # pode ENTREGÁ-LO ao motor de expressões regulares.
+            pattern = None
 
         for r in rows:
             code = str(r.get("code", ""))
@@ -742,6 +767,35 @@ def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrid
 CONDITION_OPS = {"equals", "in", "notIn", "is"}
 
 
+def reference_at(doc_dir: Path, where: str, field: dict, key: str) -> dict | None:
+    """Lê uma construção que aponta para outro lugar: refersTo, equalsSumOf, uma
+    condição.
+
+    Todas são mapeamentos e todas eram lidas com `.get()` direto. Ausente responde
+    None, que é "não declarou"; presente e malformado é RECUSA, porque o curador
+    escreveu a construção e engoli-la é a seção sumir do arquivo sem nada acusar.
+    """
+    declared = field.get(key)
+    if declared is None:
+        return None
+
+    at = f"{doc_dir.relative_to(ROOT)}: {where}.{key}"
+
+    reference = mapping_at(at, declared, f"{key} é um mapeamento")
+    if reference is None:
+        return None
+
+    # O MIOLO também, e aqui e não em cada uso: `dataset`, `field` e `via` são
+    # nomes, e cada um vira busca em conjunto ou chave de dicionário logo adiante.
+    # Conferir no uso seria a mesma conferência escrita seis vezes.
+    for inner in ("dataset", "field", "via"):
+        if inner in reference and required_text(f"{at}.{inner}", reference.get(inner),
+                                                "aponta para um nome, escrito como texto") is None:
+            return None
+
+    return reference
+
+
 def check_structure(doc_dir: Path, contract: dict) -> None:
     """As construções estruturais do contrato apontam para coisas que existem.
 
@@ -765,7 +819,7 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
         for field in fields_of(ds):
             fname = field["name"]
 
-            ref = field.get("refersTo")
+            ref = reference_at(doc_dir, f"{name}.{fname}", field, "refersTo")
             if ref:
                 target = ref.get("dataset")
                 if target not in datasets:
@@ -776,7 +830,7 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
                         f"{target}.{ref.get('field')}, campo que não existe"
                     )
 
-            sum_of = field.get("equalsSumOf")
+            sum_of = reference_at(doc_dir, f"{name}.{fname}", field, "equalsSumOf")
             if sum_of:
                 target = sum_of.get("dataset")
                 target_ds = by_name.get(target)
@@ -796,7 +850,7 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
                         )
 
             for kind in ("requiredWhen", "forbiddenWhen"):
-                cond = field.get(kind)
+                cond = reference_at(doc_dir, f"{name}.{fname}", field, kind)
                 if not cond:
                     continue
 
@@ -1207,7 +1261,7 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
 
 def check_references(doc_dir: Path, contract: dict) -> None:
     """Todo arquivo que o contrato cita tem de existir."""
-    schema = contract.get("metadata", {}).get("sourceOfTruth", {}).get("schema")
+    schema = source_of_truth(contract, "schema")
     if schema and not (doc_dir / schema).exists():
         fail(f"{doc_dir.relative_to(ROOT)}: contrato cita {schema}, que não existe")
 
@@ -1570,10 +1624,11 @@ def check_rules(doc_dir: Path, contract: dict) -> None:
         if not rule.get("assert"):
             fail(f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' não tem assert, então não confere nada")
 
-        if rule.get("severity") not in {"error", "warning", "info"}:
+        severity = rule.get("severity")
+        if not isinstance(severity, str) or severity not in {"error", "warning", "info"}:
             fail(
                 f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' tem severity "
-                f"{rule.get('severity')!r}; use error, warning ou info"
+                f"{severity!r}; use error, warning ou info"
             )
 
         target = rule.get("appliesTo", "")
@@ -1611,8 +1666,17 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
     """
     mirrored = ("country", "regulator", "document", "title", "version", "periodicity")
 
-    for entry in catalog.get("documents", []):
-        doc_id = entry.get("id")
+    for entry in sequence_at("catalog.yaml: documents", catalog.get("documents"),
+                             "documents é a lista dos documentos do catálogo"):
+        if mapping_at("catalog.yaml: uma entrada de documents", entry,
+                      "cada entrada é um mapeamento de id, path e o que mais o índice anuncia") is None:
+            continue
+
+        doc_id = required_text("catalog.yaml: o id de uma entrada", entry.get("id"),
+                               "o id de um documento é texto")
+        if doc_id is None:
+            continue
+
         contract = contracts.get(doc_id)
 
         if contract is None:
@@ -1630,7 +1694,12 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
         if entry.get("appliesTo") != metadata.get("appliesTo"):
             fail(f"catalog.yaml: '{doc_id}'.appliesTo diverge do contrato")
 
-    indexed = {e.get("id") for e in catalog.get("documents", [])}
+    indexed = {
+        e["id"]
+        for e in sequence_at("catalog.yaml: documents", catalog.get("documents"),
+                             "documents é a lista dos documentos do catálogo")
+        if isinstance(e, dict) and isinstance(e.get("id"), str)
+    }
     for doc_id in contracts:
         if doc_id not in indexed:
             fail(f"catalog.yaml: contrato '{doc_id}' existe e não está no índice")
@@ -1653,10 +1722,13 @@ def main() -> int:
             continue
 
         doc_dir = path.parent
-        doc_id = contract.get("metadata", {}).get("id")
+        metadata = contract.get("metadata")
+        doc_id = metadata.get("id") if isinstance(metadata, dict) else None
 
-        if not doc_id:
-            fail(f"{path.relative_to(ROOT)}: metadata.id ausente")
+        # Texto, e não apenas presente: o id vira CHAVE de dicionário uma linha
+        # abaixo, e uma lista ali levanta unhashable antes de qualquer conferência.
+        if not isinstance(doc_id, str) or not doc_id:
+            fail(f"{path.relative_to(ROOT)}: metadata.id é {doc_id!r}; é o identificador do documento, escrito como texto")
             continue
 
         contracts[doc_id] = contract
