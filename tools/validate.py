@@ -777,6 +777,16 @@ def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrid
 CONDITION_OPS = {"equals", "in", "notIn", "is"}
 
 
+# O que cada construção que aponta para outro lugar TEM de nomear. `via` é opcional
+# em toda condição e por isso não está aqui.
+REFERENCE_MEMBERS = {
+    "refersTo": ("dataset", "field"),
+    "equalsSumOf": ("dataset", "field"),
+    "requiredWhen": ("field",),
+    "forbiddenWhen": ("field",),
+}
+
+
 def reference_at(doc_dir: Path, where: str, field: dict, key: str) -> dict | None:
     """Lê uma construção que aponta para outro lugar: refersTo, equalsSumOf, uma
     condição.
@@ -798,7 +808,17 @@ def reference_at(doc_dir: Path, where: str, field: dict, key: str) -> dict | Non
     # O MIOLO também, e aqui e não em cada uso: `dataset`, `field` e `via` são
     # nomes, e cada um vira busca em conjunto ou chave de dicionário logo adiante.
     # Conferir no uso seria a mesma conferência escrita seis vezes.
-    for inner in ("dataset", "field", "via"):
+    #
+    # Os OBRIGATÓRIOS são exigidos, e não apenas conferidos quando presentes. Um
+    # `refersTo: {}` respondia mapeamento vazio, que é falso em Python, e o chamador
+    # lia isso como "não declarou" e pulava a conferência inteira — o curador escreveu
+    # a integridade referencial e ela não valia para nada.
+    for inner in REFERENCE_MEMBERS[key]:
+        if required_text(f"{at}.{inner}", reference.get(inner),
+                         "aponta para um nome, escrito como texto") is None:
+            return None
+
+    for inner in ("via",):
         if inner in reference and required_text(f"{at}.{inner}", reference.get(inner),
                                                 "aponta para um nome, escrito como texto") is None:
             return None

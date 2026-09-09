@@ -36,6 +36,7 @@ pyyaml:
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import copy
 import io
@@ -815,6 +816,38 @@ MUTATIONS: list[Mutation] = [
         "fields é a lista dos campos",
     ),
 
+
+    # ------------- construção que aponta e não nomeia para onde
+    # Mapeamento VAZIO é falso em Python, então o chamador o lia como "não declarou"
+    # e pulava a conferência inteira: o curador escrevia a integridade referencial e
+    # ela não valia para nada. Vazio e incompleto passam pelo mesmo caminho.
+    Mutation(
+        "refers-to-vazio",
+        "refersTo sem nada dentro era lido como refersTo ausente",
+        lambda b: field(b[HIER]["contract"], "resumos", "codTitular").update({"refersTo": {}}),
+        "refersTo.dataset",
+    ),
+    Mutation(
+        "refers-to-sem-field",
+        "metade da referência é referência nenhuma",
+        lambda b: field(b[HIER]["contract"], "resumos", "codTitular").update(
+            {"refersTo": {"dataset": "titulares"}}),
+        "refersTo.field",
+    ),
+    Mutation(
+        "equals-sum-of-vazio",
+        "soma que não diz de onde reconcilia coisa nenhuma, e passava calada",
+        lambda b: field(b[HIER]["contract"], "resumos", "total").update({"equalsSumOf": {}}),
+        "equalsSumOf.dataset",
+    ),
+    Mutation(
+        "condicao-sem-field",
+        "condição que não nomeia o campo lido nunca dispara",
+        lambda b: field(b[HIER]["contract"], "resumos", "inscricao").update(
+            {"requiredWhen": {"equals": "PJ"}}),
+        "requiredWhen.field",
+    ),
+
 ]
 
 
@@ -833,6 +866,43 @@ _NOT_CONTRACT_KEYS = {
     # contas.yaml — o conjunto fechado
     "accounts", "code", "masked",
 }
+
+
+# Uma chave de contrato é lowerCamelCase. O filtro tira o que a varredura da árvore
+# sintática também encontra e não é chave nenhuma: o "\n" de um join, o "." de um
+# split, o CATALOG_ROOT do ambiente.
+_CONTRACT_KEY = re.compile(r"^[a-z][a-zA-Z0-9]*$")
+
+
+def _keys_the_validator_reads() -> set[str]:
+    """Toda chave literal que o validador consulta, lida da ÁRVORE SINTÁTICA.
+
+    Pela árvore e não por expressão regular porque a regular via uma forma só —
+    `.get("x")` com aspas duplas. Um `.get('x')`, um `contract["x"]`, e a
+    conferência passava a afirmar menos do que diz afirmar, em silêncio. A árvore vê
+    as três formas e, ao contrário da regular, não confunde prosa com código: esta
+    mesma suíte tem um `["a"] in {"string"}` dentro de um comentário.
+    """
+    tree = ast.parse((TOOLS / "validate.py").read_text(encoding="utf-8"))
+    keys: set[str] = set()
+
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "get" and node.args):
+            keys.add(_literal(node.args[0]))
+
+        if isinstance(node, ast.Subscript):
+            keys.add(_literal(node.slice))
+
+        if isinstance(node, ast.Compare) and any(isinstance(o, (ast.In, ast.NotIn)) for o in node.ops):
+            keys.add(_literal(node.left))
+
+    return {key for key in keys if key and _CONTRACT_KEY.match(key)}
+
+
+def _literal(node: ast.expr) -> str:
+    """O texto de um nó constante, ou "" quando ele não é um."""
+    return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else ""
 
 
 def _collect_keys(node: object, out: set[str]) -> None:
@@ -1083,9 +1153,7 @@ class ValidatorSuite(unittest.TestCase):
         acabou de ficar com um buraco, e o conserto é acrescentar a construção a uma
         fixture.
         """
-        source = (TOOLS / "validate.py").read_text(encoding="utf-8")
-        read = set(re.findall(r'\.get\("([a-zA-Z][a-zA-Z0-9]*)"', source))
-        read |= set(re.findall(r'"([a-zA-Z][a-zA-Z0-9]*)" (?:in|not in) ', source))
+        read = _keys_the_validator_reads()
 
         declared: set[str] = set()
         for parts in fixtures.bundle().values():

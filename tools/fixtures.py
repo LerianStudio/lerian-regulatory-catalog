@@ -277,7 +277,7 @@ HIER_BINDING = {
          "join": [{"query": "base_titulares", "match": {"conta": "conta"}}],
          "derive": [{"as": "dia", "from": "criado_em", "apply": "date"}]},
         {"name": "por_titular", "from": "movimento",
-         "aggregate": {"groupBy": ["titular", "tipo"],
+         "aggregate": {"groupBy": ["titular", "tipo", "inscricao"],
                        "measures": [{"as": "total", "fn": "sum", "of": "montante"}]},
          "having": [{"anyOf": [
              {"field": "tipo", "operator": "eq", "values": ["PJ"]},
@@ -294,7 +294,8 @@ HIER_BINDING = {
                                  "cnpj": {"from": "query", "column": "documento"}}},
         "resumos": {"from": {"query": "por_titular"},
                     "fields": {"codTitular": {"from": "query", "column": "titular"},
-                               "total": {"from": "query", "column": "total"}}},
+                               "total": {"from": "query", "column": "total"},
+                               "inscricao": {"from": "query", "column": "inscricao"}}},
         "detalhes": {"from": {"query": "detalhado"},
                      "parentMatch": {"codTitular": "titular"},
                      "fields": {"id": {"from": "query", "column": "ident"},
