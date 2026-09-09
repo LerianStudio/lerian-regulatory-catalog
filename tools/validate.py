@@ -29,7 +29,17 @@ WARNINGS: list[str] = []
 
 
 def fail(msg: str) -> None:
-    FAILURES.append(msg)
+    """Registra uma reprovação, uma vez.
+
+    Repetição é descartada porque toda mensagem daqui NOMEIA seu ponto — o arquivo, o
+    conjunto, o campo —, então duas mensagens idênticas são o mesmo problema contado
+    duas vezes, nunca dois problemas. E contar duas vezes acontece o tempo todo agora
+    que as leituras passam por portas: uma porta chamada por oito leitores reprova
+    oito vezes, e as sete cópias empurram para fora da tela as outras reprovações,
+    que são justamente o que o curador precisa ver.
+    """
+    if msg not in FAILURES:
+        FAILURES.append(msg)
 
 
 def warn(msg: str) -> None:

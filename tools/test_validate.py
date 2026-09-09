@@ -788,6 +788,33 @@ MUTATIONS: list[Mutation] = [
         "retrorreferência",
     ),
 
+
+    # ------------------- coleção que existe e NÃO é lista, nos quatro lugares
+    # A rodada anterior cobriu `null` e cobriu `datasets` não-lista, e deixou as
+    # outras três de fora. Uma coleção nula e uma coleção que é outra coisa passam
+    # por ramos DIFERENTES de sequence_at, e só um deles estava afirmado.
+    #
+    # `rules: null` não entra: rules é opcional, então declarar nenhuma é legítimo e
+    # não há reprovação para afirmar.
+    Mutation(
+        "rules-nao-e-lista",
+        "o curador escreveu algo em rules; ignorar seria conferir outro contrato",
+        lambda b: b[PLANO]["contract"].update({"rules": "sem-duplicata"}),
+        "rules é a lista das conferências",
+    ),
+    Mutation(
+        "parameters-nao-e-lista",
+        "idem para os parâmetros de geração",
+        lambda b: b[PLANO]["contract"].update({"parameters": "dataBase"}),
+        "parameters é a lista dos parâmetros",
+    ),
+    Mutation(
+        "fields-nao-e-lista",
+        "idem um nível abaixo, onde a porta é chamada por oito leitores",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"fields": "codigo"}),
+        "fields é a lista dos campos",
+    ),
+
 ]
 
 
@@ -1071,6 +1098,30 @@ class ValidatorSuite(unittest.TestCase):
             "o validador lê estas construções de contrato e nenhuma fixture as "
             "declara, então a varredura não alcança os leitores delas:\n  "
             + "\n  ".join(missing))
+
+    def test_a_single_problem_is_reported_once(self) -> None:
+        """Um problema, uma linha — por mais leitores que tropecem nele.
+
+        Agora que as leituras passam por portas, uma porta chamada por oito leitores
+        reprovava oito vezes o MESMO valor. As sete cópias não acrescentam nada e
+        empurram para fora da tela as outras reprovações, que são o que o curador
+        precisa ver: com `fields` malformado, a saída trazia oito linhas iguais e
+        escondia as três que diziam quais posições do template ficaram órfãs.
+        """
+        data = fixtures.bundle()
+        dataset(data[PLANO]["contract"], "saldos")["fields"] = "codigo"
+
+        code, out = _run(self._write(data))
+        self.assertEqual(1, code)
+
+        repeated = "fields é a lista dos campos"
+        self.assertEqual(
+            1, out.count(repeated),
+            f"a mesma reprovação saiu {out.count(repeated)} vezes:\n{out}")
+
+        # E as outras continuam visíveis, que é o ponto.
+        self.assertIn("não declara campo nenhum", out)
+        self.assertIn("template usa saldos.codigo", out)
 
     def test_missing_catalog_fails_without_crashing(self) -> None:
         """Árvore sem catalog.yaml reprova em vez de estourar.
