@@ -59,6 +59,67 @@ def load(path: Path):
         return None
 
 
+def sequence_at(where: str, value: object, requirement: str) -> list:
+    """Lê um valor que TEM de ser uma lista, reprovando em vez de estourar.
+
+    A terceira porta, e ela fecha o último jeito de YAML surpreender um leitor:
+    `datasets:` sem nada embaixo não é lista vazia, é `null` — e `for ds in None`
+    estoura. Vale para os quatro lugares onde um contrato tem coleção: datasets,
+    fields, parameters e rules.
+
+    Ausente e nulo são a mesma resposta, LISTA VAZIA, porque é o que
+    `.get(k, [])` já queria dizer: quem exige que a coleção exista é a conferência
+    de conteúdo, não o leitor. Já um valor que existe e não é lista é recusa: o
+    curador escreveu alguma coisa ali, e ignorá-la seria conferir um contrato
+    diferente do que ele escreveu.
+    """
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return value
+
+    fail(f"{where} é {value!r}; {requirement}")
+
+    return []
+
+
+def parameters_of(contract: dict) -> list:
+    """Os parâmetros de geração declarados, como lista."""
+    return sequence_at("parameters", contract.get("parameters"),
+                       "parameters é a lista dos parâmetros com que o documento é gerado")
+
+
+def rules_of(contract: dict) -> list:
+    """As regras declaradas, como lista."""
+    return sequence_at("rules", contract.get("rules"),
+                       "rules é a lista das conferências sobre o arquivo pronto")
+
+
+def child_parent(ds: dict) -> str | None:
+    """O conjunto de que este pende, quando ele pende de algum.
+
+    Uma porta, e deliberadamente sem dizer quantos leitores ela serve. Escrevi
+    "dois" aqui e estava errado; corrigi para "três" e estava errado de novo; eram
+    quatro. Todos tomavam `.get("dataset")` na fé de que `childOf` fosse um
+    mapeamento, e `childOf: []` estourava em todos.
+
+    Contar de cabeça é o que falha. Um número no comentário envelhece no primeiro
+    leitor novo e ainda dá a quem lê a impressão de que alguém conferiu — a porta
+    existe para que ninguém precise contar.
+    """
+    childof = ds.get("childOf")
+    if childof is None:
+        return None
+
+    if not isinstance(childof, dict):
+        return None
+
+    parent = childof.get("dataset")
+
+    return parent if isinstance(parent, str) and parent else None
+
+
 def required_text(where: str, value: object, requirement: str) -> str | None:
     """Lê um valor que TEM de ser texto, reprovando em vez de estourar.
 
@@ -108,12 +169,18 @@ def datasets_of(contract: dict) -> list[dict]:
     Quem DENUNCIA a ausência é check_dataset_shapes, que lê a forma crua e roda
     primeiro. Todo o resto lê por aqui.
     """
-    return [ds for ds in contract.get("datasets", []) if isinstance(ds, dict) and isinstance(ds.get("name"), str) and ds["name"]]
+    datasets = sequence_at("datasets", contract.get("datasets"),
+                           "datasets é a lista dos conjuntos de que o documento é escrito")
+
+    return [ds for ds in datasets if isinstance(ds, dict) and isinstance(ds.get("name"), str) and ds["name"]]
 
 
 def fields_of(ds: dict) -> list[dict]:
     """Idem para os campos de um conjunto."""
-    return [f for f in ds.get("fields", []) if isinstance(f, dict) and isinstance(f.get("name"), str) and f["name"]]
+    fields = sequence_at(f"os fields de {ds.get('name', '<sem nome>')!r}", ds.get("fields"),
+                         "fields é a lista dos campos do conjunto")
+
+    return [f for f in fields if isinstance(f, dict) and isinstance(f.get("name"), str) and f["name"]]
 
 def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
     """Conjuntos e seus campos, mais os parâmetros de geração.
@@ -130,7 +197,7 @@ def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
     }
     parameters = {
         p["name"]
-        for p in contract.get("parameters", [])
+        for p in parameters_of(contract)
         if isinstance(p, dict) and isinstance(p.get("name"), str) and p["name"]
     }
     return datasets, parameters
@@ -190,9 +257,9 @@ def check_template(doc_dir: Path, contract: dict) -> None:
 
     datasets, parameters = declared_names(contract)
     children = {
-        ds["name"]: ds.get("childOf", {}).get("dataset")
+        ds["name"]: child_parent(ds)
         for ds in datasets_of(contract)
-        if ds.get("childOf")
+        if child_parent(ds) is not None
     }
     # Multimapa, não dict: `dict(findall(...))` guardaria só a ÚLTIMA ocorrência de
     # cada nome de iterador, e dois `for r in ...` em blocos irmãos — comum — passariam
@@ -691,7 +758,7 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
     for ds in datasets_of(contract):
         name = ds["name"]
 
-        parent = ds.get("childOf", {}).get("dataset")
+        parent = child_parent(ds)
         if parent is not None and parent not in datasets:
             fail(f"{doc_dir.relative_to(ROOT)}: {name} é childOf de '{parent}', que não existe")
 
@@ -716,7 +783,7 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
                 if target_ds is None:
                     fail(f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf conjunto '{target}', que não existe")
                 else:
-                    if target_ds.get("childOf", {}).get("dataset") != name:
+                    if child_parent(target_ds) != name:
                         fail(
                             f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf "
                             f"'{target}', que não é childOf de {name} — uma soma de "
@@ -921,7 +988,7 @@ def check_parent_match(doc_dir: Path, contract: dict, binding: dict) -> None:
     bound = binding.get("datasets", {})
 
     for ds in datasets_of(contract):
-        parent = ds.get("childOf", {}).get("dataset")
+        parent = child_parent(ds)
         if parent is None:
             continue
 
@@ -1193,7 +1260,12 @@ RE2_MISSING = (
 )
 # Uma barra que NÃO é ela mesma escapada, seguida de dígito: `\1` é
 # retrorreferência e `\\1` é uma barra literal seguida do algarismo um.
-BACKREFERENCE = re.compile(r"(?<!\\)\\[1-9]")
+#
+# O `(?:\\\\)*` no meio é o que faz a conta com barras EMPILHADAS. Em `\\\\\\1` são três
+# barras: as duas primeiras são uma barra literal escapada, e a terceira abre a
+# retrorreferência — ela é retrorreferência e a RE2 a recusa. Sem esse trecho, o
+# olhar-para-trás via a barra anterior e desistia, e o padrão passava.
+BACKREFERENCE = re.compile(r"(?<!\\)(?:\\\\)*\\[1-9]")
 
 
 def check_engine_parity(doc_dir: Path, contract: dict) -> None:
@@ -1290,9 +1362,20 @@ def check_dataset_shapes(doc_dir: Path, contract: dict) -> None:
     podem ambos ser alcançados, e uma referência a ele resolve para o que foi lido
     por último. E um childOf que fecha ciclo trava a montagem do contexto de render.
     """
+    declared = sequence_at("datasets", contract.get("datasets"),
+                           "datasets é a lista dos conjuntos de que o documento é escrito")
+
+    # O motor recusa isto diretamente, e aqui só era pego de lado — pela conferência
+    # do template, que reclamava de cada leitura solta em vez de dizer a coisa óbvia.
+    if not declared:
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: datasets está vazio; um contrato que não "
+            f"declara conjunto nenhum não declara nada de que o arquivo possa ser escrito"
+        )
+
     seen_datasets: set[str] = set()
 
-    for ds in contract.get("datasets", []):
+    for ds in declared:
         if not isinstance(ds, dict):
             fail(f"{doc_dir.relative_to(ROOT)}: um conjunto é um mapeamento de name, grain e fields")
             continue
@@ -1331,6 +1414,7 @@ def check_dataset_shapes(doc_dir: Path, contract: dict) -> None:
             seen_fields.add(fname)
 
         _check_grain(doc_dir, ds, name, seen_fields)
+        _check_childof_shape(doc_dir, ds, name)
 
     _check_childof_cycles(doc_dir, contract)
 
@@ -1351,16 +1435,33 @@ def _check_grain(doc_dir: Path, ds: dict, name: str, fields: set[str]) -> None:
         return
 
     for key in grain:
-        if key not in fields:
-            fail(f"{doc_dir.relative_to(ROOT)}: {name}.grain nomeia '{key}', campo que o conjunto não declara")
+        if not isinstance(key, str) or key not in fields:
+            fail(f"{doc_dir.relative_to(ROOT)}: {name}.grain nomeia {key!r}, campo que o conjunto não declara")
+
+
+def _check_childof_shape(doc_dir: Path, ds: dict, name: str) -> None:
+    """A declaração de childOf tem a forma que os leitores esperam.
+
+    Denunciado AQUI, no leitor cru, porque `child_parent` responde None para uma
+    declaração malformada — o que os leitores precisam para não estourar, e que
+    sozinho leria como "este conjunto não pende de ninguém". Um curador que escreveu
+    `childOf` e teve a linha ignorada em silêncio é a falha que este arquivo inteiro
+    existe para não ter: a seção sai do arquivo e nada acusa.
+    """
+    if "childOf" not in ds:
+        return
+
+    childof = mapping_at(f"{doc_dir.relative_to(ROOT)}: {name}.childOf", ds.get("childOf"),
+                         "childOf é um mapeamento que nomeia o conjunto de que este pende")
+    if childof is None:
+        return
+
+    required_text(f"{doc_dir.relative_to(ROOT)}: {name}.childOf.dataset", childof.get("dataset"),
+                  "childOf nomeia o conjunto pai por texto")
 
 
 def _check_childof_cycles(doc_dir: Path, contract: dict) -> None:
-    parents = {
-        ds["name"]: ds.get("childOf", {}).get("dataset")
-        for ds in contract.get("datasets", [])
-        if isinstance(ds, dict) and isinstance(ds.get("name"), str)
-    }
+    parents = {ds["name"]: child_parent(ds) for ds in datasets_of(contract)}
 
     for start in parents:
         seen = {start}
@@ -1387,7 +1488,7 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
     """
     seen: set[str] = set()
 
-    for param in contract.get("parameters", []):
+    for param in parameters_of(contract):
         if mapping_at(f"{doc_dir.relative_to(ROOT)}: um parâmetro", param,
                       "um parâmetro é um mapeamento de name, type e o que mais o declara") is None:
             continue
@@ -1444,7 +1545,7 @@ def check_rules(doc_dir: Path, contract: dict) -> None:
     datasets, parameters = declared_names(contract)
     seen: set[str] = set()
 
-    for rule in contract.get("rules", []):
+    for rule in rules_of(contract):
         if mapping_at(f"{doc_dir.relative_to(ROOT)}: uma regra", rule,
                       "uma regra é um mapeamento de id, severity, appliesTo e assert") is None:
             continue
@@ -1490,7 +1591,12 @@ def check_rules(doc_dir: Path, contract: dict) -> None:
         # o campo inexistente, e passava — uma regra sobre campo que não existe é uma
         # conferência que nunca dispara, o mesmo modo de falha silencioso do
         # requiredWhen sobre campo fantasma.
-        elif tail and head in datasets and tail not in datasets[head] and head != "parameters":
+        elif tail and head == "parameters" and tail not in parameters:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' aponta para "
+                f"'{target}', parâmetro que o contrato não declara"
+            )
+        elif tail and head in datasets and tail not in datasets[head]:
             fail(
                 f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' aponta para "
                 f"'{target}', campo que '{head}' não declara"

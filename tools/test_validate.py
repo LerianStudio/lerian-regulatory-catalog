@@ -719,6 +719,68 @@ MUTATIONS: list[Mutation] = [
         "é o nome do que ela lê",
     ),
 
+
+    # -------------------- coleção nula, valor aninhado, e dois silêncios
+    # Segunda rodada de revisão. As quatro primeiras são a mesma classe das de cima
+    # chegando um nível mais fundo; as duas últimas não estouravam — PASSAVAM, que é
+    # a forma pior.
+    Mutation(
+        "datasets-nulo",
+        "`datasets:` sem nada embaixo é null, e `for ds in None` estoura",
+        lambda b: b[PLANO]["contract"].update({"datasets": None}),
+        "datasets está vazio",
+    ),
+    Mutation(
+        "datasets-nao-e-lista",
+        "o curador escreveu algo ali; ignorar seria conferir outro contrato",
+        lambda b: b[PLANO]["contract"].update({"datasets": "saldos"}),
+        "datasets é a lista dos conjuntos",
+    ),
+    Mutation(
+        "fields-nulo",
+        "idem um nível abaixo",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"fields": None}),
+        "não declara campo nenhum",
+    ),
+    Mutation(
+        "parameters-nulo",
+        "e no outro ramo da mesma árvore",
+        lambda b: b[PLANO]["contract"].update({"parameters": None}),
+        "que o contrato não declara em parameters",
+    ),
+    Mutation(
+        "grao-com-item-que-nao-e-texto",
+        "item de grain que é lista levanta unhashable na conferência de pertinência",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"grain": [["codigo"]]}),
+        "campo que o conjunto não declara",
+    ),
+    Mutation(
+        "childof-nao-e-mapa",
+        "childOf lido em quatro lugares, e os quatro tomavam .get na fé",
+        lambda b: dataset(b[HIER]["contract"], "detalhes").update({"childOf": []}),
+        "childOf é um mapeamento",
+    ),
+    Mutation(
+        "childof-dataset-nao-e-texto",
+        "e o nome do pai dentro dele",
+        lambda b: dataset(b[HIER]["contract"], "detalhes").update({"childOf": {"dataset": ["resumos"]}}),
+        "childOf nomeia o conjunto pai por texto",
+    ),
+    Mutation(
+        "regra-sobre-parametro-fantasma",
+        "a cauda de appliesTo era conferida para conjunto e NÃO para parameters: regra que nunca dispara",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update(
+            {"appliesTo": "parameters.fantasma"}),
+        "parâmetro que o contrato não declara",
+    ),
+    Mutation(
+        "retrorreferencia-apos-barra-escapada",
+        "três barras: as duas primeiras são uma barra literal, a terceira abre a retrorreferência",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update(
+            {"pattern": r"^([0-9])\\\1$"}),
+        "retrorreferência",
+    ),
+
 ]
 
 
