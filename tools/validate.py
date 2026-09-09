@@ -864,7 +864,12 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
                 via = cond.get("via")
                 if via is not None:
                     via_field = next((f for f in fields_of(ds) if f["name"] == via), None)
-                    ref = (via_field or {}).get("refersTo")
+                    # Pela mesma porta que as outras duas leituras de refersTo. Esta
+                    # ficou de fora quando a porta foi criada, e a varredura não a
+                    # denunciou porque fixture nenhuma usava `via` — o ramo inteiro
+                    # nunca era executado por ela. A cobertura da varredura é a
+                    # cobertura das fixturas.
+                    ref = reference_at(doc_dir, f"{name}.{via}", via_field or {}, "refersTo")
                     if ref is None:
                         fail(
                             f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} usa "
@@ -1666,8 +1671,10 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
     """
     mirrored = ("country", "regulator", "document", "title", "version", "periodicity")
 
-    for entry in sequence_at("catalog.yaml: documents", catalog.get("documents"),
-                             "documents é a lista dos documentos do catálogo"):
+    documents = sequence_at("catalog.yaml: documents", catalog.get("documents"),
+                            "documents é a lista dos documentos do catálogo")
+
+    for entry in documents:
         if mapping_at("catalog.yaml: uma entrada de documents", entry,
                       "cada entrada é um mapeamento de id, path e o que mais o índice anuncia") is None:
             continue
@@ -1694,12 +1701,7 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
         if entry.get("appliesTo") != metadata.get("appliesTo"):
             fail(f"catalog.yaml: '{doc_id}'.appliesTo diverge do contrato")
 
-    indexed = {
-        e["id"]
-        for e in sequence_at("catalog.yaml: documents", catalog.get("documents"),
-                             "documents é a lista dos documentos do catálogo")
-        if isinstance(e, dict) and isinstance(e.get("id"), str)
-    }
+    indexed = {e["id"] for e in documents if isinstance(e, dict) and isinstance(e.get("id"), str)}
     for doc_id in contracts:
         if doc_id not in indexed:
             fail(f"catalog.yaml: contrato '{doc_id}' existe e não está no índice")

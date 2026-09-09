@@ -40,6 +40,7 @@ import contextlib
 import copy
 import io
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -790,7 +791,35 @@ MUTATIONS: list[Mutation] = [
 ]
 
 
-def _value_paths(node: object, prefix: str = "") -> "Iterator[str]":
+# Chaves que o validador lê e que NÃO pertencem ao contrato, por isso não são
+# cobradas das fixturas de contrato. Cada grupo tem sua própria fixture, que a
+# varredura de formas não percorre porque ela é sobre o contrato.
+_NOT_CONTRACT_KEYS = {
+    # binding.example.yaml
+    "queries", "query", "join", "match", "from", "having", "derive", "parentMatch",
+    "byRowClass", "generatable", "incompleteReason", "incompleteFields",
+    "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
+    "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
+    "when", "value", "statedIn", "pendingReason", "measures", "contract",
+    # catalog.yaml
+    "documents", "path",
+    # contas.yaml — o conjunto fechado
+    "accounts", "code", "masked",
+}
+
+
+def _collect_keys(node: object, out: set[str]) -> None:
+    """Toda chave de mapeamento em qualquer profundidade."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            out.add(str(key))
+            _collect_keys(value, out)
+    elif isinstance(node, list):
+        for value in node:
+            _collect_keys(value, out)
+
+
+def _value_paths(node: object, prefix: str = "") -> Iterator[str]:
     """Todo caminho até um valor dentro do contrato, incluindo os aninhados."""
     if isinstance(node, dict):
         for key, value in node.items():
@@ -1011,6 +1040,37 @@ class ValidatorSuite(unittest.TestCase):
             [], crashes,
             "a ferramenta ESTOUROU em vez de reprovar para estes valores:\n  "
             + "\n  ".join(crashes))
+
+    def test_fixtures_exercise_every_contract_construct_the_tool_reads(self) -> None:
+        """A cobertura da varredura é a cobertura das FIXTURAS.
+
+        A varredura acima só alcança valor que alguma fixture declara. Quando ela
+        passou verde e ainda havia um estouro no ramo do `via`, o defeito não era
+        dela: era que fixture nenhuma usava `via`, então aquele ramo do validador
+        nunca era executado — e um leitor que ninguém executa é um leitor que ninguém
+        confere.
+
+        Esta conferência lê o CÓDIGO do validador procurando toda chave de contrato
+        que ele consulta, e exige que as fixturas declarem cada uma. Falhar aqui não
+        quer dizer que o validador está errado: quer dizer que a rede que o confere
+        acabou de ficar com um buraco, e o conserto é acrescentar a construção a uma
+        fixture.
+        """
+        source = (TOOLS / "validate.py").read_text(encoding="utf-8")
+        read = set(re.findall(r'\.get\("([a-zA-Z][a-zA-Z0-9]*)"', source))
+        read |= set(re.findall(r'"([a-zA-Z][a-zA-Z0-9]*)" (?:in|not in) ', source))
+
+        declared: set[str] = set()
+        for parts in fixtures.bundle().values():
+            _collect_keys(parts["contract"], declared)
+
+        missing = sorted((read - declared) - _NOT_CONTRACT_KEYS)
+
+        self.assertEqual(
+            [], missing,
+            "o validador lê estas construções de contrato e nenhuma fixture as "
+            "declara, então a varredura não alcança os leitores delas:\n  "
+            + "\n  ".join(missing))
 
     def test_missing_catalog_fails_without_crashing(self) -> None:
         """Árvore sem catalog.yaml reprova em vez de estourar.
