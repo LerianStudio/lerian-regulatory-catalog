@@ -127,7 +127,7 @@ def source_of_truth(contract: dict, key: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def child_parent(ds: dict) -> str | None:
+def child_parent(ds: dict, where: str = "um conjunto") -> str | None:
     """O conjunto de que este pende, quando ele pende de algum.
 
     Uma porta, e deliberadamente sem dizer quantos leitores ela serve. Escrevi
@@ -139,7 +139,7 @@ def child_parent(ds: dict) -> str | None:
     leitor novo e ainda dá a quem lê a impressão de que alguém conferiu — a porta
     existe para que ninguém precise contar.
     """
-    childof = ds.get("childOf")
+    childof = optional_at(where, ds, "childOf")
     if childof is None:
         return None
 
@@ -176,6 +176,36 @@ def required_text(where: str, value: object, requirement: str) -> str | None:
     fail(f"{where} é {value!r}; {requirement}")
 
     return None
+
+
+def optional_at(where: str, node: dict, key: str) -> object:
+    """Lê uma construção OPCIONAL, separando ausente de escrita-e-vazia.
+
+    A quarta porta. As três anteriores guardam a FORMA de um valor; esta guarda a
+    diferença entre não escrever nada e escrever `chave:` sem nada embaixo — que em
+    YAML é `null`, e que `.get(chave)` devolve idêntico a ausente.
+
+    A diferença importa porque as duas vêm de pessoas diferentes. Ausente é o curador
+    dizendo "este documento não tem isso". Escrita e vazia é o curador tendo começado
+    a escrever e parado: ele declarou `refersTo:` e foi cuidar de outra coisa, e o
+    contrato entrou no catálogo com a integridade referencial que ele quis e que
+    ninguém confere.
+
+    Nenhum contrato curado usa `null` explícito para dizer "nenhum" — ausência é como
+    isso se diz aqui —, então uma chave escrita e vazia é sempre um trabalho pela
+    metade, nunca uma escolha.
+
+    Devolve None nos dois casos; a recusa da segunda já foi registrada.
+    """
+    if key not in node:
+        return None
+
+    value = node[key]
+    if value is None:
+        fail(f"{where}.{key} foi escrita e está vazia; ou declare o que ela diz, ou tire a linha")
+        return None
+
+    return value
 
 
 def mapping_at(where: str, value: object, requirement: str) -> dict | None:
@@ -645,7 +675,10 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
     """
     set_path = source_of_truth(contract, "accountSet")
 
-    row_datasets = [ds for ds in datasets_of(contract) if isinstance(ds.get("rowSet"), dict)]
+    row_datasets = [
+        ds for ds in datasets_of(contract)
+        if isinstance(optional_at(f"{doc_dir.relative_to(ROOT)}: {ds['name']}", ds, "rowSet"), dict)
+    ]
 
     if not set_path and not row_datasets:
         return
@@ -795,7 +828,7 @@ def reference_at(doc_dir: Path, where: str, field: dict, key: str) -> dict | Non
     None, que é "não declarou"; presente e malformado é RECUSA, porque o curador
     escreveu a construção e engoli-la é a seção sumir do arquivo sem nada acusar.
     """
-    declared = field.get(key)
+    declared = optional_at(f"{doc_dir.relative_to(ROOT)}: {where}", field, key)
     if declared is None:
         return None
 
@@ -1385,7 +1418,7 @@ def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
     if ftype is not None and ftype not in FIELD_TYPES:
         fail(f"{where} tem type {ftype!r}; o motor aplica {sorted(FIELD_TYPES)}")
 
-    if field.get("normalize") is not None:
+    if optional_at(where, field, "normalize") is not None:
         normalize = required_text(f"{where} normalize", field.get("normalize"),
                                   f"uma normalização é uma palavra: {sorted(NORMALIZATIONS)}")
         if normalize is not None and normalize not in NORMALIZATIONS:
@@ -1395,17 +1428,17 @@ def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
                 f"dado como concluído"
             )
 
-    length = field.get("length")
+    length = optional_at(where, field, "length")
     if length is not None and (not isinstance(length, int) or isinstance(length, bool) or length < 1):
         fail(f"{where} tem length {length!r}; é o número de posições que o arquivo dá ao campo, então é ao menos 1")
 
-    _check_pattern(f"{where}.pattern", field.get("pattern"))
+    _check_pattern(f"{where}.pattern", optional_at(where, field, "pattern"))
 
-    fmt = field.get("format")
+    fmt = optional_at(where, field, "format")
     if not isinstance(fmt, dict):
         return
 
-    scale = fmt.get("scale")
+    scale = optional_at(f"{where}.format", fmt, "scale")
     if scale is not None and (not isinstance(scale, int) or isinstance(scale, bool) or not 0 <= scale <= MAX_SCALE):
         fail(
             f"{where}.format.scale é {scale!r}; uma escala é quantas casas decimais o "
@@ -1413,7 +1446,7 @@ def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
             f"número que fonte nenhuma responde, e o motor a converte para int32"
         )
 
-    _check_pattern(f"{where}.format.pattern", fmt.get("pattern"))
+    _check_pattern(f"{where}.format.pattern", optional_at(f"{where}.format", fmt, "pattern"))
 
 
 def _check_pattern(where: str, pattern) -> None:
@@ -1514,7 +1547,7 @@ def _check_grain(doc_dir: Path, ds: dict, name: str, fields: set[str]) -> None:
     Um grão sobre campo inexistente é a exigência de uma linha por combinação que
     nunca é conferida: o arquivo sai com a mesma rubrica duas vezes e nada acusa.
     """
-    grain = ds.get("grain")
+    grain = optional_at(f"{doc_dir.relative_to(ROOT)}: {name}", ds, "grain")
 
     if grain is None or grain == "singleton":
         return
@@ -1598,8 +1631,8 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
         if ptype is not None and ptype not in FIELD_TYPES:
             fail(f"{where} tem type {ptype!r}; o motor aceita {sorted(FIELD_TYPES)}")
 
-        domain = param.get("domain")
-        default = param.get("default")
+        domain = optional_at(where, param, "domain")
+        default = optional_at(where, param, "default")
 
         if domain is not None and not isinstance(domain, list):
             fail(f"{where} tem domain {domain!r}; um domínio é a lista fechada de valores aceitos")
@@ -1608,7 +1641,7 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
         if default is not None and domain and default not in domain:
             fail(f"{where} tem default {default!r} fora do próprio domain {domain!r} — nunca poderia ser satisfeito")
 
-        months = param.get("allowedMonths")
+        months = optional_at(where, param, "allowedMonths")
         if months is None:
             continue
 

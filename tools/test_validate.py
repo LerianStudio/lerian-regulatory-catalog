@@ -848,6 +848,94 @@ MUTATIONS: list[Mutation] = [
         "requiredWhen.field",
     ),
 
+
+    # ---------------- chave escrita e vazia, que não é chave ausente
+    # `refersTo:` sem nada embaixo é `null` em YAML, e `.get()` devolve isso idêntico
+    # a ausente. As duas vêm de pessoas diferentes: ausente é "este documento não tem
+    # isso"; escrita e vazia é alguém que começou a declarar e parou. Nenhum contrato
+    # curado usa null explícito para dizer "nenhum".
+    #
+    # Uma por construção opcional, porque foi tapando uma de cada vez que esta classe
+    # voltou quatro vezes.
+    Mutation(
+        "refers-to-escrito-vazio",
+        "integridade referencial declarada pela metade e ignorada",
+        lambda b: field(b[HIER]["contract"], "resumos", "codTitular").update({"refersTo": None}),
+        "refersTo foi escrita e está vazia",
+    ),
+    Mutation(
+        "equals-sum-of-escrito-vazio",
+        "reconciliação declarada pela metade e ignorada",
+        lambda b: field(b[HIER]["contract"], "resumos", "total").update({"equalsSumOf": None}),
+        "equalsSumOf foi escrita e está vazia",
+    ),
+    Mutation(
+        "required-when-escrito-vazio",
+        "condicional declarada pela metade: o campo vira opcional de fato",
+        lambda b: field(b[HIER]["contract"], "resumos", "inscricao").update({"requiredWhen": None}),
+        "requiredWhen foi escrita e está vazia",
+    ),
+    Mutation(
+        "forbidden-when-escrito-vazio",
+        "idem do outro lado",
+        lambda b: field(b[HIER]["contract"], "titulares", "cnpj").update({"forbiddenWhen": None}),
+        "forbiddenWhen foi escrita e está vazia",
+    ),
+    Mutation(
+        "child-of-escrito-vazio",
+        "hierarquia declarada pela metade: a seção nunca é populada",
+        lambda b: dataset(b[HIER]["contract"], "detalhes").update({"childOf": None}),
+        "childOf foi escrita e está vazia",
+    ),
+    Mutation(
+        "format-escrito-vazio",
+        "formato declarado pela metade: o valor sai como veio",
+        lambda b: field(b[PLANO]["contract"], "saldos", "valor").update({"format": None}),
+        "format foi escrita e está vazia",
+    ),
+    Mutation(
+        "grain-escrito-vazio",
+        "grão declarado pela metade: nada confere uma linha por rubrica",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"grain": None}),
+        "grain foi escrita e está vazia",
+    ),
+    Mutation(
+        "row-set-escrito-vazio",
+        "conjunto fechado declarado pela metade",
+        lambda b: dataset(b[FECHADO]["contract"], "linhas").update({"rowSet": None}),
+        "rowSet foi escrita e está vazia",
+    ),
+    Mutation(
+        "pattern-escrito-vazio",
+        "forma do valor declarada pela metade",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"pattern": None}),
+        "pattern foi escrita e está vazia",
+    ),
+    Mutation(
+        "normalize-escrito-vazio",
+        "normalização declarada pela metade: o valor sai sem normalizar",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"normalize": None}),
+        "normalize foi escrita e está vazia",
+    ),
+    Mutation(
+        "length-escrito-vazio",
+        "largura declarada pela metade",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"length": None}),
+        "length foi escrita e está vazia",
+    ),
+    Mutation(
+        "domain-escrito-vazio",
+        "domínio declarado pela metade: qualquer valor passa",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"domain": None}),
+        "domain foi escrita e está vazia",
+    ),
+    Mutation(
+        "allowed-months-escrito-vazio",
+        "restrição de mês declarada pela metade: o documento vira gerável em qualquer mês",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"allowedMonths": None}),
+        "allowedMonths foi escrita e está vazia",
+    ),
+
 ]
 
 
