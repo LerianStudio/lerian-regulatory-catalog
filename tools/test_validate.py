@@ -757,6 +757,12 @@ MUTATIONS: list[Mutation] = [
         "que o contrato não declara em parameters",
     ),
     Mutation(
+        "rules-nao-e-lista",
+        "o quarto leitor de coleção, e o único sem prova",
+        lambda b: b[PLANO]["contract"].update({"rules": "sem-duplicata"}),
+        "rules é a lista das conferências",
+    ),
+    Mutation(
         "grao-com-item-que-nao-e-texto",
         "item de grain que é lista levanta unhashable na conferência de pertinência",
         lambda b: dataset(b[PLANO]["contract"], "saldos").update({"grain": [["codigo"]]}),
