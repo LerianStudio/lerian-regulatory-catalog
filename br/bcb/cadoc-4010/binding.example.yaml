@@ -65,13 +65,22 @@ queries:
           # nem do catálogo. Ela está aqui porque é dado do cliente: é o plano de
           # contas DELE que diz quais contas são devedoras.
           #
-          # LACUNA CONHECIDA: o Midaz não expõe natureza hoje. O que existe é
-          # `operation.route_code`, materializado de `operation_route`, e nada
-          # carrega o lado devedor/credor da conta. Enquanto o Midaz não expuser,
-          # o cliente declara aqui — o que é verboso mas está na camada certa.
-          # Quando expuser, isto vira mais uma coluna da consulta e estas linhas
-          # somem. Contornar no motor ou no catálogo congelaria a lacuna e criaria
-          # a segunda fonte de verdade que a separação existe para evitar.
+          # POR QUE ESTAS NOVE LINHAS EXISTEM, e quando elas somem.
+          #
+          # O Midaz TEM onde guardar isto: as rotas contábeis são o plano de contas
+          # dele. Uma `operation_route` declara, por ação, a rubrica que recebe o
+          # débito e a que recebe o crédito, cada uma com código e descrição; cada
+          # lançamento carrega `operation.route_code`, que o liga à rota, e
+          # `operation.type`, que diz de que lado ele entrou.
+          #
+          # Então, se o cliente referenciou o COSIF corretamente nas rotas, a
+          # natureza segue do próprio código da rubrica — e é isso que o mapa
+          # abaixo faz, lendo o primeiro dígito. Ele é atalho de LEITURA do código,
+          # não fonte de verdade: quem sabe a natureza é o plano de contas.
+          #
+          # Um cliente que já mantenha a natureza como coluna própria troca este
+          # bloco por essa coluna e nada mais muda. O motor e o catálogo seguem sem
+          # saber o que é natureza contábil, que é o ponto de ela estar aqui.
           statedIn:
             # Grupos de 1º nível do plano COSIF. Nove linhas, não uma tabela de
             # milhares de rubricas: quem tem exceção acrescenta a rubrica inteira.
