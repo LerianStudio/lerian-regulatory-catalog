@@ -55,7 +55,8 @@ PLANO_CONTRACT = {
     "kind": "DocumentContract",
     "metadata": _meta("zz.fixture.plano", "PLANO"),
     "parameters": [
-        {"name": "dataBase", "type": "month", "required": True, "description": "Competência."},
+        {"name": "dataBase", "type": "month", "required": True, "allowedMonths": ["06", "12"],
+         "description": "Competência."},
         {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S"],
          "description": "Remessa."},
     ],
@@ -227,6 +228,13 @@ HIER_CONTRACT = {
              {"name": "total", "type": "decimal", "required": True,
               "format": {"scale": 2, "scaleIsExact": True, "decimalSeparator": ".", "groupSeparator": ""},
               "equalsSumOf": {"dataset": "detalhes", "field": "valor"}},
+             # `via`: a condição lê um campo do conjunto REFERENCIADO por codTitular,
+             # e não do próprio. Está aqui porque nenhuma fixture o usava — e a
+             # varredura só alcança construção que alguma fixture declare, então o
+             # ramo do `via` no validador nunca era executado por ela.
+             {"name": "inscricao", "type": "string",
+              "requiredWhen": {"via": "codTitular", "field": "tipo", "equals": "PJ"},
+              "description": "Inscrição, exigida quando o titular referido é PJ."},
          ]},
         {"name": "detalhes", "description": "Detalhe do resumo.",
          "childOf": {"dataset": "resumos"}, "grain": ["id"],
@@ -250,7 +258,7 @@ HIER_TEMPLATE = """{# Fixture HIER — hierarquia de conjuntos. #}
 |T|{{ t.codigo }}|{{ t.tipo }}|{{ t.cnpj }}|
 {%- endfor %}
 {%- for r in resumos %}
-|R|{{ r.codTitular }}|{{ r.total }}|
+|R|{{ r.codTitular }}|{{ r.total }}|{{ r.inscricao }}|
 {%- for d in r.detalhes %}
 |D|{{ d.id }}|{{ d.valor }}|
 {%- endfor %}
@@ -269,7 +277,7 @@ HIER_BINDING = {
          "join": [{"query": "base_titulares", "match": {"conta": "conta"}}],
          "derive": [{"as": "dia", "from": "criado_em", "apply": "date"}]},
         {"name": "por_titular", "from": "movimento",
-         "aggregate": {"groupBy": ["titular", "tipo"],
+         "aggregate": {"groupBy": ["titular", "tipo", "inscricao"],
                        "measures": [{"as": "total", "fn": "sum", "of": "montante"}]},
          "having": [{"anyOf": [
              {"field": "tipo", "operator": "eq", "values": ["PJ"]},
@@ -286,7 +294,8 @@ HIER_BINDING = {
                                  "cnpj": {"from": "query", "column": "documento"}}},
         "resumos": {"from": {"query": "por_titular"},
                     "fields": {"codTitular": {"from": "query", "column": "titular"},
-                               "total": {"from": "query", "column": "total"}}},
+                               "total": {"from": "query", "column": "total"},
+                               "inscricao": {"from": "query", "column": "inscricao"}}},
         "detalhes": {"from": {"query": "detalhado"},
                      "parentMatch": {"codTitular": "titular"},
                      "fields": {"id": {"from": "query", "column": "ident"},

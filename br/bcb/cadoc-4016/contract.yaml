@@ -120,12 +120,14 @@ rules:
       cliente; as duas formas são aceitas.
 
 knownGaps:
-  - id: natureza-contabil-nao-vem-da-fonte
+  - id: natureza-contabil-e-configuracao-do-cliente
     description: >-
-      Idêntico ao 4010: o sinal do saldo depende da natureza da conta, que é
-      propriedade do plano de contas, e o Midaz não a expõe hoje
-      (operation.route_code sem o lado devedor/credor). O binding declara a
-      natureza como configuração do cliente; a lacuna é do Midaz.
+      Idêntico ao 4010, e pelo mesmo motivo não é lacuna de ninguém: o plano de
+      contas do Midaz são as rotas contábeis, cujo `accountingEntries` declara a
+      rubrica de débito e a de crédito por ação; `operation.route_code` liga o
+      lançamento à rota e `operation.type` diz o lado. Referenciado o COSIF
+      corretamente nas rotas, o sinal segue do próprio código. É precondição de
+      configuração do cliente, declarada no binding.
 
   - id: elenco-cosif-ausente
     description: >-

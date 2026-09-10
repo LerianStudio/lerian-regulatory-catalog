@@ -36,18 +36,26 @@ pyyaml:
 
 from __future__ import annotations
 
+import ast
+import contextlib
+import copy
+import io
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import yaml  # noqa: E402
+
 import fixtures  # noqa: E402
+import validate  # noqa: E402
 
 TOOLS = Path(__file__).resolve().parent
 VALIDATE = TOOLS / "validate.py"
@@ -71,6 +79,10 @@ def field(contract: dict, ds_name: str, f_name: str) -> dict:
 
 def query(binding: dict, name: str) -> dict:
     return next(q for q in binding["queries"] if q["name"] == name)
+
+
+def parameter(contract: dict, name: str) -> dict:
+    return next(p for p in contract["parameters"] if p["name"] == name)
 
 
 def rule(contract: dict, rule_id: str) -> dict:
@@ -520,7 +532,559 @@ MUTATIONS: list[Mutation] = [
                    .update({"from": "rowSet", "column": "code"})),
         "byRowClass[0] resolve por rowSet, mas o contrato não declara rowSet",
     ),
+
+    # ------------------------------------- paridade com o motor (Reporter)
+    # Estas nasceram do lado de LÁ: implementar o carregador de contratos do motor
+    # (pkg/reporter/contract) levantou onze construções que este validador não lia e
+    # o motor recusa. Cada uma é um contrato que passava no CI daqui e parava na
+    # primeira geração — ou, pior, era aceito pelos dois e aplicado diferente.
+    Mutation(
+        "campo-tipo-desconhecido",
+        "tipo que o motor não sabe aplicar passava aqui e parava na geração",
+        lambda b: field(b[PLANO]["contract"], "saldos", "valor").update({"type": "money"}),
+        "o motor aplica",
+    ),
+    Mutation(
+        "campo-normalize-desconhecido",
+        "a mais perigosa: o campo sairia SEM normalizar num arquivo dado como concluído",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"normalize": "uppercase"}),
+        "não sabe aplicar",
+    ),
+    Mutation(
+        "campo-escala-negativa",
+        "escala negativa não é número de casas decimais de coisa nenhuma",
+        lambda b: field(b[PLANO]["contract"], "saldos", "valor")["format"].update({"scale": -1}),
+        "está entre 0 e",
+    ),
+    Mutation(
+        "campo-escala-absurda",
+        "o motor converte a escala para int32: acima do limite é wrap silencioso",
+        lambda b: field(b[PLANO]["contract"], "saldos", "valor")["format"].update({"scale": 2**32}),
+        "está entre 0 e",
+    ),
+    Mutation(
+        "campo-length-zero",
+        "campo de zero posições é campo que o arquivo não carrega",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"length": 0}),
+        "ao menos 1",
+    ),
+    Mutation(
+        "pattern-nao-compila",
+        "expressão quebrada só seria descoberta na primeira linha conferida contra ela",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"pattern": "([0-9]"}),
+        "não compila",
+    ),
+    Mutation(
+        "pattern-lookahead",
+        "lookahead compila no Python e a RE2 do Go não tem",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update(
+            {"pattern": "^(?=[0-9])[0-9]{10}$"}),
+        "RE2 do Go não tem",
+    ),
+    Mutation(
+        "pattern-retrorreferencia",
+        "retrorreferência compila no Python e a RE2 do Go não tem",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update(
+            {"pattern": r"^([0-9])\1{9}$"}),
+        "retrorreferência",
+    ),
+    Mutation(
+        "conjunto-sem-campos",
+        "conjunto sem campo é seção do arquivo que nada popula",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"fields": []}),
+        "não declara campo nenhum",
+    ),
+    Mutation(
+        "conjunto-sem-nome",
+        "sem nome, a ferramenta ESTOURAVA em vez de reprovar: declared_names lia name na fé",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").pop("name"),
+        "o name de um conjunto",
+    ),
+    Mutation(
+        "campo-duplicado",
+        "dois campos de mesmo nome não podem ambos ser alcançados",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["fields"].append(
+            {"name": "codigo", "type": "string", "description": "Cópia."}),
+        "declarado duas vezes",
+    ),
+    Mutation(
+        "grao-sobre-campo-inexistente",
+        "grão sobre campo fantasma é a exigência de uma linha por combinação que ninguém confere",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"grain": ["naoDeclarado"]}),
+        "campo que o conjunto não declara",
+    ),
+    Mutation(
+        "childof-ciclo",
+        "ciclo de childOf deixa os conjuntos sem raiz, e nenhum é publicado",
+        lambda b: dataset(b[HIER]["contract"], "resumos").update(
+            {"childOf": {"dataset": "detalhes"}}),
+        "fecha um ciclo",
+    ),
+    Mutation(
+        "parametro-tipo-desconhecido",
+        "parâmetro de tipo desconhecido nunca poderia ser satisfeito por requisição nenhuma",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"type": "competencia"}),
+        "o motor aceita",
+    ),
+    Mutation(
+        "parametro-default-fora-do-dominio",
+        "default que o próprio domínio recusa é declaração impossível",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"default": "X"}),
+        "fora do próprio domain",
+    ),
+    Mutation(
+        "parametro-mes-inexistente",
+        "allowedMonths com mês que não existe torna o documento ingerável e ninguém sabe por quê",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"allowedMonths": ["06", "13"]}),
+        "um mês é de '01' a '12'",
+    ),
+    Mutation(
+        "parametro-mes-em-tipo-errado",
+        "allowedMonths fora de um parâmetro month é restrição que não se aplica a nada",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"allowedMonths": ["06"]}),
+        "não é do tipo month",
+    ),
+    Mutation(
+        "regra-sem-id",
+        "regra sem id não pode ser citada nem pela mensagem que ela mesma produz",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("id"),
+        "regra sem id",
+    ),
+    Mutation(
+        "regra-sem-assert",
+        "regra sem assert é lida em revisão como se protegesse algo e não confere nada",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("assert"),
+        "não tem assert",
+    ),
+    Mutation(
+        "regra-aponta-campo-inexistente",
+        "a cabeça de appliesTo era conferida e a CAUDA não: regra sobre campo fantasma nunca dispara",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update(
+            {"appliesTo": "saldos.naoDeclarado"}),
+        "campo que 'saldos' não declara",
+    ),
+
+
+    # ------------------ texto onde YAML pode entregar lista ou mapa
+    # Achadas pelo CodeRabbit no PR e confirmadas uma a uma: TODAS faziam a
+    # ferramenta ESTOURAR em vez de reprovar. `["a"] in {"string"}` levanta
+    # unhashable type, e uma lista usada como chave de dicionário faz o mesmo — não
+    # é um erro que Python reporte educadamente. Ferramenta que estoura com entrada
+    # malformada não reprova nada, que é a lição que esta suíte já carrega em três
+    # lugares.
+    Mutation(
+        "nome-de-conjunto-e-lista",
+        "nome que é lista vira chave de dicionário e estoura antes de qualquer conferência",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"name": ["saldos", "outro"]}),
+        "o name de um conjunto",
+    ),
+    Mutation(
+        "nome-de-campo-e-mapa",
+        "idem para campo, um passo adiante no mesmo leitor",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"name": {"a": 1}}),
+        "o name de um campo",
+    ),
+    Mutation(
+        "tipo-de-campo-e-lista",
+        "membership de lista em conjunto levanta unhashable, não reprova",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"type": ["string"]}),
+        "o tipo de um campo é uma palavra",
+    ),
+    Mutation(
+        "normalize-e-lista",
+        "idem para normalize, o caminho gêmeo do tipo",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"normalize": ["digits"]}),
+        "uma normalização é uma palavra",
+    ),
+    Mutation(
+        "nome-de-parametro-e-lista",
+        "o último leitor que ainda tomava nome na fé, e só a prova o encontrou",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"name": ["dataBase"]}),
+        "o name de um parâmetro",
+    ),
+    Mutation(
+        "tipo-de-parametro-e-lista",
+        "idem para o tipo do parâmetro",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"type": ["month"]}),
+        "o tipo de um parâmetro é uma palavra",
+    ),
+    Mutation(
+        "mes-permitido-e-lista",
+        "item de allowedMonths que não é texto",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"allowedMonths": [["06"]]}),
+        "um mês é de '01' a '12'",
+    ),
+    Mutation(
+        "regra-e-escalar",
+        "uma regra escrita como texto solto não tem .get, e o leitor não perguntava",
+        lambda b: b[PLANO]["contract"]["rules"].append("uma regra escrita errado"),
+        "uma regra é um mapeamento",
+    ),
+    Mutation(
+        "applies-to-e-lista",
+        "appliesTo que não é texto não tem .partition",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update({"appliesTo": ["saldos"]}),
+        "é o nome do que ela lê",
+    ),
+
+
+    # -------------------- coleção nula, valor aninhado, e dois silêncios
+    # Segunda rodada de revisão. As quatro primeiras são a mesma classe das de cima
+    # chegando um nível mais fundo; as duas últimas não estouravam — PASSAVAM, que é
+    # a forma pior.
+    Mutation(
+        "datasets-nulo",
+        "`datasets:` sem nada embaixo é null, e `for ds in None` estoura",
+        lambda b: b[PLANO]["contract"].update({"datasets": None}),
+        "datasets está vazio",
+    ),
+    Mutation(
+        "datasets-nao-e-lista",
+        "o curador escreveu algo ali; ignorar seria conferir outro contrato",
+        lambda b: b[PLANO]["contract"].update({"datasets": "saldos"}),
+        "datasets é a lista dos conjuntos",
+    ),
+    Mutation(
+        "fields-nulo",
+        "idem um nível abaixo",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"fields": None}),
+        "não declara campo nenhum",
+    ),
+    Mutation(
+        "parameters-nulo",
+        "e no outro ramo da mesma árvore",
+        lambda b: b[PLANO]["contract"].update({"parameters": None}),
+        "que o contrato não declara em parameters",
+    ),
+    Mutation(
+        "grao-com-item-que-nao-e-texto",
+        "item de grain que é lista levanta unhashable na conferência de pertinência",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"grain": [["codigo"]]}),
+        "campo que o conjunto não declara",
+    ),
+    Mutation(
+        "childof-nao-e-mapa",
+        "childOf lido em quatro lugares, e os quatro tomavam .get na fé",
+        lambda b: dataset(b[HIER]["contract"], "detalhes").update({"childOf": []}),
+        "childOf é um mapeamento",
+    ),
+    Mutation(
+        "childof-dataset-nao-e-texto",
+        "e o nome do pai dentro dele",
+        lambda b: dataset(b[HIER]["contract"], "detalhes").update({"childOf": {"dataset": ["resumos"]}}),
+        "childOf nomeia o conjunto pai por texto",
+    ),
+    Mutation(
+        "regra-sobre-parametro-fantasma",
+        "a cauda de appliesTo era conferida para conjunto e NÃO para parameters: regra que nunca dispara",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update(
+            {"appliesTo": "parameters.fantasma"}),
+        "parâmetro que o contrato não declara",
+    ),
+    Mutation(
+        "retrorreferencia-apos-barra-escapada",
+        "três barras: as duas primeiras são uma barra literal, a terceira abre a retrorreferência",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update(
+            {"pattern": r"^([0-9])\\\1$"}),
+        "retrorreferência",
+    ),
+
+
+    # ------------------- coleção que existe e NÃO é lista, nos quatro lugares
+    # A rodada anterior cobriu `null` e cobriu `datasets` não-lista, e deixou as
+    # outras três de fora. Uma coleção nula e uma coleção que é outra coisa passam
+    # por ramos DIFERENTES de sequence_at, e só um deles estava afirmado.
+    #
+    # `rules: null` não entra: rules é opcional, então declarar nenhuma é legítimo e
+    # não há reprovação para afirmar.
+    Mutation(
+        "rules-nao-e-lista",
+        "o curador escreveu algo em rules; ignorar seria conferir outro contrato",
+        lambda b: b[PLANO]["contract"].update({"rules": "sem-duplicata"}),
+        "rules é a lista das conferências",
+    ),
+    Mutation(
+        "parameters-nao-e-lista",
+        "idem para os parâmetros de geração",
+        lambda b: b[PLANO]["contract"].update({"parameters": "dataBase"}),
+        "parameters é a lista dos parâmetros",
+    ),
+    Mutation(
+        "fields-nao-e-lista",
+        "idem um nível abaixo, onde a porta é chamada por oito leitores",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"fields": "codigo"}),
+        "fields é a lista dos campos",
+    ),
+
+
+    # ------------- construção que aponta e não nomeia para onde
+    # Mapeamento VAZIO é falso em Python, então o chamador o lia como "não declarou"
+    # e pulava a conferência inteira: o curador escrevia a integridade referencial e
+    # ela não valia para nada. Vazio e incompleto passam pelo mesmo caminho.
+    Mutation(
+        "refers-to-vazio",
+        "refersTo sem nada dentro era lido como refersTo ausente",
+        lambda b: field(b[HIER]["contract"], "resumos", "codTitular").update({"refersTo": {}}),
+        "refersTo.dataset",
+    ),
+    Mutation(
+        "refers-to-sem-field",
+        "metade da referência é referência nenhuma",
+        lambda b: field(b[HIER]["contract"], "resumos", "codTitular").update(
+            {"refersTo": {"dataset": "titulares"}}),
+        "refersTo.field",
+    ),
+    Mutation(
+        "equals-sum-of-vazio",
+        "soma que não diz de onde reconcilia coisa nenhuma, e passava calada",
+        lambda b: field(b[HIER]["contract"], "resumos", "total").update({"equalsSumOf": {}}),
+        "equalsSumOf.dataset",
+    ),
+    Mutation(
+        "condicao-sem-field",
+        "condição que não nomeia o campo lido nunca dispara",
+        lambda b: field(b[HIER]["contract"], "resumos", "inscricao").update(
+            {"requiredWhen": {"equals": "PJ"}}),
+        "requiredWhen.field",
+    ),
+
+
+    # ---------------- chave escrita e vazia, que não é chave ausente
+    # `refersTo:` sem nada embaixo é `null` em YAML, e `.get()` devolve isso idêntico
+    # a ausente. As duas vêm de pessoas diferentes: ausente é "este documento não tem
+    # isso"; escrita e vazia é alguém que começou a declarar e parou. Nenhum contrato
+    # curado usa null explícito para dizer "nenhum".
+    #
+    # Uma por construção opcional, porque foi tapando uma de cada vez que esta classe
+    # voltou quatro vezes.
+    Mutation(
+        "refers-to-escrito-vazio",
+        "integridade referencial declarada pela metade e ignorada",
+        lambda b: field(b[HIER]["contract"], "resumos", "codTitular").update({"refersTo": None}),
+        "refersTo foi escrita e está vazia",
+    ),
+    Mutation(
+        "equals-sum-of-escrito-vazio",
+        "reconciliação declarada pela metade e ignorada",
+        lambda b: field(b[HIER]["contract"], "resumos", "total").update({"equalsSumOf": None}),
+        "equalsSumOf foi escrita e está vazia",
+    ),
+    Mutation(
+        "required-when-escrito-vazio",
+        "condicional declarada pela metade: o campo vira opcional de fato",
+        lambda b: field(b[HIER]["contract"], "resumos", "inscricao").update({"requiredWhen": None}),
+        "requiredWhen foi escrita e está vazia",
+    ),
+    Mutation(
+        "forbidden-when-escrito-vazio",
+        "idem do outro lado",
+        lambda b: field(b[HIER]["contract"], "titulares", "cnpj").update({"forbiddenWhen": None}),
+        "forbiddenWhen foi escrita e está vazia",
+    ),
+    Mutation(
+        "child-of-escrito-vazio",
+        "hierarquia declarada pela metade: a seção nunca é populada",
+        lambda b: dataset(b[HIER]["contract"], "detalhes").update({"childOf": None}),
+        "childOf foi escrita e está vazia",
+    ),
+    Mutation(
+        "format-escrito-vazio",
+        "formato declarado pela metade: o valor sai como veio",
+        lambda b: field(b[PLANO]["contract"], "saldos", "valor").update({"format": None}),
+        "format foi escrita e está vazia",
+    ),
+    Mutation(
+        "grain-escrito-vazio",
+        "grão declarado pela metade: nada confere uma linha por rubrica",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").update({"grain": None}),
+        "grain foi escrita e está vazia",
+    ),
+    Mutation(
+        "row-set-escrito-vazio",
+        "conjunto fechado declarado pela metade",
+        lambda b: dataset(b[FECHADO]["contract"], "linhas").update({"rowSet": None}),
+        "rowSet foi escrita e está vazia",
+    ),
+    Mutation(
+        "pattern-escrito-vazio",
+        "forma do valor declarada pela metade",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"pattern": None}),
+        "pattern foi escrita e está vazia",
+    ),
+    Mutation(
+        "normalize-escrito-vazio",
+        "normalização declarada pela metade: o valor sai sem normalizar",
+        lambda b: field(b[PLANO]["contract"], "saldos", "codigo").update({"normalize": None}),
+        "normalize foi escrita e está vazia",
+    ),
+    Mutation(
+        "length-escrito-vazio",
+        "largura declarada pela metade",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"length": None}),
+        "length foi escrita e está vazia",
+    ),
+    Mutation(
+        "domain-escrito-vazio",
+        "domínio declarado pela metade: qualquer valor passa",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"domain": None}),
+        "domain foi escrita e está vazia",
+    ),
+    Mutation(
+        "allowed-months-escrito-vazio",
+        "restrição de mês declarada pela metade: o documento vira gerável em qualquer mês",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"allowedMonths": None}),
+        "allowedMonths foi escrita e está vazia",
+    ),
+
 ]
+
+
+# Chaves que o validador lê e que NÃO pertencem ao contrato, por isso não são
+# cobradas das fixturas de contrato. Cada grupo tem sua própria fixture, que a
+# varredura de formas não percorre porque ela é sobre o contrato.
+_NOT_CONTRACT_KEYS = {
+    # binding.example.yaml
+    "queries", "query", "join", "match", "from", "having", "derive", "parentMatch",
+    "byRowClass", "generatable", "incompleteReason", "incompleteFields",
+    "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
+    "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
+    "when", "value", "statedIn", "pendingReason", "measures", "contract",
+    # catalog.yaml
+    "documents", "path",
+    # contas.yaml — o conjunto fechado
+    "accounts", "code", "masked",
+}
+
+
+# Uma chave de contrato é lowerCamelCase. O filtro tira o que a varredura da árvore
+# sintática também encontra e não é chave nenhuma: o "\n" de um join, o "." de um
+# split, o CATALOG_ROOT do ambiente.
+_CONTRACT_KEY = re.compile(r"^[a-z][a-zA-Z0-9]*$")
+
+
+def _keys_the_validator_reads() -> set[str]:
+    """Toda chave literal que o validador consulta, lida da ÁRVORE SINTÁTICA.
+
+    Pela árvore e não por expressão regular porque a regular via uma forma só —
+    `.get("x")` com aspas duplas. Um `.get('x')`, um `contract["x"]`, e a
+    conferência passava a afirmar menos do que diz afirmar, em silêncio. A árvore vê
+    as três formas e, ao contrário da regular, não confunde prosa com código: esta
+    mesma suíte tem um `["a"] in {"string"}` dentro de um comentário.
+    """
+    tree = ast.parse((TOOLS / "validate.py").read_text(encoding="utf-8"))
+    keys: set[str] = set()
+
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "get" and node.args):
+            keys.add(_literal(node.args[0]))
+
+        if isinstance(node, ast.Subscript):
+            keys.add(_literal(node.slice))
+
+        if isinstance(node, ast.Compare) and any(isinstance(o, (ast.In, ast.NotIn)) for o in node.ops):
+            keys.add(_literal(node.left))
+
+    return {key for key in keys if key and _CONTRACT_KEY.match(key)}
+
+
+def _literal(node: ast.expr) -> str:
+    """O texto de um nó constante, ou "" quando ele não é um."""
+    return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else ""
+
+
+def _collect_keys(node: object, out: set[str]) -> None:
+    """Toda chave de mapeamento em qualquer profundidade."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            out.add(str(key))
+            _collect_keys(value, out)
+    elif isinstance(node, list):
+        for value in node:
+            _collect_keys(value, out)
+
+
+def _value_paths(node: object, prefix: str = "") -> Iterator[str]:
+    """Todo caminho até um valor dentro do contrato, incluindo os aninhados."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            here = f"{prefix}.{key}" if prefix else str(key)
+            yield here
+            yield from _value_paths(value, here)
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            here = f"{prefix}[{index}]"
+            yield here
+            yield from _value_paths(value, here)
+
+
+def _set_at(root: dict, path: str, value: object) -> bool:
+    """Escreve o valor no caminho, respondendo se conseguiu."""
+    steps: list[object] = []
+
+    for segment in path.split("."):
+        while "[" in segment:
+            head, _, rest = segment.partition("[")
+            if head:
+                steps.append(head)
+            index, _, segment = rest.partition("]")
+            steps.append(int(index))
+        if segment:
+            steps.append(segment)
+
+    cursor: object = root
+
+    try:
+        for step in steps[:-1]:
+            cursor = cursor[step]  # type: ignore[index]
+        cursor[steps[-1]] = value  # type: ignore[index]
+    except (KeyError, IndexError, TypeError):
+        return False
+
+    return True
+
+
+def _rewrite_contract(root: Path, doc: str, data: dict) -> bool:
+    """Reescreve só o contrato de um documento e o índice que deriva dele."""
+    try:
+        (root / doc / "contract.yaml").write_text(
+            yaml.safe_dump(data[doc]["contract"], sort_keys=False, allow_unicode=True),
+            encoding="utf-8")
+
+        documents = [
+            parts.get("indexEntry") or fixtures._index_entry(parts["contract"], path)
+            for path, parts in data.items()
+        ]
+        (root / "catalog.yaml").write_text(
+            yaml.safe_dump({"apiVersion": fixtures.APIV, "kind": "Catalog", "documents": documents},
+                           sort_keys=False, allow_unicode=True),
+            encoding="utf-8")
+    except Exception:  # noqa: BLE001 — fixture não serializável não é o alvo da varredura
+        return False
+
+    return True
+
+
+def _run_in_process(root: Path) -> str | None:
+    """Roda o validador nesta mesma máquina virtual, devolvendo a exceção se houver.
+
+    Aponta o ROOT do módulo para a árvore de fixtures — a mesma variável que
+    CATALOG_ROOT define no executável — e chama main(). Devolve None quando a
+    ferramenta terminou, tendo reprovado ou não; devolve o texto da exceção quando
+    ela estourou.
+    """
+    previous = validate.ROOT
+    validate.ROOT = root
+
+    try:
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            validate.main()
+    except Exception as exc:  # noqa: BLE001 — apanhar QUALQUER estouro é o objetivo
+        return f"{type(exc).__name__}: {exc}"
+    finally:
+        validate.ROOT = previous
+
+    return None
 
 
 def _run(root: Path) -> tuple[int, str]:
@@ -595,6 +1159,125 @@ class ValidatorSuite(unittest.TestCase):
                     mutation.expect, out,
                     f"{mutation.ident}: reprovou, mas sem nomear o problema.\n"
                     f"esperado conter: {mutation.expect!r}\nsaiu:\n{out}")
+
+    def test_no_shape_of_any_value_makes_the_tool_crash(self) -> None:
+        """VARREDURA: troca cada valor do contrato por formas erradas e exige que
+        nenhuma estoure.
+
+        Existe porque a mesma classe de defeito voltou em TRÊS rodadas de revisão
+        seguidas, e a terceira encontrou 84 combinações que estouravam. Corrigir uma
+        por uma é o jogo que já se perdeu três vezes: guardei `declared_names` e
+        esqueci o `by_name` ao lado; escrevi que `childOf` tinha dois leitores,
+        corrigi para três, eram quatro; guardei um laço de `check_index` e o segundo
+        laço DA MESMA FUNÇÃO tinha o mesmo defeito.
+
+        A conferência não é sobre qual valor: é sobre a propriedade de que YAML
+        entrega qualquer forma e a ferramenta REPROVA em vez de estourar. Uma
+        construção nova acrescentada ao contrato entra nesta varredura sozinha, sem
+        ninguém lembrar de escrever a mutação — que é o que ninguém lembrou três vezes.
+
+        Não afirma que cada forma errada é RECUSADA: algumas são legitimamente
+        ignoradas, como uma coleção opcional ausente. Afirma que nenhuma derruba a
+        ferramenta.
+
+        Roda EM PROCESSO, e é a única conferência daqui que não passa pelo executável:
+        são milhares de combinações, e um subprocesso cada levaria a suíte de sete
+        segundos para muitos minutos — uma suíte que ninguém espera é uma suíte que
+        ninguém roda. A exceção é apanhada direto, o que também é uma asserção mais
+        forte que procurar "Traceback" na saída.
+        """
+        shapes = {
+            "lista": ["x"],
+            "texto": "x",
+            "inteiro": 7,
+            "mapa": {"k": "v"},
+            "nulo": None,
+            "lista vazia": [],
+        }
+
+        crashes: list[str] = []
+
+        for doc in (PLANO, FECHADO, HIER):
+            # A árvore é escrita UMA vez e só o contrato mutado (e o índice, que
+            # deriva dele) é reescrito por combinação. Escrever as cinco fixturas
+            # inteiras mil e seiscentas vezes levava a suíte a mais de um minuto, e
+            # suíte que ninguém espera é suíte que ninguém roda.
+            root = self._write(fixtures.bundle())
+
+            for path in sorted(_value_paths(fixtures.bundle()[doc]["contract"])):
+                for name, shape in shapes.items():
+                    data = fixtures.bundle()
+
+                    if not _set_at(data[doc]["contract"], path, copy.deepcopy(shape)):
+                        continue
+
+                    if not _rewrite_contract(root, doc, data):
+                        continue
+
+                    crash = _run_in_process(root)
+
+                    if crash is not None:
+                        crashes.append(f"{doc} :: {path} = {name} -> {crash}")
+
+            _rewrite_contract(root, doc, fixtures.bundle())
+
+        self.assertEqual(
+            [], crashes,
+            "a ferramenta ESTOUROU em vez de reprovar para estes valores:\n  "
+            + "\n  ".join(crashes))
+
+    def test_fixtures_exercise_every_contract_construct_the_tool_reads(self) -> None:
+        """A cobertura da varredura é a cobertura das FIXTURAS.
+
+        A varredura acima só alcança valor que alguma fixture declara. Quando ela
+        passou verde e ainda havia um estouro no ramo do `via`, o defeito não era
+        dela: era que fixture nenhuma usava `via`, então aquele ramo do validador
+        nunca era executado — e um leitor que ninguém executa é um leitor que ninguém
+        confere.
+
+        Esta conferência lê o CÓDIGO do validador procurando toda chave de contrato
+        que ele consulta, e exige que as fixturas declarem cada uma. Falhar aqui não
+        quer dizer que o validador está errado: quer dizer que a rede que o confere
+        acabou de ficar com um buraco, e o conserto é acrescentar a construção a uma
+        fixture.
+        """
+        read = _keys_the_validator_reads()
+
+        declared: set[str] = set()
+        for parts in fixtures.bundle().values():
+            _collect_keys(parts["contract"], declared)
+
+        missing = sorted((read - declared) - _NOT_CONTRACT_KEYS)
+
+        self.assertEqual(
+            [], missing,
+            "o validador lê estas construções de contrato e nenhuma fixture as "
+            "declara, então a varredura não alcança os leitores delas:\n  "
+            + "\n  ".join(missing))
+
+    def test_a_single_problem_is_reported_once(self) -> None:
+        """Um problema, uma linha — por mais leitores que tropecem nele.
+
+        Agora que as leituras passam por portas, uma porta chamada por oito leitores
+        reprovava oito vezes o MESMO valor. As sete cópias não acrescentam nada e
+        empurram para fora da tela as outras reprovações, que são o que o curador
+        precisa ver: com `fields` malformado, a saída trazia oito linhas iguais e
+        escondia as três que diziam quais posições do template ficaram órfãs.
+        """
+        data = fixtures.bundle()
+        dataset(data[PLANO]["contract"], "saldos")["fields"] = "codigo"
+
+        code, out = _run(self._write(data))
+        self.assertEqual(1, code)
+
+        repeated = "fields é a lista dos campos"
+        self.assertEqual(
+            1, out.count(repeated),
+            f"a mesma reprovação saiu {out.count(repeated)} vezes:\n{out}")
+
+        # E as outras continuam visíveis, que é o ponto.
+        self.assertIn("não declara campo nenhum", out)
+        self.assertIn("template usa saldos.codigo", out)
 
     def test_missing_catalog_fails_without_crashing(self) -> None:
         """Árvore sem catalog.yaml reprova em vez de estourar.

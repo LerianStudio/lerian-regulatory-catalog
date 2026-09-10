@@ -168,16 +168,30 @@ knownGaps:
       motor significaria o Reporter manter uma cópia do elenco COSIF, que é
       exatamente a segunda fonte de verdade que a separação em camadas evita.
 
-  - id: natureza-contabil-nao-vem-da-fonte
+  - id: natureza-contabil-e-configuracao-do-cliente
     description: >-
-      O sinal de cada saldo depende da natureza da conta — devedora ou credora — e
-      isso é propriedade do PLANO DE CONTAS, não deste contrato nem do motor. Hoje
-      o Midaz não expõe natureza: existe `operation.route_code`, materializado de
-      `operation_route`, e nada carrega o lado da conta.
-      Enquanto isso, o binding declara a natureza como configuração do cliente, o
-      que é verboso mas está na camada certa. Quando o Midaz expuser, vira mais uma
-      coluna da consulta. A lacuna é do Midaz e deve ser levantada lá — contorná-la
-      no Reporter congelaria o defeito.
+      NÃO é uma lacuna do motor nem do Midaz — é uma precondição de CONFIGURAÇÃO, e
+      fica registrada porque um arquivo gerado sobre configuração errada sai
+      bem-formado e com o sinal trocado, que nada a jusante distingue de um correto.
+
+      O sinal de cada saldo depende da natureza da conta, que é propriedade do PLANO
+      DE CONTAS. No Midaz o plano de contas são as ROTAS CONTÁBEIS: uma
+      `operation_route` carrega `accountingEntries` e, por ação (direct, hold,
+      commit, cancel, revert, overdraft, block, unblock), declara a rubrica que
+      recebe o DÉBITO e a que recebe o CRÉDITO — cada uma com código e descrição.
+      Cada lançamento postado carrega `operation.route_code`, que liga a operação à
+      rota, e `operation.type` (DEBIT ou CREDIT), que diz de que lado ele entrou.
+
+      Ou seja: a rubrica de cada movimento é derivável, e a natureza segue do próprio
+      código COSIF que o cliente referenciou na rota. Se as rotas contábeis
+      referenciam o COSIF corretamente, o arquivo sai correto sem que motor nem
+      contrato saibam nada de natureza contábil — que é exatamente o motivo de o
+      COSIF ter saído do motor.
+
+      Quando o cliente gera a partir da base dele em vez do Midaz, a obrigação é a
+      mesma e apenas muda de lugar: prover a informação correta é dele. O binding é
+      onde isso é declarado, e é a camada certa, porque a resposta muda de cliente
+      para cliente.
 
   - id: ordem-de-remessa
     description: >-
