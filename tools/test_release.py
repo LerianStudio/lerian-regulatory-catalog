@@ -79,8 +79,15 @@ def refused(files: dict[str, bytes], manifest: dict, why: str) -> None:
 WORKSPACE = tempfile.mkdtemp(prefix="catalog-selftest-")
 
 
+# O ÍNDICE PRECISA ESTAR NO PACOTE. Sem catalog.yaml a checagem de layout para na
+# primeira linha e nunca chega a olhar os nomes dentro do documento — o caso
+# passaria igual se a checagem por documento fosse removida, que é a forma de
+# teste que não prova nada.
+INDEX = b"documents:\n  - id: a\n    path: a\n"
+
+
 def main() -> int:
-    files = {"a/contract.yaml": b"um\n", "a/template.tpl": b"dois\n"}
+    files = {"catalog.yaml": INDEX, "a/contract.yaml": b"um\n", "a/template.tpl": b"dois\n"}
     good = {path: release.checksum(content) for path, content in files.items()}
 
     # Sanidade: o pacote íntegro passa. Sem isto os casos abaixo não provam nada,
@@ -120,10 +127,21 @@ def main() -> int:
     archive.write_bytes(pack(files, {"version": "1.0.0", "checksums": good}))
     assert release.verify(archive, "2.0.0", False) != 0, "versão divergente devia reprovar"
 
-    # E a legibilidade pelo Reporter reprova quando exigida.
+    # E A LEGIBILIDADE PELO REPORTER, NOS DOIS SENTIDOS. Reprova com os nomes
+    # deste repositório, que o Reporter não encontra...
+    archive.write_bytes(pack(files, {"version": "1.0.0", "checksums": good}))
     assert release.verify(archive, "1.0.0", True) != 0, "layout ilegível pelo Reporter devia reprovar ao publicar"
 
-    print("9 corrupção(ões) recusada(s), pacote íntegro aprovado.")
+    # ...e APROVA com os nomes que ele procura. Sem este caso, uma checagem que
+    # reprovasse sempre passaria por correta e travaria toda release.
+    legible = {"catalog.yaml": INDEX, "a/contract.contract.yaml": b"um\n", "a/template.tpl": b"dois\n"}
+    archive.write_bytes(pack(legible, {
+        "version": "1.0.0",
+        "checksums": {path: release.checksum(content) for path, content in legible.items()},
+    }))
+    assert release.verify(archive, "1.0.0", True) == 0, "layout que o Reporter lê devia poder publicar"
+
+    print("9 corrupção(ões) recusada(s), pacote íntegro e legível aprovado.")
 
     return 0
 
