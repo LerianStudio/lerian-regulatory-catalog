@@ -98,3 +98,91 @@ Ao acrescentar uma construção ao formato, ela nasce com três coisas:
    direto e o mesmo `from` dentro de `byRowClass` são dois caminhos);
 3. a **forma do valor** conferida antes do uso — YAML malformado deve reprovar, nunca
    estourar a ferramenta.
+
+## Publicar uma release
+
+O Reporter não lê este repositório. Ele busca a release **mais recente** e baixa o
+único `.tar.gz` anexado a ela — um pacote com o índice, os documentos publicados e
+um manifesto com o SHA-256 de cada arquivo, que o próprio Reporter confere antes de
+instalar. Nada aqui chega a um cliente até uma release existir.
+
+A tag é a versão do **catálogo**, no formato `vX.Y.Z`, e é o que dispara a
+publicação. Ela não tem relação com as versões dos documentos: `metadata.version`
+em cada contrato é por documento, independente, e é o que o cliente fixa quando
+assina. Uma release `v1.4.0` pode carregar o 4010 na 1.0.0 e o 4111 na 2.3.1 — a
+versão da release diz quando o conjunto foi publicado, nunca o que cada documento é.
+
+Como cortar:
+
+1. Confira localmente: `python3 tools/validate.py`.
+2. `git tag -s v1.0.0 -m "catálogo 1.0.0"` e `git push origin v1.0.0`.
+3. O CI valida, monta o pacote, confere que ele é reproduzível, o relê como o
+   Reporter releria e publica a release. Nada disso acontece sem a tag.
+
+Para montar e conferir sem publicar — o que o CI faz em todo PR:
+
+    python3 tools/release.py build --version 0.0.0-local --out /tmp/catalog.tar.gz
+    python3 tools/release.py verify /tmp/catalog.tar.gz --version 0.0.0-local
+
+### O que o pacote carrega
+
+`catalog.yaml` e, de cada documento publicado no índice, tudo menos `schema/`. Os
+XSDs e os manuais em PDF do regulador são fonte para ESCREVER e revisar o contrato,
+não algo que o Reporter execute — hoje seriam 1,3 MB contra 30 KB de catálogo, e a
+conta cresce a cada documento. Ficam no repositório, onde a curadoria os lê.
+
+Um arquivo que o Reporter precise resolver em tempo de geração — a tabela de código
+do regulador em `contas.yaml`, por exemplo — mora na raiz do documento, nunca em
+`schema/`.
+
+### Um pacote por release
+
+Uma release publica **exatamente um** `.tar.gz`. O Reporter recusa uma que tenha
+dois: de lá não há como dizer qual é o catálogo, e escolher um instalaria conteúdo
+por acidente de ordenação. O `SHA256SUMS` que acompanha é para conferência humana e
+não termina em `.tar.gz` de propósito — qualquer anexo novo precisa respeitar isso.
+
+Uma release marcada como *pre-release* ou *draft* é invisível para o Reporter, que
+pede `releases/latest`. Publicar uma não corrige um catálogo quebrado, e também não
+quebra um que esteja no ar.
+
+O pacote é **reproduzível**: a mesma árvore produz os mesmos bytes, sempre. É o que
+permite a alguém remontar a release e comparar com o que publicamos. O CI confere
+isso a cada execução, montando duas vezes.
+
+### Divergência de nomes com o Reporter
+
+**Hoje o Reporter não encontra nenhum documento deste catálogo.** O empacotamento
+não esconde isso, e não renomeia nada: renomear na hora do build resolveria a tela e
+deixaria os dois lados discordando onde ninguém revisa.
+
+| | este repositório | o que o Reporter procura |
+|---|---|---|
+| contrato | `contract.yaml` | `contract.contract.yaml` |
+| template | `template.tpl` | `template.tpl` |
+| binding de referência | `binding.example.yaml` | `binding.yaml` |
+
+O lado do Reporter está em `pkg/reporter/catalog/fetch.go`:
+
+    const (
+        contractFileName  = "contract.contract.yaml"
+        templateFileName  = "template.tpl"
+        referenceFileName = "binding.yaml"
+    )
+
+e o leitor de boot (`pkg/reporter/contract/source.go`) usa o sufixo
+`const contractFileSuffix = ".contract.yaml"`, que também não casa com
+`contract.yaml` — nem no pacote, nem num catálogo montado como diretório.
+
+Enquanto os dois lados não concordarem, o Reporter responde *"release does not carry
+'br.bcb.cadoc-4010'. It carries no documents at all"* a quem tentar assinar, e
+`tools/release.py verify --require-consumer-layout` reprova a publicação — o que o
+CI usa na tag. Em PR a mesma checagem só avisa, para não travar a curadoria numa
+decisão que não é dela.
+
+### A ferramenta de empacotamento
+
+`tools/release.py` monta e confere; `tools/test_release.py` prova que a conferência
+morde, corrompendo um pacote íntegro de sete maneiras e exigindo a recusa de cada
+uma. Mesma disciplina do validador: conferência nova nasce com a mutação que a torna
+significativa.
