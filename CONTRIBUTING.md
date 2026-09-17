@@ -98,3 +98,73 @@ Ao acrescentar uma construção ao formato, ela nasce com três coisas:
    direto e o mesmo `from` dentro de `byRowClass` são dois caminhos);
 3. a **forma do valor** conferida antes do uso — YAML malformado deve reprovar, nunca
    estourar a ferramenta.
+
+## Publicar uma release
+
+O Reporter não lê este repositório. Ele busca a release **mais recente** e baixa o
+único `.tar.gz` anexado a ela — um pacote com o índice, os documentos publicados e
+um manifesto com o SHA-256 de cada arquivo, que o próprio Reporter confere antes de
+instalar. Nada aqui chega a um cliente até uma release existir.
+
+A tag é a versão do **catálogo**, no formato `vX.Y.Z`, e é o que dispara a
+publicação. Ela não tem relação com as versões dos documentos: `metadata.version`
+em cada contrato é por documento, independente, e é o que o cliente fixa quando
+assina. Uma release `v1.4.0` pode carregar o 4010 na 1.0.0 e o 4111 na 2.3.1 — a
+versão da release diz quando o conjunto foi publicado, nunca o que cada documento é.
+
+Como cortar:
+
+1. Confira localmente: `python3 tools/validate.py`.
+2. `git tag -s v1.0.0 -m "catálogo 1.0.0"` e `git push origin v1.0.0`.
+3. O CI valida, monta o pacote, confere que ele é reproduzível, o relê como o
+   Reporter releria e publica a release. Nada disso acontece sem a tag.
+
+Para montar e conferir sem publicar — o que o CI faz em todo PR:
+
+    python3 tools/release.py build --version 0.0.0-local --out /tmp/catalog.tar.gz
+    python3 tools/release.py verify /tmp/catalog.tar.gz --version 0.0.0-local
+
+### O que o pacote carrega
+
+`catalog.yaml` e, de cada documento publicado no índice, tudo menos `schema/`. Os
+XSDs e os manuais em PDF do regulador são fonte para ESCREVER e revisar o contrato,
+não algo que o Reporter execute — hoje seriam 1,3 MB contra 30 KB de catálogo, e a
+conta cresce a cada documento. Ficam no repositório, onde a curadoria os lê.
+
+Um arquivo que o Reporter precise resolver em tempo de geração — a tabela de código
+do regulador em `contas.yaml`, por exemplo — mora na raiz do documento, nunca em
+`schema/`.
+
+### Um pacote por release
+
+Uma release publica **exatamente um** `.tar.gz`. O Reporter recusa uma que tenha
+dois: de lá não há como dizer qual é o catálogo, e escolher um instalaria conteúdo
+por acidente de ordenação. O `SHA256SUMS` que acompanha é para conferência humana e
+não termina em `.tar.gz` de propósito — qualquer anexo novo precisa respeitar isso.
+
+Uma release marcada como *pre-release* ou *draft* é invisível para o Reporter, que
+pede `releases/latest`. Publicar uma não corrige um catálogo quebrado, e também não
+quebra um que esteja no ar.
+
+O pacote é **reproduzível**: a mesma árvore produz os mesmos bytes, sempre. É o que
+permite a alguém remontar a release e comparar com o que publicamos. O CI confere
+isso a cada execução, montando duas vezes.
+
+### Os nomes dos arquivos são contrato com o Reporter
+
+O Reporter lê exatamente `contract.yaml`, `template.tpl` e `binding.example.yaml`
+dentro do diretório de cada documento. **Renomear um deles aqui é também uma mudança
+no Reporter** — não é decisão de organização deste repositório.
+
+Por isso o empacotamento nunca traduz um nome, e a publicação numa tag reprova se
+algum documento do índice não carregar os três. Um documento publicado pela metade é
+pior que um ausente: o cliente o assina e ele nunca gera. `tools/validate.py` apenas
+AVISA sobre um `binding.example.yaml` faltando, porque durante a curadoria isso é
+normal — publicar não é.
+
+### A ferramenta de empacotamento
+
+`tools/release.py` monta e confere; `tools/test_release.py` prova que a conferência
+morde, corrompendo um pacote íntegro de sete maneiras e exigindo a recusa de cada
+uma. Mesma disciplina do validador: conferência nova nasce com a mutação que a torna
+significativa.

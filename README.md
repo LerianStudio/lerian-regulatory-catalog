@@ -74,9 +74,13 @@ Mudança de contrato exige revisor com conhecimento do documento. Ver
 
 ## Versões
 
-Cada contrato declara sua versão em `metadata.version`. Publicações são **tags git**
-(`br.bcb.cadoc-4010/v1.0.0`), e a instalação do cliente fixa a versão que adotou —
-uma correção publicada aqui não muda o que ele gera até ele adotar.
+Cada contrato declara sua versão em `metadata.version`, e a instalação do cliente
+fixa a versão que adotou — uma correção publicada aqui não muda o que ele gera até
+ele adotar.
+
+Publicar é cortar uma tag `vX.Y.Z`, que versiona o **catálogo** e não os documentos:
+o CI monta um pacote com tudo e o anexa a uma release, que é o que o Reporter busca.
+Ver [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Não há diretório por versão: duplicar a árvore inteira a cada revisão torna o
 histórico ilegível, e é exatamente o que o git já resolve.
