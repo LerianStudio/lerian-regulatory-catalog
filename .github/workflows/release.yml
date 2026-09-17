@@ -118,7 +118,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # --verify-tag porque sem ele, se a tag tiver sumido entre o push e
+          # aqui, o gh CRIA uma apontando para o topo do branch padrão: a release
+          # sairia dizendo ser vX.Y.Z e apontando para outra árvore. Melhor
+          # falhar alto do que publicar uma tag que ninguém cortou.
           gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
             --title "$GITHUB_REF_NAME" \
             --notes "Catálogo regulatório $VERSION. O Reporter busca a release mais recente e lê o único \`.tar.gz\` anexado; \`SHA256SUMS\` é para conferência humana." \
             "dist/catalog-$VERSION.tar.gz" \
