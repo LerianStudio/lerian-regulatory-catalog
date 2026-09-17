@@ -114,6 +114,24 @@ jobs:
         working-directory: dist
         run: sha256sum "catalog-$VERSION.tar.gz" > SHA256SUMS
 
+      # A tag pode ter sido MOVIDA entre o disparo e agora, e aí a release
+      # apontaria para uma árvore e carregaria o pacote de outra — as duas
+      # metades discordando sem nada dizer isso. A conferência não é livre de
+      # corrida (a tag pode mudar no instante seguinte); fechar de verdade é uma
+      # regra de proteção de tag no repositório, que é decisão de quem o
+      # administra. O que esta etapa garante é que a janela deixe rastro.
+      - name: a tag ainda aponta para o que foi conferido
+        run: |
+          target=$(git ls-remote origin "refs/tags/$GITHUB_REF_NAME^{}" | cut -f1)
+          if [ -z "$target" ]; then
+            target=$(git ls-remote origin "refs/tags/$GITHUB_REF_NAME" | cut -f1)
+          fi
+
+          if [ "$target" != "$GITHUB_SHA" ]; then
+            echo "a tag '$GITHUB_REF_NAME' aponta para ${target:-nada} e o pacote foi montado de $GITHUB_SHA" >&2
+            exit 1
+          fi
+
       - name: publica a release
         env:
           GH_TOKEN: ${{ github.token }}
