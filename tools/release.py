@@ -38,13 +38,13 @@ ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_NAME = ".reporter/manifest.json"
 MAX_ARCHIVE_BYTES = 256 << 20
 
-# Os nomes que o Reporter procura dentro do diretório de um documento
-# (pkg/reporter/catalog/fetch.go). NÃO são os nomes que este repositório usa — ver
-# "Divergência de nomes com o Reporter" no CONTRIBUTING.md. Este script NÃO
-# renomeia nada ao empacotar: renomear esconderia a divergência dentro de uma
-# etapa de build, onde ninguém a revisa.
-CONSUMER_CONTRACT = "contract.contract.yaml"
-CONSUMER_TEMPLATE = "template.tpl"
+# Os arquivos que um documento publica. O Reporter os lê com EXATAMENTE estes
+# nomes, então renomear um deles aqui é também uma mudança no Reporter — não uma
+# escolha de organização deste repositório.
+#
+# O empacotamento nunca renomeia nada: um nome traduzido no build deixaria os dois
+# lados discordando dentro de uma etapa que ninguém revisa.
+DOCUMENT_FILES = ("contract.yaml", "template.tpl", "binding.example.yaml")
 
 
 def checksum(content: bytes) -> str:
@@ -224,7 +224,7 @@ def bounded_decompress(blob: bytes) -> bytes:
     return out.getvalue()
 
 
-def verify(archive_path: Path, version: str | None, require_consumer_layout: bool) -> int:
+def verify(archive_path: Path, version: str | None, require_document_layout: bool) -> int:
     files, manifest = read_archive(archive_path.read_bytes())
     published = manifest.get("checksums") or {}
     problems: list[str] = []
@@ -254,7 +254,7 @@ def verify(archive_path: Path, version: str | None, require_consumer_layout: boo
         if path not in published:
             problems.append(f"'{path}' chegou no pacote e o manifesto não o publica")
 
-    missing = consumer_layout_gaps(files)
+    missing = document_layout_gaps(files)
 
     for failure in problems:
         print(f"erro: {failure}", file=sys.stderr)
@@ -266,31 +266,31 @@ def verify(archive_path: Path, version: str | None, require_consumer_layout: boo
     print(f"{len(files)} arquivo(s) conferido(s) contra o manifesto da release '{manifest.get('version')}'.")
 
     if missing:
-        label = "erro" if require_consumer_layout else "aviso"
+        label = "erro" if require_document_layout else "aviso"
 
         for gap in missing:
             print(f"{label}: {gap}", file=sys.stderr)
 
         print(
-            f"{label}: o Reporter procura '{CONSUMER_CONTRACT}' e '{CONSUMER_TEMPLATE}' no diretório de "
-            f"cada documento (pkg/reporter/catalog/fetch.go). Este repositório publica 'contract.yaml' e "
-            f"'binding.example.yaml'. Enquanto os dois lados não concordarem, o Reporter responde "
-            f"'release does not carry ...' para todo documento deste catálogo — ver CONTRIBUTING.md.",
+            f"{label}: um documento publica {', '.join(DOCUMENT_FILES)}, e o Reporter lê exatamente "
+            f"esses nomes. Publicar um documento incompleto instala no cliente um documento que ele "
+            f"assina e que não gera.",
             file=sys.stderr,
         )
 
-        if require_consumer_layout:
+        if require_document_layout:
             return 1
 
     return 0
 
 
-def consumer_layout_gaps(files: dict[str, bytes]) -> list[str]:
-    """Os documentos que o Reporter NÃO encontraria neste pacote.
+def document_layout_gaps(files: dict[str, bytes]) -> list[str]:
+    """Os documentos que este pacote publica pela metade.
 
-    Integridade e legibilidade são coisas diferentes: um pacote pode estar
-    perfeitamente íntegro e ainda assim ser ilegível para o único consumidor que
-    existe. Conferir só a primeira publicaria uma release que ninguém consome.
+    Integridade e completude são coisas diferentes: um pacote pode estar
+    perfeitamente íntegro — cada byte batendo com o manifesto — e ainda assim
+    carregar um documento sem template, que o cliente assina e que nunca gera.
+    Conferir só a primeira publicaria exatamente isso.
     """
     # Lido do PACOTE, nunca da árvore: a conferência tem de valer para um arquivo
     # que chegou de fora, sem o repositório ao lado.
@@ -300,9 +300,9 @@ def consumer_layout_gaps(files: dict[str, bytes]) -> list[str]:
     gaps = []
 
     for path in document_paths(files["catalog.yaml"]):
-        for name in (CONSUMER_CONTRACT, CONSUMER_TEMPLATE):
+        for name in DOCUMENT_FILES:
             if f"{path}/{name}" not in files:
-                gaps.append(f"o Reporter não encontraria '{path}/{name}' neste pacote")
+                gaps.append(f"o índice publica '{path}' e o pacote não carrega seu '{name}'")
 
     return gaps
 
@@ -319,9 +319,9 @@ def main() -> int:
     checker.add_argument("archive", type=Path)
     checker.add_argument("--version", help="a versão que a tag promete; confere contra o manifesto")
     checker.add_argument(
-        "--require-consumer-layout",
+        "--require-document-layout",
         action="store_true",
-        help="reprova se o Reporter não encontraria os documentos (usado ao publicar)",
+        help="reprova se algum documento do índice está incompleto (usado ao publicar)",
     )
 
     args = parser.parse_args()
@@ -331,7 +331,7 @@ def main() -> int:
             build(args.version, args.out)
             return 0
 
-        return verify(args.archive, args.version, args.require_consumer_layout)
+        return verify(args.archive, args.version, args.require_document_layout)
     except Refusal as refusal:
         print(f"erro: {refusal}", file=sys.stderr)
         return 1

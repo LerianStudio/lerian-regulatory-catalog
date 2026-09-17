@@ -103,12 +103,13 @@ jobs:
       - name: monta o pacote da release
         run: python3 tools/release.py build --version "$VERSION" --out "dist/catalog-$VERSION.tar.gz"
 
-      # Ao PUBLICAR, exige também que o Reporter ENCONTRE cada documento do
-      # índice: uma release íntegra que o único consumidor não lê não é release.
-      - name: confere o pacote e a legibilidade pelo Reporter
+      # Ao PUBLICAR, exige também que cada documento do índice esteja COMPLETO.
+      # Um pacote pode estar perfeitamente íntegro e ainda carregar um documento
+      # sem template, que o cliente assina e que nunca gera.
+      - name: confere o pacote e o layout de cada documento
         run: |
           python3 tools/release.py verify "dist/catalog-$VERSION.tar.gz" \
-            --version "$VERSION" --require-consumer-layout
+            --version "$VERSION" --require-document-layout
 
       - name: SHA256SUMS
         working-directory: dist

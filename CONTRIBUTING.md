@@ -150,35 +150,17 @@ O pacote é **reproduzível**: a mesma árvore produz os mesmos bytes, sempre. �
 permite a alguém remontar a release e comparar com o que publicamos. O CI confere
 isso a cada execução, montando duas vezes.
 
-### Divergência de nomes com o Reporter
+### Os nomes dos arquivos são contrato com o Reporter
 
-**Hoje o Reporter não encontra nenhum documento deste catálogo.** O empacotamento
-não esconde isso, e não renomeia nada: renomear na hora do build resolveria a tela e
-deixaria os dois lados discordando onde ninguém revisa.
+O Reporter lê exatamente `contract.yaml`, `template.tpl` e `binding.example.yaml`
+dentro do diretório de cada documento. **Renomear um deles aqui é também uma mudança
+no Reporter** — não é decisão de organização deste repositório.
 
-| | este repositório | o que o Reporter procura |
-|---|---|---|
-| contrato | `contract.yaml` | `contract.contract.yaml` |
-| template | `template.tpl` | `template.tpl` |
-| binding de referência | `binding.example.yaml` | `binding.yaml` |
-
-O lado do Reporter está em `pkg/reporter/catalog/fetch.go`:
-
-    const (
-        contractFileName  = "contract.contract.yaml"
-        templateFileName  = "template.tpl"
-        referenceFileName = "binding.yaml"
-    )
-
-e o leitor de boot (`pkg/reporter/contract/source.go`) usa o sufixo
-`const contractFileSuffix = ".contract.yaml"`, que também não casa com
-`contract.yaml` — nem no pacote, nem num catálogo montado como diretório.
-
-Enquanto os dois lados não concordarem, o Reporter responde *"release does not carry
-'br.bcb.cadoc-4010'. It carries no documents at all"* a quem tentar assinar, e
-`tools/release.py verify --require-consumer-layout` reprova a publicação — o que o
-CI usa na tag. Em PR a mesma checagem só avisa, para não travar a curadoria numa
-decisão que não é dela.
+Por isso o empacotamento nunca traduz um nome, e a publicação numa tag reprova se
+algum documento do índice não carregar os três. Um documento publicado pela metade é
+pior que um ausente: o cliente o assina e ele nunca gera. `tools/validate.py` apenas
+AVISA sobre um `binding.example.yaml` faltando, porque durante a curadoria isso é
+normal — publicar não é.
 
 ### A ferramenta de empacotamento
 
