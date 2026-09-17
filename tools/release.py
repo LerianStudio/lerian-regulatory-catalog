@@ -164,7 +164,15 @@ def read_archive(blob: bytes) -> tuple[dict[str, bytes], dict]:
     files: dict[str, bytes] = {}
     manifest: dict | None = None
 
-    with tarfile.open(fileobj=io.BytesIO(expanded), mode="r:") as archive:
+    try:
+        entries = tarfile.open(fileobj=io.BytesIO(expanded), mode="r:")
+    except tarfile.TarError as exc:
+        raise Refusal(
+            f"o pacote termina no meio: {exc}. O que chegou é PARTE de uma release, e instalar "
+            f"parte de uma release é a única coisa que este desenho não faz"
+        ) from exc
+
+    with entries as archive:
         for member in archive:
             if not member.isfile():
                 continue
@@ -173,7 +181,14 @@ def read_archive(blob: bytes) -> tuple[dict[str, bytes], dict]:
             content = handle.read() if handle else b""
 
             if member.name == MANIFEST_NAME:
-                manifest = json.loads(content.decode("utf-8"))
+                try:
+                    manifest = json.loads(content.decode("utf-8"))
+                except (ValueError, UnicodeDecodeError) as exc:
+                    raise Refusal(f"o manifesto do pacote não pode ser lido: {exc}") from exc
+
+                if not isinstance(manifest, dict):
+                    raise Refusal("o manifesto do pacote não é um mapeamento, então não descreve release nenhuma")
+
                 continue
 
             # Conferido ANTES de o conteúdo ser guardado: o caminho decide onde o
@@ -213,6 +228,9 @@ def verify(archive_path: Path, version: str | None, require_consumer_layout: boo
     files, manifest = read_archive(archive_path.read_bytes())
     published = manifest.get("checksums") or {}
     problems: list[str] = []
+
+    if not isinstance(published, dict):
+        raise Refusal("os checksums do manifesto não são um mapeamento de caminho para SHA-256")
 
     if not published:
         raise Refusal(
