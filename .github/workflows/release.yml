@@ -1,0 +1,83 @@
+name: release catalog
+
+# UMA RELEASE É UM ATO PARA FORA. O Reporter de cada cliente busca a release MAIS
+# RECENTE deste repositório e instala o que ela carregar — sem revisão no meio.
+# Por isso o mesmo pacote é montado e conferido em todo PR: uma árvore que não
+# empacota, ou que empacota errado, não chega a uma tag.
+#
+# UM ÚNICO .tar.gz POR RELEASE. O Reporter recusa uma release com dois, porque de
+# lá não há como dizer qual é o catálogo, e escolher um instalaria conteúdo por
+# acidente de ordenação. Qualquer anexo novo aqui precisa NÃO terminar em .tar.gz.
+on:
+  pull_request:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r tools/requirements.txt
+
+      - name: confere o conteúdo do catálogo
+        run: python3 tools/validate.py
+
+      - name: confere que a conferência morde
+        run: python3 tools/test_release.py
+
+      - name: a versão da release
+        id: release
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0-dry-run" >> "$GITHUB_OUTPUT"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: monta o pacote
+        run: python3 tools/release.py build --version "${{ steps.release.outputs.version }}" --out "dist/catalog-${{ steps.release.outputs.version }}.tar.gz"
+
+      # MESMA ÁRVORE, MESMOS BYTES. Sem isto, quem conferir o que publicamos
+      # remontando o pacote encontra uma diferença e não sabe se o conteúdo mudou
+      # ou se foi só o empacotador carimbando a hora.
+      - name: o pacote é reproduzível
+        run: |
+          python3 tools/release.py build --version "${{ steps.release.outputs.version }}" --out "/tmp/again/catalog.tar.gz"
+          cmp "dist/catalog-${{ steps.release.outputs.version }}.tar.gz" /tmp/again/catalog.tar.gz
+
+      # LIDO COMO O REPORTER LERIA: desempacota, recalcula cada SHA-256 contra o
+      # manifesto que viaja dentro, e recusa caminho que escape da raiz. Ao
+      # publicar, exige também que o Reporter ENCONTRE cada documento do índice —
+      # uma release íntegra que o único consumidor não lê não é uma release.
+      - name: confere o pacote
+        run: |
+          python3 tools/release.py verify "dist/catalog-${{ steps.release.outputs.version }}.tar.gz" \
+            --version "${{ steps.release.outputs.version }}" \
+            ${{ steps.release.outputs.publish == 'true' && '--require-consumer-layout' || '' }}
+
+      - name: SHA256SUMS
+        if: steps.release.outputs.publish == 'true'
+        working-directory: dist
+        run: sha256sum "catalog-${{ steps.release.outputs.version }}.tar.gz" > SHA256SUMS
+
+      - name: publica a release
+        if: steps.release.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Catálogo regulatório ${{ steps.release.outputs.version }}. O Reporter busca a release mais recente e lê o único \`.tar.gz\` anexado; \`SHA256SUMS\` é para conferência humana." \
+            "dist/catalog-${{ steps.release.outputs.version }}.tar.gz" \
+            "dist/SHA256SUMS"
