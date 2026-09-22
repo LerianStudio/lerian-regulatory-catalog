@@ -151,11 +151,15 @@ FECHADO_CONTRACT = {
     ],
 }
 
+# A coluna de identidade chama-se como o contrato declara em `rowSet.key` — aqui
+# `codigo`. É a mesma exigência do motor: a linha carrega a coluna que a nomeia.
 FECHADO_CONTAS = {
-    "accounts": [
-        {"code": "1100000002", "masked": "1.1.0.00.00.00-2", "measure": "stock", "description": "Estoque A"},
-        {"code": "4193000009", "masked": "4.1.9.30.00.00-9", "measure": "stock", "description": "Estoque B"},
-        {"code": "3097010000", "masked": "3.0.9.70.10.00-0", "measure": "flow", "description": "Fluxo A"},
+    "apiVersion": APIV,
+    "kind": "DocumentRowSet",
+    "rows": [
+        {"codigo": "1100000002", "masked": "1.1.0.00.00.00-2", "measure": "stock", "description": "Estoque A"},
+        {"codigo": "4193000009", "masked": "4.1.9.30.00.00-9", "measure": "stock", "description": "Estoque B"},
+        {"codigo": "3097010000", "masked": "3.0.9.70.10.00-0", "measure": "flow", "description": "Fluxo A"},
     ]
 }
 
@@ -190,7 +194,7 @@ FECHADO_BINDING = {
             "from": {"query": "estoque"},
             "rowKey": {"codigo": "rota"},
             "fields": {
-                "codigo": {"from": "rowSet", "column": "code"},
+                "codigo": {"from": "rowSet", "column": "codigo"},
                 "valor": {"byRowClass": [
                     {"when": {"rowSet": "measure", "equals": "stock"}, "from": "query", "column": "valor"},
                     {"when": {"rowSet": "measure", "equals": "flow"}, "from": "manual",

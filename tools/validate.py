@@ -24,6 +24,12 @@ import yaml
 # apontar a ferramenta para uma árvore de fixtures — sem isso, as provas de mutação
 # só existiriam como comandos digitados à mão, que é como elas nasceram.
 ROOT = Path(os.environ.get("CATALOG_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+
+# O marcador de formato de um conjunto fechado, escrito como o motor o lê
+# (pkg/reporter/yamldoc). Um arquivo que se anuncia como outra coisa não é lido como
+# conjunto — nem lá, nem aqui.
+ROW_SET_KIND = "DocumentRowSet"
+
 FAILURES: list[str] = []
 WARNINGS: list[str] = []
 
@@ -718,7 +724,7 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.from cita {ref}, que não existe")
             continue
 
-        # Robustez de forma: um conjunto com raiz que não é mapa, `accounts` que não é
+        # Robustez de forma: um conjunto com raiz que não é mapa, `rows` que não é
         # lista, ou uma linha que não é mapa faria os .get() abaixo estourarem em vez
         # de reprovar. Um validador que quebra com entrada malformada é pior que um
         # que reprova.
@@ -727,9 +733,20 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: {ref} não é um mapa YAML na raiz")
             continue
 
-        rows = loaded.get("accounts")
+        # O conjunto se anuncia. O motor aceita o marcador ausente porque lê também
+        # fixtura escrita à mão; um arquivo CURADO não tem essa desculpa — sem o
+        # marcador, um contrato ou um binding colocado neste caminho seria lido como
+        # conjunto e publicaria o que quer que seu primeiro mapa carregasse.
+        kind = loaded.get("kind")
+        if kind != ROW_SET_KIND:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ref} declara kind {kind!r} — um conjunto "
+                f"curado se anuncia como {ROW_SET_KIND!r}"
+            )
+
+        rows = loaded.get("rows")
         if not isinstance(rows, list):
-            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não tem uma lista `accounts`")
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não tem uma lista `rows`")
             continue
 
         malformed = [r for r in rows if not isinstance(r, dict)]
@@ -737,7 +754,14 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: {ref} tem uma conta que não é mapa: {r!r}")
         rows = [r for r in rows if isinstance(r, dict)]
 
+        # A COLUNA QUE IDENTIFICA A LINHA É A QUE O CONTRATO DECLARA, e é lida daqui
+        # em vez de fixada no validador: o motor exige que cada linha carregue a
+        # coluna nomeada em `rowSet.key`, e um segundo nome escrito aqui passaria a
+        # conferir uma coluna que o motor não olha.
         key = ds["rowSet"].get("key")
+        if not isinstance(key, str) or not key:
+            fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `key`")
+            continue
         key_field = next((f for f in fields_of(ds) if f["name"] == key), None)
         pattern = key_field.get("pattern") if key_field else None
         if pattern is not None and not isinstance(pattern, str):
@@ -746,7 +770,12 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             pattern = None
 
         for r in rows:
-            code = str(r.get("code", ""))
+            code = str(r.get(key, ""))
+            if not code:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, uma linha não carrega "
+                    f"`{key}` — é a coluna que identifica a linha do conjunto"
+                )
 
             # O código de dez dígitos é o mascarado sem pontuação. Conferir isso é o
             # que pega a transcrição manual errada — que já aconteceu (um código de
@@ -757,11 +786,11 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             if not masked:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: em {ref}, a conta '{code}' não tem "
-                    f"`masked` — o code fica sem a forma oficial contra a qual conferir"
+                    f"`masked` — o código fica sem a forma oficial contra a qual conferir"
                 )
             elif code != re.sub(r"[.\-]", "", str(masked)):
                 fail(
-                    f"{doc_dir.relative_to(ROOT)}: em {ref}, code '{code}' não é o "
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, {key} '{code}' não é o "
                     f"masked '{masked}' sem pontuação — transcrição do código diverge"
                 )
 
@@ -771,7 +800,7 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
                     f"pattern de {ds['name']}.{key} — deriva de formato do código"
                 )
 
-        codes = [str(r.get("code")) for r in rows]
+        codes = [str(r.get(key)) for r in rows]
         for dup in {c for c in codes if codes.count(c) > 1}:
             fail(f"{doc_dir.relative_to(ROOT)}: conta '{dup}' duplicada em {ref}")
 

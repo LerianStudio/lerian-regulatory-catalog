@@ -359,26 +359,26 @@ MUTATIONS: list[Mutation] = [
     Mutation(
         "conta-fora-do-formato",
         "código do conjunto fora do formato do contrato é a deriva 8-vs-10 dígitos",
-        lambda b: b[FECHADO]["contas"]["accounts"][0].update({"code": "11000002"}),
+        lambda b: b[FECHADO]["contas"]["rows"][0].update({"codigo": "11000002"}),
         "não bate com o pattern",
     ),
     Mutation(
         "code-diverge-do-masked",
         "código transcrito à mão divergindo da forma oficial — aconteceu de verdade",
-        lambda b: b[FECHADO]["contas"]["accounts"][2].update({"code": "3097010009"}),
+        lambda b: b[FECHADO]["contas"]["rows"][2].update({"codigo": "3097010009"}),
         "transcrição do código diverge",
     ),
     Mutation(
         "conta-sem-masked",
         "sem a forma oficial, o código não tem contra o que ser conferido",
-        lambda b: b[FECHADO]["contas"]["accounts"][0].pop("masked"),
+        lambda b: b[FECHADO]["contas"]["rows"][0].pop("masked"),
         "não tem `masked`",
     ),
     Mutation(
         "conta-duplicada",
         "conta duplicada no conjunto emite a mesma linha duas vezes",
-        lambda b: b[FECHADO]["contas"]["accounts"].append(
-            dict(b[FECHADO]["contas"]["accounts"][0])),
+        lambda b: b[FECHADO]["contas"]["rows"].append(
+            dict(b[FECHADO]["contas"]["rows"][0])),
         "duplicada",
     ),
     Mutation(
@@ -402,16 +402,40 @@ MUTATIONS: list[Mutation] = [
         "têm de ser o mesmo arquivo",
     ),
     Mutation(
-        "accounts-nao-e-lista",
+        "rows-nao-e-lista",
         "forma malformada deve reprovar, não estourar a ferramenta",
-        lambda b: b[FECHADO].__setitem__("contas", {"accounts": "naoEhLista"}),
-        "não tem uma lista `accounts`",
+        lambda b: b[FECHADO].__setitem__("contas", {"kind": "DocumentRowSet", "rows": "naoEhLista"}),
+        "não tem uma lista `rows`",
     ),
     Mutation(
         "conta-nao-e-mapa",
         "linha do conjunto que não é mapa deve reprovar, não estourar",
-        lambda b: b[FECHADO]["contas"]["accounts"].append(["1100000002"]),
+        lambda b: b[FECHADO]["contas"]["rows"].append(["1100000002"]),
         "que não é mapa",
+    ),
+    Mutation(
+        "conjunto-sem-marcador",
+        "arquivo curado sem `kind` pode ser um contrato lido como conjunto de linhas",
+        lambda b: b[FECHADO]["contas"].pop("kind"),
+        "se anuncia como",
+    ),
+    Mutation(
+        "conjunto-com-marcador-estrangeiro",
+        "um conjunto que se diz outra coisa publicaria o que seu primeiro mapa tiver",
+        lambda b: b[FECHADO]["contas"].__setitem__("kind", "DocumentContract"),
+        "se anuncia como",
+    ),
+    Mutation(
+        "linha-sem-coluna-de-identidade",
+        "linha sem a coluna que o contrato nomeia em rowSet.key não é identificável",
+        lambda b: b[FECHADO]["contas"]["rows"][0].pop("codigo"),
+        "é a coluna que identifica",
+    ),
+    Mutation(
+        "rowset-sem-key",
+        "sem `key` declarada, nada diz qual coluna identifica a linha",
+        lambda b: dataset(b[FECHADO]["contract"], "linhas")["rowSet"].pop("key"),
+        "não declara `key`",
     ),
     Mutation(
         "rowset-sem-declaracao-no-contrato",
@@ -952,7 +976,7 @@ _NOT_CONTRACT_KEYS = {
     # catalog.yaml
     "documents", "path",
     # contas.yaml — o conjunto fechado
-    "accounts", "code", "masked",
+    "rows", "masked",
 }
 
 
