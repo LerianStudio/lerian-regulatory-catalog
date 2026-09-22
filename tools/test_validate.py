@@ -498,6 +498,32 @@ MUTATIONS: list[Mutation] = [
         "não declara `on` como o nome de uma coluna",
     ),
     Mutation(
+        "agregacao-que-nao-e-mapa",
+        "forma malformada deve reprovar, não estourar em .get('accumulate')",
+        lambda b: b[JANELAS]["binding"]["queries"][0].__setitem__("aggregate", "soma"),
+        "não é um mapa",
+    ),
+    Mutation(
+        "coluna-de-tempo-so-com-espaco",
+        "`on: '   '` é texto não vazio e não nomeia coluna nenhuma",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["accumulate"]
+        .__setitem__("on", "   "),
+        "não declara `on` como o nome de uma coluna",
+    ),
+    Mutation(
+        "consulta-nomeada-que-nao-e-nome",
+        "uma lista no lugar do nome da consulta estourava em `named not in queries`",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1]
+        .__setitem__("query", ["volume"]),
+        "nomeia uma consulta que não é um nome",
+    ),
+    Mutation(
+        "chave-da-linha-que-nao-e-mapa",
+        "rowKey malformado estourava em .values() em vez de reprovar",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"].__setitem__("rowKey", ["codigo"]),
+        "o `rowKey` de 'linhas' não é um mapa",
+    ),
+    Mutation(
         "rowset-sem-declaracao-no-contrato",
         "campo from rowSet num conjunto sem rowSet aponta para linhas inexistentes",
         lambda b: dataset(b[FECHADO]["contract"], "linhas").pop("rowSet"),
@@ -1282,7 +1308,7 @@ class ValidatorSuite(unittest.TestCase):
 
         crashes: list[str] = []
 
-        for doc in (PLANO, FECHADO, HIER):
+        for doc in (PLANO, FECHADO, HIER, JANELAS):
             # A árvore é escrita UMA vez e só o contrato mutado (e o índice, que
             # deriva dele) é reescrito por combinação. Escrever as cinco fixturas
             # inteiras mil e seiscentas vezes levava a suíte a mais de um minuto, e

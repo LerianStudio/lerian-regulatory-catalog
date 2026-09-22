@@ -1089,7 +1089,15 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
         # olhava. Esta é a guarda mínima até o job de conformidade Go conferir o
         # pacote com o leitor de verdade — é ele, e não este bloco, que impede a
         # gramática de divergir.
-        accumulate = (query.get("aggregate") or {}).get("accumulate")
+        aggregate = query.get("aggregate")
+        if aggregate is not None and not isinstance(aggregate, dict):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: a agregação de '{qname}' não é um mapa: "
+                f"{aggregate!r}"
+            )
+            aggregate = None
+
+        accumulate = (_aggregation(query) or {}).get("accumulate")
         if accumulate is not None:
             if not isinstance(accumulate, dict):
                 fail(
@@ -1098,7 +1106,7 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
                 )
             else:
                 on = _accumulates_on(accumulate)
-                if not isinstance(on, str) or not on:
+                if not isinstance(on, str) or not on.strip():
                     fail(
                         f"{doc_dir.relative_to(ROOT)}: a acumulação de '{qname}' não "
                         f"declara `on` como o nome de uma coluna — a janela não tem "
@@ -1214,6 +1222,22 @@ def check_parent_match(doc_dir: Path, contract: dict, binding: dict) -> None:
                 )
 
 
+def _aggregation(query: object) -> dict | None:
+    """A agregação de uma consulta, ou None quando não há uma LEGÍVEL.
+
+    Três leitores precisam dela e o YAML entrega qualquer forma. A RECUSA vive num
+    só lugar — `check_binding_queries`, que tem o nome da consulta para dizer de qual
+    se trata; aqui e nos demais a forma errada vira ausência, e a ferramenta reprova
+    em vez de estourar.
+    """
+    if not isinstance(query, dict):
+        return None
+
+    aggregate = query.get("aggregate")
+
+    return aggregate if isinstance(aggregate, dict) else None
+
+
 def produced_columns(
     query: dict,
     queries: dict[str, dict],
@@ -1246,7 +1270,7 @@ def produced_columns(
 
     derived = {d["as"] for d in query.get("derive") or [] if d.get("as")}
 
-    aggregate = query.get("aggregate")
+    aggregate = _aggregation(query)
     if aggregate:
         columns = set(aggregate.get("groupBy") or [])
         columns |= {m["as"] for m in aggregate.get("measures") or [] if m.get("as")}
@@ -1393,6 +1417,13 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
                 return
 
             named = spec.get("query")
+            if named is not None and (not isinstance(named, str) or not named.strip()):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' nomeia uma consulta "
+                    f"que não é um nome: {named!r}"
+                )
+                return
+
             if named is not None and named not in queries:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' lê a consulta "
@@ -1414,11 +1445,15 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
 
         # parentMatch e a chave da linha são casados contra a consulta do CONJUNTO:
         # é ela que entrega as linhas a casar.
-        used |= {(str(column), str(own)) for column in (entry.get("parentMatch") or {}).values()}
         # A chave da linha estava NO COMENTÁRIO e não no código, então
         # `rowKey: {codigo: colunaInexistente}` passava — e o motor depois não casa
         # resultado nenhum com as linhas do conjunto fechado.
-        used |= {(str(column), str(own)) for column in (entry.get("rowKey") or {}).values()}
+        #
+        # As duas são lidas por `_paired`, que recusa a forma errada em vez de
+        # estourar em `.values()`: YAML entrega qualquer forma, e uma ferramenta que
+        # quebra com entrada malformada é pior que uma que reprova.
+        used |= _paired(doc_dir, name, "parentMatch", entry.get("parentMatch"), own)
+        used |= _paired(doc_dir, name, "rowKey", entry.get("rowKey"), own)
 
         delivered: dict[str, set] = {}
         for column, by in sorted(used):
@@ -1435,6 +1470,19 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
             )
 
 
+def _paired(doc_dir: Path, name: str, what: str, value: object, own: str) -> set:
+    """As colunas que um mapa de pareamento casa contra a consulta do conjunto."""
+    if value is None:
+        return set()
+
+    if not isinstance(value, dict):
+        fail(f"{doc_dir.relative_to(ROOT)}: o `{what}` de '{name}' não é um mapa: {value!r}")
+
+        return set()
+
+    return {(str(column), str(own)) for column in value.values()}
+
+
 def check_references(doc_dir: Path, contract: dict) -> None:
     """Todo arquivo que o contrato cita tem de existir."""
     schema = source_of_truth(contract, "schema")
@@ -1445,7 +1493,7 @@ def check_references(doc_dir: Path, contract: dict) -> None:
     if example.exists():
         binding = load(example) or {}
         for query in query_list(binding):
-            for measure in (query.get("aggregate") or {}).get("measures") or []:
+            for measure in (_aggregation(query) or {}).get("measures") or []:
                 lookup = measure.get("statedIn", {}).get("lookup")
                 if lookup and not (doc_dir / lookup).exists():
                     fail(
