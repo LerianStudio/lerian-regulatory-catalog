@@ -763,6 +763,18 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `key`")
             continue
         key_field = next((f for f in fields_of(ds) if f["name"] == key), None)
+
+        # A CHAVE NOMEIA UM CAMPO DO CONJUNTO. Sem esta conferência, `key` com erro
+        # de digitação passa desde que as linhas carreguem uma propriedade com esse
+        # nome — e aí `key_field` é None, o pattern do campo não é conferido, e a
+        # identidade aceita é uma que o documento não declara.
+        if key_field is None:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.key é '{key}', que "
+                f"não é campo declarado do conjunto — a identidade da linha tem de ser "
+                f"um campo do documento"
+            )
+
         pattern = key_field.get("pattern") if key_field else None
         if pattern is not None and not isinstance(pattern, str):
             # _check_field_shape já recusa isto nomeando o campo; aqui só não se
@@ -1078,11 +1090,20 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
         # pacote com o leitor de verdade — é ele, e não este bloco, que impede a
         # gramática de divergir.
         accumulate = (query.get("aggregate") or {}).get("accumulate")
-        if isinstance(accumulate, dict) and not _accumulates_on(accumulate):
-            fail(
-                f"{doc_dir.relative_to(ROOT)}: a acumulação de '{qname}' não declara "
-                f"`on` — a janela não tem contra qual coluna de tempo ser lida"
-            )
+        if accumulate is not None:
+            if not isinstance(accumulate, dict):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: a acumulação de '{qname}' não é um "
+                    f"mapa: {accumulate!r}"
+                )
+            else:
+                on = _accumulates_on(accumulate)
+                if not isinstance(on, str) or not on:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: a acumulação de '{qname}' não "
+                        f"declara `on` como o nome de uma coluna — a janela não tem "
+                        f"contra qual coluna de tempo ser lida"
+                    )
 
         raw_join = query.get("join")
         if raw_join is not None and not isinstance(raw_join, list):
@@ -1394,6 +1415,10 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
         # parentMatch e a chave da linha são casados contra a consulta do CONJUNTO:
         # é ela que entrega as linhas a casar.
         used |= {(str(column), str(own)) for column in (entry.get("parentMatch") or {}).values()}
+        # A chave da linha estava NO COMENTÁRIO e não no código, então
+        # `rowKey: {codigo: colunaInexistente}` passava — e o motor depois não casa
+        # resultado nenhum com as linhas do conjunto fechado.
+        used |= {(str(column), str(own)) for column in (entry.get("rowKey") or {}).values()}
 
         delivered: dict[str, set] = {}
         for column, by in sorted(used):

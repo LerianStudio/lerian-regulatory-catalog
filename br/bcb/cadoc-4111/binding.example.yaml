@@ -28,6 +28,14 @@ queries:
     description: Saldo diário por rubrica das contas de ESTOQUE.
     dataSource: midaz_transaction
     table: operation
+
+    # Recorte de linhas ANTES de agregar. Uma operação pendente ou rejeitada não é
+    # lançamento postado, e somá-la infla o que é declarado ao regulador. Mesma
+    # precondição que o 4010 e o 4016 aplicam sobre esta tabela.
+    filters:
+      - field: status
+        operator: eq
+        values: ["APPROVED"]
     aggregate:
       groupBy: [route_code]
       measures:
@@ -67,6 +75,14 @@ queries:
     description: Volume absoluto do mês corrente por rubrica, para as contas de FLUXO.
     dataSource: midaz_transaction
     table: operation
+
+    # Recorte de linhas ANTES de agregar. Uma operação pendente ou rejeitada não é
+    # lançamento postado, e somá-la infla o que é declarado ao regulador. Mesma
+    # precondição que o 4010 e o 4016 aplicam sobre esta tabela.
+    filters:
+      - field: status
+        operator: eq
+        values: ["APPROVED"]
     aggregate:
       groupBy: [route_code]
       measures:

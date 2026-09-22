@@ -469,6 +469,35 @@ MUTATIONS: list[Mutation] = [
         "não declara `key`",
     ),
     Mutation(
+        "chave-do-conjunto-nao-e-campo-do-documento",
+        "chave com erro de digitação passa se as linhas a carregarem, e o pattern do "
+        "campo deixa de ser conferido junto",
+        lambda b: dataset(b[FECHADO]["contract"], "linhas")["rowSet"].update(
+            {"key": "codigoErrado"}),
+        "não é campo declarado do conjunto",
+    ),
+    Mutation(
+        "chave-da-linha-casa-coluna-inexistente",
+        "rowKey apontando coluna que a consulta não entrega não casa linha nenhuma",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"].__setitem__(
+            "rowKey", {"codigo": "colunaInexistente"}),
+        "que a consulta 'estoque' não entrega",
+    ),
+    Mutation(
+        "acumulacao-que-nao-e-mapa",
+        "forma malformada deve reprovar, não ser ignorada em silêncio",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"].__setitem__(
+            "accumulate", "month"),
+        "não é um mapa",
+    ),
+    Mutation(
+        "coluna-de-tempo-que-nao-e-nome",
+        "`on` com uma lista no lugar do nome da coluna não nomeia coluna nenhuma",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["accumulate"]
+        .__setitem__("on", ["criado_em"]),
+        "não declara `on` como o nome de uma coluna",
+    ),
+    Mutation(
         "rowset-sem-declaracao-no-contrato",
         "campo from rowSet num conjunto sem rowSet aponta para linhas inexistentes",
         lambda b: dataset(b[FECHADO]["contract"], "linhas").pop("rowSet"),
@@ -1003,7 +1032,7 @@ _NOT_CONTRACT_KEYS = {
     "byRowClass", "generatable", "incompleteReason", "incompleteFields",
     "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
     "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
-    "accumulate",
+    "accumulate", "rowKey",
     "when", "value", "statedIn", "pendingReason", "measures", "contract",
     # catalog.yaml
     "documents", "path",
