@@ -104,7 +104,7 @@ PLANO_BINDING = {
              "measures": [{"as": "valor", "fn": "sum", "of": "montante",
                            "sign": {"column": "lado", "debit": "-", "credit": "+"},
                            "statedIn": {"natureByPrefix": {"1": "debit", "4": "credit"}, "key": "rota"}}],
-             "accumulate": {"until": "system.dataBase"},
+             "accumulate": {"on": "criado_em", "until": "system.dataBase"},
          }},
     ],
     "datasets": {
@@ -186,7 +186,7 @@ FECHADO_BINDING = {
         {"name": "estoque", "dataSource": "fonte_x", "table": "lancamento",
          "aggregate": {"groupBy": ["rota"],
                        "measures": [{"as": "valor", "fn": "sum", "of": "montante"}],
-                       "accumulate": {"until": "system.dataBase"}}},
+                       "accumulate": {"on": "criado_em", "until": "system.dataBase"}}},
     ],
     "datasets": {
         "institution": {"fields": {"cnpj8": {"from": "constant", "value": "12345678"}}},
@@ -309,10 +309,93 @@ HIER_BINDING = {
 }
 
 
+# ---------------------------------------------------------------------------
+# doc-janelas — conjunto fechado cujas classes leem CONSULTAS DIFERENTES
+#
+# A forma que o 4111 real tem: a janela de acumulação pertence à consulta, então
+# duas janelas são duas consultas, e cada campo diz de qual delas lê.
+# ---------------------------------------------------------------------------
+
+JANELAS_CONTRACT = {
+    "apiVersion": APIV,
+    "kind": "DocumentContract",
+    "metadata": _meta("zz.fixture.janelas", "JANELAS", periodicity="daily",
+                      sourceOfTruth={"accountSet": "contas.yaml"}),
+    "parameters": [
+        {"name": "dataBase", "type": "date", "required": True, "description": "Dia."},
+    ],
+    "datasets": [
+        {"name": "linhas", "description": "Uma linha por conta do conjunto fechado.",
+         "rowSet": {"from": "contas.yaml", "key": "codigo"},
+         "fields": [
+             {"name": "codigo", "type": "string", "required": True, "pattern": "^[0-9]{10}$",
+              "normalize": "digits", "description": "Conta do conjunto."},
+             {"name": "valor", "type": "decimal", "required": True,
+              "format": {"scale": 2, "scaleIsExact": True, "decimalSeparator": ".", "groupSeparator": ""},
+              "means": "Estoque ou fluxo, conforme a classe da conta.", "description": "Valor."},
+         ]},
+    ],
+}
+
+JANELAS_CONTAS = {
+    "apiVersion": APIV,
+    "kind": "DocumentRowSet",
+    "rows": [
+        {"codigo": "1100000002", "masked": "1.1.0.00.00.00-2", "measure": "stock", "description": "Estoque A"},
+        {"codigo": "3097010000", "masked": "3.0.9.70.10.00-0", "measure": "flow", "description": "Fluxo A"},
+    ]
+}
+
+JANELAS_TEMPLATE = """{# Fixture JANELAS — duas janelas sobre o mesmo conjunto. #}
+<?xml version="1.0" encoding="UTF-8"?>
+<documento codigoDocumento="JANELAS" dataBase="{{ system.dataBase }}">
+{%- for c in linhas %}
+  <conta codigoConta="{{ c.codigo }}" valor="{{ c.valor }}" />
+{%- endfor %}
+</documento>
+"""
+
+JANELAS_BINDING = {
+    "apiVersion": APIV,
+    "kind": "DocumentBinding",
+    "contract": "zz.fixture.janelas",
+    "contractVersion": "1.0.0",
+    "queries": [
+        {"name": "estoque", "dataSource": "fonte_x", "table": "lancamento",
+         "aggregate": {"groupBy": ["rota"],
+                       "measures": [{"as": "saldo", "fn": "sum", "of": "montante"}],
+                       "accumulate": {"on": "criado_em", "until": "system.dataBase",
+                                      "from": "opening"}}},
+        {"name": "volume", "dataSource": "fonte_x", "table": "lancamento",
+         "aggregate": {"groupBy": ["rota"],
+                       "measures": [{"as": "volumeMes", "fn": "sum", "of": "montante"}],
+                       "accumulate": {"on": "criado_em", "until": "system.dataBase",
+                                      "from": "month"}}},
+    ],
+    "datasets": {
+        "linhas": {
+            "from": {"query": "estoque"},
+            "rowKey": {"codigo": "rota"},
+            "fields": {
+                "codigo": {"from": "rowSet", "column": "codigo"},
+                # A classe de fluxo lê a OUTRA consulta, porque é a janela que difere.
+                "valor": {"byRowClass": [
+                    {"when": {"rowSet": "measure", "equals": "stock"}, "from": "query", "column": "saldo"},
+                    {"when": {"rowSet": "measure", "equals": "flow"}, "from": "query",
+                     "query": "volume", "column": "volumeMes"},
+                ]},
+            },
+        },
+    },
+    "manualOverrides": [],
+}
+
+
 DOCS = {
     "zz/fixture/plano": (PLANO_CONTRACT, PLANO_TEMPLATE, PLANO_BINDING, None),
     "zz/fixture/fechado": (FECHADO_CONTRACT, FECHADO_TEMPLATE, FECHADO_BINDING, FECHADO_CONTAS),
     "zz/fixture/hierarquia": (HIER_CONTRACT, HIER_TEMPLATE, HIER_BINDING, None),
+    "zz/fixture/janelas": (JANELAS_CONTRACT, JANELAS_TEMPLATE, JANELAS_BINDING, JANELAS_CONTAS),
 }
 
 

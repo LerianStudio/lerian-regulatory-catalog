@@ -63,6 +63,7 @@ VALIDATE = TOOLS / "validate.py"
 PLANO = "zz/fixture/plano"
 FECHADO = "zz/fixture/fechado"
 HIER = "zz/fixture/hierarquia"
+JANELAS = "zz/fixture/janelas"
 
 
 # ---------------------------------------------------------------------------
@@ -413,6 +414,36 @@ MUTATIONS: list[Mutation] = [
         lambda b: b[FECHADO]["contas"]["rows"].append(["1100000002"]),
         "que não é mapa",
     ),
+    # ------------------------------------------------ duas janelas (fixture JANELAS)
+    Mutation(
+        "acumulacao-sem-coluna-de-tempo",
+        "acumular sem dizer contra qual coluna o tempo é lido — o motor recusa e o "
+        "repositório publicou três bindings assim porque aqui ninguém olhava",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["accumulate"].pop("on"),
+        "não declara `on`",
+    ),
+    Mutation(
+        "campo-le-consulta-inexistente",
+        "campo que nomeia uma consulta não declarada lê de lugar nenhum",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1]
+        .update({"query": "naoExiste"}),
+        "não está declarada em queries",
+    ),
+    Mutation(
+        "campo-le-coluna-que-a-consulta-nomeada-nao-entrega",
+        "a origem é conferida contra a consulta QUE ELA LÊ, não contra a do conjunto",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1]
+        .update({"column": "saldo"}),
+        "que a consulta 'volume' não entrega",
+    ),
+    Mutation(
+        "campo-sem-consulta-nomeada-le-coluna-da-outra",
+        "sem nomear consulta, a origem lê a do CONJUNTO — e a coluna da outra não vale",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][0]
+        .update({"column": "volumeMes"}),
+        "que a consulta 'estoque' não entrega",
+    ),
+
     Mutation(
         "conjunto-sem-marcador",
         "arquivo curado sem `kind` pode ser um contrato lido como conjunto de linhas",
@@ -972,6 +1003,7 @@ _NOT_CONTRACT_KEYS = {
     "byRowClass", "generatable", "incompleteReason", "incompleteFields",
     "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
     "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
+    "accumulate",
     "when", "value", "statedIn", "pendingReason", "measures", "contract",
     # catalog.yaml
     "documents", "path",

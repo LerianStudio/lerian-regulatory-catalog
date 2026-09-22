@@ -980,6 +980,20 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
                     )
 
 
+def _accumulates_on(accumulate: dict) -> object:
+    """A coluna de tempo da acumulação, lida nas DUAS formas que `on:` assume.
+
+    PyYAML segue YAML 1.1 e resolve `on` como BOOLEANO: a chave chega como True,
+    não como "on". O leitor Go do motor lê a mesma linha como texto. Mesma linha,
+    dois significados — e foi essa diferença que manteve a acumulação invisível
+    para esta ferramenta enquanto o motor a exigia.
+
+    Lido nas duas formas aqui, o arquivo curado continua escrito como o motor o
+    documenta (`on: created_at`) em vez de ganhar aspas para agradar uma biblioteca.
+    """
+    return accumulate.get("on") or accumulate.get(True)
+
+
 def check_binding_queries(doc_dir: Path, binding: dict) -> None:
     """Consultas compostas e joins apontam para consultas que existem.
 
@@ -1054,6 +1068,20 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
             fail(
                 f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' não tem nem dataSource "
                 f"nem from — não extrai de lugar nenhum"
+            )
+
+        # ACUMULAR SEM DIZER ONDE O TEMPO É LIDO não é acumulação: `until` nomeia o
+        # instante em que a janela fecha e `on` nomeia a coluna contra a qual esse
+        # instante é comparado. O motor recusa a consulta sem `on`, e o repositório
+        # já publicou três bindings que ele não conseguia ler porque aqui ninguém
+        # olhava. Esta é a guarda mínima até o job de conformidade Go conferir o
+        # pacote com o leitor de verdade — é ele, e não este bloco, que impede a
+        # gramática de divergir.
+        accumulate = (query.get("aggregate") or {}).get("accumulate")
+        if isinstance(accumulate, dict) and not _accumulates_on(accumulate):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: a acumulação de '{qname}' não declara "
+                f"`on` — a janela não tem contra qual coluna de tempo ser lida"
             )
 
         raw_join = query.get("join")
@@ -1324,35 +1352,61 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
         if not isinstance(raw_from, dict):
             continue
 
-        source = raw_from.get("query")
-        if source not in queries:
+        own = raw_from.get("query")
+        if own not in queries:
             continue
 
-        available = produced_columns(queries[source], queries)
-        if available is None:
-            continue
+        # CADA ORIGEM É CONFERIDA CONTRA A CONSULTA QUE ELA LÊ. Uma origem pode
+        # nomear outra consulta (`query:`), e é o que o 4111 faz: a janela pertence à
+        # consulta, e as duas classes de conta acumulam em janelas diferentes.
+        # Conferir tudo contra a consulta do conjunto reprovaria a coluna que a outra
+        # entrega — recusando binding válido, que é pior que não conferir.
+        #
+        # Só as colunas que uma CONSULTA deve entregar entram aqui. Um campo
+        # resolvido por `rowSet` vem do conjunto fechado do catálogo, e conferi-lo
+        # contra a consulta acusaria falso positivo.
+        used: set[tuple[str, str]] = set()
 
-        # Só as colunas que a CONSULTA deve entregar. Um campo resolvido por
-        # `rowSet` vem do conjunto fechado do catálogo, e um `byRowClass` tem a
-        # origem por caso — conferir esses contra o que a consulta entrega acusaria
-        # falso positivo e ensinaria a ignorar a ferramenta.
-        used = {
-            f["column"]
-            for f in (entry.get("fields") or {}).values()
-            if isinstance(f, dict) and f.get("column") and f.get("from") == "query"
-        }
+        def _read(spec: dict) -> None:
+            if spec.get("from") != "query" or not spec.get("column"):
+                return
+
+            named = spec.get("query")
+            if named is not None and named not in queries:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' lê a consulta "
+                    f"'{named}', que não está declarada em queries"
+                )
+                return
+
+            used.add((str(spec["column"]), str(named or own)))
+
         for f in (entry.get("fields") or {}).values():
             if not isinstance(f, dict):
                 continue
-            for case in f.get("byRowClass") or []:
-                if isinstance(case, dict) and case.get("from") == "query" and case.get("column"):
-                    used.add(case["column"])
-        used |= set((entry.get("parentMatch") or {}).values())
 
-        for column in sorted(used - available):
+            _read(f)
+
+            for case in f.get("byRowClass") or []:
+                if isinstance(case, dict):
+                    _read(case)
+
+        # parentMatch e a chave da linha são casados contra a consulta do CONJUNTO:
+        # é ela que entrega as linhas a casar.
+        used |= {(str(column), str(own)) for column in (entry.get("parentMatch") or {}).values()}
+
+        delivered: dict[str, set] = {}
+        for column, by in sorted(used):
+            if by not in delivered:
+                produced = produced_columns(queries[by], queries)
+                delivered[by] = produced if produced is not None else None
+
+            if delivered[by] is None or column in delivered[by]:
+                continue
+
             fail(
                 f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' mapeia a coluna "
-                f"'{column}', que a consulta '{source}' não entrega"
+                f"'{column}', que a consulta '{by}' não entrega"
             )
 
 

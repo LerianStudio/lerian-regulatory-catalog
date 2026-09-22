@@ -117,21 +117,6 @@ rules:
     message: Uma linha por conta (I §4.2.1); duplicidade é agrupamento errado no binding.
 
 knownGaps:
-  - id: flow-precisa-da-fase-4
-    description: >-
-      As contas 3.0.9.70.XX (measure=flow em contas.yaml) exigem somatório do valor
-      absoluto das transações do dia ACUMULADO no mês com REINÍCIO mensal (I
-      §4.2.2.a). Isso é a acumulação com reinício da Fase 4 do motor, que ainda não
-      existe. O binding de exemplo resolve só as contas de estoque; as de fluxo ficam
-      pendentes, exatamente como o guia interno anterior já as havia deixado. Sem a
-      Fase 4, um 4111 gerado hoje sai sem as cinco contas de fluxo — arquivo
-      INVÁLIDO: a omissão de conta só é permitida quando o saldo é zero (I
-      §4.2.2.a), e uma instituição com volume de pagamento tem as contas de fluxo
-      diferentes de zero. Ou seja, o 4111 NÃO É GERÁVEL corretamente para essa
-      instituição até a Fase 4 existir. O binding de exemplo cobre o estoque para
-      exercitar o formato, mas não deve ser tratado como pronto para produção — a
-      geração real precisa ser bloqueada enquanto a fonte de fluxo não existir.
-
   - id: xsd-publicado-desatualizado
     description: >-
       O XSD em schema/XSD_4111.xsd é a v1.0 de 30/03/2023 e CONTRADIZ as instruções
@@ -153,5 +138,8 @@ knownGaps:
   - id: acumulo-fim-de-semana
     description: >-
       Volumes de sábado, domingo e feriado devem ser acumulados no próximo dia útil
-      (I §4.2.2.b). É regra de calendário de apuração, ligada à Fase 4; fora do
-      escopo desta versão.
+      (I §4.2.2.b). A janela mensal do volume existe e o binding de exemplo a declara;
+      o que falta é o calendário de dias úteis que desloca a apuração do fim de semana
+      — regra de calendário, não de acumulação. Fora do escopo desta versão: um
+      arquivo gerado para um dia útil está correto, e um gerado para sábado reporta o
+      próprio sábado em vez de somar no dia útil seguinte.
