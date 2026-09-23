@@ -1,21 +1,21 @@
 # Binding do Cadoc 4111 — QUEM PREENCHE É O CLIENTE.
-# Exemplo contra o Midaz, cobrindo as contas de ESTOQUE. As de fluxo (3.0.9.70.XX)
-# dependem da acumulação com reinício mensal da Fase 4 e ficam pendentes — ver o
-# knownGap flow-precisa-da-fase-4 no contrato.
+# Exemplo contra o Midaz, cobrindo as DUAS classes de conta do documento.
 #
 # A diferença estrutural frente ao 4010: as LINHAS do dataset vêm do conjunto
-# fechado (contas.yaml), não desta consulta. A consulta fornece o VALOR (saldoDia)
-# de cada conta declarada; contas.yaml diz quais existem e o que cada saldo
-# significa. O motor casa as duas pela chave cosifCode.
+# fechado (contas.yaml), não das consultas. As consultas fornecem o VALOR de cada
+# conta declarada; contas.yaml diz quais existem e o que cada valor significa. O
+# motor casa as duas pela chave cosifCode.
 #
-# ⚠️ ESTE BINDING É INCOMPLETO E NÃO PODE GERAR ARQUIVO VÁLIDO. As cinco contas de
-# fluxo (measure=flow) não têm origem: o volume absoluto acumulado no mês com
-# reinício exige a Fase 4 do motor. Omitir conta só é permitido quando o saldo é
-# zero (I §4.2.2.a), e uma instituição com movimento tem essas contas diferentes de
-# zero — então o arquivo sairia INVÁLIDO, não apenas incompleto. Os campos de fluxo
-# abaixo são declarados `from: manual` (o operador teria de suprir), e o motor deve
-# BLOQUEAR a geração enquanto restar campo manual não preenchido num regulatório.
-# Serve para exercitar o formato do estoque, não para produção.
+# DUAS CONSULTAS SOBRE A MESMA TABELA, e não é redundância: a janela pertence à
+# consulta, e as duas classes de conta acumulam em janelas diferentes. Estoque
+# soma desde a abertura do razão, com o sinal da natureza; fluxo soma o valor
+# absoluto do mês corrente, reiniciando a cada virada. Cada campo diz de qual das
+# duas lê, e o motor executa as duas leituras separadas.
+#
+# O que é DESTE exemplo e não do documento: o nome da fonte (midaz_transaction),
+# da tabela (operation) e das colunas (route_code, amount, direction, created_at),
+# e os valores que a coluna de direção carrega. Um razão que não seja o Midaz troca
+# esses nomes e mantém o resto.
 
 apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
@@ -23,32 +23,28 @@ kind: DocumentBinding
 contract: br.bcb.cadoc-4111
 contractVersion: 1.0.0
 
-# NÃO GERA DOCUMENTO VÁLIDO, e isto é declarado em dado e não em comentário: o
-# validador recusa qualquer binding cujo campo obrigatório resolva por manual sem
-# valor, a menos que a incompletude seja declarada aqui, justificada e ENUMERADA.
-# Com isso a pendência é conferível por máquina — antes era prosa, que não bloqueia
-# nada.
-generatable: false
-incompleteReason: >-
-  As cinco contas de fluxo (measure=flow em contas.yaml) exigem o volume absoluto
-  das transações acumulado no mês com reinício mensal, que é a Fase 4 do motor e não
-  existe. Omitir conta só é permitido quando o saldo é zero (I §4.2.2.a), então uma
-  instituição com movimento produziria arquivo INVÁLIDO. Este exemplo existe para
-  exercitar o formato do estoque.
-incompleteFields:
-  - saldos_diarios.saldoDia
-
 queries:
   - name: saldos_estoque
     description: Saldo diário por rubrica das contas de ESTOQUE.
     dataSource: midaz_transaction
     table: operation
+
+    # Recorte de linhas ANTES de agregar. Uma operação pendente ou rejeitada não é
+    # lançamento postado, e somá-la infla o que é declarado ao regulador. Mesma
+    # precondição que o 4010 e o 4016 aplicam sobre esta tabela.
+    filters:
+      - field: status
+        operator: eq
+        values: ["APPROVED"]
     aggregate:
       groupBy: [route_code]
       measures:
         - as: saldoDia
           fn: sum
           of: amount
+          # `debit` e `credit` declaram os VALORES que a coluna direction carrega
+          # neste razão, e o sinal que cada um vale na soma. Trocá-los não quebra a
+          # carga: troca o número.
           sign:
             column: direction
             debit: "-"
@@ -65,7 +61,44 @@ queries:
             key: route_code
       # Estoque acumula desde a abertura até o FIM DO DIA da data-base (diário).
       accumulate:
+        # A coluna que carrega o momento do lançamento. `until` nomeia o instante;
+        # esta nomeia onde ele é lido. No Midaz é o carimbo de criação da operação;
+        # um razão próprio guarda isso com o nome dele.
+        on: created_at
         until: system.dataBase
+        # Estoque: a janela abre no começo do razão, então o saldo de fechamento
+        # carrega tudo que já foi lançado — inclusive os lançamentos de abertura
+        # que a migração de um sistema anterior postou.
+        from: opening
+
+  - name: volumes_fluxo
+    description: Volume absoluto do mês corrente por rubrica, para as contas de FLUXO.
+    dataSource: midaz_transaction
+    table: operation
+
+    # Recorte de linhas ANTES de agregar. Uma operação pendente ou rejeitada não é
+    # lançamento postado, e somá-la infla o que é declarado ao regulador. Mesma
+    # precondição que o 4010 e o 4016 aplicam sobre esta tabela.
+    filters:
+      - field: status
+        operator: eq
+        values: ["APPROVED"]
+    aggregate:
+      groupBy: [route_code]
+      measures:
+        # SEM `sign`: o documento pede o somatório do valor ABSOLUTO das
+        # transações (I §4.2.2.a), não o saldo líquido — um débito de 100 e um
+        # crédito de 100 somam 200 de volume e zero de saldo.
+        - as: volumeMes
+          fn: sum
+          of: amount
+      accumulate:
+        on: created_at
+        until: system.dataBase
+        # A diferença que obriga a segunda consulta: o volume REINICIA a cada mês,
+        # enquanto o saldo acima acumula desde a abertura. Uma janela é de uma
+        # consulta, então duas janelas são duas consultas.
+        from: month
 
 datasets:
   institution:
@@ -75,7 +108,7 @@ datasets:
         value: "12345678"
 
   saldos_diarios:
-    # As linhas vêm do conjunto fechado; a consulta fornece o valor por conta.
+    # As linhas vêm do conjunto fechado; as consultas fornecem o valor por conta.
     # rowSet casa contas.yaml.cosifCode com o route_code que a consulta agrega.
     from:
       query: saldos_estoque
@@ -84,23 +117,24 @@ datasets:
     fields:
       cosifCode:
         from: rowSet
-        column: code
+        column: cosifCode
       # saldoDia se resolve por CLASSE de conta (contas.yaml.measure), e as duas
-      # classes têm origens diferentes — por isso é uma lista de casos, não uma
-      # origem só. Nenhuma linha fica SEM origem: a de fluxo é explicitamente manual
-      # (pendente da Fase 4), não silenciosamente descartada.
+      # classes leem janelas diferentes — por isso é uma lista de casos, não uma
+      # origem só. Nenhuma linha fica sem origem, e nenhuma conta do conjunto é
+      # descartada: uma rubrica sem lançamento na janela sai zero, que é o que o
+      # documento pede.
       saldoDia:
         byRowClass:
-          # Estoque: saldo do razão, no sinal da natureza.
+          # Estoque: saldo do razão, no sinal da natureza, acumulado desde a
+          # abertura. Lê a consulta do próprio conjunto.
           - when: { rowSet: measure, equals: stock }
             from: query
             column: saldoDia
-          # Fluxo: sem fonte até a Fase 4. Declarado manual para ficar VISÍVEL como
-          # pendência; o motor bloqueia a geração enquanto houver manual pendente
-          # num regulatório, em vez de emitir um arquivo a que faltam contas
-          # obrigatórias.
+          # Fluxo: volume absoluto do mês, reiniciando. Lê a OUTRA consulta, porque
+          # é a janela que difere — e uma janela é de uma consulta.
           - when: { rowSet: measure, equals: flow }
-            from: manual
-            pendingReason: "volume acumulado no mês com reinício — Fase 4 do motor"
+            from: query
+            query: volumes_fluxo
+            column: volumeMes
 
 manualOverrides: []

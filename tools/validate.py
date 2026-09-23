@@ -24,6 +24,12 @@ import yaml
 # apontar a ferramenta para uma árvore de fixtures — sem isso, as provas de mutação
 # só existiriam como comandos digitados à mão, que é como elas nasceram.
 ROOT = Path(os.environ.get("CATALOG_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+
+# O marcador de formato de um conjunto fechado, escrito como o motor o lê
+# (pkg/reporter/yamldoc). Um arquivo que se anuncia como outra coisa não é lido como
+# conjunto — nem lá, nem aqui.
+ROW_SET_KIND = "DocumentRowSet"
+
 FAILURES: list[str] = []
 WARNINGS: list[str] = []
 
@@ -718,7 +724,7 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.from cita {ref}, que não existe")
             continue
 
-        # Robustez de forma: um conjunto com raiz que não é mapa, `accounts` que não é
+        # Robustez de forma: um conjunto com raiz que não é mapa, `rows` que não é
         # lista, ou uma linha que não é mapa faria os .get() abaixo estourarem em vez
         # de reprovar. Um validador que quebra com entrada malformada é pior que um
         # que reprova.
@@ -727,9 +733,20 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: {ref} não é um mapa YAML na raiz")
             continue
 
-        rows = loaded.get("accounts")
+        # O conjunto se anuncia. O motor aceita o marcador ausente porque lê também
+        # fixtura escrita à mão; um arquivo CURADO não tem essa desculpa — sem o
+        # marcador, um contrato ou um binding colocado neste caminho seria lido como
+        # conjunto e publicaria o que quer que seu primeiro mapa carregasse.
+        kind = loaded.get("kind")
+        if kind != ROW_SET_KIND:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ref} declara kind {kind!r} — um conjunto "
+                f"curado se anuncia como {ROW_SET_KIND!r}"
+            )
+
+        rows = loaded.get("rows")
         if not isinstance(rows, list):
-            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não tem uma lista `accounts`")
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não tem uma lista `rows`")
             continue
 
         malformed = [r for r in rows if not isinstance(r, dict)]
@@ -737,8 +754,27 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: {ref} tem uma conta que não é mapa: {r!r}")
         rows = [r for r in rows if isinstance(r, dict)]
 
+        # A COLUNA QUE IDENTIFICA A LINHA É A QUE O CONTRATO DECLARA, e é lida daqui
+        # em vez de fixada no validador: o motor exige que cada linha carregue a
+        # coluna nomeada em `rowSet.key`, e um segundo nome escrito aqui passaria a
+        # conferir uma coluna que o motor não olha.
         key = ds["rowSet"].get("key")
+        if not isinstance(key, str) or not key:
+            fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `key`")
+            continue
         key_field = next((f for f in fields_of(ds) if f["name"] == key), None)
+
+        # A CHAVE NOMEIA UM CAMPO DO CONJUNTO. Sem esta conferência, `key` com erro
+        # de digitação passa desde que as linhas carreguem uma propriedade com esse
+        # nome — e aí `key_field` é None, o pattern do campo não é conferido, e a
+        # identidade aceita é uma que o documento não declara.
+        if key_field is None:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.key é '{key}', que "
+                f"não é campo declarado do conjunto — a identidade da linha tem de ser "
+                f"um campo do documento"
+            )
+
         pattern = key_field.get("pattern") if key_field else None
         if pattern is not None and not isinstance(pattern, str):
             # _check_field_shape já recusa isto nomeando o campo; aqui só não se
@@ -746,7 +782,12 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             pattern = None
 
         for r in rows:
-            code = str(r.get("code", ""))
+            code = str(r.get(key, ""))
+            if not code:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, uma linha não carrega "
+                    f"`{key}` — é a coluna que identifica a linha do conjunto"
+                )
 
             # O código de dez dígitos é o mascarado sem pontuação. Conferir isso é o
             # que pega a transcrição manual errada — que já aconteceu (um código de
@@ -757,11 +798,11 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
             if not masked:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: em {ref}, a conta '{code}' não tem "
-                    f"`masked` — o code fica sem a forma oficial contra a qual conferir"
+                    f"`masked` — o código fica sem a forma oficial contra a qual conferir"
                 )
             elif code != re.sub(r"[.\-]", "", str(masked)):
                 fail(
-                    f"{doc_dir.relative_to(ROOT)}: em {ref}, code '{code}' não é o "
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, {key} '{code}' não é o "
                     f"masked '{masked}' sem pontuação — transcrição do código diverge"
                 )
 
@@ -771,7 +812,7 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
                     f"pattern de {ds['name']}.{key} — deriva de formato do código"
                 )
 
-        codes = [str(r.get("code")) for r in rows]
+        codes = [str(r.get(key)) for r in rows]
         for dup in {c for c in codes if codes.count(c) > 1}:
             fail(f"{doc_dir.relative_to(ROOT)}: conta '{dup}' duplicada em {ref}")
 
@@ -951,6 +992,20 @@ def check_structure(doc_dir: Path, contract: dict) -> None:
                     )
 
 
+def _accumulates_on(accumulate: dict) -> object:
+    """A coluna de tempo da acumulação, lida nas DUAS formas que `on:` assume.
+
+    PyYAML segue YAML 1.1 e resolve `on` como BOOLEANO: a chave chega como True,
+    não como "on". O leitor Go do motor lê a mesma linha como texto. Mesma linha,
+    dois significados — e foi essa diferença que manteve a acumulação invisível
+    para esta ferramenta enquanto o motor a exigia.
+
+    Lido nas duas formas aqui, o arquivo curado continua escrito como o motor o
+    documenta (`on: created_at`) em vez de ganhar aspas para agradar uma biblioteca.
+    """
+    return accumulate.get("on") or accumulate.get(True)
+
+
 def check_binding_queries(doc_dir: Path, binding: dict) -> None:
     """Consultas compostas e joins apontam para consultas que existem.
 
@@ -1026,6 +1081,37 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
                 f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' não tem nem dataSource "
                 f"nem from — não extrai de lugar nenhum"
             )
+
+        # ACUMULAR SEM DIZER ONDE O TEMPO É LIDO não é acumulação: `until` nomeia o
+        # instante em que a janela fecha e `on` nomeia a coluna contra a qual esse
+        # instante é comparado. O motor recusa a consulta sem `on`, e o repositório
+        # já publicou três bindings que ele não conseguia ler porque aqui ninguém
+        # olhava. Esta é a guarda mínima até o job de conformidade Go conferir o
+        # pacote com o leitor de verdade — é ele, e não este bloco, que impede a
+        # gramática de divergir.
+        aggregate = query.get("aggregate")
+        if aggregate is not None and not isinstance(aggregate, dict):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: a agregação de '{qname}' não é um mapa: "
+                f"{aggregate!r}"
+            )
+            aggregate = None
+
+        accumulate = (_aggregation(query) or {}).get("accumulate")
+        if accumulate is not None:
+            if not isinstance(accumulate, dict):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: a acumulação de '{qname}' não é um "
+                    f"mapa: {accumulate!r}"
+                )
+            else:
+                on = _accumulates_on(accumulate)
+                if not isinstance(on, str) or not on.strip():
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: a acumulação de '{qname}' não "
+                        f"declara `on` como o nome de uma coluna — a janela não tem "
+                        f"contra qual coluna de tempo ser lida"
+                    )
 
         raw_join = query.get("join")
         if raw_join is not None and not isinstance(raw_join, list):
@@ -1136,6 +1222,22 @@ def check_parent_match(doc_dir: Path, contract: dict, binding: dict) -> None:
                 )
 
 
+def _aggregation(query: object) -> dict | None:
+    """A agregação de uma consulta, ou None quando não há uma LEGÍVEL.
+
+    Três leitores precisam dela e o YAML entrega qualquer forma. A RECUSA vive num
+    só lugar — `check_binding_queries`, que tem o nome da consulta para dizer de qual
+    se trata; aqui e nos demais a forma errada vira ausência, e a ferramenta reprova
+    em vez de estourar.
+    """
+    if not isinstance(query, dict):
+        return None
+
+    aggregate = query.get("aggregate")
+
+    return aggregate if isinstance(aggregate, dict) else None
+
+
 def produced_columns(
     query: dict,
     queries: dict[str, dict],
@@ -1168,7 +1270,7 @@ def produced_columns(
 
     derived = {d["as"] for d in query.get("derive") or [] if d.get("as")}
 
-    aggregate = query.get("aggregate")
+    aggregate = _aggregation(query)
     if aggregate:
         columns = set(aggregate.get("groupBy") or [])
         columns |= {m["as"] for m in aggregate.get("measures") or [] if m.get("as")}
@@ -1295,36 +1397,90 @@ def check_column_survival(doc_dir: Path, binding: dict) -> None:
         if not isinstance(raw_from, dict):
             continue
 
-        source = raw_from.get("query")
-        if source not in queries:
+        own = raw_from.get("query")
+        if own not in queries:
             continue
 
-        available = produced_columns(queries[source], queries)
-        if available is None:
-            continue
+        # CADA ORIGEM É CONFERIDA CONTRA A CONSULTA QUE ELA LÊ. Uma origem pode
+        # nomear outra consulta (`query:`), e é o que o 4111 faz: a janela pertence à
+        # consulta, e as duas classes de conta acumulam em janelas diferentes.
+        # Conferir tudo contra a consulta do conjunto reprovaria a coluna que a outra
+        # entrega — recusando binding válido, que é pior que não conferir.
+        #
+        # Só as colunas que uma CONSULTA deve entregar entram aqui. Um campo
+        # resolvido por `rowSet` vem do conjunto fechado do catálogo, e conferi-lo
+        # contra a consulta acusaria falso positivo.
+        used: set[tuple[str, str]] = set()
 
-        # Só as colunas que a CONSULTA deve entregar. Um campo resolvido por
-        # `rowSet` vem do conjunto fechado do catálogo, e um `byRowClass` tem a
-        # origem por caso — conferir esses contra o que a consulta entrega acusaria
-        # falso positivo e ensinaria a ignorar a ferramenta.
-        used = {
-            f["column"]
-            for f in (entry.get("fields") or {}).values()
-            if isinstance(f, dict) and f.get("column") and f.get("from") == "query"
-        }
+        def _read(spec: dict) -> None:
+            if spec.get("from") != "query" or not spec.get("column"):
+                return
+
+            named = spec.get("query")
+            if named is not None and (not isinstance(named, str) or not named.strip()):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' nomeia uma consulta "
+                    f"que não é um nome: {named!r}"
+                )
+                return
+
+            if named is not None and named not in queries:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' lê a consulta "
+                    f"'{named}', que não está declarada em queries"
+                )
+                return
+
+            used.add((str(spec["column"]), str(named or own)))
+
         for f in (entry.get("fields") or {}).values():
             if not isinstance(f, dict):
                 continue
-            for case in f.get("byRowClass") or []:
-                if isinstance(case, dict) and case.get("from") == "query" and case.get("column"):
-                    used.add(case["column"])
-        used |= set((entry.get("parentMatch") or {}).values())
 
-        for column in sorted(used - available):
+            _read(f)
+
+            for case in f.get("byRowClass") or []:
+                if isinstance(case, dict):
+                    _read(case)
+
+        # parentMatch e a chave da linha são casados contra a consulta do CONJUNTO:
+        # é ela que entrega as linhas a casar.
+        # A chave da linha estava NO COMENTÁRIO e não no código, então
+        # `rowKey: {codigo: colunaInexistente}` passava — e o motor depois não casa
+        # resultado nenhum com as linhas do conjunto fechado.
+        #
+        # As duas são lidas por `_paired`, que recusa a forma errada em vez de
+        # estourar em `.values()`: YAML entrega qualquer forma, e uma ferramenta que
+        # quebra com entrada malformada é pior que uma que reprova.
+        used |= _paired(doc_dir, name, "parentMatch", entry.get("parentMatch"), own)
+        used |= _paired(doc_dir, name, "rowKey", entry.get("rowKey"), own)
+
+        delivered: dict[str, set] = {}
+        for column, by in sorted(used):
+            if by not in delivered:
+                produced = produced_columns(queries[by], queries)
+                delivered[by] = produced if produced is not None else None
+
+            if delivered[by] is None or column in delivered[by]:
+                continue
+
             fail(
                 f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' mapeia a coluna "
-                f"'{column}', que a consulta '{source}' não entrega"
+                f"'{column}', que a consulta '{by}' não entrega"
             )
+
+
+def _paired(doc_dir: Path, name: str, what: str, value: object, own: str) -> set:
+    """As colunas que um mapa de pareamento casa contra a consulta do conjunto."""
+    if value is None:
+        return set()
+
+    if not isinstance(value, dict):
+        fail(f"{doc_dir.relative_to(ROOT)}: o `{what}` de '{name}' não é um mapa: {value!r}")
+
+        return set()
+
+    return {(str(column), str(own)) for column in value.values()}
 
 
 def check_references(doc_dir: Path, contract: dict) -> None:
@@ -1337,7 +1493,7 @@ def check_references(doc_dir: Path, contract: dict) -> None:
     if example.exists():
         binding = load(example) or {}
         for query in query_list(binding):
-            for measure in (query.get("aggregate") or {}).get("measures") or []:
+            for measure in (_aggregation(query) or {}).get("measures") or []:
                 lookup = measure.get("statedIn", {}).get("lookup")
                 if lookup and not (doc_dir / lookup).exists():
                     fail(

@@ -63,6 +63,7 @@ VALIDATE = TOOLS / "validate.py"
 PLANO = "zz/fixture/plano"
 FECHADO = "zz/fixture/fechado"
 HIER = "zz/fixture/hierarquia"
+JANELAS = "zz/fixture/janelas"
 
 
 # ---------------------------------------------------------------------------
@@ -359,26 +360,26 @@ MUTATIONS: list[Mutation] = [
     Mutation(
         "conta-fora-do-formato",
         "código do conjunto fora do formato do contrato é a deriva 8-vs-10 dígitos",
-        lambda b: b[FECHADO]["contas"]["accounts"][0].update({"code": "11000002"}),
+        lambda b: b[FECHADO]["contas"]["rows"][0].update({"codigo": "11000002"}),
         "não bate com o pattern",
     ),
     Mutation(
         "code-diverge-do-masked",
         "código transcrito à mão divergindo da forma oficial — aconteceu de verdade",
-        lambda b: b[FECHADO]["contas"]["accounts"][2].update({"code": "3097010009"}),
+        lambda b: b[FECHADO]["contas"]["rows"][2].update({"codigo": "3097010009"}),
         "transcrição do código diverge",
     ),
     Mutation(
         "conta-sem-masked",
         "sem a forma oficial, o código não tem contra o que ser conferido",
-        lambda b: b[FECHADO]["contas"]["accounts"][0].pop("masked"),
+        lambda b: b[FECHADO]["contas"]["rows"][0].pop("masked"),
         "não tem `masked`",
     ),
     Mutation(
         "conta-duplicada",
         "conta duplicada no conjunto emite a mesma linha duas vezes",
-        lambda b: b[FECHADO]["contas"]["accounts"].append(
-            dict(b[FECHADO]["contas"]["accounts"][0])),
+        lambda b: b[FECHADO]["contas"]["rows"].append(
+            dict(b[FECHADO]["contas"]["rows"][0])),
         "duplicada",
     ),
     Mutation(
@@ -402,16 +403,125 @@ MUTATIONS: list[Mutation] = [
         "têm de ser o mesmo arquivo",
     ),
     Mutation(
-        "accounts-nao-e-lista",
+        "rows-nao-e-lista",
         "forma malformada deve reprovar, não estourar a ferramenta",
-        lambda b: b[FECHADO].__setitem__("contas", {"accounts": "naoEhLista"}),
-        "não tem uma lista `accounts`",
+        lambda b: b[FECHADO].__setitem__("contas", {"kind": "DocumentRowSet", "rows": "naoEhLista"}),
+        "não tem uma lista `rows`",
     ),
     Mutation(
         "conta-nao-e-mapa",
         "linha do conjunto que não é mapa deve reprovar, não estourar",
-        lambda b: b[FECHADO]["contas"]["accounts"].append(["1100000002"]),
+        lambda b: b[FECHADO]["contas"]["rows"].append(["1100000002"]),
         "que não é mapa",
+    ),
+    # ------------------------------------------------ duas janelas (fixture JANELAS)
+    Mutation(
+        "acumulacao-sem-coluna-de-tempo",
+        "acumular sem dizer contra qual coluna o tempo é lido — o motor recusa e o "
+        "repositório publicou três bindings assim porque aqui ninguém olhava",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["accumulate"].pop("on"),
+        "não declara `on`",
+    ),
+    Mutation(
+        "campo-le-consulta-inexistente",
+        "campo que nomeia uma consulta não declarada lê de lugar nenhum",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1]
+        .update({"query": "naoExiste"}),
+        "não está declarada em queries",
+    ),
+    Mutation(
+        "campo-le-coluna-que-a-consulta-nomeada-nao-entrega",
+        "a origem é conferida contra a consulta QUE ELA LÊ, não contra a do conjunto",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1]
+        .update({"column": "saldo"}),
+        "que a consulta 'volume' não entrega",
+    ),
+    Mutation(
+        "campo-sem-consulta-nomeada-le-coluna-da-outra",
+        "sem nomear consulta, a origem lê a do CONJUNTO — e a coluna da outra não vale",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][0]
+        .update({"column": "volumeMes"}),
+        "que a consulta 'estoque' não entrega",
+    ),
+
+    Mutation(
+        "conjunto-sem-marcador",
+        "arquivo curado sem `kind` pode ser um contrato lido como conjunto de linhas",
+        lambda b: b[FECHADO]["contas"].pop("kind"),
+        "se anuncia como",
+    ),
+    Mutation(
+        "conjunto-com-marcador-estrangeiro",
+        "um conjunto que se diz outra coisa publicaria o que seu primeiro mapa tiver",
+        lambda b: b[FECHADO]["contas"].__setitem__("kind", "DocumentContract"),
+        "se anuncia como",
+    ),
+    Mutation(
+        "linha-sem-coluna-de-identidade",
+        "linha sem a coluna que o contrato nomeia em rowSet.key não é identificável",
+        lambda b: b[FECHADO]["contas"]["rows"][0].pop("codigo"),
+        "é a coluna que identifica",
+    ),
+    Mutation(
+        "rowset-sem-key",
+        "sem `key` declarada, nada diz qual coluna identifica a linha",
+        lambda b: dataset(b[FECHADO]["contract"], "linhas")["rowSet"].pop("key"),
+        "não declara `key`",
+    ),
+    Mutation(
+        "chave-do-conjunto-nao-e-campo-do-documento",
+        "chave com erro de digitação passa se as linhas a carregarem, e o pattern do "
+        "campo deixa de ser conferido junto",
+        lambda b: dataset(b[FECHADO]["contract"], "linhas")["rowSet"].update(
+            {"key": "codigoErrado"}),
+        "não é campo declarado do conjunto",
+    ),
+    Mutation(
+        "chave-da-linha-casa-coluna-inexistente",
+        "rowKey apontando coluna que a consulta não entrega não casa linha nenhuma",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"].__setitem__(
+            "rowKey", {"codigo": "colunaInexistente"}),
+        "que a consulta 'estoque' não entrega",
+    ),
+    Mutation(
+        "acumulacao-que-nao-e-mapa",
+        "forma malformada deve reprovar, não ser ignorada em silêncio",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"].__setitem__(
+            "accumulate", "month"),
+        "não é um mapa",
+    ),
+    Mutation(
+        "coluna-de-tempo-que-nao-e-nome",
+        "`on` com uma lista no lugar do nome da coluna não nomeia coluna nenhuma",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["accumulate"]
+        .__setitem__("on", ["criado_em"]),
+        "não declara `on` como o nome de uma coluna",
+    ),
+    Mutation(
+        "agregacao-que-nao-e-mapa",
+        "forma malformada deve reprovar, não estourar em .get('accumulate')",
+        lambda b: b[JANELAS]["binding"]["queries"][0].__setitem__("aggregate", "soma"),
+        "não é um mapa",
+    ),
+    Mutation(
+        "coluna-de-tempo-so-com-espaco",
+        "`on: '   '` é texto não vazio e não nomeia coluna nenhuma",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["accumulate"]
+        .__setitem__("on", "   "),
+        "não declara `on` como o nome de uma coluna",
+    ),
+    Mutation(
+        "consulta-nomeada-que-nao-e-nome",
+        "uma lista no lugar do nome da consulta estourava em `named not in queries`",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1]
+        .__setitem__("query", ["volume"]),
+        "nomeia uma consulta que não é um nome",
+    ),
+    Mutation(
+        "chave-da-linha-que-nao-e-mapa",
+        "rowKey malformado estourava em .values() em vez de reprovar",
+        lambda b: b[JANELAS]["binding"]["datasets"]["linhas"].__setitem__("rowKey", ["codigo"]),
+        "o `rowKey` de 'linhas' não é um mapa",
     ),
     Mutation(
         "rowset-sem-declaracao-no-contrato",
@@ -948,11 +1058,12 @@ _NOT_CONTRACT_KEYS = {
     "byRowClass", "generatable", "incompleteReason", "incompleteFields",
     "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
     "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
+    "accumulate", "rowKey",
     "when", "value", "statedIn", "pendingReason", "measures", "contract",
     # catalog.yaml
     "documents", "path",
     # contas.yaml — o conjunto fechado
-    "accounts", "code", "masked",
+    "rows", "masked",
 }
 
 
@@ -1197,7 +1308,7 @@ class ValidatorSuite(unittest.TestCase):
 
         crashes: list[str] = []
 
-        for doc in (PLANO, FECHADO, HIER):
+        for doc in (PLANO, FECHADO, HIER, JANELAS):
             # A árvore é escrita UMA vez e só o contrato mutado (e o índice, que
             # deriva dele) é reescrito por combinação. Escrever as cinco fixturas
             # inteiras mil e seiscentas vezes levava a suíte a mais de um minuto, e

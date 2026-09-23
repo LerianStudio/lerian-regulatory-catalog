@@ -51,7 +51,16 @@ queries:
               "9": credit
             key: route_code
       accumulate:
+        # A coluna que carrega o momento do lançamento. `until` nomeia o instante;
+        # esta nomeia onde ele é lido. No Midaz é o carimbo de criação da operação;
+        # um razão próprio guarda isso com o nome dele.
+        on: created_at
         until: system.dataBase
+        # Estoque: a janela abre no começo do razão, então o saldo de fechamento
+        # carrega tudo que já foi lançado — inclusive os lançamentos de abertura
+        # que a migração de um sistema anterior postou. Um volume que reinicia a
+        # cada mês declararia `from: month`.
+        from: opening
 
 datasets:
   institution:
