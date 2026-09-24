@@ -54,10 +54,16 @@ queries:
           of: amount
           # Soma COM SINAL: no razão o lançamento a débito entra negativo, e a
           # coluna que diz o lado é esta.
+          # A CHAVE É O LADO, O VALOR É A GRAFIA QUE O DADO USA. `debit: "debit"`
+          # lê-se "a linha cuja coluna direction carrega 'debit' é um débito, e
+          # débito subtrai". Escrever `debit: "-"` afirma que a coluna carrega o
+          # caractere '-' — no Midaz ela carrega 'debit' ou 'credit'
+          # (validateOperationDirection), nenhuma linha casaria, e o motor recusa o
+          # relatório INTEIRO em vez de somar pela metade.
           sign:
             column: direction
-            debit: "-"
-            credit: "+"
+            debit: "debit"
+            credit: "credit"
           # Reexpressa o resultado na natureza da própria conta, senão toda conta
           # de ativo sai negativa no arquivo.
           #
