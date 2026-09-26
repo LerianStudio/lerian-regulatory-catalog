@@ -42,13 +42,16 @@ queries:
         - as: saldoDia
           fn: sum
           of: amount
-          # `debit` e `credit` declaram os VALORES que a coluna direction carrega
-          # neste razão, e o sinal que cada um vale na soma. Trocá-los não quebra a
-          # carga: troca o número.
+          # A CHAVE É O LADO, O VALOR É A GRAFIA QUE O DADO USA. `debit: "debit"`
+          # lê-se "a linha cuja coluna direction carrega 'debit' é um débito, e
+          # débito subtrai". Escrever `debit: "-"` afirma que a coluna carrega o
+          # caractere '-' — no Midaz ela carrega 'debit' ou 'credit'
+          # (validateOperationDirection), nenhuma linha casaria, e o motor recusa o
+          # relatório INTEIRO em vez de somar pela metade.
           sign:
             column: direction
-            debit: "-"
-            credit: "+"
+            debit: "debit"
+            credit: "credit"
           statedIn:
             natureByPrefix:
               "1": debit
