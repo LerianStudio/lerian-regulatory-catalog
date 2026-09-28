@@ -23,11 +23,18 @@ Aqui não. O conjunto de contas é **fechado e definido pelo regulador** — sã
 trinta rubricas e nenhuma outra (Instruções §4.2.2.a). Elas vivem em `contas.yaml`,
 publicado por este catálogo, e não no banco do cliente.
 
-A consequência prática é a razão de o desenho ser assim: uma conta que o razão do
-cliente nunca movimentou **continua no arquivo, valendo zero**. Se as linhas
-viessem dos dados, ela simplesmente não apareceria — e a omissão de conta só é
-permitida quando o saldo é zero, então o arquivo sairia curto e seria rejeitado na
-recepção, sem nada explicando por quê.
+A consequência prática é a razão de o desenho ser assim: uma conta que a sua
+consulta não devolveu **continua no arquivo, valendo zero**.
+
+Isso importa porque o arquivo não tem como distinguir duas situações que produzem
+a mesma ausência. Uma conta de saldo realmente zero **pode** ser omitida — as
+Instruções permitem (§4.2.2.a). Mas uma conta com saldo diferente de zero cujo
+mapeamento não alcançou as linhas — rubrica escrita de outro jeito, filtro que
+recortou demais — sumiria exatamente do mesmo modo, e aí o arquivo estaria errado.
+
+Com o conjunto fechado, as duas situações deixam de ser a mesma coisa: a linha
+sempre existe, e o que se vê é um zero. Um zero que não deveria estar ali é um
+erro **visível**, que alguém pode conferir; uma linha ausente não é.
 
 ## As duas classes de conta
 
@@ -43,14 +50,20 @@ no fim do mês.
 reiniciando a cada virada de mês (Instruções §4.2.2.a). São as cinco rubricas
 `3.0.9.70.XX`, de transações realizadas.
 
-A diferença não é de cálculo, é de **janela**: as duas somam a mesma coluna do
-mesmo razão, mas uma abre na abertura do razão e a outra no primeiro dia do mês.
-Por isso o binding de exemplo declara duas consultas sobre a mesma tabela — não é
-redundância.
+As duas diferem em **duas coisas**, e confundir qualquer uma delas produz um
+número errado com a mesma aparência de certo:
 
-E é por isso que somar com sinal importa: entrou 100 e saiu 100 no mês significa
-**200 de volume** e **zero de saldo**. Os dois números são legítimos; cada classe
-de conta pede um.
+| | `stock` | `flow` |
+|---|---|---|
+| **Cálculo** | soma **com sinal**, reexpressa na natureza da conta | soma o **valor absoluto** das transações |
+| **Janela** | abre na abertura do razão | abre no primeiro dia do mês |
+
+O exemplo que torna isso concreto: entrou 100 e saiu 100 no mês. Isso é **200 de
+volume** e **zero de saldo** — os dois números são legítimos, e cada classe de
+conta pede um. Somar o fluxo com sinal daria zero e **subnotificaria o volume**.
+
+É por diferirem nas duas coisas que o binding de exemplo declara duas consultas
+sobre a mesma tabela. Não é redundância.
 
 ## O que a Lerian assume do seu razão
 
@@ -80,9 +93,18 @@ contábeis.
 
 **Acúmulo de fim de semana.** Volumes de sábado, domingo e feriado devem ser
 acumulados no próximo dia útil (Instruções §4.2.2.b). O calendário de dias úteis
-que desloca essa apuração não existe nesta versão: um arquivo gerado para um dia
-útil está correto, e um gerado para sábado reporta o próprio sábado em vez de
-somar no dia útil seguinte.
+que faz esse deslocamento não existe nesta versão, e o efeito disso depende de o
+fim de semana atravessar ou não a virada do mês:
+
+- **Dentro do mesmo mês**, o volume do fim de semana entra no arquivo do próximo
+  dia útil naturalmente, porque a janela do fluxo cobre o mês inteiro até a
+  data-base. É o resultado que a regra pede, alcançado por outro caminho.
+- **Atravessando a virada do mês** — um sábado dia 31 com o próximo dia útil já no
+  mês seguinte —, não entra: a janela do arquivo do dia 1º abre no dia 1º, e o
+  volume do dia 31 ficou no mês anterior, cujo último arquivo é anterior a ele.
+  **Esse volume não é reportado em arquivo nenhum.**
+- Um arquivo gerado **para o próprio sábado** reporta o sábado, em vez de somá-lo
+  ao dia útil seguinte.
 
 **O XSD publicado está desatualizado.** O `schema/XSD_4111.xsd` é a v1.0 de
 30/03/2023 e contradiz as instruções vigentes em três pontos: diz código de conta
