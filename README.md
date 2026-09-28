@@ -15,7 +15,7 @@ coisas que costumam vir fundidas num template só:
 |---|---|---|---|
 | **Contrato** | *o que* o documento precisa — conjuntos de dados, grão, agregação, campos, tipos, domínios, formatos, regras | Lerian | este repositório |
 | **Template** | *onde* cada campo aparece — a sintaxe do arquivo e a posição dos campos | Lerian | este repositório |
-| **Binding** | *de onde* o dado vem — base, tabela, coluna; ou valor fixo, parâmetro, edição manual | cliente | instalação do cliente |
+| **Binding** | *de onde* o dado vem — base, tabela, coluna; ou valor fixo, parâmetro, edição manual, CNPJ da instituição que entrega | cliente | instalação do cliente |
 
 A divisão não é estética. As três mudam por motivos diferentes e em ritmos
 diferentes: contrato e template mudam quando o regulador revisa o leiaute; binding
