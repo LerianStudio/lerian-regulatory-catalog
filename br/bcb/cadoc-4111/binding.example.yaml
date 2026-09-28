@@ -14,8 +14,23 @@
 #
 # O que é DESTE exemplo e não do documento: o nome da fonte (midaz_transaction),
 # da tabela (operation) e das colunas (route_code, amount, direction, created_at),
-# e os valores que a coluna de direção carrega. Um razão que não seja o Midaz troca
-# esses nomes e mantém o resto.
+# e os valores que a coluna de direção carrega.
+#
+# APONTAR ISTO PARA OUTRO RAZÃO NÃO É SÓ RENOMEAR, e o motor não tem como avisar.
+# Ele lê as colunas como elas são, então o outro razão precisa SIGNIFICAR o mesmo.
+# Duas coisas em particular, porque erram em silêncio e o arquivo sai com a mesma
+# cara:
+#
+#   * `amount` é uma MAGNITUDE, e o lado do lançamento vive em `direction`. É por
+#     isso que a consulta de estoque declara `sign` e a de fluxo não pode declarar:
+#     somar `amount` cru é o volume que o documento pede. Num razão que gravasse o
+#     lado no próprio valor, a mesma soma devolveria volume LÍQUIDO — 100 de
+#     entrada e 100 de saída dariam zero onde o documento espera 200.
+#   * `status` separa o que moveu dinheiro do que apenas reservou. Aqui é
+#     `APPROVED`; noutro razão é outra coisa, ou nada.
+#
+# O Reporter é homologado contra o Midaz. Mapear outro razão é decisão e
+# responsabilidade de quem mapeia.
 
 apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
