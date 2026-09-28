@@ -107,8 +107,8 @@ datasets:
   institution:
     fields:
       cnpj8:
-        from: constant
-        value: "12345678"
+        from: institution
+        institution: cnpj8
 
   saldos_diarios:
     # As linhas vêm do conjunto fechado; as consultas fornecem o valor por conta.

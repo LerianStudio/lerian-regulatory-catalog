@@ -30,6 +30,10 @@ ROOT = Path(os.environ.get("CATALOG_ROOT", Path(__file__).resolve().parent.paren
 # conjunto — nem lá, nem aqui.
 ROW_SET_KIND = "DocumentRowSet"
 
+# O que uma origem `institution` escreve, com os nomes que o motor aceita
+# (pkg/reporter/binding): o CNPJ inteiro ou a raiz de 8 posições.
+INSTITUTION_VALUES = {"cnpj", "cnpj8"}
+
 FAILURES: list[str] = []
 WARNINGS: list[str] = []
 
@@ -599,7 +603,7 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                     warn(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve o condicional {dataset}.{field} — confirme que a condição nunca vale neste binding")
                 continue
 
-            valid = {"query", "constant", "parameter", "manual", "rowSet"}
+            valid = {"query", "constant", "parameter", "manual", "rowSet", "institution"}
 
             # byRowClass: um campo cuja origem depende da CLASSE da linha (no 4111, o
             # saldoDia vem da consulta para estoque e é manual para fluxo). Cada caso
@@ -629,6 +633,13 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                             f"conjunto '{dataset}'"
                         )
 
+                    if case.get("from") == "institution" and case.get("institution") not in INSTITUTION_VALUES:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                            f"resolve pela instituição e escreve {case.get('institution')!r}; "
+                            f"use cnpj ou cnpj8"
+                        )
+
                     if case.get("from") == "manual" and case.get("value") is None:
                         if not case.get("pendingReason"):
                             fail(
@@ -646,7 +657,15 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             if how not in valid:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
-                    f"{how!r}; use query, constant, parameter, manual, rowSet ou byRowClass"
+                    f"{how!r}; use query, constant, parameter, manual, rowSet, institution ou byRowClass"
+                )
+
+            # institution: o CNPJ da instituição que a entrega declara, que o Reporter
+            # lê na geração. Escreve o CNPJ inteiro (`cnpj`) ou a raiz (`cnpj8`).
+            if how == "institution" and spec.get("institution") not in INSTITUTION_VALUES:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve pela instituição "
+                    f"e escreve {spec.get('institution')!r}; use cnpj ou cnpj8"
                 )
 
             # `rowSet` só significa algo se o CONJUNTO declarar rowSet no contrato:

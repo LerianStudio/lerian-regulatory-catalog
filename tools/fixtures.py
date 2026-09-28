@@ -108,7 +108,7 @@ PLANO_BINDING = {
          }},
     ],
     "datasets": {
-        "institution": {"fields": {"cnpj8": {"from": "constant", "value": "12345678"}}},
+        "institution": {"fields": {"cnpj8": {"from": "institution", "institution": "cnpj8"}}},
         "saldos": {"from": {"query": "saldos_por_rubrica"},
                    "fields": {"codigo": {"from": "query", "column": "rota"},
                               "valor": {"from": "query", "column": "valor"}}},

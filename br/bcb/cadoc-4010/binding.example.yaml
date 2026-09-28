@@ -118,18 +118,19 @@ queries:
 # Conjuntos
 #
 # Amarra o resultado das consultas aos conjuntos e campos que o contrato declara.
-# Um campo se resolve de quatro formas — `query`, `constant`, `parameter` ou
-# `manual` — e as três últimas existem para que a falta de origem nunca impeça a
-# geração: o arquivo sai como rascunho e o cliente completa antes de aprovar.
+# Um campo se resolve por `query`, `constant`, `parameter`, `manual` ou
+# `institution`. `constant`, `parameter` e `manual` existem para que a falta de
+# origem nunca impeça a geração: o arquivo sai como rascunho e o cliente completa
+# antes de aprovar.
 # ---------------------------------------------------------------------------
 datasets:
   institution:
-    # Sem consulta: a raiz do CNPJ é cadastral e estável, então vale um valor
-    # fixo. O contrato pede grão `singleton` e uma linha de constantes o atende.
+    # Sem consulta: a raiz do CNPJ vem da instituição que a entrega declara, então
+    # cada tenant entrega com o próprio CNPJ e nenhum valor fixo fica no binding.
     fields:
       cnpj8:
-        from: constant
-        value: "12345678"
+        from: institution
+        institution: cnpj8
 
   cosif_balances:
     from:

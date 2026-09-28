@@ -255,7 +255,21 @@ MUTATIONS: list[Mutation] = [
         "origem fora do vocabulário é campo que o motor não sabe resolver",
         lambda b: b[PLANO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
             {"from": "magica"}),
-        "use query, constant, parameter, manual, rowSet ou byRowClass",
+        "use query, constant, parameter, manual, rowSet, institution ou byRowClass",
+    ),
+    Mutation(
+        "binding-instituicao-valor-invalido",
+        "a instituição só escreve o CNPJ inteiro ou a raiz; outro nome não escreve nada",
+        lambda b: b[PLANO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
+            {"institution": "cnpj14"}),
+        "resolve pela instituição e escreve 'cnpj14'",
+    ),
+    Mutation(
+        "binding-instituicao-valor-invalido-por-classe",
+        "a mesma conferência no caminho por classe de linha",
+        lambda b: b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1].update(
+            {"from": "institution", "institution": "raiz"}),
+        "byRowClass[1] resolve pela instituição e escreve 'raiz'",
     ),
     Mutation(
         "binding-consulta-inexistente",
@@ -1059,7 +1073,7 @@ _NOT_CONTRACT_KEYS = {
     "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
     "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
     "accumulate", "rowKey",
-    "when", "value", "statedIn", "pendingReason", "measures", "contract",
+    "when", "value", "statedIn", "pendingReason", "measures", "contract", "institution",
     # catalog.yaml
     "documents", "path",
     # contas.yaml — o conjunto fechado
