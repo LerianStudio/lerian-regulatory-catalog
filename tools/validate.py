@@ -34,6 +34,12 @@ ROW_SET_KIND = "DocumentRowSet"
 # (pkg/reporter/binding): o CNPJ inteiro ou a raiz de 8 posições.
 INSTITUTION_VALUES = {"cnpj", "cnpj8"}
 
+
+def _writes_institution_value(source: dict) -> bool:
+    """Texto antes do teste de pertinência: uma lista ou um mapa reprova, não estoura."""
+    value = source.get("institution")
+    return isinstance(value, str) and value in INSTITUTION_VALUES
+
 FAILURES: list[str] = []
 WARNINGS: list[str] = []
 
@@ -633,7 +639,7 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                             f"conjunto '{dataset}'"
                         )
 
-                    if case.get("from") == "institution" and case.get("institution") not in INSTITUTION_VALUES:
+                    if case.get("from") == "institution" and not _writes_institution_value(case):
                         fail(
                             f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
                             f"resolve pela instituição e escreve {case.get('institution')!r}; "
@@ -662,7 +668,7 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
 
             # institution: o CNPJ da instituição que a entrega declara, que o Reporter
             # lê na geração. Escreve o CNPJ inteiro (`cnpj`) ou a raiz (`cnpj8`).
-            if how == "institution" and spec.get("institution") not in INSTITUTION_VALUES:
+            if how == "institution" and not _writes_institution_value(spec):
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve pela instituição "
                     f"e escreve {spec.get('institution')!r}; use cnpj ou cnpj8"

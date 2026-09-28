@@ -265,6 +265,13 @@ MUTATIONS: list[Mutation] = [
         "resolve pela instituição e escreve 'cnpj14'",
     ),
     Mutation(
+        "binding-instituicao-valor-nao-texto",
+        "uma lista no lugar do nome reprova como valor inválido, sem derrubar a ferramenta",
+        lambda b: b[PLANO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
+            {"institution": ["cnpj8"]}),
+        "resolve pela instituição e escreve ['cnpj8']",
+    ),
+    Mutation(
         "binding-instituicao-valor-invalido-por-classe",
         "a mesma conferência no caminho por classe de linha",
         lambda b: b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1].update(
