@@ -62,6 +62,19 @@ binding, do lado do cliente. O validador recusa um arquivo desses aqui.
 Tabelas de código do REGULADOR são outra coisa e cabem aqui, porque são parte do
 que o documento é.
 
+**Garantia sobre razões que não sejam o Midaz.** Os bindings de exemplo são
+escritos contra o Midaz, e é contra o Midaz que a geração é homologada. Eles são
+exemplos justamente porque o binding é do cliente: apontá-los para outro razão é
+decisão dele, e a correção do arquivo passa a depender de um ecossistema que não
+conhecemos.
+
+Isso não é formalidade. O motor lê as colunas que o binding nomeia, exatamente
+como elas são — ele não tem como saber que a coluna de valor de outro razão
+carrega o sinal do lançamento em vez da magnitude, e a soma que aqui dá o volume
+do mês lá daria o saldo líquido. O arquivo sai bem formado nos dois casos. Os
+exemplos declaram no cabeçalho o que assumem do razão; conferir isso contra a base
+de origem é parte de mapear.
+
 ## Curadoria
 
 O contrato é escrito a partir do manual do leiaute e do XSD publicados pelo
