@@ -26,10 +26,12 @@ queries:
       # COSIF. É filtro de EXTRAÇÃO — o 4016 não admite resultado — então vive aqui,
       # não no contrato. A regra sem-contas-de-resultado do contrato confere o
       # arquivo pronto; este filtro é o que faz o arquivo já sair certo.
+      # PREFIXO, não o código inteiro: `nin ["7","8"]` compararia a rubrica de dez
+      # dígitos com "7" e "8" e não excluiria nada. Uma versão anterior escreveu
+      # `match: firstChar`, que nada lia — o arquivo saía com as contas de resultado.
       - field: route_code
-        operator: nin
+        operator: notStartsWith
         values: ["7", "8"]
-        match: firstChar
     aggregate:
       groupBy: [route_code]
       measures:
