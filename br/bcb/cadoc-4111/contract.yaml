@@ -77,6 +77,16 @@ datasets:
     rowSet:
       from: contas.yaml
       key: cosifCode
+      # O código COSIF é POSICIONAL e HIERÁRQUICO: seis níveis de larguras 1-1-1-2-2-2
+      # mais o dígito verificador (IN BCB 426 a 433, vigente desde 01/2025). Uma linha
+      # publicada responde por tudo que está abaixo dela — o BACEN lista
+      # Disponibilidades (1.1.0) ao lado de Caixa (1.1.1) e Depósitos Bancários
+      # (1.1.2), e ninguém lança em Disponibilidades: ela é a soma das filhas, mais as
+      # subcontas que o razão do cliente mantiver sob elas. Sem esta declaração, a
+      # conta-mãe saía zerada e uma subconta do cliente recusava o documento.
+      hierarchy:
+        levels: [1, 1, 1, 2, 2, 2]
+        checkDigit: 1
     fields:
       - name: cosifCode
         type: string

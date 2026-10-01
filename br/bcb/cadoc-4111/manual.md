@@ -81,7 +81,41 @@ errado:
 Conferir isso contra a sua base de origem é parte de mapear o binding. O cabeçalho
 do `binding.example.yaml` diz, linha a linha, o que o exemplo assume.
 
-## Precondição de configuração
+## As contas-mãe são a soma do que está abaixo delas
+
+O regulador lista contas de níveis diferentes da mesma árvore: Disponibilidades
+(1.1.0) ao lado de Caixa (1.1.1) e Depósitos Bancários (1.1.2); Depósitos à Vista
+(4.1.1) ao lado das suas filhas por tipo de depositante. Ninguém lança em
+Disponibilidades — ela é a soma das filhas, mais as subcontas que o seu razão
+mantiver sob elas (uma `1.1.1.10` sua sobe para Caixa e para Disponibilidades).
+
+O contrato declara como o código COSIF se divide em níveis (`rowSet.hierarchy`:
+larguras 1-1-1-2-2-2 e um dígito verificador), e o motor soma a árvore por essa
+declaração. É também o que decide **o que é lido** do razão: só as rubricas que
+estão sob alguma das trinta contas. Receitas, despesas, operações de crédito e o
+resto do seu plano de contas não entram na leitura, e por isso não precisam de
+natureza declarada no binding nem podem recusar a geração.
+
+Uma subconta sua **não vira linha** do arquivo: o conjunto é fechado. Ela só
+contribui para as linhas acima dela.
+
+## Precondições do cadastro no Midaz
+
+O binding de exemplo lê a rubrica COSIF de `operation.route_code`, que o Midaz
+preenche a partir da rubrica configurada na **rota de operação**
+(`accountingEntries`), por ação (`direct`, `hold`, `commit`, `cancel`, `revert`…)
+e por lado (débito/crédito). O Midaz é genérico e não conhece o COSIF: **configurar
+a rubrica certa em cada rota é responsabilidade do cliente.** Para o arquivo sair
+certo:
+
+- **Rotas obrigatórias no ledger** (`accounting.validateRoutes` ligado). Uma
+  operação sem rota fica sem rubrica, e o Reporter recusa o documento — gerar sem
+  ela faria dinheiro sumir do balanço. A recusa nomeia a coluna vazia.
+- **Rubrica COSIF de dez dígitos, sem ponto nem traço, em toda rota e toda ação**
+  que movimente uma conta do documento.
+- **A rubrica de `commit` igual à de `direct`** nas contas de estoque: o Midaz
+  grava operações novas no commit, com a rubrica dessa ação, e são elas que o
+  filtro `status = APPROVED` soma.
 
 A **natureza contábil** de cada rubrica — devedora ou credora — é propriedade do
 plano de contas do cliente, não deste catálogo. Publicar uma tabela nossa criaria
