@@ -1,5 +1,5 @@
 {
-  "_about": "Org A — instituição de pagamento emissora de moeda eletrônica (pré-paga) e credenciadora. Contabilidade FICTÍCIA para homologação: rubricas fora do conjunto do 4111 têm nome plausível do COSIF e DV calculado, a conferir por um contador. Cada rubrica é uma conta do Midaz com a natureza da rubrica (o defaultDirection do tipo vira a natureza do saldo), então o saldo da conta no Midaz é o saldo COSIF. Agosto abre saldos, setembro é a data-base; hold/commit, hold/cancel e estorno rodam na data da execução, porque o Midaz não retrodata commit nem estorno.",
+  "_about": "Org A — instituição de pagamento emissora de moeda eletrônica (pré-paga) e credenciadora. Contabilidade FICTÍCIA para homologação: rubricas fora do conjunto do 4111 têm nome plausível do COSIF e DV calculado, a conferir por um contador. Cada rubrica é uma conta do Midaz com a natureza da rubrica (o defaultDirection do tipo vira a natureza do saldo), então o saldo da conta no Midaz é o saldo COSIF. Agosto abre saldos, setembro é a data-base; hold/commit, hold/cancel e estorno rodam na data da execução, porque o Midaz não retrodata commit nem estorno. A contrapartida de toda 3.0.9.70.XX é o título único 9.0.9.70.00.00-7 (IN BCB 538), num ledger próprio (Razão COSIF 2) porque o primeiro registrou subcontas 9.0.9.70.XX que o COSIF não tem.",
   "organization": {
     "legalName": "Pagare IP S.A. (homologação)",
     "doingBusinessAs": "Pagare",
@@ -12,7 +12,7 @@
       "country": "BR"
     }
   },
-  "ledger": "Razão COSIF",
+  "ledger": "Razão COSIF 2",
   "accountTypes": [
     {
       "keyValue": "ativo",
@@ -134,18 +134,6 @@
       "name": "Controle - Conta de Pagamento Pré-Paga"
     },
     {
-      "alias": "@fluxo_emissor_cp",
-      "type": "compensacao_credora",
-      "code": "9097020001",
-      "name": "Transações no mês - Emissor Pré-pago (credora)"
-    },
-    {
-      "alias": "@fluxo_credenciador_cp",
-      "type": "compensacao_credora",
-      "code": "9097030008",
-      "name": "Transações no mês - Credenciador (credora)"
-    },
-    {
       "alias": "@ana",
       "type": "conta_pre_paga",
       "code": "4193000009",
@@ -165,6 +153,12 @@
       "code": "4192500005",
       "routeByType": true,
       "name": "Loja X — Recursos Disponíveis de Clientes"
+    },
+    {
+      "alias": "@controle_transacoes",
+      "type": "compensacao_credora",
+      "code": "9097000007",
+      "name": "Transações de Pagamento Realizadas no Mês - Controle"
     }
   ],
   "transactions": [
@@ -222,7 +216,7 @@
       "amount": "300.00",
       "description": "Fluxo do mês: emissor pré-pago (A06)",
       "debit": "@fluxo_emissor",
-      "credit": "@fluxo_emissor_cp"
+      "credit": "@controle_transacoes"
     },
     {
       "key": "A08",
@@ -230,7 +224,7 @@
       "amount": "300.00",
       "description": "Fluxo do mês: credenciador (A06)",
       "debit": "@fluxo_credenciador",
-      "credit": "@fluxo_credenciador_cp"
+      "credit": "@controle_transacoes"
     },
     {
       "key": "A09",
@@ -262,7 +256,7 @@
       "amount": "1000.00",
       "description": "Fluxo do mês: credenciador (A11)",
       "debit": "@fluxo_credenciador",
-      "credit": "@fluxo_credenciador_cp"
+      "credit": "@controle_transacoes"
     },
     {
       "key": "A13",
@@ -278,7 +272,7 @@
       "amount": "150.00",
       "description": "Fluxo do mês: emissor pré-pago (A13)",
       "debit": "@fluxo_emissor",
-      "credit": "@fluxo_emissor_cp"
+      "credit": "@controle_transacoes"
     },
     {
       "key": "A15",
@@ -334,7 +328,7 @@
       "date": "2026-10-01T00:05:00Z",
       "amount": "450.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): emissor pré-pago de setembro",
-      "debit": "@fluxo_emissor_cp",
+      "debit": "@controle_transacoes",
       "credit": "@fluxo_emissor"
     },
     {
@@ -342,7 +336,7 @@
       "date": "2026-10-01T00:06:00Z",
       "amount": "1300.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): credenciador de setembro",
-      "debit": "@fluxo_credenciador_cp",
+      "debit": "@controle_transacoes",
       "credit": "@fluxo_credenciador"
     }
   ]
