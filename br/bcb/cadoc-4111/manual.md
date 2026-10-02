@@ -65,6 +65,14 @@ conta pede um. Somar o fluxo com sinal daria zero e **subnotificaria o volume**.
 É por diferirem nas duas coisas que o binding de exemplo declara duas consultas
 sobre a mesma tabela. Não é redundância.
 
+**O volume é o que foi DEBITADO na 3.0.9.70 no mês.** Cada transação de pagamento
+é registrada a débito da 3.0.9.70.XX contra a 9.0.9.70.XX. As instruções exigem que
+o volume reinicie a cada mês **e** que, no último dia, ele coincida com o saldo da
+mesma conta no 4010 (§4.2.2.b). As duas coisas só fecham se a conta for **zerada
+na virada do mês** por uma reversão (a crédito da 3.0.9.70). Por isso a consulta de
+fluxo lê só os débitos: a reversão não é transação, e somá-la declararia o mês
+anterior de novo.
+
 ## O que a Lerian assume do seu razão
 
 A geração é **homologada contra o Midaz**. O binding é seu, e apontá-lo para outro
@@ -127,6 +135,14 @@ certo:
 - **Nenhuma reserva nas contas de fluxo** (3.0.9.70.XX). O fluxo soma o valor
   ABSOLUTO de cada lançamento, então o par do hold, que se anula num saldo, conta
   duas vezes no volume. Registre o volume com lançamentos diretos.
+- **As contas de fluxo zeradas todo mês.** No primeiro dia do mês, reverta o saldo
+  de cada 3.0.9.70.XX contra a 9.0.9.70.XX. Sem isso o 4010 acumula o volume desde
+  a abertura e deixa de coincidir com o 4111 do último dia, que é o que as
+  instruções exigem.
+- **O estorno de uma transação de pagamento não reduz o volume do mês.** Ele entra a
+  crédito da 3.0.9.70 e a consulta de fluxo lê só os débitos; o 4010 mostra o saldo
+  já reduzido. Se a sua interpretação for a de abater o estorno do volume, é uma
+  decisão sua de binding.
 
 A **natureza contábil** de cada rubrica — devedora ou credora — é propriedade do
 plano de contas do cliente, não deste catálogo. Publicar uma tabela nossa criaria
