@@ -143,14 +143,16 @@ certo:
 - **Estorno: ponto em aberto, que o normativo não resolve.** A função da 3.0.9.70
   (IN BCB 538) é registrar o volume das transações "realizadas durante o mês", e nem
   ela nem as instruções do 4111 dizem se um pagamento estornado sai do volume. Duas
-  situações diferentes, com tratamentos diferentes:
+  situações diferentes:
     - uma **devolução** (um Pix devolvido, por exemplo) é uma nova transação de
       pagamento: entra a débito, como qualquer outra, e soma no volume;
-    - uma **correção** de um registro errado entra a crédito da 3.0.9.70. A consulta
-      de fluxo não a lê, então o volume do 4111 fica maior que o saldo do 4010 no
-      último dia do mês — a coincidência que as instruções exigem quebra.
-  Prefira corrigir no mesmo dia do erro, antes de qualquer remessa, e confirme o
-  tratamento com o BCB se a correção atravessar uma data-base. O binding é seu.
+    - a **correção** de um registro errado entra a crédito da 3.0.9.70, e este binding
+      não a lê: o débito errado FICA no volume do mês e o crédito não o abate, em
+      qualquer dia que a correção seja feita. O 4111 sai maior que o saldo da conta no
+      4010, e a coincidência que as instruções exigem no último dia quebra.
+  Antes de remeter um 4111 com uma correção dessas no mês, confirme o tratamento com
+  o BCB. Um binding seu pode abater as correções (marcando-as e lendo-as), por sua
+  conta e risco.
 
 A **natureza contábil** de cada rubrica — devedora ou credora — é propriedade do
 plano de contas do cliente, não deste catálogo. Publicar uma tabela nossa criaria
