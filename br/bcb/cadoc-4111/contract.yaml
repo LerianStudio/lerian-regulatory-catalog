@@ -31,7 +31,7 @@ metadata:
   regulator: BCB
   document: "4111"
   title: Saldos Contábeis Diários
-  version: 1.0.0
+  version: 1.1.0   # 1.1.0: hierarquia das contas (v0.1.1) e binding/manual de referência sem filtro de status
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]

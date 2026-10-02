@@ -32,7 +32,7 @@ metadata:
   # Publicação é tag git (br.bcb.cadoc-4010/v1.0.0). A instalação do cliente fixa a
   # versão adotada, então uma correção publicada aqui não muda o que ele gera até
   # ele adotar.
-  version: 1.0.0
+  version: 1.1.0   # 1.1.0: o arquivo traz todas as contas, inclusive as sintéticas (hierarchy)
   status: draft
   # A quem o documento se aplica. É o que permite filtrar o catálogo por tipo de
   # instituição em vez de o cliente adivinhar o que precisa entregar.
@@ -92,6 +92,23 @@ datasets:
   - name: cosif_balances
     description: Saldo por rubrica COSIF na data-base.
     grain: [cosifCode]       # uma linha por rubrica — exigência do arquivo
+    # TODAS AS CONTAS, inclusive as sintéticas. O leiaute pede "todas as contas
+    # contábeis às quais a entidade deve prestar informação" e o exemplo do BCB
+    # lista Ativo (1000000009) e Disponibilidades (1100000002) ao lado das
+    # analíticas; as instruções do 4111 (§4.2.2.b) exigem que o seu último dia
+    # coincida com este balancete. Ninguém lança numa conta sintética — o Midaz
+    # não tem o conceito —, então as linhas-mãe são DERIVADAS: cada ancestral de
+    # uma rubrica movimentada vira uma linha, somada do que está abaixo dela, em
+    # convenção contábil e reexpressa na natureza da própria conta (uma provisão,
+    # credora dentro do grupo 1, ABATE Operações de Crédito). O motor soma a árvore
+    # pelos níveis declarados aqui e soletra o código de cada ancestral pela regra
+    # do dígito verificador, também declarada aqui: a soma das nove posições com
+    # os pesos 9,3,7,9,3,7,9,3,7, módulo 10, que reproduz todas as rubricas que o
+    # regulador publica.
+    hierarchy:
+      levels: [1, 1, 1, 2, 2, 2]
+      checkDigit: 1
+      checkDigitWeights: [9, 3, 7, 9, 3, 7, 9, 3, 7]
     fields:
       - name: cosifCode
         type: string
