@@ -590,6 +590,15 @@ def cross_check(generated):
             continue
         common = set(lines) & set(balancete)
         broken = []
+        # A 4111 line with a balance has to be in the 4010 too: the 4010 may omit an
+        # account only when its balance is zero (leiaute §3.2.2.a). A parent the
+        # ledger never posts to — Disponibilidades — is exactly the line it omits.
+        for code in sorted(set(lines) - set(balancete)):
+            if Decimal(lines[code]) == 0:
+                continue
+            children = sorted(c for c in balancete if c.startswith(cosif_prefix(code)))
+            why = (" — conta-mãe das rubricas %s do razão" % ", ".join(children)) if children else ""
+            broken.append("%s: 4111 %s, ausente do 4010%s" % (code, lines[code], why))
         for code in sorted(common):
             if Decimal(lines[code]) == Decimal(balancete[code]):
                 continue
@@ -599,8 +608,8 @@ def cross_check(generated):
             broken.append("%s: 4111 %s, 4010 %s%s" % (code, lines[code], balancete[code], why))
         verdict = "OK" if not broken else "FALHOU"
         failures += bool(broken)
-        print("%-6s 4111 %s coincide com o 4010 %04d-%02d nas %d rubricas em comum" % (
-            verdict, base, year, month, len(set(lines) & set(balancete))))
+        print("%-6s 4111 %s x 4010 %04d-%02d: mesmo saldo nas %d rubricas em comum, e toda linha com saldo do 4111 no 4010" % (
+            verdict, base, year, month, len(common)))
         for b in broken:
             print("         - " + b)
 

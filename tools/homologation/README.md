@@ -66,8 +66,11 @@ nada dos grupos 7 e 8 no 4016; e cada linha contra o gabarito.
   quais a entidade deve prestar informação", e o exemplo do BCB lista sintéticas
   (`1000000009`, `1100000002`) ao lado das analíticas; as instruções do 4111 pedem
   que o último dia coincida com o 4010. O 4111 soma a árvore, o 4010 só lista o que
-  o razão lançou — então a conferência cruzada FALHA no cenário C, de propósito, até
-  o 4010 somar os níveis. A ferramenta não soma por ele: esconderia o defeito.
+  o razão lançou — então a conferência cruzada FALHA nos três cenários, de propósito,
+  até o 4010 somar os níveis: Disponibilidades (`1100000002`) tem saldo no 4111 e
+  não existe no 4010 de nenhum deles, e na Org C Caixa, Depósitos à Vista e Pessoas
+  Naturais saem no 4010 sem as subcontas. A ferramenta não soma por ele: esconderia
+  o defeito.
 - **Uma retificadora declarada só pelo grupo sai com o sinal trocado.** A
   natureza é do plano de contas do cliente: o cenário a declara (`natures`), e o
   motor usa o prefixo mais longo.
