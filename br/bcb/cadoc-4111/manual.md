@@ -65,6 +65,15 @@ conta pede um. Somar o fluxo com sinal daria zero e **subnotificaria o volume**.
 É por diferirem nas duas coisas que o binding de exemplo declara duas consultas
 sobre a mesma tabela. Não é redundância.
 
+**O volume é o que foi DEBITADO na 3.0.9.70 no mês.** Cada transação de pagamento
+é registrada a débito da 3.0.9.70.XX contra a **9.0.9.70.00.00-7** (Controle), que é
+uma conta só (IN BCB 538). As instruções exigem que
+o volume reinicie a cada mês **e** que, no último dia, ele coincida com o saldo da
+mesma conta no 4010 (§4.2.2.b). As duas coisas só fecham se a conta for **zerada
+na virada do mês** por uma reversão (a crédito da 3.0.9.70). Por isso a consulta de
+fluxo lê só os débitos: a reversão não é transação, e somá-la declararia o mês
+anterior de novo.
+
 ## O que a Lerian assume do seu razão
 
 A geração é **homologada contra o Midaz**. O binding é seu, e apontá-lo para outro
@@ -127,6 +136,21 @@ certo:
 - **Nenhuma reserva nas contas de fluxo** (3.0.9.70.XX). O fluxo soma o valor
   ABSOLUTO de cada lançamento, então o par do hold, que se anula num saldo, conta
   duas vezes no volume. Registre o volume com lançamentos diretos.
+- **As contas de fluxo zeradas todo mês.** No primeiro dia do mês, reverta o saldo
+  de cada 3.0.9.70.XX contra a 9.0.9.70.00.00-7. Sem isso o 4010 acumula o volume desde
+  a abertura e deixa de coincidir com o 4111 do último dia, que é o que as
+  instruções exigem.
+- **Estorno: ponto em aberto, que o normativo não resolve.** A função da 3.0.9.70
+  (IN BCB 538) é registrar o volume das transações "realizadas durante o mês", e nem
+  ela nem as instruções do 4111 dizem se um pagamento estornado sai do volume. Duas
+  situações diferentes, com tratamentos diferentes:
+    - uma **devolução** (um Pix devolvido, por exemplo) é uma nova transação de
+      pagamento: entra a débito, como qualquer outra, e soma no volume;
+    - uma **correção** de um registro errado entra a crédito da 3.0.9.70. A consulta
+      de fluxo não a lê, então o volume do 4111 fica maior que o saldo do 4010 no
+      último dia do mês — a coincidência que as instruções exigem quebra.
+  Prefira corrigir no mesmo dia do erro, antes de qualquer remessa, e confirme o
+  tratamento com o BCB se a correção atravessar uma data-base. O binding é seu.
 
 A **natureza contábil** de cada rubrica — devedora ou credora — é propriedade do
 plano de contas do cliente, não deste catálogo. Publicar uma tabela nossa criaria
