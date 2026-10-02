@@ -627,6 +627,20 @@ def cross_check(generated):
 
     return failures
 
+def state_belongs_to(lg, state):
+    """Whether a state with no recorded ledger was written against the ledger found."""
+    if "ledger" in state:
+        return True
+
+    posted = [t.get("id") for t in (state.get("transactions") or {}).values() if t.get("id")]
+    if not posted:
+        return True
+
+    status, _ = lg.midaz.call("GET", "%s/transactions/%s" % (lg.lp, posted[0]), ok=(200, 404))
+
+    return status == 200
+
+
 STATE_PATH = None
 
 
@@ -660,9 +674,10 @@ def main():
     lg.ensure_ledger()
 
     # The state is one ledger's: a scenario moved to a new ledger posts everything
-    # again there, instead of skipping what it posted in the old one.
-    # A state written before it recorded its ledger belongs to the ledger it finds.
-    if state.get("ledger", lg.ledger) != lg.ledger:
+    # again there, instead of skipping what it posted in the old one. A state
+    # written before it recorded its ledger is adopted only when a transaction it
+    # recorded exists in the ledger found; otherwise it is another ledger's.
+    if state.get("ledger", lg.ledger) != lg.ledger or not state_belongs_to(lg, state):
         state.clear()
     state["ledger"] = lg.ledger
 
