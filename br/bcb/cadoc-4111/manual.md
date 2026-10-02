@@ -76,7 +76,7 @@ errado:
 | Suposição | Se o seu razão não a cumpre |
 |---|---|
 | O valor do lançamento é uma **magnitude**, e o lado (débito/crédito) vive numa coluna própria | Somar o valor entrega o **saldo líquido** onde o documento pede o **volume**: 100 de entrada e 100 de saída dariam zero, não 200 |
-| Há um **status** que separa o que moveu dinheiro do que apenas reservou | Lançamentos pendentes ou cancelados entram na conta, inflando o que é declarado |
+| Toda linha é um lançamento contábil, e uma **reserva se anula pela própria rubrica** (débito e crédito na mesma conta), sem status a filtrar | Num razão que grava a reserva como movimento de um lado só, o valor reservado entra no saldo antes de ser capturado |
 
 Conferir isso contra a sua base de origem é parte de mapear o binding. O cabeçalho
 do `binding.example.yaml` diz, linha a linha, o que o exemplo assume.
@@ -114,8 +114,19 @@ certo:
 - **Rubrica COSIF de dez dígitos, sem ponto nem traço, em toda rota e toda ação**
   que movimente uma conta do documento.
 - **A rubrica de `commit` igual à de `direct`** nas contas de estoque: o Midaz
-  grava operações novas no commit, com a rubrica dessa ação, e são elas que o
-  filtro `status = APPROVED` soma.
+  grava operações novas no commit, com a rubrica dessa ação, e é por elas que o
+  valor capturado entra no saldo.
+- **A mesma rubrica no débito e no crédito de `hold` e de `cancel`.** O Midaz não
+  grava status na operação (o `APPROVED` vive na transação), então nada filtra a
+  reserva: ela entra na soma. Com rotas validadas, o hold grava na conta de origem
+  um débito e um crédito, um com cada rubrica da ação, e o cancel grava outro par;
+  com a mesma rubrica nos dois lados cada par se anula, e o saldo só muda no
+  commit. Nenhuma operação é gravada no destino durante a reserva. Na prática: rota
+  **bidirecional** com a mesma rubrica em todas as ações — é também a única forma
+  de rota que aceita `revert`.
+- **Nenhuma reserva nas contas de fluxo** (3.0.9.70.XX). O fluxo soma o valor
+  ABSOLUTO de cada lançamento, então o par do hold, que se anula num saldo, conta
+  duas vezes no volume. Registre o volume com lançamentos diretos.
 
 A **natureza contábil** de cada rubrica — devedora ou credora — é propriedade do
 plano de contas do cliente, não deste catálogo. Publicar uma tabela nossa criaria

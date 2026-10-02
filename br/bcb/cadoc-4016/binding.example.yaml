@@ -19,9 +19,6 @@ queries:
     dataSource: midaz_transaction
     table: operation
     filters:
-      - field: status
-        operator: eq
-        values: ["APPROVED"]
       # A exclusão dos grupos 7 e 8: o primeiro caractere da rota contábil é o grupo
       # COSIF. É filtro de EXTRAÇÃO — o 4016 não admite resultado — então vive aqui,
       # não no contrato. A regra sem-contas-de-resultado do contrato confere o
@@ -49,6 +46,8 @@ queries:
             debit: "debit"
             credit: "credit"
           statedIn:
+            # Retificadora (provisão 1.6.9, depreciação acumulada): declare pelo
+            # prefixo dela, `"169": credit` — vale o mais longo. Ver o 4010.
             natureByPrefix:
               "1": debit
               "2": debit

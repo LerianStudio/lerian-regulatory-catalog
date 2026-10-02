@@ -37,12 +37,6 @@ queries:
     dataSource: midaz_transaction
     table: operation
 
-    # Recorte de linhas ANTES de agregar.
-    filters:
-      - field: status
-        operator: eq
-        values: ["APPROVED"]
-
     # A agregação vive aqui e não no contrato porque depende da forma da origem:
     # um cliente que já mantém tabela de saldos por rubrica não agrega nada, ele
     # lê — e o contrato dos dois é o mesmo.
@@ -90,6 +84,11 @@ queries:
           statedIn:
             # Grupos de 1º nível do plano COSIF. Nove linhas, não uma tabela de
             # milhares de rubricas: quem tem exceção acrescenta a rubrica inteira.
+            # A exceção que todo plano tem é a RETIFICADORA — provisão para
+            # operações de crédito (1.6.9), depreciação acumulada — credora dentro
+            # de um grupo devedor. Declarada só pelo grupo, ela sai com o sinal
+            # trocado, num arquivo bem formado. Declare-a pelo prefixo dela
+            # (`"169": credit`): vale o prefixo MAIS LONGO que casa com a rubrica.
             natureByPrefix:
               "1": debit    # Circulante e Realizável a Longo Prazo
               "2": debit    # Permanente
