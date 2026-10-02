@@ -1,5 +1,5 @@
 {
-  "_about": "Org C — COBERTURA SINTÉTICA, declarada como tal: não é o perfil de nenhuma instituição real. Existe para que cada linha do conjunto do 4111 que A e B não alcançam receba um valor distinguível, e para exercitar o que o motor faz e o template não mostra: lançamento na própria linha-mãe e em subcontas do cliente abaixo de uma linha publicada (roll-up), janela do fluxo que reinicia no mês (agosto não conta), corte diário (dataBase 2026-09-15 x 2026-09-30) e lançamento depois da data-base (outubro, fora). Grupos 2 e 5 do 4010 também entram aqui.",
+  "_about": "Org C — COBERTURA SINTÉTICA, declarada como tal: não é o perfil de nenhuma instituição real. Existe para que cada linha do conjunto do 4111 que A e B não alcançam receba um valor distinguível, e para exercitar o que o motor faz e o template não mostra: lançamento na própria linha-mãe e em subcontas do cliente abaixo de uma linha publicada (roll-up), janela do fluxo que reinicia no mês (agosto não conta), corte diário (dataBase 2026-09-15 x 2026-09-30) e lançamento depois da data-base (outubro, fora). Grupos 2 e 5 do 4010 também entram aqui. A contrapartida de toda 3.0.9.70.XX é o título único 9.0.9.70.00.00-7 (IN BCB 538), num ledger próprio (Razão COSIF 2) porque o primeiro registrou subcontas 9.0.9.70.XX que o COSIF não tem.",
   "organization": {
     "legalName": "Cobertura COSIF (sintética, homologação)",
     "doingBusinessAs": "Cobertura",
@@ -12,7 +12,7 @@
       "country": "BR"
     }
   },
-  "ledger": "Razão COSIF",
+  "ledger": "Razão COSIF 2",
   "accountTypes": [
     {
       "keyValue": "ativo",
@@ -174,22 +174,10 @@
       "name": "Transações no mês - Iniciador (ITP)"
     },
     {
-      "alias": "@fluxo_pos_cp",
+      "alias": "@controle_transacoes",
       "type": "compensacao_credora",
-      "code": "9097010004",
-      "name": "Transações no mês - Emissor Pós-pago (credora)"
-    },
-    {
-      "alias": "@fluxo_subcred_cp",
-      "type": "compensacao_credora",
-      "code": "9097035003",
-      "name": "Transações no mês - Subcredenciador (credora)"
-    },
-    {
-      "alias": "@fluxo_itp_cp",
-      "type": "compensacao_credora",
-      "code": "9097040005",
-      "name": "Transações no mês - Iniciador (credora)"
+      "code": "9097000007",
+      "name": "Transações de Pagamento Realizadas no Mês - Controle"
     }
   ],
   "transactions": [
@@ -215,7 +203,7 @@
       "amount": "5000.00",
       "description": "Fluxo pós-pago de AGOSTO (fora da janela do mês)",
       "debit": "@fluxo_pos",
-      "credit": "@fluxo_pos_cp"
+      "credit": "@controle_transacoes"
     },
     {
       "key": "C04",
@@ -263,7 +251,7 @@
       "amount": "700.00",
       "description": "Fluxo pós-pago de setembro",
       "debit": "@fluxo_pos",
-      "credit": "@fluxo_pos_cp"
+      "credit": "@controle_transacoes"
     },
     {
       "key": "C10",
@@ -351,7 +339,7 @@
       "amount": "800.00",
       "description": "Fluxo de subcredenciador (depois do dia 15)",
       "debit": "@fluxo_subcred",
-      "credit": "@fluxo_subcred_cp"
+      "credit": "@controle_transacoes"
     },
     {
       "key": "C21",
@@ -367,7 +355,7 @@
       "amount": "900.00",
       "description": "Fluxo de iniciador (depois do dia 15)",
       "debit": "@fluxo_itp",
-      "credit": "@fluxo_itp_cp"
+      "credit": "@controle_transacoes"
     },
     {
       "key": "C23",
@@ -382,7 +370,7 @@
       "date": "2026-09-01T00:05:00Z",
       "amount": "5000.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): pós-pago de agosto",
-      "debit": "@fluxo_pos_cp",
+      "debit": "@controle_transacoes",
       "credit": "@fluxo_pos"
     },
     {
@@ -390,7 +378,7 @@
       "date": "2026-10-01T00:05:00Z",
       "amount": "700.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): pós-pago de setembro",
-      "debit": "@fluxo_pos_cp",
+      "debit": "@controle_transacoes",
       "credit": "@fluxo_pos"
     },
     {
@@ -398,7 +386,7 @@
       "date": "2026-10-01T00:06:00Z",
       "amount": "800.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): subcredenciador de setembro",
-      "debit": "@fluxo_subcred_cp",
+      "debit": "@controle_transacoes",
       "credit": "@fluxo_subcred"
     },
     {
@@ -406,7 +394,7 @@
       "date": "2026-10-01T00:07:00Z",
       "amount": "900.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): iniciador de setembro",
-      "debit": "@fluxo_itp_cp",
+      "debit": "@controle_transacoes",
       "credit": "@fluxo_itp"
     }
   ]
