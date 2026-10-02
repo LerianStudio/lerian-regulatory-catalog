@@ -97,9 +97,11 @@ queries:
     table: operation
 
     # SÓ OS DÉBITOS. Cada transação de pagamento é registrada a débito da
-    # 3.0.9.70.XX contra a 9.0.9.70.XX, pelo valor absoluto. Um CRÉDITO na
+    # 3.0.9.70.XX contra a 9.0.9.70.00.00-7, pelo valor absoluto. Um CRÉDITO na
     # 3.0.9.70 não é transação: é a reversão que zera a conta na virada do mês, ou
-    # o estorno de um registro. As instruções pedem as duas coisas ao mesmo tempo —
+    # a correção de um registro errado (ponto em aberto: ver o manual). Uma
+    # devolução é transação nova e entra a débito. As instruções pedem as duas
+    # coisas ao mesmo tempo —
     # o volume "se reinicia a cada mês" e, no último dia, "deve corresponder ao
     # saldo desta conta do correspondente Balancete Cosif 4010" (I §4.2.2.a/b) —, e
     # só fecham se a instituição zerar a conta todo mês; somar a reversão como
