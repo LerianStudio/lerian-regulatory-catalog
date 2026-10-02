@@ -277,6 +277,7 @@ class Ledger:
                 _, reverted = self.midaz.call("POST", "%s/transactions/%s/revert" % (self.lp, origin),
                                               idempotency="%s-%s" % (slug, key))
                 entry.update(id=reverted["id"], finished=True)
+                save_state(self.state)
                 print("lançamento   %s  estorno de %s -> %s" % (key, t["revert"], reverted["id"]))
                 continue
 
@@ -304,6 +305,10 @@ class Ledger:
                 _, created = self.midaz.call("POST", self.lp + "/transactions/json", body,
                                              idempotency="%s-%s" % (slug, key))
                 entry["id"] = created["id"]
+                # Saved before the follow-up runs: if the commit or cancel fails, the
+                # next run must find the transaction and not post the hold again —
+                # the idempotency key does not outlive Midaz's retention of it.
+                save_state(self.state)
 
             if t.get("then"):
                 self.midaz.call("POST", "%s/transactions/%s/%s" % (self.lp, entry["id"], t["then"]),
@@ -449,10 +454,21 @@ def generate(rep, subscription, data_base):
             break
         time.sleep(2)
     status = got.get("status")
-    if status in ("Error", "Partial"):
+    if status in ("Error", "Partial", "Processing"):
+        # Processing after the wait is a timeout: downloading would judge an
+        # error body as a malformed file.
         return report, status, None
     _, _, artifact = rep.raw("GET", "/v1/reports/%s/download" % report)
     return report, status, artifact
+
+
+def parsed_lines(artifact):
+    """Each account line of a generated file, or None when it is not XML (judge says why)."""
+    try:
+        root = ET.fromstring(artifact)
+    except ET.ParseError:
+        return None
+    return {c.get("codigoConta"): c.get("saldo") or c.get("saldoDia") for c in root.iter("conta")}
 
 
 def judge(document, artifact, expected, catalog_root):
@@ -473,7 +489,8 @@ def judge(document, artifact, expected, catalog_root):
             fh.flush()
             run = subprocess.run(["xmllint", "--noout", "--schema", schema, fh.name], capture_output=True, text=True)
         if run.returncode != 0:
-            problems.append("o XSD oficial recusa: " + run.stderr.strip().splitlines()[0])
+            said = (run.stderr or run.stdout).strip().splitlines()
+            problems.append("o XSD oficial recusa: " + (said[0] if said else "xmllint saiu com %d" % run.returncode))
 
     got = {c.get("codigoConta"): c.get("saldo") or c.get("saldoDia") for c in root.iter("conta")}
     for code in got:
@@ -524,8 +541,9 @@ def run_reports(lg, args):
             problems = ["a geração terminou em %s" % status]
         else:
             problems = judge(number, artifact, doc, args.catalog)
-            generated[(number, doc["dataBase"])] = {
-                c.get("codigoConta"): c.get("saldo") or c.get("saldoDia") for c in ET.fromstring(artifact).iter("conta")}
+            lines = parsed_lines(artifact)
+            if lines is not None:
+                generated[(number, doc["dataBase"])] = lines
             out = os.path.join(args.out, "%s-%s-%s.xml" % (lg.sc["organization"]["legalDocument"][:8], number, doc["dataBase"]))
             with open(out, "wb") as fh:
                 fh.write(artifact)
@@ -538,6 +556,17 @@ def run_reports(lg, args):
     failures += cross_check(generated)
 
     return failures
+
+
+def cosif_prefix(code):
+    """The significant prefix of a COSIF code: its levels (1-1-1-2-2-2) without trailing zero levels or the DV."""
+    widths, pos, groups = (1, 1, 1, 2, 2, 2), 0, []
+    for w in widths:
+        groups.append(code[pos:pos + w])
+        pos += w
+    while groups and set(groups[-1]) == {"0"}:
+        groups.pop()
+    return "".join(groups)
 
 
 def cross_check(generated):
@@ -559,8 +588,15 @@ def cross_check(generated):
         balancete = generated.get(("4010", "%04d-%02d" % (year, month)))
         if balancete is None:
             continue
-        broken = ["%s: 4111 %s, 4010 %s" % (code, lines[code], balancete[code])
-                  for code in sorted(set(lines) & set(balancete)) if Decimal(lines[code]) != Decimal(balancete[code])]
+        common = set(lines) & set(balancete)
+        broken = []
+        for code in sorted(common):
+            if Decimal(lines[code]) == Decimal(balancete[code]):
+                continue
+            children = sorted(c for c in balancete if c != code and c.startswith(cosif_prefix(code)))
+            why = (" — o 4010 não traz a conta-mãe somada: %s tem filhas no razão (%s), e as instruções pedem que o "
+                   "saldo da conta coincida com o 4111" % (code, ", ".join(children))) if children else ""
+            broken.append("%s: 4111 %s, 4010 %s%s" % (code, lines[code], balancete[code], why))
         verdict = "OK" if not broken else "FALHOU"
         failures += bool(broken)
         print("%-6s 4111 %s coincide com o 4010 %04d-%02d nas %d rubricas em comum" % (
