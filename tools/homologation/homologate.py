@@ -20,6 +20,7 @@ Só biblioteca padrão, Python 3.9+.
 """
 
 import argparse
+import calendar
 import json
 import os
 import shutil
@@ -508,6 +509,7 @@ def run_reports(lg, args):
     institution = ensure_institution(rep, lg.sc, lg.org)
     print("\ninstituição  %s" % institution)
     failures = 0
+    generated = {}
 
     for doc in expected["documents"]:
         number = doc["document"]
@@ -522,6 +524,8 @@ def run_reports(lg, args):
             problems = ["a geração terminou em %s" % status]
         else:
             problems = judge(number, artifact, doc, args.catalog)
+            generated[(number, doc["dataBase"])] = {
+                c.get("codigoConta"): c.get("saldo") or c.get("saldoDia") for c in ET.fromstring(artifact).iter("conta")}
             out = os.path.join(args.out, "%s-%s-%s.xml" % (lg.sc["organization"]["legalDocument"][:8], number, doc["dataBase"]))
             with open(out, "wb") as fh:
                 fh.write(artifact)
@@ -530,6 +534,39 @@ def run_reports(lg, args):
         print("%-6s %-4s %-10s binding %-10s %-6s report %s" % (verdict, number, doc["dataBase"], how, status, report))
         for p in problems:
             print("         - " + p)
+
+    failures += cross_check(generated)
+
+    return failures
+
+
+def cross_check(generated):
+    """The 4111 of a month's last day against that month's 4010, on every rubric both carry.
+
+    The 4111 instructions (§4.2.2.b) require it: on the last day of the month the
+    balance — and the volume of a 3.0.9.70 flow account — must match the same
+    account in the 4010. Each file can match its own answer and still break this,
+    so it is judged between the two files the engine produced.
+    """
+    failures = 0
+
+    for (number, base), lines in sorted(generated.items()):
+        if number != "4111":
+            continue
+        year, month, day = (int(x) for x in base.split("-"))
+        if day != calendar.monthrange(year, month)[1]:
+            continue
+        balancete = generated.get(("4010", "%04d-%02d" % (year, month)))
+        if balancete is None:
+            continue
+        broken = ["%s: 4111 %s, 4010 %s" % (code, lines[code], balancete[code])
+                  for code in sorted(set(lines) & set(balancete)) if Decimal(lines[code]) != Decimal(balancete[code])]
+        verdict = "OK" if not broken else "FALHOU"
+        failures += bool(broken)
+        print("%-6s 4111 %s coincide com o 4010 %04d-%02d nas %d rubricas em comum" % (
+            verdict, base, year, month, len(set(lines) & set(balancete))))
+        for b in broken:
+            print("         - " + b)
 
     return failures
 
