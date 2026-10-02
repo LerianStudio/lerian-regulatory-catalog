@@ -26,8 +26,15 @@
 #     somar `amount` cru é o volume que o documento pede. Num razão que gravasse o
 #     lado no próprio valor, a mesma soma devolveria volume LÍQUIDO — 100 de
 #     entrada e 100 de saída dariam zero onde o documento espera 200.
-#   * `status` separa o que moveu dinheiro do que apenas reservou. Aqui é
-#     `APPROVED`; noutro razão é outra coisa, ou nada.
+#   * Toda linha da tabela é um lançamento contábil, inclusive as de uma
+#     reserva: não há status a filtrar. O Midaz não grava status na operação —
+#     a coluna existe e fica vazia; `APPROVED` vive na transação. O que separa
+#     reservar de mover é a RUBRICA das ações: o hold grava um par débito/crédito
+#     na conta de origem e o cancel outro, cada um com a rubrica de `hold` e de
+#     `cancel` da rota; com a mesma rubrica nos dois lados, o par se anula, e só o
+#     commit move saldo. Um binding que filtrasse `status = APPROVED` não leria
+#     linha nenhuma (versões até a v0.1.1 deste catálogo faziam isso). Noutro
+#     razão, o que separa reserva de movimento é outra coisa, e o binding é seu.
 #
 # O Reporter é homologado contra o Midaz. Mapear outro razão é decisão e
 # responsabilidade de quem mapeia.
@@ -47,10 +54,6 @@ queries:
     # Recorte de linhas ANTES de agregar. Uma operação pendente ou rejeitada não é
     # lançamento postado, e somá-la infla o que é declarado ao regulador. Mesma
     # precondição que o 4010 e o 4016 aplicam sobre esta tabela.
-    filters:
-      - field: status
-        operator: eq
-        values: ["APPROVED"]
     aggregate:
       groupBy: [route_code]
       measures:
@@ -97,10 +100,6 @@ queries:
     # Recorte de linhas ANTES de agregar. Uma operação pendente ou rejeitada não é
     # lançamento postado, e somá-la infla o que é declarado ao regulador. Mesma
     # precondição que o 4010 e o 4016 aplicam sobre esta tabela.
-    filters:
-      - field: status
-        operator: eq
-        values: ["APPROVED"]
     aggregate:
       groupBy: [route_code]
       measures:
