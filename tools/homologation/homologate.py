@@ -458,6 +458,30 @@ def apply_binding(rep, subscription, binding_path, natures=None):
     return "aplicado"
 
 
+def apply_natures_in_force(rep, subscription, natures):
+    """Adds the scenario's natures to the binding the subscription already has.
+
+    The reference binding knows the natures by COSIF group; a contra-account
+    (the SCFI's provision, credit-natured inside the asset group) is a fact of
+    the client's own chart and is what a client adds to the reference. Done here
+    whether the binding came from a checkout or from the release, so the answers
+    can be judged on either origin.
+    """
+    if not natures:
+        return "em vigor"
+
+    _, headers, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
+    wanted = with_natures(current, natures)
+    if wanted == current:
+        return "em vigor"
+
+    etag = {k.lower(): v for k, v in headers.items()}.get("etag", "")
+    rep.raw("PUT", "/v1/regulatory/subscriptions/%s/binding" % subscription, wanted,
+            {"Content-Type": "application/yaml", "If-Match": etag})
+
+    return "em vigor + naturezas"
+
+
 def generate(rep, subscription, data_base):
     _, created = rep.call("POST", "/v1/regulatory/reports", {
         "subscriptionId": subscription, "parameters": {"dataBase": data_base, "tipoRemessa": "I"}})
@@ -549,7 +573,7 @@ def run_reports(lg, args):
             how = apply_binding(rep, subscription, os.path.join(args.bindings, "br/bcb/cadoc-%s/binding.example.yaml" % number),
                                 lg.sc.get("natures"))
         else:
-            how = "em vigor"
+            how = apply_natures_in_force(rep, subscription, lg.sc.get("natures"))
         report, status, artifact = generate(rep, subscription, doc["dataBase"])
         if artifact is None:
             problems = ["a geração terminou em %s" % status]
