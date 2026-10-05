@@ -428,14 +428,25 @@ def ensure_subscription(rep, document_id, institution):
     return created["subscription"]["id"]
 
 
+def structural(line):
+    """Whether a line carries YAML structure: not blank, not a comment on its own."""
+    stripped = line.strip()
+
+    return bool(stripped) and not stripped.startswith("#")
+
+
 def inside_block(lines, i, indent):
-    """Whether line i still belongs to a mapping whose entries are indented `indent`."""
-    if lines[i].strip():
+    """Whether line i still belongs to a mapping whose entries are indented `indent`.
+
+    A blank line or a standalone comment — YAML allows one at any indentation —
+    carries no structure of its own: it belongs to the block while the mapping goes
+    on after it, and is kept as written either way.
+    """
+    if structural(lines[i]):
         return len(lines[i]) - len(lines[i].lstrip()) >= indent
 
-    # Blank: part of the block only when the mapping goes on after it.
     for later in lines[i + 1:]:
-        if later.strip():
+        if structural(later):
             return len(later) - len(later.lstrip()) >= indent
 
     return False
