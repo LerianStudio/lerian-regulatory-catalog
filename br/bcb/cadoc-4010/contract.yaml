@@ -32,7 +32,7 @@ metadata:
   # Publicação é tag git (br.bcb.cadoc-4010/v1.0.0). A instalação do cliente fixa a
   # versão adotada, então uma correção publicada aqui não muda o que ele gera até
   # ele adotar.
-  version: 1.2.0   # 1.2.0: fecha no último dia útil do mês (calendário)
+  version: 1.2.1   # 1.2.1: binding de referência lê só o que moveu saldo (balance_affected) e só BRL
   status: draft
   # A quem o documento se aplica. É o que permite filtrar o catálogo por tipo de
   # instituição em vez de o cliente adivinhar o que precisa entregar.

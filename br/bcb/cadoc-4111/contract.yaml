@@ -31,7 +31,7 @@ metadata:
   regulator: BCB
   document: "4111"
   title: Saldos Contábeis Diários
-  version: 1.2.0   # 1.2.0: data-base só em dia útil; volume de dia não útil vai para o dia útil seguinte (calendário)
+  version: 1.2.1   # 1.2.1: binding de referência lê só o que moveu saldo (balance_affected) e só BRL
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]

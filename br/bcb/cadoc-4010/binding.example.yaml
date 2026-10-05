@@ -19,7 +19,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4010
-contractVersion: 1.2.0     # o catálogo pode publicar 1.1.0 sem mudar o que este
+contractVersion: 1.2.1     # o catálogo pode publicar 1.1.0 sem mudar o que este
                            # cliente gera até ele adotar
 
 # ---------------------------------------------------------------------------
@@ -36,6 +36,20 @@ queries:
     description: Lançamentos do razão, agregados em saldo por rubrica.
     dataSource: midaz_transaction
     table: operation
+
+    filters:
+      # SÓ O QUE MOVEU SALDO, SÓ EM REAIS. Uma transação NOTED (anotação) grava
+      # operações com a rubrica da rota, valor ZERO e `balance_affected = false`:
+      # não altera saldo, mas faria a rubrica aparecer como linha de 0,00 sem nunca
+      # ter sido lançada. E um ledger do Midaz pode ter outros ativos além do BRL,
+      # que não são lançamento em reais. Nenhum dos dois é lançamento deste
+      # documento.
+      - field: balance_affected
+        operator: eq
+        values: ["true"]
+      - field: asset_code
+        operator: eq
+        values: ["BRL"]
 
     # A agregação vive aqui e não no contrato porque depende da forma da origem:
     # um cliente que já mantém tabela de saldos por rubrica não agrega nada, ele

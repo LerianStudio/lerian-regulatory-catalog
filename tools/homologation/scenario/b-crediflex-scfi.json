@@ -1,5 +1,5 @@
 {
-  "_about": "Org B — sociedade de crédito, financiamento e investimento (SCFI). Contabilidade FICTÍCIA para homologação. Cobre: captação por aceite cambial (4310000002, no conjunto do 4111), saldo credor de cliente em conta de empréstimo (4119000007, filha de Depósitos à Vista no 4111), obrigação em nome de terceiros zerada no mês (4992700005), operações de crédito e rendas/despesas fora do conjunto do 4111, e uma conta RETIFICADORA (provisão 1691000009, natureza credora dentro do grupo 1) — o caso em que decidir a natureza pelo primeiro dígito da rubrica erra o sinal. O estorno de outubro roda na data da execução. O cenário declara a natureza da retificadora (prefixo 169, credora) — dado do plano de contas do cliente, que o script acrescenta ao natureByPrefix do binding de referência.",
+  "_about": "Org B — sociedade de crédito, financiamento e investimento (SCFI). Contabilidade FICTÍCIA para homologação. Cobre: captação por aceite cambial (4310000002, no conjunto do 4111), saldo credor de cliente em conta de empréstimo (4119000007, filha de Depósitos à Vista no 4111), obrigação em nome de terceiros zerada no mês (4992700005), operações de crédito e rendas/despesas fora do conjunto do 4111, e uma conta RETIFICADORA (provisão 1691000009, natureza credora dentro do grupo 1) — o caso em que decidir a natureza pelo primeiro dígito da rubrica erra o sinal. O estorno de outubro roda na data da execução. O cenário declara a natureza da retificadora (prefixo 169, credora) — dado do plano de contas do cliente, que o script acrescenta ao natureByPrefix do binding de referência. B12 é uma anotação NOTED de 999.00: aparece nas operações com balance_affected=false e não pode entrar em documento nenhum.",
   "organization": {
     "legalName": "Crediflex SCFI S.A. (homologação)",
     "doingBusinessAs": "Crediflex",
@@ -207,6 +207,15 @@
       "key": "B11",
       "revert": "B06",
       "description": "Estorno da despesa de captação B06"
+    },
+    {
+      "key": "B12",
+      "date": "2026-09-29T10:00:00Z",
+      "amount": "999.00",
+      "annotation": true,
+      "description": "ANOTAÇÃO (NOTED): não move saldo; o Midaz grava operações com balance_affected=false. Nenhum documento pode somá-la.",
+      "debit": "@dep_bancarios",
+      "credit": "@capital"
     }
   ]
 }

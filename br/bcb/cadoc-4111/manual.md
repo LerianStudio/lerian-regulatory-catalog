@@ -136,6 +136,19 @@ certo:
 - **Nenhuma reserva nas contas de fluxo** (3.0.9.70.XX). O fluxo soma o valor
   ABSOLUTO de cada lançamento, então o par do hold, que se anula num saldo, conta
   duas vezes no volume. Registre o volume com lançamentos diretos.
+- **O Reporter no fuso de Brasília** (`REPORT_TIMEZONE=America/Sao_Paulo`). O dia
+  regulatório é o dia civil brasileiro, e o Midaz guarda o instante em UTC: um Pix
+  às 23:30 de sexta é 02:30 de sábado em UTC. Com o Reporter em UTC ele cai no
+  sábado — sai do balancete do mês e do 4111 de sexta. Provado na homologação.
+- **A instituição escopada pela organização E pelo ledger.** Uma organização do
+  Midaz pode ter mais de um ledger (um de testes ao lado do de produção, por
+  exemplo); um escopo só pela organização somaria os dois.
+- **Só reais.** O binding de referência lê `asset_code = BRL`; posição em outra
+  moeda é convertida e lançada em reais pelo cliente, como o COSIF exige.
+- **Anotações não entram.** Uma transação NOTED grava operações com a rubrica da
+  rota, valor zero e `balance_affected = false`; o binding de referência lê só
+  `balance_affected = true`, senão a rubrica apareceria como linha de 0,00 sem
+  lançamento.
 - **As contas de fluxo zeradas todo mês.** No primeiro dia do mês, reverta o saldo
   de cada 3.0.9.70.XX contra a 9.0.9.70.00.00-7. Sem isso o 4010 acumula o volume desde
   a abertura e deixa de coincidir com o 4111 do último dia, que é o que as

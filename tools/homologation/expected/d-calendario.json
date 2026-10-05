@@ -1,16 +1,16 @@
 {
-  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/d-calendario.json. Fevereiro de 2026 fecha na sexta, 27: o que entrou no sábado pertence a março (balancete) e ao primeiro dia útil de março (volume do 4111).",
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/d-calendario.json. Fevereiro de 2026 fecha na sexta, 27: o que entrou no sábado pertence a março (balancete) e ao primeiro dia útil de março (volume do 4111). REPORT_TIMEZONE=America/Sao_Paulo é precondição: com UTC, o lançamento das 23:30 de sexta cai no sábado.",
   "documents": [
     {
       "document": "4111",
       "dataBase": "2026-02-27",
       "complete": false,
-      "_note": "Último dia útil de fevereiro: sem a carga nem o volume de sábado. O volume de fevereiro é o de sexta (100.00).",
+      "_note": "Último dia útil de fevereiro: sem a carga nem o volume de sábado. O volume de fevereiro é o de sexta (100.00). Inclui o Pix de 23:30 de sexta (horário de Brasília), que em UTC cairia no sábado.",
       "lines": {
-        "1100000002": "10500.00",
-        "1120000006": "10500.00",
+        "1100000002": "10505.00",
+        "1120000006": "10505.00",
         "3097020007": "100.00",
-        "4193000009": "500.00"
+        "4193000009": "505.00"
       }
     },
     {
@@ -23,31 +23,31 @@
       "document": "4111",
       "dataBase": "2026-03-02",
       "complete": false,
-      "_note": "Primeiro dia útil de março: o volume soma sábado (70), domingo (20) e segunda (10) = 100.00. Com a janela começando em 01/03 sairia 30.00, e o sábado não estaria em remessa nenhuma. O saldo já inclui a carga de sábado.",
+      "_note": "Primeiro dia útil de março: o volume soma sábado (70), domingo (20) e segunda (10) = 100.00. Com a janela começando em 01/03 sairia 30.00, e o sábado não estaria em remessa nenhuma. O saldo já inclui a carga de sábado. Inclui o Pix de 23:30 de sexta (horário de Brasília), que em UTC cairia no sábado.",
       "lines": {
-        "1100000002": "10530.00",
-        "1120000006": "10530.00",
+        "1100000002": "10535.00",
+        "1120000006": "10535.00",
         "3097020007": "100.00",
-        "4193000009": "530.00"
+        "4193000009": "535.00"
       }
     },
     {
       "document": "4010",
       "dataBase": "2026-02",
       "complete": true,
-      "_note": "Fecha no ÚLTIMO DIA ÚTIL (27/02): a carga de sábado (30.00) e o volume de sábado ficam para março, e a reversão de 28/02 também. Fechado no fim do mês corrido sairia Depósitos Bancários 10530.00.",
+      "_note": "Fecha no ÚLTIMO DIA ÚTIL (27/02): a carga de sábado (30.00) e o volume de sábado ficam para março, e a reversão de 28/02 também. Fechado no fim do mês corrido sairia Depósitos Bancários 10530.00. Inclui o Pix de 23:30 de sexta (horário de Brasília), que em UTC cairia no sábado.",
       "lines": {
-        "1000000009": "10500.00",
-        "1100000002": "10500.00",
-        "1120000006": "10500.00",
+        "1000000009": "10505.00",
+        "1100000002": "10505.00",
+        "1120000006": "10505.00",
         "3000000007": "100.00",
         "3090000000": "100.00",
         "3097000003": "100.00",
         "3097020007": "100.00",
-        "4000000006": "500.00",
-        "4100000009": "500.00",
-        "4190000002": "500.00",
-        "4193000009": "500.00",
+        "4000000006": "505.00",
+        "4100000009": "505.00",
+        "4190000002": "505.00",
+        "4193000009": "505.00",
         "6000000004": "10000.00",
         "6100000007": "10000.00",
         "6110000004": "10000.00",
