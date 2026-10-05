@@ -23,6 +23,7 @@ import argparse
 import calendar
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -427,22 +428,72 @@ def ensure_subscription(rep, document_id, institution):
     return created["subscription"]["id"]
 
 
+def structural(line):
+    """Whether a line carries YAML structure: not blank, not a comment on its own."""
+    stripped = line.strip()
+
+    return bool(stripped) and not stripped.startswith("#")
+
+
+def inside_block(lines, i, indent):
+    """Whether line i still belongs to a mapping whose entries are indented `indent`.
+
+    A blank line or a standalone comment — YAML allows one at any indentation —
+    carries no structure of its own: it belongs to the block while the mapping goes
+    on after it, and is kept as written either way.
+    """
+    if structural(lines[i]):
+        return len(lines[i]) - len(lines[i].lstrip()) >= indent
+
+    for later in lines[i + 1:]:
+        if structural(later):
+            return len(later) - len(later.lstrip()) >= indent
+
+    return False
+
+
 def with_natures(binding, natures):
-    """The binding with the scenario's own natures added to every natureByPrefix.
+    """The binding with the scenario's own natures in every natureByPrefix.
 
     Nature is a property of the client's chart of accounts, not of the catalog: a
     contra-account (a provision, credit-natured inside the asset group) is declared
     by a longer prefix, and the engine takes the longest prefix that matches.
+
+    Idempotent on the text: a prefix the block already declares is left alone when
+    its side agrees and rewritten when it does not, so running twice adds nothing
+    twice and a binding the scenario already shaped comes back unchanged.
     """
     if not natures:
         return binding
-    out = []
-    for line in binding.decode().splitlines(keepends=True):
+
+    lines = binding.decode().splitlines(keepends=True)
+    out, i = [], 0
+
+    while i < len(lines):
+        line = lines[i]
         out.append(line)
-        if line.strip() == "natureByPrefix:":
-            pad = " " * (len(line) - len(line.lstrip()) + 2)
-            out.extend('%s"%s": %s    # natureza do plano de contas deste cenário\n' % (pad, k, v)
-                       for k, v in sorted(natures.items()))
+        i += 1
+
+        if line.strip() != "natureByPrefix:":
+            continue
+
+        pad = " " * (len(line) - len(line.lstrip()) + 2)
+        declared = {}
+
+        # The block's own entries: every following line indented deeper, blank
+        # lines included while the mapping goes on after them.
+        while i < len(lines) and inside_block(lines, i, len(pad)):
+            entry = re.match(r'^\s*"([^"]+)":\s*(\w+)(.*)$', lines[i])
+            if entry and entry.group(1) in natures and entry.group(2) != natures[entry.group(1)]:
+                lines[i] = '%s"%s": %s%s\n' % (pad, entry.group(1), natures[entry.group(1)], entry.group(3).rstrip("\n"))
+            if entry:
+                declared[entry.group(1)] = natures.get(entry.group(1), entry.group(2))
+            out.append(lines[i])
+            i += 1
+
+        out.extend('%s"%s": %s    # natureza do plano de contas deste cenário\n' % (pad, k, v)
+                   for k, v in sorted(natures.items()) if k not in declared)
+
     return "".join(out).encode()
 
 
@@ -456,6 +507,30 @@ def apply_binding(rep, subscription, binding_path, natures=None):
     rep.raw("PUT", "/v1/regulatory/subscriptions/%s/binding" % subscription, wanted,
             {"Content-Type": "application/yaml", "If-Match": etag})
     return "aplicado"
+
+
+def apply_natures_in_force(rep, subscription, natures):
+    """Adds the scenario's natures to the binding the subscription already has.
+
+    The reference binding knows the natures by COSIF group; a contra-account
+    (the SCFI's provision, credit-natured inside the asset group) is a fact of
+    the client's own chart and is what a client adds to the reference. Done here
+    whether the binding came from a checkout or from the release, so the answers
+    can be judged on either origin.
+    """
+    if not natures:
+        return "em vigor"
+
+    _, headers, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
+    wanted = with_natures(current, natures)
+    if wanted == current:
+        return "em vigor"
+
+    etag = {k.lower(): v for k, v in headers.items()}.get("etag", "")
+    rep.raw("PUT", "/v1/regulatory/subscriptions/%s/binding" % subscription, wanted,
+            {"Content-Type": "application/yaml", "If-Match": etag})
+
+    return "em vigor + naturezas"
 
 
 def generate(rep, subscription, data_base):
@@ -549,7 +624,7 @@ def run_reports(lg, args):
             how = apply_binding(rep, subscription, os.path.join(args.bindings, "br/bcb/cadoc-%s/binding.example.yaml" % number),
                                 lg.sc.get("natures"))
         else:
-            how = "em vigor"
+            how = apply_natures_in_force(rep, subscription, lg.sc.get("natures"))
         report, status, artifact = generate(rep, subscription, doc["dataBase"])
         if artifact is None:
             problems = ["a geração terminou em %s" % status]
