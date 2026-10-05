@@ -14,6 +14,12 @@
       }
     },
     {
+      "document": "4010",
+      "dataBase": "2025-12",
+      "errored": true,
+      "_note": "Nenhum lançamento até dezembro de 2025: o balancete não tem conta nenhuma. O contrato declara o conjunto nonEmpty e a geração termina em Error, em vez de um Draft com <contas/> vazio que o XSD recusa. O motivo — quantas linhas cada consulta leu e com quais filtros — fica no log do worker."
+    },
+    {
       "document": "4111",
       "dataBase": "2026-02-28",
       "refused": true,

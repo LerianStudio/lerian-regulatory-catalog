@@ -53,6 +53,18 @@ o catálogo guarda (menos o do 4111, que é a v1.0 de 2023 e contradiz as instru
 vigentes — `knownGaps` do contrato); toda rubrica com dez dígitos e DV válido;
 nada dos grupos 7 e 8 no 4016; e cada linha contra o gabarito.
 
+Três desfechos não geram arquivo, e o gabarito diz qual espera:
+
+- `"refused": true` — recusa na hora (400, `RPT-0140`), como o 4111 de um sábado.
+- **Período ainda aberto** — os contratos declaram `closed: true`, então uma
+  data-base cujo mês (ou dia) ainda não terminou no horário de Brasília é recusada
+  dizendo `has not closed`. O script decide pela data de hoje: o 4016 de 2026-12 é
+  uma recusa esperada até 31/12/2026 e, de 01/01/2027 em diante, é gerado e julgado
+  contra o gabarito, sem mexer em nada.
+- `"errored": true` — a geração é aceita e termina em `Error`: o balancete sem
+  conta nenhuma (o contrato declara o conjunto `nonEmpty`). O motivo, com quantas
+  linhas cada consulta leu e com quais filtros, fica no log do worker.
+
 ## O que esta ferramenta já encontrou
 
 - **O Midaz não grava status na operação.** Os bindings filtravam

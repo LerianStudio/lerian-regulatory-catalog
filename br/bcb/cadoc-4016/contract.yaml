@@ -20,7 +20,7 @@ metadata:
   regulator: BCB
   document: "4016"
   title: Balanço Patrimonial Analítico
-  version: 1.2.1   # 1.2.1: binding de referência lê só o que moveu saldo (balance_affected) e só BRL
+  version: 1.2.2   # 1.2.2: recusa período ainda aberto (closed) e balancete sem conta (nonEmpty)
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
@@ -39,6 +39,10 @@ parameters:
     # AAAA-06 e AAAA-12 são aceitos. Sem isto, um 4016 para 2026-01 é gerável e o
     # BACEN o rejeita.
     allowedMonths: ["06", "12"]
+    # Só mês já encerrado no fuso do Reporter (REPORT_TIMEZONE): um mês é gerável a
+    # partir do primeiro dia do seguinte. Gerado antes, o arquivo traria parte do
+    # mês como se fosse o mês inteiro, e nada nele diria qual parte falta.
+    closed: true
     description: Data-base do balanço — apenas junho ou dezembro.
 
   - name: tipoRemessa
@@ -65,6 +69,10 @@ datasets:
   - name: cosif_balances
     description: Saldo de fechamento por rubrica COSIF na data-base, SEM as contas de resultado.
     grain: [cosifCode]
+    # Um balancete lista pelo menos uma conta (o XSD exige `conta` com minOccurs=1).
+    # Sem linha nenhuma a geração é recusada, dizendo o que cada consulta leu e com
+    # quais filtros, em vez de sair um Draft com <contas/> vazio que alguém aprova.
+    nonEmpty: true
     # TODAS AS CONTAS, inclusive as sintéticas. O leiaute pede "todas as contas
     # contábeis às quais a entidade deve prestar informação" e o exemplo do BCB
     # lista Ativo (1000000009) e Disponibilidades (1100000002) ao lado das
