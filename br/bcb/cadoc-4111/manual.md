@@ -139,7 +139,8 @@ certo:
 - **O Reporter no fuso de Brasília** (`REPORT_TIMEZONE=America/Sao_Paulo`). O dia
   regulatório é o dia civil brasileiro, e o Midaz guarda o instante em UTC: um Pix
   às 23:30 de sexta é 02:30 de sábado em UTC. Com o Reporter em UTC ele cai no
-  sábado — sai do balancete do mês e do 4111 de sexta. Provado na homologação.
+  sábado — sai do 4111 de sexta e, quando essa sexta é o último dia útil do mês,
+  também do balancete do mês. Provado na homologação (27/02/2026).
 - **A instituição escopada pela organização E pelo ledger.** Uma organização do
   Midaz pode ter mais de um ledger (um de testes ao lado do de produção, por
   exemplo); um escopo só pela organização somaria os dois.
