@@ -31,7 +31,7 @@ metadata:
   regulator: BCB
   document: "4111"
   title: Saldos Contábeis Diários
-  version: 1.2.1   # 1.2.1: binding de referência lê só o que moveu saldo (balance_affected) e só BRL
+  version: 1.2.2   # 1.2.2: recusa período ainda aberto (closed)
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
@@ -52,6 +52,9 @@ parameters:
     # sequência, e feriado nacional não tem remessa (I §2.1). Um sábado é recusado
     # na hora, dizendo qual é o último dia útil antes dele.
     businessDay: true
+    # Só dia já encerrado no fuso do Reporter: o 4111 de um dia é gerável a partir
+    # do dia seguinte, quando os lançamentos daquele dia pararam de chegar.
+    closed: true
     required: true
     description: Dia útil de referência dos saldos.
 

@@ -32,7 +32,7 @@ metadata:
   # Publicação é tag git (br.bcb.cadoc-4010/v1.0.0). A instalação do cliente fixa a
   # versão adotada, então uma correção publicada aqui não muda o que ele gera até
   # ele adotar.
-  version: 1.2.1   # 1.2.1: binding de referência lê só o que moveu saldo (balance_affected) e só BRL
+  version: 1.2.2   # 1.2.2: recusa período ainda aberto (closed) e balancete sem conta (nonEmpty)
   status: draft
   # A quem o documento se aplica. É o que permite filtrar o catálogo por tipo de
   # instituição em vez de o cliente adivinhar o que precisa entregar.
@@ -55,6 +55,10 @@ parameters:
   - name: dataBase
     type: month              # AAAA-MM
     required: true
+    # Só mês já encerrado no fuso do Reporter (REPORT_TIMEZONE): um mês é gerável a
+    # partir do primeiro dia do seguinte. Gerado antes, o arquivo traria parte do
+    # mês como se fosse o mês inteiro, e nada nele diria qual parte falta.
+    closed: true
     description: Mês de competência do balancete.
 
   - name: tipoRemessa
@@ -93,6 +97,10 @@ datasets:
   - name: cosif_balances
     description: Saldo por rubrica COSIF na data-base.
     grain: [cosifCode]       # uma linha por rubrica — exigência do arquivo
+    # Um balancete lista pelo menos uma conta (o XSD exige `conta` com minOccurs=1).
+    # Sem linha nenhuma a geração é recusada, dizendo o que cada consulta leu e com
+    # quais filtros, em vez de sair um Draft com <contas/> vazio que alguém aprova.
+    nonEmpty: true
     # TODAS AS CONTAS, inclusive as sintéticas. O leiaute pede "todas as contas
     # contábeis às quais a entidade deve prestar informação" e o exemplo do BCB
     # lista Ativo (1000000009) e Disponibilidades (1100000002) ao lado das

@@ -56,7 +56,7 @@ PLANO_CONTRACT = {
     "metadata": _meta("zz.fixture.plano", "PLANO"),
     "parameters": [
         {"name": "dataBase", "type": "month", "required": True, "allowedMonths": ["06", "12"],
-         "description": "Competência."},
+         "closed": True, "description": "Competência."},
         {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S"],
          "description": "Remessa."},
     ],
@@ -64,7 +64,7 @@ PLANO_CONTRACT = {
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
          "fields": [{"name": "cnpj8", "type": "string", "length": 8, "required": True,
                      "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."}]},
-        {"name": "saldos", "description": "Saldo por rubrica.", "grain": ["codigo"],
+        {"name": "saldos", "description": "Saldo por rubrica.", "grain": ["codigo"], "nonEmpty": True,
          "fields": [
              {"name": "codigo", "type": "string", "required": True, "pattern": "^[0-9]{10}$",
               "normalize": "digits", "description": "Rubrica."},

@@ -776,6 +776,24 @@ MUTATIONS: list[Mutation] = [
         "não é do tipo month",
     ),
     Mutation(
+        "parametro-fechado-em-tipo-errado",
+        "closed num parâmetro que não é mês nem data não nomeia período que feche",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"closed": True}),
+        "não nomeia período que feche",
+    ),
+    Mutation(
+        "parametro-fechado-nao-booleano",
+        "closed escrito como texto passaria por verdadeiro sem ninguém ter decidido",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"closed": "sim"}),
+        "é true ou false",
+    ),
+    Mutation(
+        "nao-vazio-em-singleton",
+        "nonEmpty num singleton não diz nada: é sempre uma linha",
+        lambda b: dataset(b[PLANO]["contract"], "institution").update({"nonEmpty": True}),
+        "declarado num singleton",
+    ),
+    Mutation(
         "regra-sem-id",
         "regra sem id não pode ser citada nem pela mensagem que ela mesma produz",
         lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("id"),

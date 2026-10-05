@@ -431,13 +431,36 @@ def ensure_institution(rep, sc, org_id, ledger_id):
     return created["id"]
 
 
-def ensure_subscription(rep, document_id, institution):
+def ensure_subscription(rep, document_id, institution, version=None):
+    """The active subscription of a document for the institution, pinned to `version`.
+
+    A subscription made by an earlier run stays pinned to what it adopted then: the
+    Reporter never moves a pin on its own. Homologating a checkout means judging
+    THAT checkout's contract, so a pin on another version is replaced: deactivated
+    (kept, with its reports) and subscribed afresh, which pins the newest version the
+    origin serves. Adopting would keep the subscription, but adoption is signed by a
+    person, and a stack with authentication off has nobody to sign it.
+    """
     _, listed = rep.get("/v1/regulatory/subscriptions?status=active")
     for s in listed.get("items") or []:
         if s.get("documentId") == document_id and s.get("institutionId") == institution:
-            return s["id"]
+            if not version or s.get("adoptedVersion") == version:
+                return s["id"]
+            rep.raw("DELETE", "/v1/regulatory/subscriptions/" + s["id"])
+            print("substituída %s em %s" % (document_id, s.get("adoptedVersion")))
     _, created = rep.call("POST", "/v1/regulatory/subscriptions", {"documentId": document_id, "institution": institution})
+    pinned = created["subscription"].get("adoptedVersion")
+    if version and pinned != version:
+        raise SystemExit("ERRO: %s assinado em %s, e o checkout declara %s; a origem do Reporter não serve este checkout"
+                         % (document_id, pinned, version))
     return created["subscription"]["id"]
+
+
+def contract_version(root, number):
+    """The version a catalog checkout declares for a document's contract."""
+    with open(os.path.join(root, "br/bcb/cadoc-%s/contract.yaml" % number)) as fh:
+        found = re.search(r"^  version: (\S+)", fh.read(), re.M)
+    return found.group(1) if found else None
 
 
 def structural(line):
@@ -545,13 +568,30 @@ def apply_natures_in_force(rep, subscription, natures):
     return "em vigor + naturezas"
 
 
-def expect_refusal(rep, subscription, number, doc):
+def period_closed(data_base, now=None):
+    """Whether a data-base names a period already over in Brasília, the regulatory day.
+
+    The contracts declare `closed: true`: a month is generable from the first day of
+    the next, a day from the day after. A scenario dated ahead of today is then an
+    expected refusal, and the same scenario generates and is judged once it closes.
+    """
+    from zoneinfo import ZoneInfo
+    now = now or datetime.datetime.now(ZoneInfo("America/Sao_Paulo"))
+    if len(data_base) == 7:
+        year, month = int(data_base[:4]), int(data_base[5:])
+        closes = datetime.date(year + month // 12, month % 12 + 1, 1)
+    else:
+        closes = datetime.date.fromisoformat(data_base) + datetime.timedelta(days=1)
+    return now.date() >= closes
+
+
+def expect_refusal(rep, subscription, number, doc, reason=None):
     """A generation the document must refuse while the caller waits: 400, RPT-0140."""
     status, answer = rep.call("POST", "/v1/regulatory/reports", {
         "subscriptionId": subscription,
         "parameters": {"dataBase": doc["dataBase"], "tipoRemessa": doc.get("tipoRemessa", "I")}}, ok=(200, 201, 400))
     detail = (answer or {}).get("detail", "")
-    refused = status == 400 and (answer or {}).get("code") == "RPT-0140"
+    refused = status == 400 and (answer or {}).get("code") == "RPT-0140" and (reason is None or reason in detail)
     print("%-6s %-4s %-10s recusa esperada: %s" % ("OK" if refused else "FALHOU", number, doc["dataBase"],
                                                   detail[:150] if refused else "respondeu %d" % status))
     return 0 if refused else 1
@@ -653,7 +693,8 @@ def run_reports(lg, args):
 
     for doc in expected["documents"]:
         number = doc["document"]
-        subscription = ensure_subscription(rep, "br.bcb.cadoc-" + number, institution)
+        subscription = ensure_subscription(rep, "br.bcb.cadoc-" + number, institution,
+                                           contract_version(args.bindings, number) if args.bindings else None)
         if args.bindings:
             how = apply_binding(rep, subscription, os.path.join(args.bindings, "br/bcb/cadoc-%s/binding.example.yaml" % number),
                                 lg.sc.get("natures"))
@@ -662,9 +703,21 @@ def run_reports(lg, args):
         if doc.get("refused"):
             failures += expect_refusal(rep, subscription, number, doc)
             continue
+        if not period_closed(doc["dataBase"]):
+            # Not closed yet: refused today, generated and judged once it closes.
+            failures += expect_refusal(rep, subscription, number, doc, reason="has not closed")
+            continue
 
         kind = doc.get("tipoRemessa", "I")
         report, status, artifact = generate(rep, subscription, doc["dataBase"], kind)
+        if doc.get("errored"):
+            # Refused by the worker: the read answered nothing the document can be
+            # filed from (an empty balancete). The reason is in the worker's log.
+            ok = status == "Error"
+            failures += not ok
+            print("%-6s %-4s %-10s erro esperado: terminou em %s, report %s" % ("OK" if ok else "FALHOU", number,
+                                                                               doc["dataBase"], status, report))
+            continue
         if artifact is None:
             problems = ["a geração terminou em %s" % status]
         else:
