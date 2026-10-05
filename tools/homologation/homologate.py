@@ -410,7 +410,9 @@ def ensure_institution(rep, sc, org_id, ledger_id):
             continue
         current = (((i.get("scope") or {}).get("midaz_transaction") or {}).get("tables") or {}).get("operation") or {}
         if current.get("conditions") != conditions:
-            rep.call("PUT", "/v1/institutions/" + i["id"], body, headers={"If-Match": '"%s"' % i.get("version")})
+            if i.get("version") is None:
+                fail("a instituição %s não informa 'version', e o PUT exige If-Match com ela" % i["id"])
+            rep.call("PUT", "/v1/institutions/" + i["id"], body, headers={"If-Match": '"%s"' % i["version"]})
         return i["id"]
     _, created = rep.call("POST", "/v1/institutions", body)
     return created["id"]
@@ -628,17 +630,23 @@ def cross_check(generated):
     return failures
 
 def state_belongs_to(lg, state):
-    """Whether a state with no recorded ledger was written against the ledger found."""
+    """Whether a state with no recorded ledger was written against the ledger found.
+
+    Every transaction it recorded has to exist there: a state can mix transactions
+    of two ledgers (an old run's, then a new run's), and one found is not proof of
+    the rest.
+    """
     if "ledger" in state:
         return True
 
     posted = [t.get("id") for t in (state.get("transactions") or {}).values() if t.get("id")]
-    if not posted:
-        return True
 
-    status, _ = lg.midaz.call("GET", "%s/transactions/%s" % (lg.lp, posted[0]), ok=(200, 404))
+    for transaction in posted:
+        status, _ = lg.midaz.call("GET", "%s/transactions/%s" % (lg.lp, transaction), ok=(200, 404))
+        if status != 200:
+            return False
 
-    return status == 200
+    return True
 
 
 STATE_PATH = None
