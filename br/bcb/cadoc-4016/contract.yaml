@@ -91,8 +91,10 @@ datasets:
       - name: cosifCode
         type: string
         required: true
-        # Dez dígitos desde jan/2025 (IN BCB 426-433); oito na grafia anterior.
-        pattern: '^[0-9]{10}$|^[0-9]{8}$'
+        # Dez dígitos (IN BCB 426-433, desde jan/2025). A hierarquia acima descreve só
+        # essa grafia; a de oito dígitos, anterior a 2025, é recusada — a retificação
+        # de uma data-base anterior a 2025 não é coberta por esta versão.
+        pattern: '^[0-9]{10}$'
         normalize: digits
         description: Rubrica patrimonial ou de compensação do elenco COSIF.
 
