@@ -80,6 +80,18 @@
         "4119000007": "300.00",
         "4310000002": "100800.00"
       }
+    },
+    {
+      "document": "4111",
+      "dataBase": "2026-09-18",
+      "complete": false,
+      "_note": "Corte do dia 18 (sexta): o IOF financiado em agosto só é recolhido em 25/09, então Obrigações de Pagamento em Nome de Terceiros tem saldo — a única data em que 4992700005 aparece diferente de zero. A parcela de 20/09 e o saldo credor de 28/09 ficam fora.",
+      "lines": {
+        "1100000002": "550000.00",
+        "1120000006": "550000.00",
+        "4310000002": "100800.00",
+        "4992700005": "500.00"
+      }
     }
   ]
 }

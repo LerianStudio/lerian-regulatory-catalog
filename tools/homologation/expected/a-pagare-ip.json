@@ -104,6 +104,23 @@
         "4953000005": "150.00",
         "9096600006": "3040.00"
       }
+    },
+    {
+      "document": "4111",
+      "dataBase": "2026-09-22",
+      "complete": false,
+      "_note": "Corte do dia 22: a venda off-us de 20/09 ainda não foi liquidada (a liquidação é de 25/09), então Devedores - Contas Liquidação Pendentes tem saldo — a única data em que 1843000008 aparece diferente de zero. A despesa de 28/09 e o controle de 30/09 ficam fora.",
+      "lines": {
+        "1100000002": "53210.00",
+        "1120000006": "53210.00",
+        "1843000008": "1000.00",
+        "3097020007": "450.00",
+        "3097030004": "1300.00",
+        "4192500005": "1010.00",
+        "4193000009": "3040.00",
+        "4953000005": "150.00",
+        "9096600006": "1000.00"
+      }
     }
   ]
 }

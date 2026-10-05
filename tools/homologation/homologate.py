@@ -533,9 +533,9 @@ def apply_natures_in_force(rep, subscription, natures):
     return "em vigor + naturezas"
 
 
-def generate(rep, subscription, data_base):
+def generate(rep, subscription, data_base, kind="I"):
     _, created = rep.call("POST", "/v1/regulatory/reports", {
-        "subscriptionId": subscription, "parameters": {"dataBase": data_base, "tipoRemessa": "I"}})
+        "subscriptionId": subscription, "parameters": {"dataBase": data_base, "tipoRemessa": kind}})
     report = created["report"]["id"]
     for _ in range(60):
         _, got = rep.get("/v1/reports/" + report)
@@ -560,13 +560,23 @@ def parsed_lines(artifact):
     return {c.get("codigoConta"): c.get("saldo") or c.get("saldoDia") for c in root.iter("conta")}
 
 
-def judge(document, artifact, expected, catalog_root):
+def judge(document, artifact, expected, catalog_root, cnpj8=None):
     """Every problem with one generated file, as a list of sentences."""
     problems = []
     try:
         root = ET.fromstring(artifact)
     except ET.ParseError as err:
         return ["não é XML bem formado: %s" % err]
+
+    # The header identifies the filing: which document, who files it, for when,
+    # and whether it is the first remittance or a substitute.
+    header = {"codigoDocumento": document, "dataBase": expected["dataBase"],
+              "tipoRemessa": expected.get("tipoRemessa", "I")}
+    if cnpj8:
+        header["cnpj"] = cnpj8
+    for attribute, want in header.items():
+        if root.get(attribute) != want:
+            problems.append("cabeçalho %s=%r, esperado %r" % (attribute, root.get(attribute), want))
 
     if not artifact.lstrip(b"\xef\xbb\xbf").startswith(b"<?xml"):
         problems.append("o arquivo não começa pela declaração XML")
@@ -625,20 +635,24 @@ def run_reports(lg, args):
                                 lg.sc.get("natures"))
         else:
             how = apply_natures_in_force(rep, subscription, lg.sc.get("natures"))
-        report, status, artifact = generate(rep, subscription, doc["dataBase"])
+        kind = doc.get("tipoRemessa", "I")
+        report, status, artifact = generate(rep, subscription, doc["dataBase"], kind)
         if artifact is None:
             problems = ["a geração terminou em %s" % status]
         else:
-            problems = judge(number, artifact, doc, args.catalog)
+            problems = judge(number, artifact, doc, args.catalog, lg.sc["organization"]["legalDocument"][:8])
             lines = parsed_lines(artifact)
-            if lines is not None:
+            # The cross-check compares the initial remittances; a substitute of the
+            # same filing is judged on its own.
+            if lines is not None and kind == "I":
                 generated[(number, doc["dataBase"])] = lines
-            out = os.path.join(args.out, "%s-%s-%s.xml" % (lg.sc["organization"]["legalDocument"][:8], number, doc["dataBase"]))
+            out = os.path.join(args.out, "%s-%s-%s%s.xml" % (lg.sc["organization"]["legalDocument"][:8], number, doc["dataBase"],
+                                                            "" if kind == "I" else "-" + kind))
             with open(out, "wb") as fh:
                 fh.write(artifact)
         verdict = "OK" if not problems else "FALHOU"
         failures += bool(problems)
-        print("%-6s %-4s %-10s binding %-10s %-6s report %s" % (verdict, number, doc["dataBase"], how, status, report))
+        print("%-6s %-4s %-10s %s binding %-10s %-6s report %s" % (verdict, number, doc["dataBase"], kind, how, status, report))
         for p in problems:
             print("         - " + p)
 
