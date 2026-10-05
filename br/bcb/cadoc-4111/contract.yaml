@@ -31,7 +31,7 @@ metadata:
   regulator: BCB
   document: "4111"
   title: Saldos Contábeis Diários
-  version: 1.1.0   # 1.1.0: hierarquia das contas (v0.1.1) e binding/manual de referência sem filtro de status
+  version: 1.2.0   # 1.2.0: data-base só em dia útil; volume de dia não útil vai para o dia útil seguinte (calendário)
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
@@ -43,10 +43,15 @@ metadata:
     layoutManual: https://www.bcb.gov.br/content/estabilidadefinanceira/Documents/Leiaute_de_documentos/saldosDiariosInstrucoesPreenchimentoV2.pdf
     schema: schema/XSD_4111.xsd            # material de curadoria — e desatualizado
     accountSet: contas.yaml                # o conjunto fechado de rubricas
+    calendar: dias-nao-uteis.yaml          # dias não úteis (curadoria Lerian): cortam cada período
 
 parameters:
   - name: dataBase
     type: date               # AAAA-MM-DD — diário (I §4.1.2)
+    # Só dia útil do calendário: as remessas são por data-base de dia útil, em
+    # sequência, e feriado nacional não tem remessa (I §2.1). Um sábado é recusado
+    # na hora, dizendo qual é o último dia útil antes dele.
+    businessDay: true
     required: true
     description: Dia útil de referência dos saldos.
 
