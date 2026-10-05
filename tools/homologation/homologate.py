@@ -428,6 +428,19 @@ def ensure_subscription(rep, document_id, institution):
     return created["subscription"]["id"]
 
 
+def inside_block(lines, i, indent):
+    """Whether line i still belongs to a mapping whose entries are indented `indent`."""
+    if lines[i].strip():
+        return len(lines[i]) - len(lines[i].lstrip()) >= indent
+
+    # Blank: part of the block only when the mapping goes on after it.
+    for later in lines[i + 1:]:
+        if later.strip():
+            return len(later) - len(later.lstrip()) >= indent
+
+    return False
+
+
 def with_natures(binding, natures):
     """The binding with the scenario's own natures in every natureByPrefix.
 
@@ -456,8 +469,9 @@ def with_natures(binding, natures):
         pad = " " * (len(line) - len(line.lstrip()) + 2)
         declared = {}
 
-        # The block's own entries: every following line indented deeper.
-        while i < len(lines) and lines[i].strip() and len(lines[i]) - len(lines[i].lstrip()) >= len(pad):
+        # The block's own entries: every following line indented deeper, blank
+        # lines included while the mapping goes on after them.
+        while i < len(lines) and inside_block(lines, i, len(pad)):
             entry = re.match(r'^\s*"([^"]+)":\s*(\w+)(.*)$', lines[i])
             if entry and entry.group(1) in natures and entry.group(2) != natures[entry.group(1)]:
                 lines[i] = '%s"%s": %s%s\n' % (pad, entry.group(1), natures[entry.group(1)], entry.group(3).rstrip("\n"))
