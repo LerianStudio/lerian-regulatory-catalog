@@ -78,6 +78,16 @@ nada dos grupos 7 e 8 no 4016; e cada linha contra o gabarito.
 - **O Midaz lista só o recente por padrão.** Sem `start_date`/`end_date`, a listagem
   de operações devolve vazio para lançamentos de meses atrás. A ferramenta passa o
   intervalo explícito; o Reporter lê o banco e não é afetado.
+- **Fuso horário.** O Midaz guarda o instante em UTC e o dia regulatório é o dia
+  civil brasileiro. Com `REPORT_TIMEZONE=UTC`, um Pix às 23:30 de sexta em Brasília
+  caiu no sábado e sumiu do balancete de fevereiro (10.500 em vez de 10.505). Com
+  `America/Sao_Paulo`, certo. Os cenários datam as reversões mensais em `-03:00`.
+- **Anotações (NOTED).** O Midaz grava as operações de uma anotação com a rubrica
+  da rota, valor ZERO e `balance_affected = false`. Não inflam saldo, mas fariam a
+  rubrica aparecer como linha de 0,00. O binding de referência lê só
+  `balance_affected = true` e só `asset_code = BRL` (o ledger é multiativo).
+- **Mais de um ledger na organização.** A instituição é escopada pela organização
+  E pelo ledger; a ferramenta já faz isso.
 - **Uma retificadora declarada só pelo grupo sai com o sinal trocado.** A
   natureza é do plano de contas do cliente: o cenário a declara (`natures`), e o
   motor usa o prefixo mais longo.

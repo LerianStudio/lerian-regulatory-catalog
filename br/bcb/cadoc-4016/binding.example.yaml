@@ -11,7 +11,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4016
-contractVersion: 1.2.0
+contractVersion: 1.2.1
 
 queries:
   - name: saldos_cosif
@@ -19,6 +19,18 @@ queries:
     dataSource: midaz_transaction
     table: operation
     filters:
+      # SÓ O QUE MOVEU SALDO, SÓ EM REAIS. Uma transação NOTED (anotação) grava
+      # operações com a rubrica da rota, valor ZERO e `balance_affected = false`:
+      # não altera saldo, mas faria a rubrica aparecer como linha de 0,00 sem nunca
+      # ter sido lançada. E um ledger do Midaz pode ter outros ativos além do BRL,
+      # que não são lançamento em reais. Nenhum dos dois é lançamento deste
+      # documento.
+      - field: balance_affected
+        operator: eq
+        values: ["true"]
+      - field: asset_code
+        operator: eq
+        values: ["BRL"]
       # A exclusão dos grupos 7 e 8: o primeiro caractere da rota contábil é o grupo
       # COSIF. É filtro de EXTRAÇÃO — o 4016 não admite resultado — então vive aqui,
       # não no contrato. A regra sem-contas-de-resultado do contrato confere o

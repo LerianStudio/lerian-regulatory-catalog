@@ -20,7 +20,7 @@ metadata:
   regulator: BCB
   document: "4016"
   title: Balanço Patrimonial Analítico
-  version: 1.2.0   # 1.2.0: fecha no último dia útil do mês (calendário)
+  version: 1.2.1   # 1.2.1: binding de referência lê só o que moveu saldo (balance_affected) e só BRL
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]

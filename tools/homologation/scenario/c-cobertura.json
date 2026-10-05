@@ -1,5 +1,5 @@
 {
-  "_about": "Org C — COBERTURA SINTÉTICA, declarada como tal: não é o perfil de nenhuma instituição real. Existe para que cada linha do conjunto do 4111 que A e B não alcançam receba um valor distinguível, e para exercitar o que o motor faz e o template não mostra: lançamento na própria linha-mãe e em subcontas do cliente abaixo de uma linha publicada (roll-up), janela do fluxo que reinicia no mês (agosto não conta), corte diário (dataBase 2026-09-15 x 2026-09-30) e lançamento depois da data-base (outubro, fora). Grupos 2 e 5 do 4010 também entram aqui. A contrapartida de toda 3.0.9.70.XX é o título único 9.0.9.70.00.00-7 (IN BCB 538), num ledger próprio (Razão COSIF 2) porque o primeiro registrou subcontas 9.0.9.70.XX que o COSIF não tem.",
+  "_about": "Org C — COBERTURA SINTÉTICA, declarada como tal: não é o perfil de nenhuma instituição real. Existe para que cada linha do conjunto do 4111 que A e B não alcançam receba um valor distinguível, e para exercitar o que o motor faz e o template não mostra: lançamento na própria linha-mãe e em subcontas do cliente abaixo de uma linha publicada (roll-up), janela do fluxo que reinicia no mês (agosto não conta), corte diário (dataBase 2026-09-15 x 2026-09-30) e lançamento depois da data-base (outubro, fora). Grupos 2 e 5 do 4010 também entram aqui. A contrapartida de toda 3.0.9.70.XX é o título único 9.0.9.70.00.00-7 (IN BCB 538), num ledger próprio (Razão COSIF 4, o do campo ledger): os ledgers anteriores registraram subcontas 9.0.9.70.XX que o COSIF não tem, ou datas de reversão em UTC. Horários em -03:00 (Brasília): o dia regulatório é o dia civil brasileiro, e REPORT_TIMEZONE=America/Sao_Paulo é precondição; uma reversão às 00:05Z cairia às 21:05 do dia anterior.",
   "organization": {
     "legalName": "Cobertura COSIF (sintética, homologação)",
     "doingBusinessAs": "Cobertura",
@@ -12,7 +12,7 @@
       "country": "BR"
     }
   },
-  "ledger": "Razão COSIF 2",
+  "ledger": "Razão COSIF 4",
   "accountTypes": [
     {
       "keyValue": "ativo",
@@ -367,7 +367,7 @@
     },
     {
       "key": "C24",
-      "date": "2026-09-01T00:05:00Z",
+      "date": "2026-09-01T00:05:00-03:00",
       "amount": "5000.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): pós-pago de agosto",
       "debit": "@controle_transacoes",
@@ -375,7 +375,7 @@
     },
     {
       "key": "C25",
-      "date": "2026-10-01T00:05:00Z",
+      "date": "2026-10-01T00:05:00-03:00",
       "amount": "700.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): pós-pago de setembro",
       "debit": "@controle_transacoes",
@@ -383,7 +383,7 @@
     },
     {
       "key": "C26",
-      "date": "2026-10-01T00:06:00Z",
+      "date": "2026-10-01T00:06:00-03:00",
       "amount": "800.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): subcredenciador de setembro",
       "debit": "@controle_transacoes",
@@ -391,7 +391,7 @@
     },
     {
       "key": "C27",
-      "date": "2026-10-01T00:07:00Z",
+      "date": "2026-10-01T00:07:00-03:00",
       "amount": "900.00",
       "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): iniciador de setembro",
       "debit": "@controle_transacoes",

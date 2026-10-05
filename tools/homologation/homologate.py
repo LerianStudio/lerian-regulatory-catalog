@@ -306,7 +306,11 @@ class Ledger:
                     body["pending"] = True
                 if not t.get("now"):
                     body["transactionDate"] = t["date"]
-                _, created = self.midaz.call("POST", self.lp + "/transactions/json", body,
+                # An ANNOTATION (NOTED) is a transaction that moves no balance: Midaz
+                # writes its operations with balance_affected = false, rubric and
+                # amount included, so a document must leave them out.
+                endpoint = "/transactions/annotation" if t.get("annotation") else "/transactions/json"
+                _, created = self.midaz.call("POST", self.lp + endpoint, body,
                                              idempotency="%s-%s" % (slug, key))
                 entry["id"] = created["id"]
                 # Saved before the follow-up runs: if the commit or cancel fails, the
@@ -345,6 +349,10 @@ def operations(lg):
 
 def report_ledger(lg):
     ops = operations(lg)
+    # An annotation (NOTED) moves no balance and is no entry of a document; the
+    # ledger check leaves it out the way every binding must.
+    annotations = [o for o in ops if o.get("balanceAffected") is False]
+    ops = [o for o in ops if o.get("balanceAffected") is not False]
     missing = [o for o in ops if not o.get("routeCode")]
     by_code = {}
 
@@ -360,7 +368,7 @@ def report_ledger(lg):
         row["types"].add(o.get("type"))
         row["statuses"].add(((o.get("status") or {}).get("code")) or "")
 
-    print("\n%d operações, %d sem routeCode" % (len(ops), len(missing)))
+    print("\n%d operações, %d sem routeCode, %d anotações (NOTED) deixadas de fora" % (len(ops), len(missing), len(annotations)))
     print("%-12s %5s %14s %14s %14s  %s" % ("rubrica", "ops", "débitos", "créditos", "créd-déb", "tipos / status"))
 
     for code in sorted(by_code):
