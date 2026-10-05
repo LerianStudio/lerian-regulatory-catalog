@@ -65,10 +65,12 @@ class Midaz:
     def __init__(self, base):
         self.base = base.rstrip("/")
 
-    def call(self, method, path, body=None, idempotency=None, ok=(200, 201)):
+    def call(self, method, path, body=None, idempotency=None, ok=(200, 201), headers=None):
         data = None if body is None else json.dumps(body).encode()
         request = urllib.request.Request(self.base + path, data=data, method=method)
         request.add_header("Content-Type", "application/json")
+        for k, v in (headers or {}).items():
+            request.add_header(k, v)
 
         if idempotency:
             request.add_header("X-Idempotency", idempotency)
@@ -392,15 +394,25 @@ class Reporter(Midaz):
             return err.code, dict(err.headers), err.read()
 
 
-def ensure_institution(rep, sc, org_id):
+def ensure_institution(rep, sc, org_id, ledger_id):
+    """The scenario's institution, scoped to its organization AND its ledger.
+
+    The ledger is part of the scope because an organization can keep more than one:
+    a scenario that had to be posted again lives in a ledger of its own, and the
+    documents must read that ledger alone.
+    """
     cnpj = sc["organization"]["legalDocument"]
+    conditions = {"organization_id": {"eq": [org_id]}, "ledger_id": {"eq": [ledger_id]}}
+    body = {"name": sc["organization"]["legalName"], "cnpj": cnpj,
+            "scope": {"midaz_transaction": {"tables": {"operation": {"conditions": conditions}}}}}
     for i in rep.items("/v1/institutions"):
-        if i.get("cnpj") == cnpj:
-            return i["id"]
-    _, created = rep.call("POST", "/v1/institutions", {
-        "name": sc["organization"]["legalName"], "cnpj": cnpj,
-        "scope": {"midaz_transaction": {"tables": {"operation": {"conditions": {"organization_id": {"eq": [org_id]}}}}}},
-    })
+        if i.get("cnpj") != cnpj:
+            continue
+        current = (((i.get("scope") or {}).get("midaz_transaction") or {}).get("tables") or {}).get("operation") or {}
+        if current.get("conditions") != conditions:
+            rep.call("PUT", "/v1/institutions/" + i["id"], body, headers={"If-Match": '"%s"' % i.get("version")})
+        return i["id"]
+    _, created = rep.call("POST", "/v1/institutions", body)
     return created["id"]
 
 
@@ -523,7 +535,7 @@ def run_reports(lg, args):
     with open(args.expected) as fh:
         expected = json.load(fh)
 
-    institution = ensure_institution(rep, lg.sc, lg.org)
+    institution = ensure_institution(rep, lg.sc, lg.org, lg.ledger)
     print("\ninstituição  %s" % institution)
     failures = 0
     generated = {}
@@ -615,6 +627,20 @@ def cross_check(generated):
 
     return failures
 
+def state_belongs_to(lg, state):
+    """Whether a state with no recorded ledger was written against the ledger found."""
+    if "ledger" in state:
+        return True
+
+    posted = [t.get("id") for t in (state.get("transactions") or {}).values() if t.get("id")]
+    if not posted:
+        return True
+
+    status, _ = lg.midaz.call("GET", "%s/transactions/%s" % (lg.lp, posted[0]), ok=(200, 404))
+
+    return status == 200
+
+
 STATE_PATH = None
 
 
@@ -646,6 +672,14 @@ def main():
     lg = Ledger(Midaz(args.midaz), scenario, state)
     lg.ensure_organization()
     lg.ensure_ledger()
+
+    # The state is one ledger's: a scenario moved to a new ledger posts everything
+    # again there, instead of skipping what it posted in the old one. A state
+    # written before it recorded its ledger is adopted only when a transaction it
+    # recorded exists in the ledger found; otherwise it is another ledger's.
+    if state.get("ledger", lg.ledger) != lg.ledger or not state_belongs_to(lg, state):
+        state.clear()
+    state["ledger"] = lg.ledger
 
     if args.command == "setup":
         lg.ensure_asset()
