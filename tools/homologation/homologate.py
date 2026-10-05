@@ -21,6 +21,7 @@ Só biblioteca padrão, Python 3.9+.
 
 import argparse
 import calendar
+import datetime
 import json
 import os
 import re
@@ -331,7 +332,10 @@ def operations(lg):
         account = lg.account(alias)
         if account is None:
             fail("a conta %s não existe; rode setup antes" % alias)
-        for op in lg.midaz.items("%s/accounts/%s/operations" % (lg.lp, account["id"])):
+        # The date range is explicit: without it Midaz lists only recent entries, and
+        # a scenario dated months back would read as an empty ledger.
+        for op in lg.midaz.items("%s/accounts/%s/operations?start_date=2000-01-01&end_date=%s"
+                                 % (lg.lp, account["id"], (datetime.date.today() + datetime.timedelta(days=1)).isoformat())):
             if op["id"] not in seen:
                 seen.add(op["id"])
                 out.append(op)
@@ -533,6 +537,18 @@ def apply_natures_in_force(rep, subscription, natures):
     return "em vigor + naturezas"
 
 
+def expect_refusal(rep, subscription, number, doc):
+    """A generation the document must refuse while the caller waits: 400, RPT-0140."""
+    status, answer = rep.call("POST", "/v1/regulatory/reports", {
+        "subscriptionId": subscription,
+        "parameters": {"dataBase": doc["dataBase"], "tipoRemessa": doc.get("tipoRemessa", "I")}}, ok=(200, 201, 400))
+    detail = (answer or {}).get("detail", "")
+    refused = status == 400 and (answer or {}).get("code") == "RPT-0140"
+    print("%-6s %-4s %-10s recusa esperada: %s" % ("OK" if refused else "FALHOU", number, doc["dataBase"],
+                                                  detail[:150] if refused else "respondeu %d" % status))
+    return 0 if refused else 1
+
+
 def generate(rep, subscription, data_base, kind="I"):
     _, created = rep.call("POST", "/v1/regulatory/reports", {
         "subscriptionId": subscription, "parameters": {"dataBase": data_base, "tipoRemessa": kind}})
@@ -635,6 +651,10 @@ def run_reports(lg, args):
                                 lg.sc.get("natures"))
         else:
             how = apply_natures_in_force(rep, subscription, lg.sc.get("natures"))
+        if doc.get("refused"):
+            failures += expect_refusal(rep, subscription, number, doc)
+            continue
+
         kind = doc.get("tipoRemessa", "I")
         report, status, artifact = generate(rep, subscription, doc["dataBase"], kind)
         if artifact is None:
@@ -672,6 +692,25 @@ def cosif_prefix(code):
     return "".join(groups)
 
 
+def non_business_days():
+    """The days the catalog's calendar lists, read with the standard library."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "br", "bcb", "cadoc-4111", "dias-nao-uteis.yaml")
+    if not os.path.exists(path):
+        return set()
+    return set(re.findall(r'date:\s*"(\d{4}-\d{2}-\d{2})"', open(path).read()))
+
+
+def last_business_day(year, month):
+    """The last business day of a month: the instructions compare the 4111 of that day with the 4010."""
+    holidays = non_business_days()
+    day = calendar.monthrange(year, month)[1]
+    while True:
+        moment = datetime.date(year, month, day)
+        if moment.weekday() < 5 and moment.isoformat() not in holidays:
+            return day
+        day -= 1
+
+
 def cross_check(generated):
     """The 4111 of a month's last day against that month's 4010, on every rubric both carry.
 
@@ -686,7 +725,7 @@ def cross_check(generated):
         if number != "4111":
             continue
         year, month, day = (int(x) for x in base.split("-"))
-        if day != calendar.monthrange(year, month)[1]:
+        if day != last_business_day(year, month):
             continue
         balancete = generated.get(("4010", "%04d-%02d" % (year, month)))
         if balancete is None:

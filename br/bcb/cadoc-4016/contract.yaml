@@ -20,7 +20,7 @@ metadata:
   regulator: BCB
   document: "4016"
   title: Balanço Patrimonial Analítico
-  version: 1.1.0   # 1.1.0: o arquivo traz todas as contas, inclusive as sintéticas (hierarchy)
+  version: 1.2.0   # 1.2.0: fecha no último dia útil do mês (calendário)
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
@@ -28,6 +28,7 @@ metadata:
   sourceOfTruth:
     layoutManual: https://www.bcb.gov.br/content/estabilidadefinanceira/cosif_leiautes/Leiaute_4010_xmlV0.pdf
     schema: schema/leiaute-4010-4016.pdf   # material de curadoria, não é executado
+    calendar: dias-nao-uteis.yaml          # dias não úteis (curadoria Lerian): cortam cada período
 
 parameters:
   - name: dataBase

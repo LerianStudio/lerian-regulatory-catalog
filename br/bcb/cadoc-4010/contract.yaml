@@ -32,7 +32,7 @@ metadata:
   # Publicação é tag git (br.bcb.cadoc-4010/v1.0.0). A instalação do cliente fixa a
   # versão adotada, então uma correção publicada aqui não muda o que ele gera até
   # ele adotar.
-  version: 1.1.0   # 1.1.0: o arquivo traz todas as contas, inclusive as sintéticas (hierarchy)
+  version: 1.2.0   # 1.2.0: fecha no último dia útil do mês (calendário)
   status: draft
   # A quem o documento se aplica. É o que permite filtrar o catálogo por tipo de
   # instituição em vez de o cliente adivinhar o que precisa entregar.
@@ -42,6 +42,7 @@ metadata:
   sourceOfTruth:
     layoutManual: https://www.bcb.gov.br/estabilidadefinanceira/leiautedocumentoscrd
     schema: schema/XSD_4010_v0.xsd   # material de curadoria, não é executado
+    calendar: dias-nao-uteis.yaml          # dias não úteis (curadoria Lerian): cortam cada período
 
 # ---------------------------------------------------------------------------
 # Parâmetros de geração

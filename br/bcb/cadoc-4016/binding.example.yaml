@@ -11,7 +11,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4016
-contractVersion: 1.1.0
+contractVersion: 1.2.0
 
 queries:
   - name: saldos_cosif

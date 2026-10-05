@@ -17,6 +17,7 @@ Três peças, e a separação entre elas é o que dá valor ao resultado:
 |---|---|---|
 | `a-pagare-ip` | IP emissora pré-paga e credenciadora | conta pré-paga, recursos de clientes, controle de compensação, liquidação, fluxos do emissor e do credenciador; **hold → commit, hold → cancel e estorno** |
 | `b-crediflex-scfi` | Sociedade de crédito, financiamento e investimento | aceite cambial, saldo credor em conta de empréstimo, obrigação zerada no mês, estorno, e uma **retificadora** (provisão, credora dentro do grupo 1) |
+| `d-calendario` | **Sintético, declarado como tal** | fevereiro de 2026 termina num sábado: balancete fechado no último dia útil, volume de sábado e domingo no primeiro dia útil de março, e o 4111 de sábado recusado |
 | `c-cobertura` | **Sintético, declarado como tal** | toda linha do 4111 que A e B não alcançam; lançamento na linha-mãe e em subcontas do cliente (soma da árvore); fluxo de agosto fora da janela; corte diário (dia 15 x dia 30); lançamento depois da data-base; grupos 2 e 5 |
 
 Juntos tocam as 30 linhas do conjunto do 4111 e os nove grupos do 4010. A
@@ -69,6 +70,14 @@ nada dos grupos 7 e 8 no 4016; e cada linha contra o gabarito.
   cenários. Corrigido: o contrato 1.1.0 do 4010/4016 declara a hierarquia e o
   motor deriva cada conta-mãe, somando em convenção contábil (a provisão abate
   Operações de Crédito). A conferência passa nos três.
+- **O período era cortado pelo mês corrido, e não pelo dia útil.** O volume de um
+  sábado que fecha o mês sumia de todo 4111, o balancete fechava no fim do mês em
+  vez do último dia útil, e o 4111 de sábado era gerado. Corrigido com o calendário
+  de dias não úteis (`dias-nao-uteis.yaml`, curadoria da Lerian) que o contrato
+  1.2.0 declara; o cenário D prova os três cortes.
+- **O Midaz lista só o recente por padrão.** Sem `start_date`/`end_date`, a listagem
+  de operações devolve vazio para lançamentos de meses atrás. A ferramenta passa o
+  intervalo explícito; o Reporter lê o banco e não é afetado.
 - **Uma retificadora declarada só pelo grupo sai com o sinal trocado.** A
   natureza é do plano de contas do cliente: o cenário a declara (`natures`), e o
   motor usa o prefixo mais longo.
