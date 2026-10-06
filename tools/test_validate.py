@@ -253,22 +253,22 @@ MUTATIONS: list[Mutation] = [
     Mutation(
         "binding-origem-invalida",
         "origem fora do vocabulário é campo que o motor não sabe resolver",
-        lambda b: b[PLANO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
+        lambda b: b[FECHADO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
             {"from": "magica"}),
         "use query, constant, parameter, manual, rowSet, institution ou byRowClass",
     ),
     Mutation(
         "binding-instituicao-valor-invalido",
         "a instituição só escreve o CNPJ inteiro ou a raiz; outro nome não escreve nada",
-        lambda b: b[PLANO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
-            {"institution": "cnpj14"}),
+        lambda b: b[FECHADO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
+            {"from": "institution", "institution": "cnpj14"}),
         "resolve pela instituição e escreve 'cnpj14'",
     ),
     Mutation(
         "binding-instituicao-valor-nao-texto",
         "uma lista no lugar do nome reprova como valor inválido, sem derrubar a ferramenta",
-        lambda b: b[PLANO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
-            {"institution": ["cnpj8"]}),
+        lambda b: b[FECHADO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
+            {"from": "institution", "institution": ["cnpj8"]}),
         "resolve pela instituição e escreve ['cnpj8']",
     ),
     Mutation(
@@ -792,6 +792,31 @@ MUTATIONS: list[Mutation] = [
         "nonEmpty num singleton não diz nada: é sempre uma linha",
         lambda b: dataset(b[PLANO]["contract"], "institution").update({"nonEmpty": True}),
         "declarado num singleton",
+    ),
+    Mutation(
+        "derivado-de-campo-inexistente",
+        "prefixOf apontando para campo que o conjunto não declara não tem de onde cortar",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"prefixOf": "cnpj14"}),
+        "que o conjunto não declara",
+    ),
+    Mutation(
+        "derivado-sem-length",
+        "prefixOf sem length não diz quantas posições cortar",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").pop("length"),
+        "sem length",
+    ),
+    Mutation(
+        "derivado-mapeado-no-binding",
+        "o binding que mapeia o derivado daria duas respostas para uma posição",
+        lambda b: b[PLANO]["binding"]["datasets"]["institution"]["fields"].update(
+            {"cnpj8": {"from": "constant", "value": "12345678"}}),
+        "mapeie a origem",
+    ),
+    Mutation(
+        "digito-verificador-desconhecido",
+        "um checkDigit que o motor não conhece não verifica nada",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj").update({"checkDigit": "cpf"}),
+        "o motor conhece",
     ),
     Mutation(
         "regra-sem-id",

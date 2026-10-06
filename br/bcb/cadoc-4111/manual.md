@@ -141,12 +141,17 @@ certo:
   às 23:30 de sexta é 02:30 de sábado em UTC. Com o Reporter em UTC ele cai no
   sábado — sai do 4111 de sexta e, quando essa sexta é o último dia útil do mês,
   também do balancete do mês. Provado na homologação (27/02/2026).
-- **A instituição é a organização do Midaz.** O CNPJ que vale é o da organização
-  (`legalDocument`), e a instituição é escopada **só** pela organização
-  (`organization_id`): todo ledger dela é um livro da mesma instituição e entra nos
-  documentos, inclusive um ledger criado depois. Outra instituição — outro CNPJ —
-  é outra organização. Por isso **nenhum ledger de teste ou de homologação fica na
-  organização de produção**: o que está nela entra no balancete.
+- **A instituição é a organização do Midaz.** O CNPJ do arquivo é LIDO da
+  organização (`organization.legal_document` na base de onboarding), como qualquer
+  outro valor; o contrato o normaliza, confere os dígitos verificadores (numérico
+  ou alfanumérico) e corta a raiz de oito posições. O Midaz aceita qualquer texto
+  no `legalDocument`: um CNPJ que não verifica recusa a geração, então cadastre a
+  organização com o CNPJ certo. A instituição é escopada **só** pela organização
+  (`organization_id` nas operações, `id` na tabela de organizações): todo ledger
+  dela é um livro da mesma instituição e entra nos documentos, inclusive um ledger
+  criado depois. Outra instituição — outro CNPJ — é outra organização. Por isso
+  **nenhum ledger de teste ou de homologação fica na organização de produção**: o
+  que está nela entra no balancete.
 - **Movimento entre os ledgers da organização (cross-ledger)** é interno à
   instituição. O Midaz grava uma transação por ledger, cada uma fechada contra a
   `@external/BRL` do ledger com a rubrica da rota-ponte
