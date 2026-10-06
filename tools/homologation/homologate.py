@@ -248,6 +248,11 @@ class Ledger:
             key = self.route_key(a)
             if key in planned and planned[key]["code"] != a["code"]:
                 fail("o tipo %s leva duas rubricas (%s, %s)" % (a["type"], planned[key]["code"], a["code"]))
+            if key in planned and planned[key].get("overdraft") != a.get("overdraft"):
+                # One route serves every account of the type: two cheque-especial
+                # rubrics on it would leave one account's draw on the other's rubric.
+                fail("o tipo %s leva dois cheques especiais diferentes (%s, %s); declare as contas por alias"
+                     % (a["type"], planned[key].get("overdraft"), a.get("overdraft")))
             planned[key] = a
 
         for key, a in planned.items():
@@ -287,7 +292,11 @@ class Ledger:
         fail("lançamento numa conta que o cenário não declara: %s" % alias)
 
     def transaction_route(self, debit_key, credit_key):
-        title = "%s -> %s" % (debit_key, credit_key)
+        # The operation routes' ids are in the title: an operation route replaced
+        # (a cheque-especial rubric changed, say) makes a new transaction route,
+        # instead of the old one going on pointing at the old rubric.
+        debit_route, credit_route = self.routes[debit_key], self.routes[credit_key]
+        title = "%s -> %s [%s %s]" % (debit_key, credit_key, debit_route[-8:], credit_route[-8:])
         cache = self.state.setdefault("transactionRoutes", {})
 
         if title not in cache:
@@ -298,7 +307,7 @@ class Ledger:
             else:
                 _, created = self.midaz.call("POST", self.lp + "/transaction-routes", {
                     "title": title,
-                    "operationRoutes": [self.routes[debit_key], self.routes[credit_key]],
+                    "operationRoutes": [debit_route, credit_route],
                 })
                 cache[title] = created["id"]
 
@@ -377,10 +386,16 @@ def operations(lg, attempts=15):
     close. The read is repeated until every transaction setup recorded shows up.
     """
     posted = {t.get("id") for t in (lg.state.get("transactions") or {}).values() if t.get("id")}
+    previous = None
     for attempt in range(attempts):
         out = read_operations(lg)
-        if posted <= {o.get("transactionId") for o in out}:
+        ids = {o.get("id") for o in out}
+        # Every transaction listed is not enough — one leg of a transaction can be
+        # listed while another (an overdraft companion) is not yet — so the read
+        # is accepted when it also comes back identical twice in a row.
+        if posted <= {o.get("transactionId") for o in out} and ids == previous:
             return out
+        previous = ids
         time.sleep(2)
     missing = posted - {o.get("transactionId") for o in out}
     fail("%d lançamento(s) registrados pelo setup ainda sem operações no Midaz depois de %ds: %s"
