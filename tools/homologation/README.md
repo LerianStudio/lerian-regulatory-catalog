@@ -22,6 +22,7 @@ Três peças, e a separação entre elas é o que dá valor ao resultado:
 | `e-cheque-especial` | **Sintético, declarado como tal** | cheque especial no saldo de uma conta de depósito: o débito acima do saldo fica só com a parte coberta na rubrica do depósito (que vai a zero, nunca negativo) e o excedente vira uma operação companheira (`OVERDRAFT`) na rubrica de Adiantamentos a Depositantes que a rota declara; um crédito quita primeiro o adiantamento; um débito com saldo zero sai com a perna original de valor 0 |
 | `f-bloqueio` | **Sintético, declarado como tal** | bloqueio judicial como a transação BLOCK do Midaz: o valor vai do saldo `default` para um saldo `bloqueio` da mesma conta, sob a mesma rubrica, e o depósito continua inteiro no 4010 e no 4111 (o bloqueio limita o que se gasta, não o que se deve); o desbloqueio (UNBLOCK) devolve parte |
 | `g-livros-multiplos` | **Sintético, declarado como tal** | a instituição é a organização: dois ledgers (Contas e Tesouraria) lidos juntos pelo escopo só de organização, e lançamentos CROSS-LEDGER entre eles pela API v2 — cada parte fechada contra a `@external/BRL` do ledger com a rubrica da rota-ponte, que zera na soma dos livros. A v2 não retrodata: o 4111 do dia e o 4010 do mês dos lançamentos ficam como recusa esperada até o período fechar |
+| `h-cnpj-alfanumerico` | **Sintético, declarado como tal** | organização com CNPJ no formato alfanumérico da Receita (`LR4ZAB12000138`): o Midaz o aceita no `legalDocument`, o Reporter o normaliza e confere os dígitos verificadores, e a raiz do cabeçalho sai com letras (`cnpj="LR4ZAB12"`) no 4010 e no 4111 |
 
 Juntos tocam as 30 linhas do conjunto do 4111 e os nove grupos do 4010. A
 contabilidade é fictícia: as rubricas fora do conjunto do 4111 têm nome plausível
@@ -139,6 +140,10 @@ quais faltam depois de 30s.
   precisa ser lançado de novo vai para outra organização, nunca para um segundo
   ledger da mesma. O cross-ledger (cenário G) prova que a ponte zera na soma dos
   livros.
+- **O XSD do 4111 guardado aqui só aceita dígitos no `cnpj`** (`[0-9]{8}`; é a v1.0
+  de 2023, já marcada como desatualizada), enquanto o contrato, o XSD do 4010/4016 e
+  o Reporter aceitam a raiz alfanumérica. O cenário H gera o 4111 com `LR4ZAB12`;
+  falta o XSD vigente do BCB para confirmar que o regulador o aceita.
 - **Uma retificadora declarada só pelo grupo sai com o sinal trocado.** A
   natureza é do plano de contas do cliente: o cenário a declara (`natures`), e o
   motor usa o prefixo mais longo.

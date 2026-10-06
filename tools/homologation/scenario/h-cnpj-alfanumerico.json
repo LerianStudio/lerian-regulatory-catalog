@@ -1,0 +1,71 @@
+{
+  "_about": "Org H — CNPJ ALFANUMÉRICO, sintética e declarada como tal. A organização é registrada no Midaz com um CNPJ no formato novo da Receita (letras nas 12 primeiras posições, dígitos verificadores pelo valor ASCII − 48): LR4ZAB12000138. Prova que a raiz de 8 posições do cabeçalho sai com letras (LR4ZAB12) no 4010, no 4016 e no 4111, e que o XSD do 4010/4016 a aceita. Lançamentos mínimos de setembro. Contabilidade FICTÍCIA para homologação. Horários em -03:00; REPORT_TIMEZONE=America/Sao_Paulo é precondição.",
+  "organization": {
+    "legalName": "CNPJ Alfanumérico COSIF (sintética, homologação)",
+    "doingBusinessAs": "CNPJ Alfanumérico",
+    "legalDocument": "LR4ZAB12000138",
+    "address": {
+      "line1": "Av. Paulista 1000",
+      "zipCode": "01310100",
+      "city": "São Paulo",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "ledger": "Razão COSIF",
+  "accountTypes": [
+    {
+      "keyValue": "ativo",
+      "name": "Ativo",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "passivo",
+      "name": "Passivo",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "patrimonio",
+      "name": "Patrimônio líquido",
+      "defaultDirection": "credit"
+    }
+  ],
+  "accounts": [
+    {
+      "alias": "@caixa",
+      "type": "ativo",
+      "code": "1110000009",
+      "name": "Caixa"
+    },
+    {
+      "alias": "@capital",
+      "type": "patrimonio",
+      "code": "6111000003",
+      "name": "Capital de Domiciliados no País"
+    },
+    {
+      "alias": "@clara",
+      "type": "passivo",
+      "code": "4111000005",
+      "name": "Clara — Depósitos de Pessoas Naturais"
+    }
+  ],
+  "transactions": [
+    {
+      "key": "H01",
+      "date": "2026-09-01T10:00:00-03:00",
+      "amount": "5000.00",
+      "description": "Integralização de capital",
+      "debit": "@caixa",
+      "credit": "@capital"
+    },
+    {
+      "key": "H02",
+      "date": "2026-09-15T10:00:00-03:00",
+      "amount": "800.00",
+      "description": "Depósito em espécie da Clara",
+      "debit": "@caixa",
+      "credit": "@clara"
+    }
+  ]
+}
