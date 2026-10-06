@@ -469,8 +469,15 @@ def ensure_subscription(rep, document_id, institution, version=None):
         # The replacement was not made (refused, or the connection dropped): the
         # subscription this run deactivated comes back before the run stops.
         if current:
-            rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
-            print("restaurada  %s em %s" % (document_id, current.get("adoptedVersion")))
+            try:
+                rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
+            except (SystemExit, Exception) as restoring:
+                # The original failure is what stops the run; this one is reported
+                # beside it, never in its place.
+                print("ERRO: a assinatura %s (%s) ficou desativada e não pôde ser restaurada: %s"
+                      % (current["id"], document_id, restoring), file=sys.stderr)
+            else:
+                print("restaurada  %s em %s" % (document_id, current.get("adoptedVersion")))
         raise
     pinned = created["subscription"].get("adoptedVersion")
     if version and pinned != version:
