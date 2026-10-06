@@ -497,7 +497,8 @@ def ensure_subscription(rep, document_id, institution, version=None):
 def contract_version(root, number):
     """The version a catalog checkout declares for a document's contract."""
     with open(os.path.join(root, "br/bcb/cadoc-%s/contract.yaml" % number)) as fh:
-        found = re.search(r"^  version: (\S+)", fh.read(), re.M)
+        # metadata.version, quoted or not: `version: "1.2.2"` is the same 1.2.2.
+        found = re.search(r"""^  version:\s*["']?([^"'\s#]+)["']?""", fh.read(), re.M)
     return found.group(1) if found else None
 
 
@@ -898,6 +899,27 @@ def cross_check(generated):
 
     return failures
 
+def setup_missing(lg, state):
+    """The scenario's transactions setup has not finished, or that Midaz does not have.
+
+    An organization and a ledger found by name prove nothing about the entries: a
+    setup interrupted after the accounts leaves a ledger the documents would be
+    generated from as if it were complete. Every transaction the scenario declares
+    has to be recorded as finished and answer in Midaz.
+    """
+    recorded = state.get("transactions") or {}
+    missing = []
+    for t in lg.sc["transactions"]:
+        entry = recorded.get(t["key"]) or {}
+        if not entry.get("finished") or not entry.get("id"):
+            missing.append(t["key"])
+            continue
+        status, _ = lg.midaz.call("GET", "%s/transactions/%s" % (lg.lp, entry["id"]), ok=(200, 404))
+        if status != 200:
+            missing.append(t["key"])
+    return missing
+
+
 def state_belongs_to(lg, state):
     """Whether a state with no recorded ledger was written against the ledger found.
 
@@ -962,6 +984,12 @@ def main():
             fail("o ledger encontrado não tem os lançamentos que o setup registrou (o Midaz foi recriado?); rode setup antes")
         state.clear()
     state["ledger"] = lg.ledger
+
+    if args.command != "setup":
+        missing = setup_missing(lg, state)
+        if missing:
+            fail("o setup não terminou neste ledger: %d lançamento(s) do cenário sem registro ou fora do Midaz (%s); "
+                 "rode setup antes" % (len(missing), ", ".join(missing[:8]) + (" ..." if len(missing) > 8 else "")))
 
     if args.command == "setup":
         lg.ensure_asset()
