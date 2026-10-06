@@ -164,10 +164,13 @@ certo:
   Sem essa entrada, com rotas validadas, o Midaz recusa o débito. Provado na
   homologação (cenário E).
 - **Bloqueio de saldo não tira o valor do depósito.** O BLOCK do Midaz move o valor
-  entre dois saldos da mesma conta; sem `accountingEntries.block` na rota, sob a
-  mesma rubrica, e o depósito segue inteiro no 4111 e no 4010. Uma rubrica própria
-  para o bloqueio é escolha do cliente e aparece como reclassificação. Provado na
-  homologação (cenário F).
+  entre dois saldos da mesma conta. Para o depósito seguir inteiro no 4111 e no
+  4010, as duas pernas precisam da MESMA rubrica da conta, e há dois jeitos certos
+  de configurar a rota: **não declarar** `accountingEntries.block`/`unblock` — o
+  Midaz usa então a rubrica de `direct` (a exigência de "rubrica em toda ação"
+  vale para as ações que a rota declara) — ou declará-las com a **mesma rubrica**
+  de `direct`. Uma rubrica diferente no `block` é escolha do cliente e aparece no
+  arquivo como reclassificação. Provado na homologação (cenário F, sem a entrada).
 - **Só reais.** O binding de referência lê `asset_code = BRL`; posição em outra
   moeda é convertida e lançada em reais pelo cliente, como o COSIF exige.
 - **Anotações não entram.** Uma transação NOTED grava operações com a rubrica da
