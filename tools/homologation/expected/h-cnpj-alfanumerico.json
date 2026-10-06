@@ -1,0 +1,54 @@
+{
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/h-cnpj-alfanumerico.json. O que este cenário prova é o cabeçalho: cnpj=\"LR4ZAB12\" (a raiz alfanumérica), conferido pelo judge contra o legalDocument da organização. Caixa 5000 + 800 = 5800 = depósito 800 + capital 5000.",
+  "documents": [
+    {
+      "document": "4010",
+      "dataBase": "2026-09",
+      "complete": true,
+      "lines": {
+        "1000000009": "5800.00",
+        "1100000002": "5800.00",
+        "1110000009": "5800.00",
+        "4000000006": "800.00",
+        "4100000009": "800.00",
+        "4110000006": "800.00",
+        "4111000005": "800.00",
+        "6000000004": "5000.00",
+        "6100000007": "5000.00",
+        "6110000004": "5000.00",
+        "6111000003": "5000.00"
+      }
+    },
+    {
+      "document": "4016",
+      "dataBase": "2026-12",
+      "complete": true,
+      "_note": "Recusado enquanto dezembro estiver aberto.",
+      "lines": {
+        "1000000009": "5800.00",
+        "1100000002": "5800.00",
+        "1110000009": "5800.00",
+        "4000000006": "800.00",
+        "4100000009": "800.00",
+        "4110000006": "800.00",
+        "4111000005": "800.00",
+        "6000000004": "5000.00",
+        "6100000007": "5000.00",
+        "6110000004": "5000.00",
+        "6111000003": "5000.00"
+      }
+    },
+    {
+      "document": "4111",
+      "dataBase": "2026-09-30",
+      "complete": false,
+      "_note": "O XSD 4111 guardado pelo catálogo (v1.0 de 2023) só aceita dígitos no cnpj; o contrato aceita alfanumérico, e o judge não valida o 4111 contra aquele XSD. Confirmar com o XSD vigente do BCB.",
+      "lines": {
+        "1100000002": "5800.00",
+        "1110000009": "5800.00",
+        "4110000006": "800.00",
+        "4111000005": "800.00"
+      }
+    }
+  ]
+}
