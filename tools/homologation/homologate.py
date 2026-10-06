@@ -127,25 +127,29 @@ class Ledger:
     def lp(self):
         return "/v1/organizations/%s/ledgers/%s" % (self.org, self.ledger)
 
-    def ensure_organization(self):
+    def ensure_organization(self, create=True):
         wanted = self.sc["organization"]
         found = [o for o in self.midaz.items("/v1/organizations") if o.get("legalName") == wanted["legalName"]]
 
         if found:
             self.org = found[0]["id"]
+        elif not create:
+            fail("a organização '%s' não existe neste Midaz; rode setup antes" % wanted["legalName"])
         else:
             _, created = self.midaz.call("POST", "/v1/organizations", wanted)
             self.org = created["id"]
 
         print("organização  %s  %s" % (self.org, wanted["legalName"]))
 
-    def ensure_ledger(self):
+    def ensure_ledger(self, create=True):
         name = self.sc["ledger"]
         base = "/v1/organizations/%s/ledgers" % self.org
         found = [l for l in self.midaz.items(base) if l.get("name") == name]
 
         if found:
             self.ledger = found[0]["id"]
+        elif not create:
+            fail("o ledger '%s' não existe neste Midaz; rode setup antes" % name)
         else:
             _, created = self.midaz.call("POST", base, {"name": name})
             self.ledger = created["id"]
@@ -943,14 +947,19 @@ def main():
     state = json.load(open(STATE_PATH)) if os.path.exists(STATE_PATH) else {}
 
     lg = Ledger(Midaz(args.midaz), scenario, state)
-    lg.ensure_organization()
-    lg.ensure_ledger()
+    # Only setup builds. reports and ledger read what setup built, and finding
+    # nothing is a refusal: creating an empty organization there judged a file
+    # generated from no data at all.
+    lg.ensure_organization(create=args.command == "setup")
+    lg.ensure_ledger(create=args.command == "setup")
 
     # The state is one ledger's: a scenario moved to a new ledger posts everything
     # again there, instead of skipping what it posted in the old one. A state
     # written before it recorded its ledger is adopted only when a transaction it
     # recorded exists in the ledger found; otherwise it is another ledger's.
     if state.get("ledger", lg.ledger) != lg.ledger or not state_belongs_to(lg, state):
+        if args.command != "setup":
+            fail("o ledger encontrado não tem os lançamentos que o setup registrou (o Midaz foi recriado?); rode setup antes")
         state.clear()
     state["ledger"] = lg.ledger
 
