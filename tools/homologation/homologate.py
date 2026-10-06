@@ -442,17 +442,36 @@ def ensure_subscription(rep, document_id, institution, version=None):
     person, and a stack with authentication off has nobody to sign it.
     """
     _, listed = rep.get("/v1/regulatory/subscriptions?status=active")
+    current = None
     for s in listed.get("items") or []:
         if s.get("documentId") == document_id and s.get("institutionId") == institution:
             if not version or s.get("adoptedVersion") == version:
                 return s["id"]
-            rep.raw("DELETE", "/v1/regulatory/subscriptions/" + s["id"])
-            print("substituída %s em %s" % (document_id, s.get("adoptedVersion")))
+            current = s
+
+    # Nothing is deactivated before the Reporter is known to carry the checkout's
+    # version: a run that cannot homologate this checkout leaves the subscription
+    # in force as it found it.
+    if version:
+        _, carried = rep.get("/v1/regulatory/documents/" + document_id)
+        if carried.get("version") != version:
+            fail("%s: o Reporter carrega a %s e o checkout declara %s; a origem do Reporter não serve este checkout "
+                 "(monte-o em REGULATORY_CATALOG_DIR). Nenhuma assinatura foi alterada"
+                 % (document_id, carried.get("version"), version))
+
+    if current:
+        rep.raw("DELETE", "/v1/regulatory/subscriptions/" + current["id"])
+        print("substituída %s em %s" % (document_id, current.get("adoptedVersion")))
+
     _, created = rep.call("POST", "/v1/regulatory/subscriptions", {"documentId": document_id, "institution": institution})
     pinned = created["subscription"].get("adoptedVersion")
     if version and pinned != version:
-        raise SystemExit("ERRO: %s assinado em %s, e o checkout declara %s; a origem do Reporter não serve este checkout"
-                         % (document_id, pinned, version))
+        # The origin pinned another version after all: the new subscription goes,
+        # the one this run replaced comes back as it was.
+        rep.raw("DELETE", "/v1/regulatory/subscriptions/" + created["subscription"]["id"])
+        if current:
+            rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
+        fail("%s assinado em %s, e o checkout declara %s; a assinatura anterior foi restaurada" % (document_id, pinned, version))
     return created["subscription"]["id"]
 
 
@@ -597,6 +616,41 @@ def expect_refusal(rep, subscription, number, doc, reason=None):
     return 0 if refused else 1
 
 
+def worker_log_since(started):
+    """What the worker logged since `started`, or None when its log cannot be read.
+
+    The Reporter records only a generic message on an errored report; the refusal
+    itself is in the worker's log. REPORTER_WORKER_CONTAINER names the container
+    (the local stack's by default).
+    """
+    container = os.environ.get("REPORTER_WORKER_CONTAINER", "midaz-reporter-worker")
+    since = (started - datetime.timedelta(seconds=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        done = subprocess.run(["docker", "logs", "--since", since, container], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return done.stdout + done.stderr if done.returncode == 0 else None
+
+
+def expect_error(number, doc, status, report, started):
+    """A generation the worker must refuse, for the reason the gabarito names."""
+    wanted = doc.get("errorContains") or []
+    problem = None
+    if status != "Error":
+        problem = "terminou em %s" % status
+    elif wanted:
+        logged = worker_log_since(started)
+        if logged is None:
+            problem = "terminou em Error, e o log do worker não pôde ser lido para confirmar o motivo"
+        else:
+            refusals = [line for line in logged.splitlines() if all(w in line for w in wanted)]
+            if not refusals:
+                problem = "terminou em Error, mas não pelo motivo esperado (%s)" % " + ".join(wanted)
+    print("%-6s %-4s %-10s erro esperado: %s, report %s" % ("OK" if not problem else "FALHOU", number, doc["dataBase"],
+                                                           problem or "Error, " + " + ".join(wanted), report))
+    return 0 if not problem else 1
+
+
 def generate(rep, subscription, data_base, kind="I"):
     _, created = rep.call("POST", "/v1/regulatory/reports", {
         "subscriptionId": subscription, "parameters": {"dataBase": data_base, "tipoRemessa": kind}})
@@ -709,14 +763,13 @@ def run_reports(lg, args):
             continue
 
         kind = doc.get("tipoRemessa", "I")
+        started = datetime.datetime.now(datetime.timezone.utc)
         report, status, artifact = generate(rep, subscription, doc["dataBase"], kind)
         if doc.get("errored"):
             # Refused by the worker: the read answered nothing the document can be
-            # filed from (an empty balancete). The reason is in the worker's log.
-            ok = status == "Error"
-            failures += not ok
-            print("%-6s %-4s %-10s erro esperado: terminou em %s, report %s" % ("OK" if ok else "FALHOU", number,
-                                                                               doc["dataBase"], status, report))
+            # filed from. An Error alone proves nothing — any failure ends there —
+            # so the refusal the gabarito names has to be in the worker's log.
+            failures += expect_error(number, doc, status, report, started)
             continue
         if artifact is None:
             problems = ["a geração terminou em %s" % status]
