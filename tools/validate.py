@@ -620,8 +620,9 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             spec = resolved.get(field)
             if (dataset, field) in derived:
                 # Calculado pelo motor a partir de outro campo: o binding mapeia a
-                # ORIGEM, nunca o derivado — o motor recusaria o binding.
-                if spec is not None:
+                # ORIGEM, nunca o derivado — o motor recusaria o binding. Pela
+                # PRESENÇA da chave: `cnpj8:` sem valor também é um mapeamento.
+                if isinstance(resolved, dict) and field in resolved:
                     fail(
                         f"{doc_dir.relative_to(ROOT)}: binding.example mapeia {dataset}.{field}, que o "
                         f"contrato deriva de '{derived[(dataset, field)]}' (prefixOf); mapeie a origem"
@@ -1634,7 +1635,9 @@ def _check_derivations(doc_dir: Path, dataset: str, ds: dict) -> None:
         if not isinstance(source, str) or not source:
             continue
         where = f"{doc_dir.relative_to(ROOT)}: {dataset}.{name}.prefixOf"
-        if source == name:
+        if field.get("type") != "string":
+            fail(f"{where} está num campo do tipo {field.get('type')!r}; o corte produz texto, então o derivado é string")
+        elif source == name:
             fail(f"{where} nomeia o próprio campo")
         elif source not in by_name:
             fail(f"{where} nomeia '{source}', que o conjunto não declara")

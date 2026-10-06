@@ -813,6 +813,18 @@ MUTATIONS: list[Mutation] = [
         "mapeie a origem",
     ),
     Mutation(
+        "derivado-mapeado-com-nulo",
+        "`cnpj8:` sem valor ainda é um mapeamento do derivado no binding",
+        lambda b: b[PLANO]["binding"]["datasets"]["institution"]["fields"].update({"cnpj8": None}),
+        "mapeie a origem",
+    ),
+    Mutation(
+        "derivado-nao-texto",
+        "o corte produz texto; um derivado declarado como número não pode ser satisfeito",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"type": "integer"}),
+        "o derivado é string",
+    ),
+    Mutation(
         "digito-verificador-desconhecido",
         "um checkDigit que o motor não conhece não verifica nada",
         lambda b: field(b[PLANO]["contract"], "institution", "cnpj").update({"checkDigit": "cpf"}),
