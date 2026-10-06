@@ -127,25 +127,29 @@ class Ledger:
     def lp(self):
         return "/v1/organizations/%s/ledgers/%s" % (self.org, self.ledger)
 
-    def ensure_organization(self):
+    def ensure_organization(self, create=True):
         wanted = self.sc["organization"]
         found = [o for o in self.midaz.items("/v1/organizations") if o.get("legalName") == wanted["legalName"]]
 
         if found:
             self.org = found[0]["id"]
+        elif not create:
+            fail("a organização '%s' não existe neste Midaz; rode setup antes" % wanted["legalName"])
         else:
             _, created = self.midaz.call("POST", "/v1/organizations", wanted)
             self.org = created["id"]
 
         print("organização  %s  %s" % (self.org, wanted["legalName"]))
 
-    def ensure_ledger(self):
+    def ensure_ledger(self, create=True):
         name = self.sc["ledger"]
         base = "/v1/organizations/%s/ledgers" % self.org
         found = [l for l in self.midaz.items(base) if l.get("name") == name]
 
         if found:
             self.ledger = found[0]["id"]
+        elif not create:
+            fail("o ledger '%s' não existe neste Midaz; rode setup antes" % name)
         else:
             _, created = self.midaz.call("POST", base, {"name": name})
             self.ledger = created["id"]
@@ -468,32 +472,55 @@ def ensure_subscription(rep, document_id, institution, version=None):
     except (SystemExit, Exception):
         # The replacement was not made (refused, or the connection dropped): the
         # subscription this run deactivated comes back before the run stops.
-        if current:
-            try:
-                rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
-            except (SystemExit, Exception) as restoring:
-                # The original failure is what stops the run; this one is reported
-                # beside it, never in its place.
-                print("ERRO: a assinatura %s (%s) ficou desativada e não pôde ser restaurada: %s"
-                      % (current["id"], document_id, restoring), file=sys.stderr)
-            else:
-                print("restaurada  %s em %s" % (document_id, current.get("adoptedVersion")))
+        restore_subscription(rep, document_id, current)
         raise
     pinned = created["subscription"].get("adoptedVersion")
     if version and pinned != version:
         # The origin pinned another version after all: the new subscription goes,
         # the one this run replaced comes back as it was.
-        rep.raw("DELETE", "/v1/regulatory/subscriptions/" + created["subscription"]["id"])
-        if current:
-            rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
-        fail("%s assinado em %s, e o checkout declara %s; a assinatura anterior foi restaurada" % (document_id, pinned, version))
+        restored = restore_subscription(rep, document_id, current, created["subscription"]["id"])
+        fail("%s assinado em %s, e o checkout declara %s; %s" % (
+            document_id, pinned, version,
+            "a assinatura anterior foi restaurada" if restored else "a assinatura anterior NÃO pôde ser restaurada (ver acima)"))
     return created["subscription"]["id"]
+
+
+def restore_subscription(rep, document_id, current, replacement=None):
+    """Undo a replacement: deactivate the new subscription, reactivate the old one.
+
+    Answers whether the old one is back in force. A failure here is reported on its
+    own line and never raised: the caller is already stopping for another reason,
+    and that reason is the one the run ends with.
+    """
+    if replacement:
+        try:
+            rep.raw("DELETE", "/v1/regulatory/subscriptions/" + replacement)
+        except (SystemExit, Exception) as removing:
+            # The replacement stays in force, pinned to the version this run
+            # refused; the old one cannot come back beside it (one active
+            # subscription per document), so it is not tried.
+            print("ERRO: a assinatura nova %s (%s) continua ATIVA, presa à versão errada, e não pôde ser desativada: %s"
+                  % (replacement, document_id, removing), file=sys.stderr)
+            if current:
+                print("ERRO: a assinatura anterior %s (%s) continua desativada" % (current["id"], document_id),
+                      file=sys.stderr)
+            return False
+    if current:
+        try:
+            rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
+        except (SystemExit, Exception) as restoring:
+            print("ERRO: a assinatura anterior %s (%s) ficou desativada e não pôde ser reativada: %s"
+                  % (current["id"], document_id, restoring), file=sys.stderr)
+            return False
+        print("restaurada  %s em %s" % (document_id, current.get("adoptedVersion")))
+    return True
 
 
 def contract_version(root, number):
     """The version a catalog checkout declares for a document's contract."""
     with open(os.path.join(root, "br/bcb/cadoc-%s/contract.yaml" % number)) as fh:
-        found = re.search(r"^  version: (\S+)", fh.read(), re.M)
+        # metadata.version, quoted or not: `version: "1.2.2"` is the same 1.2.2.
+        found = re.search(r"""^  version:\s*["']?([^"'\s#]+)["']?""", fh.read(), re.M)
     return found.group(1) if found else None
 
 
@@ -894,6 +921,27 @@ def cross_check(generated):
 
     return failures
 
+def setup_missing(lg, state):
+    """The scenario's transactions setup has not finished, or that Midaz does not have.
+
+    An organization and a ledger found by name prove nothing about the entries: a
+    setup interrupted after the accounts leaves a ledger the documents would be
+    generated from as if it were complete. Every transaction the scenario declares
+    has to be recorded as finished and answer in Midaz.
+    """
+    recorded = state.get("transactions") or {}
+    missing = []
+    for t in lg.sc["transactions"]:
+        entry = recorded.get(t["key"]) or {}
+        if not entry.get("finished") or not entry.get("id"):
+            missing.append(t["key"])
+            continue
+        status, _ = lg.midaz.call("GET", "%s/transactions/%s" % (lg.lp, entry["id"]), ok=(200, 404))
+        if status != 200:
+            missing.append(t["key"])
+    return missing
+
+
 def state_belongs_to(lg, state):
     """Whether a state with no recorded ledger was written against the ledger found.
 
@@ -943,16 +991,27 @@ def main():
     state = json.load(open(STATE_PATH)) if os.path.exists(STATE_PATH) else {}
 
     lg = Ledger(Midaz(args.midaz), scenario, state)
-    lg.ensure_organization()
-    lg.ensure_ledger()
+    # Only setup builds. reports and ledger read what setup built, and finding
+    # nothing is a refusal: creating an empty organization there judged a file
+    # generated from no data at all.
+    lg.ensure_organization(create=args.command == "setup")
+    lg.ensure_ledger(create=args.command == "setup")
 
     # The state is one ledger's: a scenario moved to a new ledger posts everything
     # again there, instead of skipping what it posted in the old one. A state
     # written before it recorded its ledger is adopted only when a transaction it
     # recorded exists in the ledger found; otherwise it is another ledger's.
     if state.get("ledger", lg.ledger) != lg.ledger or not state_belongs_to(lg, state):
+        if args.command != "setup":
+            fail("o ledger encontrado não tem os lançamentos que o setup registrou (o Midaz foi recriado?); rode setup antes")
         state.clear()
     state["ledger"] = lg.ledger
+
+    if args.command != "setup":
+        missing = setup_missing(lg, state)
+        if missing:
+            fail("o setup não terminou neste ledger: %d lançamento(s) do cenário sem registro ou fora do Midaz (%s); "
+                 "rode setup antes" % (len(missing), ", ".join(missing[:8]) + (" ..." if len(missing) > 8 else "")))
 
     if args.command == "setup":
         lg.ensure_asset()
