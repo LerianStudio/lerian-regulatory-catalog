@@ -457,11 +457,14 @@ def ensure_subscription(rep, document_id, institution, version=None):
     # version: a run that cannot homologate this checkout leaves the subscription
     # in force as it found it.
     if version:
-        _, carried = rep.get("/v1/regulatory/documents/" + document_id)
-        if carried.get("version") != version:
+        # The LIST answers the catalog the deployment carries, subscribed or not;
+        # GET /documents/{id} is the tenant's view and 404s with no subscription.
+        _, listed_docs = rep.get("/v1/regulatory/documents")
+        carried = next((d.get("version") for d in listed_docs.get("items") or [] if d.get("id") == document_id), None)
+        if carried != version:
             fail("%s: o Reporter carrega a %s e o checkout declara %s; a origem do Reporter não serve este checkout "
                  "(monte-o em REGULATORY_CATALOG_DIR). Nenhuma assinatura foi alterada"
-                 % (document_id, carried.get("version"), version))
+                 % (document_id, carried or "nenhuma", version))
 
     if current:
         rep.raw("DELETE", "/v1/regulatory/subscriptions/" + current["id"])

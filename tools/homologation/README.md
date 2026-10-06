@@ -71,7 +71,7 @@ Três desfechos não geram arquivo, e o gabarito diz qual espera:
 
 Uma assinatura presa a outra versão que a do checkout só é trocada depois de o
 Reporter confirmar que carrega a versão do checkout (`GET
-/v1/regulatory/documents/{id}`); se não carrega, nada é alterado. Se a assinatura
+/v1/regulatory/documents`, a lista do catálogo, que responde com ou sem assinatura); se não carrega, nada é alterado. Se a assinatura
 nova ainda assim vier em outra versão, ela é desfeita e a anterior reativada.
 
 ## O que esta ferramenta já encontrou
