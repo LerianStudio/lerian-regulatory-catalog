@@ -1,0 +1,66 @@
+{
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/f-bloqueio.json. Bloqueio e desbloqueio movem saldo entre `default` e `bloqueio` da mesma conta, sob a mesma rubrica: o depósito do Bruno é 2000 - 1000 = 1000 em qualquer data depois do saque, bloqueado ou não. Caixa: 10000 + 2000 - 1000 = 11000. Ativo 11000 = depósitos 1000 + capital 10000.",
+  "documents": [
+    {
+      "document": "4010",
+      "dataBase": "2026-09",
+      "complete": true,
+      "lines": {
+        "1000000009": "11000.00",
+        "1100000002": "11000.00",
+        "1110000009": "11000.00",
+        "4000000006": "1000.00",
+        "4100000009": "1000.00",
+        "4110000006": "1000.00",
+        "4111000005": "1000.00",
+        "6000000004": "10000.00",
+        "6100000007": "10000.00",
+        "6110000004": "10000.00",
+        "6111000003": "10000.00"
+      }
+    },
+    {
+      "document": "4016",
+      "dataBase": "2026-12",
+      "complete": true,
+      "_note": "Sem movimento depois de setembro. Recusado enquanto dezembro estiver aberto.",
+      "lines": {
+        "1000000009": "11000.00",
+        "1100000002": "11000.00",
+        "1110000009": "11000.00",
+        "4000000006": "1000.00",
+        "4100000009": "1000.00",
+        "4110000006": "1000.00",
+        "4111000005": "1000.00",
+        "6000000004": "10000.00",
+        "6100000007": "10000.00",
+        "6110000004": "10000.00",
+        "6111000003": "10000.00"
+      }
+    },
+    {
+      "document": "4111",
+      "dataBase": "2026-09-11",
+      "complete": false,
+      "_note": "Dia seguinte ao bloqueio de 800, antes do saque: o depósito é 2000 inteiro — o bloqueado continua sendo do depositante.",
+      "lines": {
+        "1100000002": "12000.00",
+        "1110000009": "12000.00",
+        "4110000006": "2000.00",
+        "4111000005": "2000.00"
+      }
+    },
+    {
+      "document": "4111",
+      "dataBase": "2026-09-30",
+      "complete": false,
+      "_note": "Depois do saque e do desbloqueio parcial: depósito 1000 (500 disponível + 500 bloqueado).",
+      "lines": {
+        "1100000002": "11000.00",
+        "1110000009": "11000.00",
+        "4110000006": "1000.00",
+        "4111000005": "1000.00"
+      }
+    }
+  ]
+}

@@ -203,6 +203,24 @@ class Ledger:
 
         print("contas       %d" % len(self.sc["accounts"]))
 
+    def ensure_balances(self):
+        """Create the additional balances an account declares (a `bloqueio` key, say).
+
+        A balance is a bucket of the same account, under the same rubric: moving an
+        amount between two of them changes what can be spent, not what is owed.
+        """
+        for a in self.sc["accounts"]:
+            wanted = a.get("balances") or []
+            if not wanted:
+                continue
+            account = self.account(a["alias"])
+            existing = {b.get("key") for b in self.midaz.items("%s/accounts/%s/balances" % (self.lp, account["id"]))}
+            for key in wanted:
+                if key not in existing:
+                    self.midaz.call("POST", "%s/accounts/%s/balances" % (self.lp, account["id"]),
+                                    {"key": key, "allowSending": True, "allowReceiving": True})
+            print("saldos       %s  %s" % (a["alias"], ", ".join(["default"] + wanted)))
+
     def ensure_overdraft(self):
         """Turn on the overdraft of every account that declares one.
 
@@ -339,18 +357,24 @@ class Ledger:
             if "id" not in entry:
                 debit_alias, credit_alias = t["debit"], t["credit"]
                 debit_key, credit_key = self.leg_route(debit_alias), self.leg_route(credit_alias)
+                source = {"accountAlias": debit_alias, "chartOfAccounts": "",
+                          "amount": {"asset": "BRL", "value": t["amount"]}, "routeId": self.routes[debit_key]}
+                target = {"accountAlias": credit_alias, "chartOfAccounts": "",
+                          "amount": {"asset": "BRL", "value": t["amount"]}, "routeId": self.routes[credit_key]}
+                # A leg may name a balance of its account other than `default`: a
+                # block moves an amount from `default` to `bloqueio` and back.
+                if t.get("debitBalance"):
+                    source["balanceKey"] = t["debitBalance"]
+                if t.get("creditBalance"):
+                    target["balanceKey"] = t["creditBalance"]
                 body = {
                     "description": t["description"],
                     "routeId": self.transaction_route(debit_key, credit_key),
                     "metadata": {"homologacao": key},
                     "send": {
                         "asset": "BRL", "value": t["amount"],
-                        "source": {"from": [{"accountAlias": debit_alias, "chartOfAccounts": "",
-                                             "amount": {"asset": "BRL", "value": t["amount"]},
-                                             "routeId": self.routes[debit_key]}]},
-                        "distribute": {"to": [{"accountAlias": credit_alias, "chartOfAccounts": "",
-                                               "amount": {"asset": "BRL", "value": t["amount"]},
-                                               "routeId": self.routes[credit_key]}]},
+                        "source": {"from": [source]},
+                        "distribute": {"to": [target]},
                     },
                 }
                 if t.get("pending"):
@@ -361,6 +385,10 @@ class Ledger:
                 # writes its operations with balance_affected = false, rubric and
                 # amount included, so a document must leave them out.
                 endpoint = "/transactions/annotation" if t.get("annotation") else "/transactions/json"
+                # A BLOCK or UNBLOCK is a plain transaction whose operations Midaz
+                # types BLOCK/UNBLOCK: available moves between two balances.
+                if t.get("kind") in ("block", "unblock"):
+                    endpoint = "/transactions/" + t["kind"]
                 _, created = self.midaz.call("POST", self.lp + endpoint, body,
                                              idempotency="%s-%s" % (slug, key))
                 entry["id"] = created["id"]
@@ -1091,6 +1119,7 @@ def main():
         lg.ensure_asset()
         lg.ensure_account_types()
         lg.ensure_accounts()
+        lg.ensure_balances()
         lg.ensure_overdraft()
         lg.ensure_operation_routes()
         lg.post_transactions()

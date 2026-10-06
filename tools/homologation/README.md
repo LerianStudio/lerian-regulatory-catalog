@@ -20,6 +20,7 @@ Três peças, e a separação entre elas é o que dá valor ao resultado:
 | `d-calendario` | **Sintético, declarado como tal** | fevereiro de 2026 termina num sábado: balancete fechado no último dia útil, volume de sábado e domingo no primeiro dia útil de março, e o 4111 de sábado recusado |
 | `c-cobertura` | **Sintético, declarado como tal** | toda linha do 4111 que A e B não alcançam; lançamento na linha-mãe e em subcontas do cliente (soma da árvore); fluxo de agosto fora da janela; corte diário (dia 15 x dia 30); lançamento depois da data-base; grupos 2 e 5 |
 | `e-cheque-especial` | **Sintético, declarado como tal** | cheque especial no saldo de uma conta de depósito: o débito acima do saldo fica só com a parte coberta na rubrica do depósito (que vai a zero, nunca negativo) e o excedente vira uma operação companheira (`OVERDRAFT`) na rubrica de Adiantamentos a Depositantes que a rota declara; um crédito quita primeiro o adiantamento; um débito com saldo zero sai com a perna original de valor 0 |
+| `f-bloqueio` | **Sintético, declarado como tal** | bloqueio judicial como a transação BLOCK do Midaz: o valor vai do saldo `default` para um saldo `bloqueio` da mesma conta, sob a mesma rubrica, e o depósito continua inteiro no 4010 e no 4111 (o bloqueio limita o que se gasta, não o que se deve); o desbloqueio (UNBLOCK) devolve parte |
 
 Juntos tocam as 30 linhas do conjunto do 4111 e os nove grupos do 4010. A
 contabilidade é fictícia: as rubricas fora do conjunto do 4111 têm nome plausível
@@ -80,6 +81,13 @@ Uma conta pode declarar `overdraft` (`rubric`, `description`, `limit` opcional):
 Midaz cria sozinho o saldo companheiro `overdraft`) e põe a entrada
 `accountingEntries.overdraft` na rota da conta — sem ela, com `validateRoutes`, o
 Midaz recusa o débito que precisa do cheque especial (0492).
+
+Uma conta pode declarar `balances` (saldos além do `default`, ex.: `bloqueio`), e um
+lançamento pode ter `kind` `block`/`unblock` (os endpoints `/transactions/block` e
+`/unblock`) e `debitBalance`/`creditBalance` (a chave do saldo de cada perna). Sem
+`accountingEntries.block`/`unblock` na rota, o Midaz usa a rubrica `direct`: o
+bloqueio fica dentro da rubrica da conta. Se o cliente declarar outra rubrica para o
+bloqueio, os documentos mostram a reclassificação que ele configurou.
 
 O Midaz grava as operações de uma transação de forma **assíncrona**: a leitura do
 razão espera até todo lançamento que o `setup` registrou aparecer, e para dizendo
