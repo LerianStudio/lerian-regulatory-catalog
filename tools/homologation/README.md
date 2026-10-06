@@ -19,6 +19,7 @@ Três peças, e a separação entre elas é o que dá valor ao resultado:
 | `b-crediflex-scfi` | Sociedade de crédito, financiamento e investimento | aceite cambial, saldo credor em conta de empréstimo, obrigação zerada no mês, estorno, e uma **retificadora** (provisão, credora dentro do grupo 1) |
 | `d-calendario` | **Sintético, declarado como tal** | fevereiro de 2026 termina num sábado: balancete fechado no último dia útil, volume de sábado e domingo no primeiro dia útil de março, e o 4111 de sábado recusado |
 | `c-cobertura` | **Sintético, declarado como tal** | toda linha do 4111 que A e B não alcançam; lançamento na linha-mãe e em subcontas do cliente (soma da árvore); fluxo de agosto fora da janela; corte diário (dia 15 x dia 30); lançamento depois da data-base; grupos 2 e 5 |
+| `e-cheque-especial` | **Sintético, declarado como tal** | cheque especial no saldo de uma conta de depósito: o débito acima do saldo fica só com a parte coberta na rubrica do depósito (que vai a zero, nunca negativo) e o excedente vira uma operação companheira (`OVERDRAFT`) na rubrica de Adiantamentos a Depositantes que a rota declara; um crédito quita primeiro o adiantamento; um débito com saldo zero sai com a perna original de valor 0 |
 
 Juntos tocam as 30 linhas do conjunto do 4111 e os nove grupos do 4010. A
 contabilidade é fictícia: as rubricas fora do conjunto do 4111 têm nome plausível
@@ -73,6 +74,16 @@ Uma assinatura presa a outra versão que a do checkout só é trocada depois de 
 Reporter confirmar que carrega a versão do checkout (`GET
 /v1/regulatory/documents`, a lista do catálogo, que responde com ou sem assinatura); se não carrega, nada é alterado. Se a assinatura
 nova ainda assim vier em outra versão, ela é desfeita e a anterior reativada.
+
+Uma conta pode declarar `overdraft` (`rubric`, `description`, `limit` opcional): o
+`setup` liga o cheque especial no saldo `default` (`PATCH .../balances/{id}`, o
+Midaz cria sozinho o saldo companheiro `overdraft`) e põe a entrada
+`accountingEntries.overdraft` na rota da conta — sem ela, com `validateRoutes`, o
+Midaz recusa o débito que precisa do cheque especial (0492).
+
+O Midaz grava as operações de uma transação de forma **assíncrona**: a leitura do
+razão espera até todo lançamento que o `setup` registrou aparecer, e para dizendo
+quais faltam depois de 30s.
 
 ## O que esta ferramenta já encontrou
 
