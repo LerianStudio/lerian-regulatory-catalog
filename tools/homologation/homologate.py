@@ -203,6 +203,33 @@ class Ledger:
 
         print("contas       %d" % len(self.sc["accounts"]))
 
+    def ensure_overdraft(self):
+        """Turn on the overdraft of every account that declares one.
+
+        Midaz keeps it on the BALANCE, not the account: the default balance gets
+        allowOverdraft (and a limit, when declared), and Midaz creates the internal
+        `overdraft` companion balance on its own. A debit beyond what is available
+        then splits: the covered part stays on the account's rubric and the draw is
+        a companion operation (type OVERDRAFT) on the route's `overdraft` rubric.
+        """
+        for a in self.sc["accounts"]:
+            od = a.get("overdraft")
+            if not od:
+                continue
+            account = self.account(a["alias"])
+            balances = self.midaz.items("%s/accounts/%s/balances" % (self.lp, account["id"]))
+            default = next((b for b in balances if b.get("key") == "default"), None)
+            if default is None:
+                fail("a conta %s não tem o saldo default" % a["alias"])
+            settings = {"allowOverdraft": True, "overdraftLimitEnabled": bool(od.get("limit"))}
+            if od.get("limit"):
+                settings["overdraftLimit"] = od["limit"]
+            current = default.get("settings") or {}
+            if not all(current.get(k) == v for k, v in settings.items()):
+                self.midaz.call("PATCH", "%s/balances/%s" % (self.lp, default["id"]), {"settings": settings})
+            print("cheque esp.  %s  rubrica %s%s" % (a["alias"], od["rubric"],
+                                                    ("  limite " + od["limit"]) if od.get("limit") else ""))
+
     @staticmethod
     def route_key(account):
         return ("type:" + account["type"]) if account.get("routeByType") else account["alias"]
@@ -214,6 +241,9 @@ class Ledger:
         for a in self.sc["accounts"]:
             if not cosif_check(a["code"]):
                 fail("conta %s: %s não é uma rubrica COSIF de dez dígitos com DV válido" % (a["alias"], a["code"]))
+            od = (a.get("overdraft") or {}).get("rubric")
+            if od and not cosif_check(od):
+                fail("conta %s: a rubrica do cheque especial %s não é COSIF de dez dígitos com DV válido" % (a["alias"], od))
 
             key = self.route_key(a)
             if key in planned and planned[key]["code"] != a["code"]:
@@ -221,19 +251,27 @@ class Ledger:
             planned[key] = a
 
         for key, a in planned.items():
-            title = "%s %s" % (a["code"], key)
+            od = a.get("overdraft")
+            title = "%s %s%s" % (a["code"], key, (" +od " + od["rubric"]) if od else "")
 
             if title not in existing:
                 description = a["name"].split(" — ")[-1]
                 rubric = {"code": a["code"], "description": description}
                 rule = ({"ruleType": "account_type", "validIf": [a["type"]]} if a.get("routeByType")
                         else {"ruleType": "alias", "validIf": a["alias"]})
+                entries = {x: {"debit": rubric, "credit": rubric} for x in ROUTE_ACTIONS}
+                if od:
+                    # Where the draw is booked: with validateRoutes, Midaz refuses a
+                    # debit that needs the overdraft when the route has no rubric for
+                    # it (0492). Use and repayment land on the same rubric.
+                    od_rubric = {"code": od["rubric"], "description": od["description"]}
+                    entries["overdraft"] = {"debit": od_rubric, "credit": od_rubric}
                 _, created = self.midaz.call("POST", self.lp + "/operation-routes", {
                     "title": title,
                     "description": description,
                     "operationType": "bidirectional",
                     "account": rule,
-                    "accountingEntries": {x: {"debit": rubric, "credit": rubric} for x in ROUTE_ACTIONS},
+                    "accountingEntries": entries,
                 })
                 existing[title] = created["id"]
 
@@ -331,8 +369,26 @@ class Ledger:
             save_state(self.state)
 
 
-def operations(lg):
-    """Every operation of every account the scenario touches, read through the API."""
+def operations(lg, attempts=15):
+    """Every operation of every account the scenario touches, read through the API.
+
+    Midaz writes a transaction's operations ASYNCHRONOUSLY: right after setup posts,
+    the last transactions may not be listed yet, and a ledger read then does not
+    close. The read is repeated until every transaction setup recorded shows up.
+    """
+    posted = {t.get("id") for t in (lg.state.get("transactions") or {}).values() if t.get("id")}
+    for attempt in range(attempts):
+        out = read_operations(lg)
+        if posted <= {o.get("transactionId") for o in out}:
+            return out
+        time.sleep(2)
+    missing = posted - {o.get("transactionId") for o in out}
+    fail("%d lançamento(s) registrados pelo setup ainda sem operações no Midaz depois de %ds: %s"
+         % (len(missing), 2 * attempts, ", ".join(sorted(missing))[:300]))
+
+
+def read_operations(lg):
+    """One read of every operation of every account the scenario touches."""
     aliases = {a["alias"] for a in lg.sc["accounts"]}
     seen, out = set(), []
 
@@ -1020,6 +1076,7 @@ def main():
         lg.ensure_asset()
         lg.ensure_account_types()
         lg.ensure_accounts()
+        lg.ensure_overdraft()
         lg.ensure_operation_routes()
         lg.post_transactions()
         save_state(state)

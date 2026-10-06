@@ -1,0 +1,72 @@
+{
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/e-cheque-especial.json. Caixa: 10000 + 1000 - 1500 + 300 - 100 = 9700. Depósito da Ana: 1000 - 1000 (só a parte coberta do saque de 1500) = 0, e assim fica: o crédito de 300 quita o adiantamento e o saque de 100 sai todo do cheque especial. Adiantamentos a Depositantes: 500 - 300 + 100 = 300. Ativo 9700 + 300 = 10000 = capital. Saldos na natureza da própria rubrica; 4010/4016 trazem todo nível da árvore.",
+  "documents": [
+    {
+      "document": "4010",
+      "dataBase": "2026-09",
+      "complete": true,
+      "lines": {
+        "1000000009": "10000.00",
+        "1100000002": "9700.00",
+        "1110000009": "9700.00",
+        "1600000007": "300.00",
+        "1610000004": "300.00",
+        "1611000003": "300.00",
+        "4000000006": "0.00",
+        "4100000009": "0.00",
+        "4110000006": "0.00",
+        "4111000005": "0.00",
+        "6000000004": "10000.00",
+        "6100000007": "10000.00",
+        "6110000004": "10000.00",
+        "6111000003": "10000.00"
+      }
+    },
+    {
+      "document": "4016",
+      "dataBase": "2026-12",
+      "complete": true,
+      "_note": "Sem movimento depois de setembro: o balanço de dezembro é o de setembro. Recusado enquanto dezembro estiver aberto.",
+      "lines": {
+        "1000000009": "10000.00",
+        "1100000002": "9700.00",
+        "1110000009": "9700.00",
+        "1600000007": "300.00",
+        "1610000004": "300.00",
+        "1611000003": "300.00",
+        "4000000006": "0.00",
+        "4100000009": "0.00",
+        "4110000006": "0.00",
+        "4111000005": "0.00",
+        "6000000004": "10000.00",
+        "6100000007": "10000.00",
+        "6110000004": "10000.00",
+        "6111000003": "10000.00"
+      }
+    },
+    {
+      "document": "4111",
+      "dataBase": "2026-09-30",
+      "complete": false,
+      "_note": "Depósitos de PN em zero, não negativo: o excedente foi para Adiantamentos a Depositantes (1.6.1), que está fora do conjunto do 4111.",
+      "lines": {
+        "1100000002": "9700.00",
+        "1110000009": "9700.00",
+        "4110000006": "0.00",
+        "4111000005": "0.00"
+      }
+    },
+    {
+      "document": "4111",
+      "dataBase": "2026-09-15",
+      "complete": false,
+      "_note": "Depois do saque de 1500 e antes da quitação: Caixa 10000 + 1000 - 1500 = 9500, depósito em zero.",
+      "lines": {
+        "1100000002": "9500.00",
+        "1110000009": "9500.00",
+        "4110000006": "0.00",
+        "4111000005": "0.00"
+      }
+    }
+  ]
+}
