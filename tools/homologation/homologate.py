@@ -463,7 +463,15 @@ def ensure_subscription(rep, document_id, institution, version=None):
         rep.raw("DELETE", "/v1/regulatory/subscriptions/" + current["id"])
         print("substituída %s em %s" % (document_id, current.get("adoptedVersion")))
 
-    _, created = rep.call("POST", "/v1/regulatory/subscriptions", {"documentId": document_id, "institution": institution})
+    try:
+        _, created = rep.call("POST", "/v1/regulatory/subscriptions", {"documentId": document_id, "institution": institution})
+    except (SystemExit, Exception):
+        # The replacement was not made (refused, or the connection dropped): the
+        # subscription this run deactivated comes back before the run stops.
+        if current:
+            rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
+            print("restaurada  %s em %s" % (document_id, current.get("adoptedVersion")))
+        raise
     pinned = created["subscription"].get("adoptedVersion")
     if version and pinned != version:
         # The origin pinned another version after all: the new subscription goes,
@@ -643,7 +651,15 @@ def expect_error(number, doc, status, report, started):
         if logged is None:
             problem = "terminou em Error, e o log do worker não pôde ser lido para confirmar o motivo"
         else:
-            refusals = [line for line in logged.splitlines() if all(w in line for w in wanted)]
+            # The refusal line does not carry the report id, but it carries the
+            # trace of the generation, and other lines of that trace do carry the
+            # id: only a refusal on THIS report's trace counts.
+            traces = set()
+            for line in logged.splitlines():
+                if report in line:
+                    traces.update(re.findall(r'"trace_id": "([0-9a-f]+)"', line))
+            refusals = [line for line in logged.splitlines()
+                        if all(w in line for w in wanted) and any(t in line for t in traces)]
             if not refusals:
                 problem = "terminou em Error, mas não pelo motivo esperado (%s)" % " + ".join(wanted)
     print("%-6s %-4s %-10s erro esperado: %s, report %s" % ("OK" if not problem else "FALHOU", number, doc["dataBase"],
