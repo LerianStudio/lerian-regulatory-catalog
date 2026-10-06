@@ -53,6 +53,27 @@ o catálogo guarda (menos o do 4111, que é a v1.0 de 2023 e contradiz as instru
 vigentes — `knownGaps` do contrato); toda rubrica com dez dígitos e DV válido;
 nada dos grupos 7 e 8 no 4016; e cada linha contra o gabarito.
 
+Três desfechos não geram arquivo, e o gabarito diz qual espera:
+
+- `"refused": true` — recusa na hora (400, `RPT-0140`), como o 4111 de um sábado.
+- **Período ainda aberto** — os contratos declaram `closed: true`, então uma
+  data-base cujo mês (ou dia) ainda não terminou no horário de Brasília é recusada
+  dizendo `has not closed`. O script decide pela data de hoje: o 4016 de 2026-12 é
+  uma recusa esperada até 31/12/2026 e, de 01/01/2027 em diante, é gerado e julgado
+  contra o gabarito, sem mexer em nada.
+- `"errored": true` — a geração é aceita e termina em `Error`: o balancete sem
+  conta nenhuma (o contrato declara o conjunto `nonEmpty`). Só `Error` não basta,
+  porque qualquer falha termina assim: `errorContains` lista o que a recusa tem de
+  dizer (`RPT-0195`, `'cosif_balances' has no row`), conferido no log do worker —
+  o Reporter grava no relatório só uma mensagem genérica. O container do worker
+  vem de `REPORTER_WORKER_CONTAINER` (padrão `midaz-reporter-worker`); sem acesso
+  ao log, o caso falha dizendo isso.
+
+Uma assinatura presa a outra versão que a do checkout só é trocada depois de o
+Reporter confirmar que carrega a versão do checkout (`GET
+/v1/regulatory/documents/{id}`); se não carrega, nada é alterado. Se a assinatura
+nova ainda assim vier em outra versão, ela é desfeita e a anterior reativada.
+
 ## O que esta ferramenta já encontrou
 
 - **O Midaz não grava status na operação.** Os bindings filtravam

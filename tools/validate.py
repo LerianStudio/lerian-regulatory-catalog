@@ -1718,6 +1718,7 @@ def check_dataset_shapes(doc_dir: Path, contract: dict) -> None:
 
         _check_grain(doc_dir, ds, name, seen_fields)
         _check_childof_shape(doc_dir, ds, name)
+        _check_non_empty(doc_dir, ds, name)
 
     _check_childof_cycles(doc_dir, contract)
 
@@ -1740,6 +1741,34 @@ def _check_grain(doc_dir: Path, ds: dict, name: str, fields: set[str]) -> None:
     for key in grain:
         if not isinstance(key, str) or key not in fields:
             fail(f"{doc_dir.relative_to(ROOT)}: {name}.grain nomeia {key!r}, campo que o conjunto não declara")
+
+
+def _check_non_empty(doc_dir: Path, ds: dict, name: str) -> None:
+    """`nonEmpty` é booleano e só vale num conjunto aberto e de topo.
+
+    O motor recusa o mesmo: num singleton não diz nada (é sempre uma linha), num
+    conjunto fechado o motor já recusa a leitura que não alcançou linha nenhuma, e
+    num conjunto aninhado "vazio" poderia ser sob um pai ou sob todos.
+    """
+    if "nonEmpty" not in ds:
+        return
+
+    where = f"{doc_dir.relative_to(ROOT)}: {name}.nonEmpty"
+    value = ds.get("nonEmpty")
+
+    if not isinstance(value, bool):
+        fail(f"{where} é {value!r}; é true ou false")
+        return
+
+    if not value:
+        return
+
+    if ds.get("grain") == "singleton":
+        fail(f"{where} declarado num singleton, que é sempre exatamente uma linha")
+    elif "rowSet" in ds:
+        fail(f"{where} declarado num conjunto fechado; a leitura que não alcança linha nenhuma já é recusada")
+    elif "childOf" in ds:
+        fail(f"{where} declarado num conjunto aninhado, onde vazio poderia ser sob um pai ou sob todos")
 
 
 def _check_childof_shape(doc_dir: Path, ds: dict, name: str) -> None:
@@ -1821,6 +1850,12 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
 
         if default is not None and domain and default not in domain:
             fail(f"{where} tem default {default!r} fora do próprio domain {domain!r} — nunca poderia ser satisfeito")
+
+        closed = optional_at(where, param, "closed")
+        if closed is not None and not isinstance(closed, bool):
+            fail(f"{where} tem closed {closed!r}; é true ou false")
+        elif closed and ptype not in ("month", "date"):
+            fail(f"{where} declara closed e não é do tipo month nem date, então não nomeia período que feche")
 
         months = optional_at(where, param, "allowedMonths")
         if months is None:
