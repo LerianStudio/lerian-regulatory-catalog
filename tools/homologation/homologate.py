@@ -432,7 +432,9 @@ def operations(lg, attempts=15):
 
 def read_operations(lg):
     """One read of every operation of every account the scenario touches."""
-    aliases = {a["alias"] for a in lg.sc["accounts"]}
+    # readAlso: accounts the scenario does not declare but Midaz posts to — the
+    # @external/BRL that closes each part of a cross-ledger entry.
+    aliases = {a["alias"] for a in lg.sc["accounts"]} | set(lg.sc.get("readAlso", []))
     seen, out = set(), []
 
     for alias in sorted(aliases):
@@ -510,15 +512,17 @@ class Reporter(Midaz):
             return err.code, dict(err.headers), err.read()
 
 
-def ensure_institution(rep, sc, org_id, ledger_id):
-    """The scenario's institution, scoped to its organization AND its ledger.
+def ensure_institution(rep, sc, org_id):
+    """The scenario's institution: the Midaz ORGANIZATION, whatever ledgers it keeps.
 
-    The ledger is part of the scope because an organization can keep more than one:
-    a scenario that had to be posted again lives in a ledger of its own, and the
-    documents must read that ledger alone.
+    The organization is the institution and carries its CNPJ; every ledger in it is
+    one of that institution's books, so the scope is the organization alone and a
+    ledger added later is filed without touching the institution. A scenario that
+    has to be posted again goes to a new organization, never to a second ledger of
+    the same one: that second ledger would be read into the same documents.
     """
     cnpj = sc["organization"]["legalDocument"]
-    conditions = {"organization_id": {"eq": [org_id]}, "ledger_id": {"eq": [ledger_id]}}
+    conditions = {"organization_id": {"eq": [org_id]}}
     body = {"name": sc["organization"]["legalName"], "cnpj": cnpj,
             "scope": {"midaz_transaction": {"tables": {"operation": {"conditions": conditions}}}}}
     for i in rep.items("/v1/institutions"):
@@ -892,7 +896,7 @@ def run_reports(lg, args):
     with open(args.expected) as fh:
         expected = json.load(fh)
 
-    institution = ensure_institution(rep, lg.sc, lg.org, lg.ledger)
+    institution = ensure_institution(rep, lg.sc, lg.org)
     print("\ninstituição  %s" % institution)
     failures = 0
     generated = {}
@@ -1067,9 +1071,167 @@ def state_belongs_to(lg, state):
 STATE_PATH = None
 
 
+ROOT_STATE = None
+
+
 def save_state(state):
+    # A scenario of several ledgers keeps one state per ledger inside a root one;
+    # whichever part is saved, the file holds the root.
     with open(STATE_PATH, "w") as fh:
-        json.dump(state, fh, indent=2, sort_keys=True)
+        json.dump(ROOT_STATE if ROOT_STATE is not None else state, fh, indent=2, sort_keys=True)
+
+
+class Books:
+    """An organization with several ledgers: the institution is the organization.
+
+    Every ledger is one book of the same institution (one CNPJ). Entries within a
+    ledger post through v1, dated; entries between ledgers post through the v2
+    cross-ledger API, which Midaz splits into one balanced transaction per ledger,
+    each closed against that ledger's @external/BRL with the bridge route's rubric
+    (`accountingEntries.crossLedger`). v2 takes no transactionDate: a cross-ledger
+    entry is dated when it is posted.
+    """
+
+    def __init__(self, midaz, scenario, state, create):
+        self.midaz, self.sc, self.state = midaz, scenario, state
+        self.parts = {}
+        for name, book in scenario["ledgers"].items():
+            sub = {"organization": scenario["organization"], "ledger": name,
+                   "accountTypes": book.get("accountTypes", []), "accounts": book.get("accounts", []),
+                   "transactions": [t for t in scenario.get("transactions", []) if t.get("ledger") == name],
+                   "readAlso": ["@external/BRL"]}
+            lg = Ledger(midaz, sub, state.setdefault("ledgers", {}).setdefault(name, {}))
+            lg.ensure_organization(create=create)
+            lg.ensure_ledger(create=create)
+            if lg.state.get("ledger", lg.ledger) != lg.ledger:
+                if not create:
+                    fail("o ledger %s não é o que o setup registrou (o Midaz foi recriado?); rode setup antes" % name)
+                lg.state.clear()
+            lg.state["ledger"] = lg.ledger
+            self.parts[name] = lg
+        self.org = next(iter(self.parts.values())).org
+        self.op = "/v2/organizations/%s" % self.org
+
+    def first(self):
+        return next(iter(self.parts.values()))
+
+    def setup(self):
+        for name, lg in self.parts.items():
+            self.midaz.call("PATCH", "/v2/organizations/%s/ledgers/%s/settings" % (self.org, lg.ledger),
+                            {"crossLedger": {"enabled": True},
+                             "accounting": {"validateRoutes": True, "validateAccountType": True}})
+            lg.ensure_asset()
+            lg.ensure_account_types()
+            lg.ensure_accounts()
+            lg.ensure_operation_routes()
+            lg.post_transactions()
+            print("livro        %s pronto, cross-ledger ligado" % name)
+        self.ensure_org_routes()
+        self.post_cross()
+        save_state(self.state)
+
+    def ensure_org_routes(self):
+        """Organization-level routes for the cross-ledger entries: one per account, and the bridge.
+
+        The bridge route carries the crossLedger entry and nothing else; Midaz takes
+        crossLedger.credit where value leaves a ledger and crossLedger.debit where it
+        arrives. The same rubric on both sides: for one institution the bridge is an
+        internal account that must net to zero across its books.
+        """
+        existing = {r.get("title"): r["id"] for r in self.midaz.items(self.op + "/operation-routes")}
+        routes = self.state.setdefault("orgRoutes", {})
+        for name, book in self.sc["ledgers"].items():
+            for a in book.get("accounts", []):
+                title = "org %s %s" % (a["code"], a["alias"])
+                if title not in existing:
+                    rubric = {"code": a["code"], "description": a["name"].split(" — ")[-1]}
+                    _, created = self.midaz.call("POST", self.op + "/operation-routes", {
+                        "title": title, "description": rubric["description"], "operationType": "bidirectional",
+                        "account": {"ruleType": "alias", "validIf": a["alias"]},
+                        "accountingEntries": {x: {"debit": rubric, "credit": rubric} for x in ROUTE_ACTIONS}})
+                    existing[title] = created["id"]
+                routes[a["alias"]] = existing[title]
+        bridge = self.sc["bridge"]
+        if not cosif_check(bridge["code"]):
+            fail("a rubrica da ponte %s não é COSIF de dez dígitos com DV válido" % bridge["code"])
+        title = "org ponte %s" % bridge["code"]
+        if title not in existing:
+            rubric = {"code": bridge["code"], "description": bridge["description"]}
+            _, created = self.midaz.call("POST", self.op + "/operation-routes", {
+                "title": title, "description": bridge["description"], "operationType": "bidirectional",
+                "accountingEntries": {"crossLedger": {"debit": rubric, "credit": rubric}}})
+            existing[title] = created["id"]
+        routes["#bridge"] = existing[title]
+        print("rotas org.   %d contas + ponte %s" % (len(routes) - 1, bridge["code"]))
+
+    def transaction_route(self, debit_alias, credit_alias):
+        routes = self.state["orgRoutes"]
+        legs = [routes[debit_alias], routes[credit_alias], routes["#bridge"]]
+        title = "org %s -> %s [%s]" % (debit_alias, credit_alias, " ".join(r[-8:] for r in legs))
+        cache = self.state.setdefault("orgTransactionRoutes", {})
+        if title not in cache:
+            found = [r for r in self.midaz.items(self.op + "/transaction-routes") if r.get("title") == title]
+            if found:
+                cache[title] = found[0]["id"]
+            else:
+                _, created = self.midaz.call("POST", self.op + "/transaction-routes",
+                                             {"title": title, "operationRoutes": legs})
+                cache[title] = created["id"]
+        return cache[title]
+
+    def where(self, alias):
+        for name, book in self.sc["ledgers"].items():
+            if any(a["alias"] == alias for a in book.get("accounts", [])):
+                return name
+        fail("lançamento numa conta que o cenário não declara: %s" % alias)
+
+    def post_cross(self):
+        done = self.state.setdefault("cross", {})
+        slug = self.sc["organization"]["legalDocument"]
+        for t in self.sc.get("crossTransactions", []):
+            key = t["key"]
+            if done.get(key, {}).get("finished"):
+                continue
+            debit_book, credit_book = self.where(t["debit"]), self.where(t["credit"])
+            if debit_book == credit_book:
+                fail("%s não cruza ledgers (%s nos dois lados); declare-o em transactions" % (key, debit_book))
+            routes = self.state["orgRoutes"]
+            leg = lambda alias, book: {"alias": alias, "amount": t["amount"], "organizationId": self.org,
+                                       "ledgerId": self.parts[book].ledger, "operationRouteId": routes[alias]}
+            _, created = self.midaz.call("POST", "/v2/transactions/direct", {
+                "description": t["description"], "asset": "BRL", "amount": t["amount"],
+                "routeId": self.transaction_route(t["debit"], t["credit"]),
+                "metadata": {"homologacao": key},
+                "debits": [leg(t["debit"], debit_book)], "credits": [leg(t["credit"], credit_book)]},
+                idempotency="%s-%s" % (slug, key))
+            parts = created.get("transactions") or []
+            for part in parts:
+                book = next(n for n, lg in self.parts.items() if lg.ledger == part.get("ledgerId"))
+                self.parts[book].state.setdefault("transactions", {})["%s@%s" % (key, book)] = {
+                    "id": part["id"], "finished": True}
+            done[key] = {"groupId": created.get("groupId"), "finished": True, "parts": len(parts)}
+            save_state(self.state)
+            print("cross        %s  grupo %s  %d partes" % (key, created.get("groupId"), len(parts)))
+
+    def report(self):
+        """Each book's rubrics, and the institution's: the bridge must net to zero across the books."""
+        total = {}
+        for name, lg in self.parts.items():
+            print("\n== livro %s" % name)
+            for o in report_ledger(lg):
+                if o.get("balanceAffected") is False:
+                    continue
+                amount = Decimal(str((o.get("amount") or {}).get("value") or "0"))
+                code = o.get("routeCode") or "<sem rubrica>"
+                total[code] = total.get(code, Decimal(0)) + (amount if o.get("direction") == "credit" else -amount)
+        print("\n== instituição (todos os livros), créd-déb por rubrica")
+        for code in sorted(total):
+            print("%-12s %14s" % (code, total[code]))
+        print("soma: %s (zero = a instituição fecha em partidas dobradas)" % sum(total.values()))
+        bridge = total.get(self.sc["bridge"]["code"], Decimal(0))
+        print("ponte %s somada nos livros: %s (%s)" % (self.sc["bridge"]["code"], bridge,
+                                                   "zera" if bridge == 0 else "NÃO ZERA"))
+        return bridge == 0
 
 
 def main():
@@ -1091,6 +1253,10 @@ def main():
 
     STATE_PATH = os.path.splitext(args.scenario)[0] + ".state.json"
     state = json.load(open(STATE_PATH)) if os.path.exists(STATE_PATH) else {}
+
+    if "ledgers" in scenario:
+        run_books(args, scenario, state)
+        return
 
     lg = Ledger(Midaz(args.midaz), scenario, state)
     # Only setup builds. reports and ledger read what setup built, and finding
@@ -1131,6 +1297,24 @@ def main():
         sys.exit(1 if run_reports(lg, args) else 0)
 
     report_ledger(lg)
+
+
+def run_books(args, scenario, state):
+    global ROOT_STATE
+    ROOT_STATE = state
+    books = Books(Midaz(args.midaz), scenario, state, create=args.command == "setup")
+    if args.command == "setup":
+        books.setup()
+    else:
+        for name, lg in books.parts.items():
+            missing = setup_missing(lg, lg.state)
+            if missing:
+                fail("o setup não terminou no livro %s: %s; rode setup antes" % (name, ", ".join(missing[:8])))
+    if args.command == "reports":
+        args.expected = args.expected or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(args.scenario))),
+                                                      "expected", os.path.basename(args.scenario))
+        sys.exit(1 if run_reports(books.first(), args) else 0)
+    sys.exit(0 if books.report() else 1)
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ Três peças, e a separação entre elas é o que dá valor ao resultado:
 | `c-cobertura` | **Sintético, declarado como tal** | toda linha do 4111 que A e B não alcançam; lançamento na linha-mãe e em subcontas do cliente (soma da árvore); fluxo de agosto fora da janela; corte diário (dia 15 x dia 30); lançamento depois da data-base; grupos 2 e 5 |
 | `e-cheque-especial` | **Sintético, declarado como tal** | cheque especial no saldo de uma conta de depósito: o débito acima do saldo fica só com a parte coberta na rubrica do depósito (que vai a zero, nunca negativo) e o excedente vira uma operação companheira (`OVERDRAFT`) na rubrica de Adiantamentos a Depositantes que a rota declara; um crédito quita primeiro o adiantamento; um débito com saldo zero sai com a perna original de valor 0 |
 | `f-bloqueio` | **Sintético, declarado como tal** | bloqueio judicial como a transação BLOCK do Midaz: o valor vai do saldo `default` para um saldo `bloqueio` da mesma conta, sob a mesma rubrica, e o depósito continua inteiro no 4010 e no 4111 (o bloqueio limita o que se gasta, não o que se deve); o desbloqueio (UNBLOCK) devolve parte |
+| `g-livros-multiplos` | **Sintético, declarado como tal** | a instituição é a organização: dois ledgers (Contas e Tesouraria) lidos juntos pelo escopo só de organização, e lançamentos CROSS-LEDGER entre eles pela API v2 — cada parte fechada contra a `@external/BRL` do ledger com a rubrica da rota-ponte, que zera na soma dos livros. A v2 não retrodata: o 4111 do dia e o 4010 do mês dos lançamentos ficam como recusa esperada até o período fechar |
 
 Juntos tocam as 30 linhas do conjunto do 4111 e os nove grupos do 4010. A
 contabilidade é fictícia: as rubricas fora do conjunto do 4111 têm nome plausível
@@ -89,6 +90,13 @@ lançamento pode ter `kind` `block`/`unblock` (os endpoints `/transactions/block
 bloqueio fica dentro da rubrica da conta. Se o cliente declarar outra rubrica para o
 bloqueio, os documentos mostram a reclassificação que ele configurou.
 
+Um cenário de vários livros declara `ledgers` (cada um com `accountTypes` e
+`accounts`), `bridge` (a rubrica da rota-ponte), `transactions` com `ledger` (dentro
+de um livro, v1, datadas) e `crossTransactions` (entre livros, v2, datadas quando
+rodam). O `setup` liga `crossLedger` e `validateRoutes` em cada ledger e cria as
+rotas no nível da organização; o `ledger` mostra cada livro e a instituição, e
+confere que a ponte zera.
+
 O Midaz grava as operações de uma transação de forma **assíncrona**: a leitura do
 razão espera até todo lançamento que o `setup` registrou aparecer, e para dizendo
 quais faltam depois de 30s.
@@ -126,8 +134,11 @@ quais faltam depois de 30s.
   da rota, valor ZERO e `balance_affected = false`. Não inflam saldo, mas fariam a
   rubrica aparecer como linha de 0,00. O binding de referência lê só
   `balance_affected = true` e só `asset_code = BRL` (o ledger é multiativo).
-- **Mais de um ledger na organização.** A instituição é escopada pela organização
-  E pelo ledger; a ferramenta já faz isso.
+- **Mais de um ledger na organização.** A instituição é a organização: o escopo é
+  só `organization_id` e todo ledger dela entra nos documentos. Um cenário que
+  precisa ser lançado de novo vai para outra organização, nunca para um segundo
+  ledger da mesma. O cross-ledger (cenário G) prova que a ponte zera na soma dos
+  livros.
 - **Uma retificadora declarada só pelo grupo sai com o sinal trocado.** A
   natureza é do plano de contas do cliente: o cenário a declara (`natures`), e o
   motor usa o prefixo mais longo.

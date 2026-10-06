@@ -48,7 +48,7 @@ documents:
     regulator: BCB
     document: "4111"
     title: Saldos Contábeis Diários
-    version: 1.2.2
+    version: 1.2.3
     status: draft
     periodicity: daily
     appliesTo:
