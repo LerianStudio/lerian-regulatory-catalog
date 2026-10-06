@@ -492,16 +492,26 @@ def restore_subscription(rep, document_id, current, replacement=None):
     own line and never raised: the caller is already stopping for another reason,
     and that reason is the one the run ends with.
     """
-    try:
-        if replacement:
+    if replacement:
+        try:
             rep.raw("DELETE", "/v1/regulatory/subscriptions/" + replacement)
-        if current:
-            rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
-    except (SystemExit, Exception) as restoring:
-        print("ERRO: a assinatura %s (%s) ficou desativada e não pôde ser restaurada: %s"
-              % ((current or {}).get("id"), document_id, restoring), file=sys.stderr)
-        return False
+        except (SystemExit, Exception) as removing:
+            # The replacement stays in force, pinned to the version this run
+            # refused; the old one cannot come back beside it (one active
+            # subscription per document), so it is not tried.
+            print("ERRO: a assinatura nova %s (%s) continua ATIVA, presa à versão errada, e não pôde ser desativada: %s"
+                  % (replacement, document_id, removing), file=sys.stderr)
+            if current:
+                print("ERRO: a assinatura anterior %s (%s) continua desativada" % (current["id"], document_id),
+                      file=sys.stderr)
+            return False
     if current:
+        try:
+            rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
+        except (SystemExit, Exception) as restoring:
+            print("ERRO: a assinatura anterior %s (%s) ficou desativada e não pôde ser reativada: %s"
+                  % (current["id"], document_id, restoring), file=sys.stderr)
+            return False
         print("restaurada  %s em %s" % (document_id, current.get("adoptedVersion")))
     return True
 
