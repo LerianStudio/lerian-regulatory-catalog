@@ -1259,16 +1259,19 @@ class Books:
             if not done.get(key, {}).get("finished"):
                 missing.append(key)
                 continue
-            parts = {k: v for name, lg in self.parts.items()
-                     for k, v in (lg.state.get("transactions") or {}).items() if k.startswith(key + "@")}
-            if len(parts) != done[key].get("parts", -1) or not parts:
+            # Each book's part under its exact key, never by prefix: keys are free
+            # text, and "G02" must not collect the parts of "G02@refund".
+            parts = {name: (lg.state.get("transactions") or {}).get("%s@%s" % (key, name))
+                     for name, lg in self.parts.items()}
+            parts = {name: v for name, v in parts.items() if v}
+            if not parts or len(parts) != done[key].get("parts", -1):
                 missing.append(key)
                 continue
-            for k, v in parts.items():
-                lg = self.parts[k.split("@", 1)[1]]
+            for name, v in parts.items():
+                lg = self.parts[name]
                 status, _ = lg.midaz.call("GET", "%s/transactions/%s" % (lg.lp, v["id"]), ok=(200, 404))
                 if status != 200:
-                    missing.append(k)
+                    missing.append("%s@%s" % (key, name))
         return missing
 
 
