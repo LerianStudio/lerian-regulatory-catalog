@@ -472,26 +472,38 @@ def ensure_subscription(rep, document_id, institution, version=None):
     except (SystemExit, Exception):
         # The replacement was not made (refused, or the connection dropped): the
         # subscription this run deactivated comes back before the run stops.
-        if current:
-            try:
-                rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
-            except (SystemExit, Exception) as restoring:
-                # The original failure is what stops the run; this one is reported
-                # beside it, never in its place.
-                print("ERRO: a assinatura %s (%s) ficou desativada e não pôde ser restaurada: %s"
-                      % (current["id"], document_id, restoring), file=sys.stderr)
-            else:
-                print("restaurada  %s em %s" % (document_id, current.get("adoptedVersion")))
+        restore_subscription(rep, document_id, current)
         raise
     pinned = created["subscription"].get("adoptedVersion")
     if version and pinned != version:
         # The origin pinned another version after all: the new subscription goes,
         # the one this run replaced comes back as it was.
-        rep.raw("DELETE", "/v1/regulatory/subscriptions/" + created["subscription"]["id"])
+        restored = restore_subscription(rep, document_id, current, created["subscription"]["id"])
+        fail("%s assinado em %s, e o checkout declara %s; %s" % (
+            document_id, pinned, version,
+            "a assinatura anterior foi restaurada" if restored else "a assinatura anterior NÃO pôde ser restaurada (ver acima)"))
+    return created["subscription"]["id"]
+
+
+def restore_subscription(rep, document_id, current, replacement=None):
+    """Undo a replacement: deactivate the new subscription, reactivate the old one.
+
+    Answers whether the old one is back in force. A failure here is reported on its
+    own line and never raised: the caller is already stopping for another reason,
+    and that reason is the one the run ends with.
+    """
+    try:
+        if replacement:
+            rep.raw("DELETE", "/v1/regulatory/subscriptions/" + replacement)
         if current:
             rep.call("POST", "/v1/regulatory/subscriptions/%s/reactivate" % current["id"], {})
-        fail("%s assinado em %s, e o checkout declara %s; a assinatura anterior foi restaurada" % (document_id, pinned, version))
-    return created["subscription"]["id"]
+    except (SystemExit, Exception) as restoring:
+        print("ERRO: a assinatura %s (%s) ficou desativada e não pôde ser restaurada: %s"
+              % ((current or {}).get("id"), document_id, restoring), file=sys.stderr)
+        return False
+    if current:
+        print("restaurada  %s em %s" % (document_id, current.get("adoptedVersion")))
+    return True
 
 
 def contract_version(root, number):
