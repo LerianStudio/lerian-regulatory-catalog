@@ -20,7 +20,7 @@ metadata:
   regulator: BCB
   document: "4016"
   title: Balanço Patrimonial Analítico
-  version: 1.2.2   # 1.2.2: recusa período ainda aberto (closed) e balancete sem conta (nonEmpty)
+  version: 1.3.0   # 1.3.0: o CNPJ da declarante vem da base (organização do Midaz); a raiz é derivada pelo contrato
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
@@ -57,12 +57,25 @@ datasets:
     description: Identificação da instituição declarante.
     grain: singleton
     fields:
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        # O CNPJ da declarante é DADO: vem da base (a organização do Midaz), como
+        # qualquer outro valor. A regra é deste contrato: letras e dígitos, em
+        # maiúsculas, e os dois dígitos verificadores pela regra da Receita
+        # (numérico ou alfanumérico, IN RFB 2.229/2024). Um CNPJ que não verifica
+        # recusa a geração.
+        normalize: alphanumeric
+        checkDigit: cnpj
+        description: CNPJ da instituição declarante (quatorze posições).
       - name: cnpj8
         type: string
         length: 8
         required: true
-        # Alfanumérico: o CNPJ alfanumérico entra em vigor e a raiz deixa de ser
-        # garantidamente numérica. Não restringir a dígitos.
+        # O arquivo leva a RAIZ: as oito primeiras posições do CNPJ acima, cortadas
+        # pelo motor. Nenhum binding mapeia este campo.
+        prefixOf: cnpj
         pattern: '^[A-Za-z0-9]{8}$'
         description: Raiz do CNPJ (oito primeiras posições).
 

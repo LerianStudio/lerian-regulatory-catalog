@@ -11,9 +11,17 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4016
-contractVersion: 1.2.2
+contractVersion: 1.3.0
 
 queries:
+  - name: declarante
+    description: A organização do Midaz, que é a instituição declarante — o CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    # Qual organização: o escopo da instituição, que filtra organization.id pela
+    # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
+    # uma linha só recusa a geração em vez de escolher uma.
+
   - name: saldos_cosif
     description: Lançamentos do razão agregados em saldo por rubrica, SEM resultado.
     dataSource: midaz_transaction
@@ -83,10 +91,14 @@ queries:
 
 datasets:
   institution:
+    # O CNPJ vem da organização do Midaz (legal_document); a raiz que o arquivo
+    # leva é derivada pelo contrato (cnpj8: prefixOf cnpj).
+    from:
+      query: declarante
     fields:
-      cnpj8:
-        from: institution
-        institution: cnpj8
+      cnpj:
+        from: query
+        column: legal_document
 
   cosif_balances:
     from:

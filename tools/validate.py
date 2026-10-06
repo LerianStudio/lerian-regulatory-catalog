@@ -280,6 +280,21 @@ def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
     return datasets, parameters
 
 
+def derived_fields(contract: dict) -> dict[tuple[str, str], str]:
+    """Os campos DERIVADOS de cada conjunto: (conjunto, campo) -> campo de onde são cortados.
+
+    Um campo com `prefixOf` não vem de origem nenhuma: o motor o corta de outro campo
+    da mesma linha. Nenhum binding o mapeia, e o campo de onde ele é cortado conta
+    como posicionado sempre que o derivado é.
+    """
+    out: dict[tuple[str, str], str] = {}
+    for ds in datasets_of(contract):
+        for field in fields_of(ds):
+            if isinstance(field, dict) and isinstance(field.get("prefixOf"), str):
+                out[(ds.get("name"), field.get("name"))] = field["prefixOf"]
+    return out
+
+
 def query_list(binding: dict) -> list[dict]:
     """As consultas de um binding, só as bem formadas.
 
@@ -404,6 +419,11 @@ def check_template(doc_dir: Path, contract: dict) -> None:
             continue
 
         placed.add((dataset, field))
+
+    # O campo de onde um derivado é cortado está no arquivo através dele.
+    for (dataset, field), source in derived_fields(contract).items():
+        if (dataset, field) in placed:
+            placed.add((dataset, source))
 
     for dataset, fields in datasets.items():
         for field in sorted(fields):
@@ -595,8 +615,19 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             )
 
         resolved = entry.get("fields", {})
+        derived = derived_fields(contract)
         for field in sorted(fields):
             spec = resolved.get(field)
+            if (dataset, field) in derived:
+                # Calculado pelo motor a partir de outro campo: o binding mapeia a
+                # ORIGEM, nunca o derivado — o motor recusaria o binding. Pela
+                # PRESENÇA da chave: `cnpj8:` sem valor também é um mapeamento.
+                if isinstance(resolved, dict) and field in resolved:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: binding.example mapeia {dataset}.{field}, que o "
+                        f"contrato deriva de '{derived[(dataset, field)]}' (prefixOf); mapeie a origem"
+                    )
+                continue
             if spec is None:
                 # Um campo INCONDICIONALMENTE obrigatório sem origem é erro: toda
                 # geração falharia. Um condicional/opcional pode legitimamente não se
@@ -1543,7 +1574,8 @@ def check_references(doc_dir: Path, contract: dict) -> None:
 # validador e recusado lá, que é a divergência que estas conferências existem para
 # fechar — ver check_engine_parity abaixo.
 FIELD_TYPES = {"string", "integer", "decimal", "boolean", "date", "month"}
-NORMALIZATIONS = {"digits"}
+NORMALIZATIONS = {"digits", "alphanumeric"}
+CHECK_DIGITS = {"cnpj"}
 MAX_SCALE = 34
 MONTHS_OF_YEAR = {f"{m:02d}" for m in range(1, 13)}
 
@@ -1589,6 +1621,30 @@ def check_engine_parity(doc_dir: Path, contract: dict) -> None:
         name = ds.get("name", "<sem nome>")
         for field in fields_of(ds):
             _check_field_shape(doc_dir, name, field)
+        _check_derivations(doc_dir, name, ds)
+
+
+def _check_derivations(doc_dir: Path, dataset: str, ds: dict) -> None:
+    """Um derivado é cortado de um campo de texto do MESMO conjunto, que não é derivado.
+
+    O motor recusa o contrato nos mesmos casos; aqui a recusa chega antes da release.
+    """
+    by_name = {f.get("name"): f for f in fields_of(ds) if isinstance(f, dict)}
+    for name, field in by_name.items():
+        source = field.get("prefixOf")
+        if not isinstance(source, str) or not source:
+            continue
+        where = f"{doc_dir.relative_to(ROOT)}: {dataset}.{name}.prefixOf"
+        if field.get("type") != "string":
+            fail(f"{where} está num campo do tipo {field.get('type')!r}; o corte produz texto, então o derivado é string")
+        elif source == name:
+            fail(f"{where} nomeia o próprio campo")
+        elif source not in by_name:
+            fail(f"{where} nomeia '{source}', que o conjunto não declara")
+        elif by_name[source].get("prefixOf"):
+            fail(f"{where} nomeia '{source}', que também é derivado")
+        elif by_name[source].get("type") != "string":
+            fail(f"{where} nomeia '{source}', do tipo {by_name[source].get('type')!r}; só texto é cortado em posições")
 
 
 def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
@@ -1612,6 +1668,20 @@ def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
     length = optional_at(where, field, "length")
     if length is not None and (not isinstance(length, int) or isinstance(length, bool) or length < 1):
         fail(f"{where} tem length {length!r}; é o número de posições que o arquivo dá ao campo, então é ao menos 1")
+
+    check_digit = optional_at(where, field, "checkDigit")
+    if check_digit is not None:
+        if not isinstance(check_digit, str) or check_digit not in CHECK_DIGITS:
+            fail(f"{where} tem checkDigit {check_digit!r}; o motor conhece {sorted(CHECK_DIGITS)}")
+        elif ftype != "string":
+            fail(f"{where} declara checkDigit e é do tipo {ftype!r}; um CNPJ é texto")
+
+    prefix_of = optional_at(where, field, "prefixOf")
+    if prefix_of is not None:
+        if not isinstance(prefix_of, str) or not prefix_of:
+            fail(f"{where} tem prefixOf {prefix_of!r}; é o nome do campo de onde o valor é cortado")
+        elif length is None:
+            fail(f"{where} declara prefixOf sem length; o derivado são as primeiras `length` posições da origem")
 
     _check_pattern(f"{where}.pattern", optional_at(where, field, "pattern"))
 

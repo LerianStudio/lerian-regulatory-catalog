@@ -525,13 +525,15 @@ def ensure_institution(rep, sc, org_id):
     """
     cnpj = sc["organization"]["legalDocument"]
     conditions = {"organization_id": {"eq": [org_id]}}
-    body = {"name": sc["organization"]["legalName"], "cnpj": cnpj,
-            "scope": {"midaz_transaction": {"tables": {"operation": {"conditions": conditions}}}}}
+    # The declarant's CNPJ is read from the organization itself (onboarding's
+    # organization.legal_document), so the scope covers that table too: its own row.
+    scope = {"midaz_transaction": {"tables": {"operation": {"conditions": conditions}}},
+             "midaz_onboarding": {"tables": {"organization": {"conditions": {"id": {"eq": [org_id]}}}}}}
+    body = {"name": sc["organization"]["legalName"], "cnpj": cnpj, "scope": scope}
     for i in rep.items("/v1/institutions"):
         if i.get("cnpj") != cnpj:
             continue
-        current = (((i.get("scope") or {}).get("midaz_transaction") or {}).get("tables") or {}).get("operation") or {}
-        if current.get("conditions") != conditions:
+        if (i.get("scope") or {}) != scope:
             if i.get("version") is None:
                 fail("a instituição %s não informa 'version', e o PUT exige If-Match com ela" % i["id"])
             rep.call("PUT", "/v1/institutions/" + i["id"], body, headers={"If-Match": '"%s"' % i["version"]})

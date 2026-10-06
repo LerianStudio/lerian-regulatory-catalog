@@ -62,7 +62,9 @@ PLANO_CONTRACT = {
     ],
     "datasets": [
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
-         "fields": [{"name": "cnpj8", "type": "string", "length": 8, "required": True,
+         "fields": [{"name": "cnpj", "type": "string", "length": 14, "required": True,
+                     "normalize": "alphanumeric", "checkDigit": "cnpj", "description": "CNPJ."},
+                    {"name": "cnpj8", "type": "string", "length": 8, "required": True, "prefixOf": "cnpj",
                      "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."}]},
         {"name": "saldos", "description": "Saldo por rubrica.", "grain": ["codigo"], "nonEmpty": True,
          "fields": [
@@ -97,6 +99,7 @@ PLANO_BINDING = {
     "contract": "zz.fixture.plano",
     "contractVersion": "1.0.0",
     "queries": [
+        {"name": "declarante", "dataSource": "fonte_cadastro", "table": "organizacao"},
         {"name": "saldos_por_rubrica", "dataSource": "fonte_x", "table": "lancamento",
          "filters": [{"field": "status", "operator": "eq", "values": ["OK"]}],
          "aggregate": {
@@ -108,7 +111,8 @@ PLANO_BINDING = {
          }},
     ],
     "datasets": {
-        "institution": {"fields": {"cnpj8": {"from": "institution", "institution": "cnpj8"}}},
+        "institution": {"from": {"query": "declarante"},
+                        "fields": {"cnpj": {"from": "query", "column": "documento"}}},
         "saldos": {"from": {"query": "saldos_por_rubrica"},
                    "fields": {"codigo": {"from": "query", "column": "rota"},
                               "valor": {"from": "query", "column": "valor"}}},
