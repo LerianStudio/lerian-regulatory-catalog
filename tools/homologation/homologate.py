@@ -156,9 +156,11 @@ class Ledger:
 
         # Rotas validadas: sem isso o Midaz não grava route_code nenhum. Tipos de
         # conta validados: um tipo digitado errado vira erro na criação da conta, e
-        # não uma rubrica que nunca aparece.
-        self.midaz.call("PATCH", self.lp + "/settings",
-                        {"accounting": {"validateRoutes": True, "validateAccountType": True}})
+        # não uma rubrica que nunca aparece. Só o setup escreve; reports e ledger
+        # apenas conferem.
+        if create:
+            self.midaz.call("PATCH", self.lp + "/settings",
+                            {"accounting": {"validateRoutes": True, "validateAccountType": True}})
         _, settings = self.midaz.get(self.lp + "/settings")
         accounting = (settings or {}).get("accounting") or {}
 
@@ -1205,8 +1207,18 @@ class Books:
                 "debits": [leg(t["debit"], debit_book)], "credits": [leg(t["credit"], credit_book)]},
                 idempotency="%s-%s" % (slug, key))
             parts = created.get("transactions") or []
-            for part in parts:
-                book = next(n for n, lg in self.parts.items() if lg.ledger == part.get("ledgerId"))
+            # One part per ledger the entry touches, each in a book of the scenario:
+            # anything else is not the group that was asked for, and recording it as
+            # finished would skip it on every later run.
+            by_ledger = {lg.ledger: n for n, lg in self.parts.items()}
+            books_hit = [by_ledger.get(part.get("ledgerId")) for part in parts]
+            if None in books_hit:
+                fail("%s: o Midaz respondeu uma parte num ledger que o cenário não declara: %s"
+                     % (key, [p.get("ledgerId") for p in parts]))
+            if sorted(books_hit) != sorted({debit_book, credit_book}):
+                fail("%s: esperava uma parte em %s e em %s, e o Midaz respondeu %s"
+                     % (key, debit_book, credit_book, books_hit or "nenhuma"))
+            for part, book in zip(parts, books_hit):
                 self.parts[book].state.setdefault("transactions", {})["%s@%s" % (key, book)] = {
                     "id": part["id"], "finished": True}
             done[key] = {"groupId": created.get("groupId"), "finished": True, "parts": len(parts)}
@@ -1228,10 +1240,36 @@ class Books:
         for code in sorted(total):
             print("%-12s %14s" % (code, total[code]))
         print("soma: %s (zero = a instituição fecha em partidas dobradas)" % sum(total.values()))
-        bridge = total.get(self.sc["bridge"]["code"], Decimal(0))
-        print("ponte %s somada nos livros: %s (%s)" % (self.sc["bridge"]["code"], bridge,
-                                                   "zera" if bridge == 0 else "NÃO ZERA"))
+        code = self.sc["bridge"]["code"]
+        bridge = total.get(code, Decimal(0))
+        # Zero over no bridge operation at all proves nothing: a scenario that
+        # declares cross-ledger entries has to show them on the bridge.
+        if self.sc.get("crossTransactions") and code not in total:
+            print("ponte %s: NENHUMA operação, e o cenário declara lançamentos cross-ledger" % code)
+            return False
+        print("ponte %s somada nos livros: %s (%s)" % (code, bridge, "zera" if bridge == 0 else "NÃO ZERA"))
         return bridge == 0
+
+    def missing_cross(self):
+        """The cross-ledger entries setup has not finished, or whose parts Midaz does not have."""
+        done = self.state.get("cross") or {}
+        missing = []
+        for t in self.sc.get("crossTransactions", []):
+            key = t["key"]
+            if not done.get(key, {}).get("finished"):
+                missing.append(key)
+                continue
+            parts = {k: v for name, lg in self.parts.items()
+                     for k, v in (lg.state.get("transactions") or {}).items() if k.startswith(key + "@")}
+            if len(parts) != done[key].get("parts", -1) or not parts:
+                missing.append(key)
+                continue
+            for k, v in parts.items():
+                lg = self.parts[k.split("@", 1)[1]]
+                status, _ = lg.midaz.call("GET", "%s/transactions/%s" % (lg.lp, v["id"]), ok=(200, 404))
+                if status != 200:
+                    missing.append(k)
+        return missing
 
 
 def main():
@@ -1310,6 +1348,9 @@ def run_books(args, scenario, state):
             missing = setup_missing(lg, lg.state)
             if missing:
                 fail("o setup não terminou no livro %s: %s; rode setup antes" % (name, ", ".join(missing[:8])))
+        missing = books.missing_cross()
+        if missing:
+            fail("lançamentos cross-ledger sem registro ou fora do Midaz: %s; rode setup antes" % ", ".join(missing))
     if args.command == "reports":
         args.expected = args.expected or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(args.scenario))),
                                                       "expected", os.path.basename(args.scenario))
