@@ -141,9 +141,28 @@ certo:
   às 23:30 de sexta é 02:30 de sábado em UTC. Com o Reporter em UTC ele cai no
   sábado — sai do 4111 de sexta e, quando essa sexta é o último dia útil do mês,
   também do balancete do mês. Provado na homologação (27/02/2026).
-- **A instituição escopada pela organização E pelo ledger.** Uma organização do
-  Midaz pode ter mais de um ledger (um de testes ao lado do de produção, por
-  exemplo); um escopo só pela organização somaria os dois.
+- **A instituição é a organização do Midaz.** O CNPJ que vale é o da organização
+  (`legalDocument`), e a instituição é escopada **só** pela organização
+  (`organization_id`): todo ledger dela é um livro da mesma instituição e entra nos
+  documentos, inclusive um ledger criado depois. Outra instituição — outro CNPJ —
+  é outra organização. Por isso **nenhum ledger de teste ou de homologação fica na
+  organização de produção**: o que está nela entra no balancete.
+- **Movimento entre os ledgers da organização (cross-ledger)** é interno à
+  instituição. O Midaz grava uma transação por ledger, cada uma fechada contra a
+  `@external/BRL` do ledger com a rubrica da rota-ponte
+  (`accountingEntries.crossLedger`); com a mesma rubrica nos dois lados, ela zera
+  na soma dos livros. Provado na homologação (cenário G).
+- **Cheque especial: a rota declara onde cai o excedente.** Num débito acima do
+  saldo, o Midaz deixa na conta só a parte coberta (o depósito vai a zero, nunca
+  negativo) e lança o excedente numa operação companheira com a rubrica de
+  `accountingEntries.overdraft` da rota — o adiantamento a depositante, no ativo.
+  Sem essa entrada, com rotas validadas, o Midaz recusa o débito. Provado na
+  homologação (cenário E).
+- **Bloqueio de saldo não tira o valor do depósito.** O BLOCK do Midaz move o valor
+  entre dois saldos da mesma conta; sem `accountingEntries.block` na rota, sob a
+  mesma rubrica, e o depósito segue inteiro no 4111 e no 4010. Uma rubrica própria
+  para o bloqueio é escolha do cliente e aparece como reclassificação. Provado na
+  homologação (cenário F).
 - **Só reais.** O binding de referência lê `asset_code = BRL`; posição em outra
   moeda é convertida e lançada em reais pelo cliente, como o COSIF exige.
 - **Anotações não entram.** Uma transação NOTED grava operações com a rubrica da

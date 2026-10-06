@@ -31,7 +31,7 @@ metadata:
   regulator: BCB
   document: "4111"
   title: Saldos Contábeis Diários
-  version: 1.2.2   # 1.2.2: recusa período ainda aberto (closed)
+  version: 1.2.3   # 1.2.3: manual — a instituição é a organização (todos os ledgers); cross-ledger, cheque especial e bloqueio
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
