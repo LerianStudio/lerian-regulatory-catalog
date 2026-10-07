@@ -1,5 +1,5 @@
 {
-  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/g-livros-multiplos.json. A instituição é a organização: os dois livros somados. Setembro: só o capital da Tesouraria. Outubro: caixa 10000 + 1000 - 300 = 10700; depósito da Ana 1000 - 300 = 700; ponte 1.5.1 em Contas +700 (débito: 1000 chegou, 300 saiu) e na Tesouraria -700 — somada nos livros, 0.00. Ativo 10700 = depósitos 700 + capital 10000. Os documentos de outubro dependem da data em que o cross-ledger roda (a v2 não retrodata): este gabarito vale para lançamentos de outubro de 2026.",
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/g-livros-multiplos.json. A instituição é a organização: os dois livros somados. Setembro: só o capital da Tesouraria. Outubro: caixa 10000 + 1000 - 300 = 10700; depósito da Ana 1000 - 300 = 700; ponte 1.5.1 em Contas +700 (débito: 1000 chegou, 300 saiu) e na Tesouraria -700 — somada nos livros, 0.00. Ativo 10700 = depósitos 700 + capital 10000. Os documentos do cross-ledger são datados por {crossDay} e {crossMonth}, que a ferramenta preenche com o dia em que o setup lançou (a v2 não retrodata).",
   "documents": [
     {
       "document": "4010",
@@ -18,9 +18,9 @@
     },
     {
       "document": "4111",
-      "dataBase": "2026-10-06",
+      "dataBase": "{crossDay}",
       "complete": false,
-      "_note": "Dia dos lançamentos cross-ledger: caixa 10700, depósito 700. Gerável a partir de 07/10.",
+      "_note": "Dia dos lançamentos cross-ledger ({crossDay}, a data em que o setup rodou): caixa 10700, depósito 700. Gerável a partir do dia seguinte.",
       "lines": {
         "1100000002": "10700.00",
         "1110000009": "10700.00",
@@ -30,9 +30,9 @@
     },
     {
       "document": "4010",
-      "dataBase": "2026-10",
+      "dataBase": "{crossMonth}",
       "complete": true,
-      "_note": "A ponte 1.5.1 aparece com 0.00: os dois lados se anulam na instituição. Gerável a partir de 01/11.",
+      "_note": "Mês dos lançamentos cross-ledger: a ponte 1.5.1 aparece com 0.00, os dois lados se anulam na instituição. Gerável a partir do primeiro dia do mês seguinte.",
       "lines": {
         "1000000009": "10700.00",
         "1100000002": "10700.00",

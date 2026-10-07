@@ -35,6 +35,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 DEFAULT_MIDAZ = os.environ.get("MIDAZ_URL", "https://ledger.sandbox.lerian.net")
 
@@ -899,6 +900,12 @@ def run_reports(lg, args):
     rep = Reporter(args.reporter)
     with open(args.expected) as fh:
         expected = json.load(fh)
+    for doc in expected["documents"]:
+        for token, value in (getattr(args, "dates", None) or {}).items():
+            doc["dataBase"] = doc["dataBase"].replace(token, value)
+        if "{" in doc["dataBase"]:
+            fail("o gabarito usa %s e o setup não registrou a data dos lançamentos cross-ledger; rode setup antes"
+                 % doc["dataBase"])
 
     institution = ensure_institution(rep, lg.sc, lg.org)
     print("\ninstituição  %s" % institution)
@@ -1116,6 +1123,21 @@ class Books:
         self.org = next(iter(self.parts.values())).org
         self.op = "/v2/organizations/%s" % self.org
 
+        # The organization's own state — cross-ledger entries, organization routes —
+        # belongs to ONE organization. A Midaz recreated from scratch (the sandbox
+        # is reset) gives the scenario a new one, and entries recorded as finished
+        # in the old one would be skipped instead of posted again.
+        # A state written before it recorded its organization is judged by its
+        # entries: kept only when every part it recorded answers in this Midaz.
+        stale = state.get("organization", self.org) != self.org or (
+            "organization" not in state and state.get("cross") and self.missing_cross())
+        if stale:
+            if not create:
+                fail("a organização não é a que o setup registrou (o Midaz foi recriado?); rode setup antes")
+            for key in ("cross", "crossDate", "orgRoutes", "orgTransactionRoutes"):
+                state.pop(key, None)
+        state["organization"] = self.org
+
     def first(self):
         return next(iter(self.parts.values()))
 
@@ -1224,6 +1246,9 @@ class Books:
                 self.parts[book].state.setdefault("transactions", {})["%s@%s" % (key, book)] = {
                     "id": part["id"], "finished": True}
             done[key] = {"groupId": created.get("groupId"), "finished": True, "parts": len(parts)}
+            # v2 dates an entry when it posts: the day, in Brasília, the documents
+            # of this scenario are cut on.
+            self.state["crossDate"] = datetime.datetime.now(ZoneInfo("America/Sao_Paulo")).date().isoformat()
             save_state(self.state)
             print("cross        %s  grupo %s  %d partes" % (key, created.get("groupId"), len(parts)))
 
@@ -1359,6 +1384,12 @@ def run_books(args, scenario, state):
     if args.command == "reports":
         args.expected = args.expected or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(args.scenario))),
                                                       "expected", os.path.basename(args.scenario))
+        # The gabarito names the day the cross-ledger entries posted as {crossDay}
+        # and its month as {crossMonth}: v2 does not backdate, so the documents
+        # that carry them are cut on whatever day setup ran.
+        day = state.get("crossDate")
+        if day:
+            args.dates = {"{crossDay}": day, "{crossMonth}": day[:7]}
         sys.exit(1 if run_reports(books.first(), args) else 0)
     sys.exit(0 if books.report() else 1)
 
