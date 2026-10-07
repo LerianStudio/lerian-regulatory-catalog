@@ -19,7 +19,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4010
-contractVersion: 1.3.0     # o catálogo pode publicar 1.1.0 sem mudar o que este
+contractVersion: 1.3.1     # o catálogo pode publicar 1.1.0 sem mudar o que este
                            # cliente gera até ele adotar
 
 # ---------------------------------------------------------------------------
@@ -39,6 +39,10 @@ queries:
     # Qual organização: o escopo da instituição, que filtra organization.id pela
     # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
     # uma linha só recusa a geração em vez de escolher uma.
+    filters:
+      # Uma organização apagada não declara nada.
+      - field: deleted_at
+        operator: isNull
 
   - name: saldos_cosif
     description: Lançamentos do razão, agregados em saldo por rubrica.
@@ -58,6 +62,10 @@ queries:
       - field: asset_code
         operator: eq
         values: ["BRL"]
+      # Só o que o Midaz não apagou: as leituras do próprio Midaz filtram
+      # deleted_at IS NULL, e o documento lê o mesmo razão que ele.
+      - field: deleted_at
+        operator: isNull
 
     # A agregação vive aqui e não no contrato porque depende da forma da origem:
     # um cliente que já mantém tabela de saldos por rubrica não agrega nada, ele

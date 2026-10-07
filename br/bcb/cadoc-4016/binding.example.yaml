@@ -11,7 +11,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4016
-contractVersion: 1.3.0
+contractVersion: 1.3.1
 
 queries:
   - name: declarante
@@ -21,6 +21,10 @@ queries:
     # Qual organização: o escopo da instituição, que filtra organization.id pela
     # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
     # uma linha só recusa a geração em vez de escolher uma.
+    filters:
+      # Uma organização apagada não declara nada.
+      - field: deleted_at
+        operator: isNull
 
   - name: saldos_cosif
     description: Lançamentos do razão agregados em saldo por rubrica, SEM resultado.
@@ -39,6 +43,10 @@ queries:
       - field: asset_code
         operator: eq
         values: ["BRL"]
+      # Só o que o Midaz não apagou: as leituras do próprio Midaz filtram
+      # deleted_at IS NULL, e o documento lê o mesmo razão que ele.
+      - field: deleted_at
+        operator: isNull
       # A exclusão dos grupos 7 e 8: o primeiro caractere da rota contábil é o grupo
       # COSIF. É filtro de EXTRAÇÃO — o 4016 não admite resultado — então vive aqui,
       # não no contrato. A regra sem-contas-de-resultado do contrato confere o
