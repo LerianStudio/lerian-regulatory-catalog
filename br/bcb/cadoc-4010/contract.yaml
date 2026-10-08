@@ -28,13 +28,14 @@ metadata:
   country: BR
   regulator: BCB
   document: "4010"
+  family: cadoc          # o agrupamento: os documentos contábeis do BCB
   title: Balancete Patrimonial Analítico
   summary: >-
     Saldos por rubrica COSIF na data-base, acumulados desde a abertura e expressos na natureza de cada conta.
   # Publicação é tag git (br.bcb.cadoc-4010/v1.0.0). A instalação do cliente fixa a
   # versão adotada, então uma correção publicada aqui não muda o que ele gera até
   # ele adotar.
-  version: 1.4.1   # 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
+  version: 1.4.2   # 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
   status: draft
   # A quem o documento se aplica. É o que permite filtrar o catálogo por tipo de
   # instituição em vez de o cliente adivinhar o que precisa entregar.

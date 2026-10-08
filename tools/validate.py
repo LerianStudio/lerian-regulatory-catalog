@@ -2041,7 +2041,7 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
     A duplicação é deliberada — o índice existe para filtrar sem baixar tudo — mas
     divergir significa mostrar ao cliente um documento que não é o que ele recebe.
     """
-    mirrored = ("country", "regulator", "document", "title", "version", "periodicity")
+    mirrored = ("country", "regulator", "document", "title", "version", "periodicity", "family")
 
     documents = sequence_at("catalog.yaml: documents", catalog.get("documents"),
                             "documents é a lista dos documentos do catálogo")

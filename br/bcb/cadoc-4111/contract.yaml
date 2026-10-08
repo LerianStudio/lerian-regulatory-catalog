@@ -30,10 +30,11 @@ metadata:
   country: BR
   regulator: BCB
   document: "4111"
+  family: cadoc          # o agrupamento: os documentos contábeis do BCB
   title: Saldos Contábeis Diários
   summary: >-
     Saldos diários de um conjunto fechado de contas COSIF — estoque no sinal da natureza e volume de pagamentos acumulado no mês. Conjunto de linhas definido pelo catálogo, não pelo cliente.
-  version: 1.4.1   # 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
+  version: 1.4.2   # 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
