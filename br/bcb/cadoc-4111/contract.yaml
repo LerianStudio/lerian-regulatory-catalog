@@ -31,7 +31,7 @@ metadata:
   regulator: BCB
   document: "4111"
   title: Saldos Contábeis Diários
-  version: 1.3.2   # 1.3.2: manual de cada documento (4010 e 4016 novos; 4111 com dias úteis); 1.3.1: só o que o Midaz não apagou
+  version: 1.3.3   # 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]

@@ -204,8 +204,9 @@ contábeis.
 ## Dias úteis
 
 O 4111 é gerado só para **dia útil já encerrado**, pelo calendário de dias não
-úteis publicado com o documento (`dias-nao-uteis.yaml`): sábado, domingo e
-feriado nacional não têm remessa, e o pedido para um deles é recusado dizendo qual
+úteis publicado com o documento (`dias-nao-uteis.yaml`): sábado, domingo, feriado
+nacional e os dias não úteis bancários (Carnaval, Sexta-feira da Paixão e Corpus
+Christi) não têm remessa, e o pedido para um deles é recusado dizendo qual
 é o último dia útil antes dele.
 
 O volume de sábado, domingo e feriado vai para o **primeiro dia útil seguinte**
@@ -217,10 +218,8 @@ arquivo da segunda-feira dia 2. O 4010 corta o mês pelo mesmo calendário, ent�
 
 ## Limitações conhecidas desta versão
 
-**Carnaval, Sexta-feira da Paixão e Corpus Christi** ainda não estão no
-calendário: não são feriados nacionais por lei federal, e a decisão de incluí-los
-aguarda a fonte oficial do BCB. Até lá, esses dias são aceitos como data-base e o
-volume deles não é deslocado para o dia útil seguinte.
+**O calendário cobre 2025 a 2027.** Uma data-base fora disso é recusada até a
+cobertura ser estendida, o que é parte da curadoria anual.
 
 **O XSD publicado está desatualizado.** O `schema/XSD_4111.xsd` é a v1.0 de
 30/03/2023 e contradiz as instruções vigentes em três pontos: diz código de conta

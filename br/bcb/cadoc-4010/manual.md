@@ -51,7 +51,9 @@ de cada ancestral é calculado; o motor monta a árvore por essa declaração.
 ## O mês fecha no último dia útil
 
 O saldo é o do **último dia útil do mês** (leiaute §3.2.2.b), pelo calendário de
-dias não úteis publicado com o documento (`dias-nao-uteis.yaml`). Quando o mês
+dias não úteis publicado com o documento (`dias-nao-uteis.yaml`): sábados,
+domingos, feriados nacionais e os dias não úteis bancários — Carnaval, Sexta-feira
+da Paixão e Corpus Christi. Quando o mês
 termina num sábado, o que foi lançado naquele sábado pertence ao balancete do mês
 seguinte — e o 4111 corta os dias pelo mesmo calendário, então os dois documentos
 não discordam sobre onde um dia cai.
@@ -130,9 +132,8 @@ Para o arquivo sair certo:
 - **Ordem de remessa.** O BCB só recepciona a data-base N depois de aceita a N-1.
   Isso é regra de protocolo de envio, que o Reporter não faz: um arquivo gerado
   fora de ordem é válido.
-- **Carnaval, Sexta-feira da Paixão e Corpus Christi** ainda não estão no
-  calendário: não são feriados nacionais por lei federal e a decisão de incluí-los
-  aguarda a fonte oficial do BCB. Um mês que termina num desses dias fecha nele.
+- **O calendário cobre 2025 a 2027.** Uma data-base fora disso é recusada até a
+  cobertura ser estendida, o que é parte da curadoria anual.
 
 ## Fonte primária
 

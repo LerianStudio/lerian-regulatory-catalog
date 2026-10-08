@@ -56,9 +56,8 @@ e só o que não foi apagado.
   não que a rubrica exista no elenco COSIF vigente.
 - **Ordem de remessa.** O BCB só recepciona a data-base N depois de aceita a N-1;
   o Reporter não faz o envio, e um arquivo gerado fora de ordem é válido.
-- **Carnaval, Sexta-feira da Paixão e Corpus Christi** ainda não estão no
-  calendário, pendentes da fonte oficial do BCB. Nenhum deles cai no fim de junho
-  nem no de dezembro, então o 4016 não é afetado.
+- **O calendário cobre 2025 a 2027.** Uma data-base fora disso é recusada até a
+  cobertura ser estendida, o que é parte da curadoria anual.
 
 ## Fonte primária
 
