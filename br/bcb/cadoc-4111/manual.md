@@ -201,22 +201,26 @@ uma segunda fonte de verdade que ninguém reconcilia. Ela é declarada no bindin
 do seu lado; no exemplo contra o Midaz vem do COSIF referenciado nas rotas
 contábeis.
 
+## Dias úteis
+
+O 4111 é gerado só para **dia útil já encerrado**, pelo calendário de dias não
+úteis publicado com o documento (`dias-nao-uteis.yaml`): sábado, domingo e
+feriado nacional não têm remessa, e o pedido para um deles é recusado dizendo qual
+é o último dia útil antes dele.
+
+O volume de sábado, domingo e feriado vai para o **primeiro dia útil seguinte**
+(Instruções §4.2.2.b), mesmo quando ele cai no mês seguinte: a janela de volume de
+um mês abre logo depois do último dia útil do mês anterior. Um sábado 31 entra no
+arquivo da segunda-feira dia 2. O 4010 corta o mês pelo mesmo calendário, então o
+último 4111 do mês e o balancete fecham no mesmo instante. Provado na homologação
+(cenário D).
+
 ## Limitações conhecidas desta versão
 
-**Acúmulo de fim de semana.** Volumes de sábado, domingo e feriado devem ser
-acumulados no próximo dia útil (Instruções §4.2.2.b). O calendário de dias úteis
-que faz esse deslocamento não existe nesta versão, e o efeito disso depende de o
-fim de semana atravessar ou não a virada do mês:
-
-- **Dentro do mesmo mês**, o volume do fim de semana entra no arquivo do próximo
-  dia útil naturalmente, porque a janela do fluxo cobre o mês inteiro até a
-  data-base. É o resultado que a regra pede, alcançado por outro caminho.
-- **Atravessando a virada do mês** — um sábado dia 31 com o próximo dia útil já no
-  mês seguinte —, não entra: a janela do arquivo do dia 1º abre no dia 1º, e o
-  volume do dia 31 ficou no mês anterior, cujo último arquivo é anterior a ele.
-  **Esse volume não é reportado em arquivo nenhum.**
-- Um arquivo gerado **para o próprio sábado** reporta o sábado, em vez de somá-lo
-  ao dia útil seguinte.
+**Carnaval, Sexta-feira da Paixão e Corpus Christi** ainda não estão no
+calendário: não são feriados nacionais por lei federal, e a decisão de incluí-los
+aguarda a fonte oficial do BCB. Até lá, esses dias são aceitos como data-base e o
+volume deles não é deslocado para o dia útil seguinte.
 
 **O XSD publicado está desatualizado.** O `schema/XSD_4111.xsd` é a v1.0 de
 30/03/2023 e contradiz as instruções vigentes em três pontos: diz código de conta
@@ -224,6 +228,12 @@ de 8 dígitos (as instruções mandam 10 desde 02/01/2025), saldo com mínimo ze
 instruções mandam sinal pela natureza, que admite negativo) e no máximo 25 contas
 (o conjunto atual tem 30). Nos três, **a instrução vigente prevalece** e é o que
 este contrato segue. Validar contra o XSD publicado reprovaria um arquivo correto.
+
+Um quarto ponto ainda não tem resposta do BCB: o XSD aceita a raiz do CNPJ só com
+dígitos (`[0-9]{8}`), e o CNPJ alfanumérico (IN RFB 2.229/2024) passa a ser
+atribuído a partir de julho de 2026. O contrato já aceita letras na raiz; uma
+instituição com CNPJ alfanumérico deve confirmar com o BCB o leiaute vigente antes
+de remeter.
 
 ## Fonte primária
 

@@ -32,7 +32,7 @@ metadata:
   # Publicação é tag git (br.bcb.cadoc-4010/v1.0.0). A instalação do cliente fixa a
   # versão adotada, então uma correção publicada aqui não muda o que ele gera até
   # ele adotar.
-  version: 1.3.1   # 1.3.1: bindings de referência leem só o que o Midaz não apagou (deleted_at isNull)
+  version: 1.3.2   # 1.3.2: manual de cada documento (4010 e 4016 novos; 4111 com dias úteis); 1.3.1: só o que o Midaz não apagou
   status: draft
   # A quem o documento se aplica. É o que permite filtrar o catálogo por tipo de
   # instituição em vez de o cliente adivinhar o que precisa entregar.

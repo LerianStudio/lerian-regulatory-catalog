@@ -20,7 +20,7 @@ metadata:
   regulator: BCB
   document: "4016"
   title: Balanço Patrimonial Analítico
-  version: 1.3.1   # 1.3.1: bindings de referência leem só o que o Midaz não apagou (deleted_at isNull)
+  version: 1.3.2   # 1.3.2: manual de cada documento (4010 e 4016 novos; 4111 com dias úteis); 1.3.1: só o que o Midaz não apagou
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
