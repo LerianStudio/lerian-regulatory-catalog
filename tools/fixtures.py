@@ -63,7 +63,8 @@ PLANO_CONTRACT = {
     "datasets": [
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
          "fields": [{"name": "cnpj", "type": "string", "length": 14, "required": True,
-                     "normalize": "alphanumeric", "checkDigit": "cnpj", "description": "CNPJ."},
+                     "normalize": "alphanumeric", "checkDigit": "cnpj", "identifiesInstitution": "cnpj",
+                     "description": "CNPJ."},
                     {"name": "cnpj8", "type": "string", "length": 8, "required": True, "prefixOf": "cnpj",
                      "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."}]},
         {"name": "saldos", "description": "Saldo por rubrica.", "grain": ["codigo"], "nonEmpty": True,

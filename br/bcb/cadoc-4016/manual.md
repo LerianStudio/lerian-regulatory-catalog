@@ -45,7 +45,8 @@ rascunho — o PL inclui o resultado? o balanço fecha? — é parte de aprovar.
 As mesmas do 4010 (veja o manual dele), mais a apuração acima. Em resumo: rotas
 obrigatórias com rubrica COSIF de dez dígitos em toda ação; reserva que se anula
 pela própria rubrica; Reporter no fuso de Brasília; a instituição é a organização
-do Midaz, com o CNPJ verificável no cadastro dela; só reais, só o que moveu saldo
+do Midaz, com o CNPJ verificável no cadastro dela e igual ao da instituição
+cadastrada no Reporter; só reais, só o que moveu saldo
 e só o que não foi apagado.
 
 ## Limitações conhecidas desta versão

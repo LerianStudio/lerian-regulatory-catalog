@@ -831,6 +831,18 @@ MUTATIONS: list[Mutation] = [
         "o motor conhece",
     ),
     Mutation(
+        "instituicao-identificador-desconhecido",
+        "um identificador de instituição que o motor não confere não confere nada",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj").update({"identifiesInstitution": "name"}),
+        "o motor confere",
+    ),
+    Mutation(
+        "instituicao-marcada-no-derivado",
+        "o derivado não é lido da origem; a identidade é conferida no campo de onde ele é cortado",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"identifiesInstitution": "cnpj"}),
+        "num derivado",
+    ),
+    Mutation(
         "regra-sem-id",
         "regra sem id não pode ser citada nem pela mensagem que ela mesma produz",
         lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("id"),

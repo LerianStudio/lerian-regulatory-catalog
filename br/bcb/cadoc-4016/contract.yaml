@@ -20,7 +20,7 @@ metadata:
   regulator: BCB
   document: "4016"
   title: Balanço Patrimonial Analítico
-  version: 1.3.3   # 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
+  version: 1.4.0   # 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
@@ -68,6 +68,10 @@ datasets:
         # recusa a geração.
         normalize: alphanumeric
         checkDigit: cnpj
+        # A declarante é a instituição da entrega: o CNPJ lido da base é conferido
+        # contra o cadastro da instituição, e um diferente recusa a geração
+        # (RPT-0196). O registro e o arquivo não nomeiam instituições diferentes.
+        identifiesInstitution: cnpj
         description: CNPJ da instituição declarante (quatorze posições).
       - name: cnpj8
         type: string

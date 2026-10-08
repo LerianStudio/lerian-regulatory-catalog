@@ -101,7 +101,8 @@ Para o arquivo sair certo:
   organização (`organization.legal_document`); o contrato o normaliza, confere os
   dígitos verificadores (numérico ou alfanumérico) e corta a raiz de oito
   posições. O Midaz aceita qualquer texto no `legalDocument`: um CNPJ que não
-  verifica recusa a geração. Todo ledger da organização entra no balancete,
+  verifica recusa a geração. O CNPJ lido também é conferido contra o cadastro da
+  instituição no Reporter, e um diferente recusa a geração (`RPT-0196`). Todo ledger da organização entra no balancete,
   inclusive um criado depois; outra instituição é outra organização. Por isso
   **nenhum ledger de teste fica na organização de produção**.
 - **Movimento entre os ledgers da organização** é interno à instituição: cada

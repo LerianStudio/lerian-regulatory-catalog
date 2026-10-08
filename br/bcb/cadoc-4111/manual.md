@@ -146,7 +146,9 @@ certo:
   outro valor; o contrato o normaliza, confere os dígitos verificadores (numérico
   ou alfanumérico) e corta a raiz de oito posições. O Midaz aceita qualquer texto
   no `legalDocument`: um CNPJ que não verifica recusa a geração, então cadastre a
-  organização com o CNPJ certo. A instituição é escopada **só** pela organização
+  organização com o CNPJ certo. E o CNPJ lido é conferido contra o cadastro da
+  instituição no Reporter: se forem diferentes, a geração é recusada (`RPT-0196`)
+  em vez de sair um arquivo de uma instituição registrado em nome de outra. A instituição é escopada **só** pela organização
   (`organization_id` nas operações, `id` na tabela de organizações): todo ledger
   dela é um livro da mesma instituição e entra nos documentos, inclusive um ledger
   criado depois. Outra instituição — outro CNPJ — é outra organização. Por isso

@@ -1576,6 +1576,8 @@ def check_references(doc_dir: Path, contract: dict) -> None:
 FIELD_TYPES = {"string", "integer", "decimal", "boolean", "date", "month"}
 NORMALIZATIONS = {"digits", "alphanumeric"}
 CHECK_DIGITS = {"cnpj"}
+# O identificador da instituição que o motor confere contra a declarante.
+INSTITUTION_IDENTIFIERS = {"cnpj"}
 MAX_SCALE = 34
 MONTHS_OF_YEAR = {f"{m:02d}" for m in range(1, 13)}
 
@@ -1622,6 +1624,18 @@ def check_engine_parity(doc_dir: Path, contract: dict) -> None:
         for field in fields_of(ds):
             _check_field_shape(doc_dir, name, field)
         _check_derivations(doc_dir, name, ds)
+
+    # Uma entrega é declarada por uma instituição: dois campos marcados poderiam
+    # ser conferidos e ainda assim nomear duas.
+    marked = [
+        f"{ds.get('name')}.{f.get('name')}"
+        for ds in datasets_of(contract)
+        for f in fields_of(ds)
+        if isinstance(f, dict) and f.get("identifiesInstitution") is not None
+    ]
+    if len(marked) > 1:
+        fail(f"{doc_dir.relative_to(ROOT)}: identifiesInstitution em {', '.join(marked)}; "
+             f"uma entrega é declarada por uma instituição, então um campo carrega a identidade dela")
 
 
 def _check_derivations(doc_dir: Path, dataset: str, ds: dict) -> None:
@@ -1675,6 +1689,15 @@ def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
             fail(f"{where} tem checkDigit {check_digit!r}; o motor conhece {sorted(CHECK_DIGITS)}")
         elif ftype != "string":
             fail(f"{where} declara checkDigit e é do tipo {ftype!r}; um CNPJ é texto")
+
+    identifies = optional_at(where, field, "identifiesInstitution")
+    if identifies is not None:
+        if not isinstance(identifies, str) or identifies not in INSTITUTION_IDENTIFIERS:
+            fail(f"{where} tem identifiesInstitution {identifies!r}; o motor confere {sorted(INSTITUTION_IDENTIFIERS)}")
+        elif ftype != "string":
+            fail(f"{where} declara identifiesInstitution e é do tipo {ftype!r}; um CNPJ é texto")
+        elif field.get("prefixOf"):
+            fail(f"{where} declara identifiesInstitution num derivado; marque o campo de onde ele é cortado")
 
     prefix_of = optional_at(where, field, "prefixOf")
     if prefix_of is not None:
