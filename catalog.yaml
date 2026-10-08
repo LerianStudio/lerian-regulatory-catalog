@@ -18,7 +18,7 @@ documents:
     regulator: BCB
     document: "4010"
     title: Balancete Patrimonial Analítico
-    version: 1.4.0
+    version: 1.4.1
     status: draft            # draft | published | deprecated
     periodicity: monthly
     appliesTo:
@@ -33,7 +33,7 @@ documents:
     regulator: BCB
     document: "4016"
     title: Balanço Patrimonial Analítico
-    version: 1.4.0
+    version: 1.4.1
     status: draft
     periodicity: semiannual
     appliesTo:
@@ -48,7 +48,7 @@ documents:
     regulator: BCB
     document: "4111"
     title: Saldos Contábeis Diários
-    version: 1.4.0
+    version: 1.4.1
     status: draft
     periodicity: daily
     appliesTo:
