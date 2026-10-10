@@ -42,7 +42,7 @@
       "document": "4111",
       "dataBase": "2026-09-30",
       "complete": false,
-      "_note": "O XSD 4111 guardado pelo catálogo (v1.0 de 2023) só aceita dígitos no cnpj; o contrato aceita alfanumérico, e o judge não valida o 4111 contra aquele XSD. Confirmar com o XSD vigente do BCB.",
+      "_note": "O XSD 4111 vigente (desde 02/01/2025) aceita a raiz alfanumérica do cnpj ([A-Za-z0-9]{8}), e o judge valida o 4111 contra ele.",
       "lines": {
         "1100000002": "5800.00",
         "1110000009": "5800.00",

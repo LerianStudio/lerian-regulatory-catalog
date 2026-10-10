@@ -498,7 +498,7 @@ SCHEMA_OF = {"4010": "cadoc-4010/schema/XSD_4010_v0.xsd", "4016": "cadoc-4010/sc
 # The 4111 XSD the catalog keeps is v1.0 of 30/03/2023 and contradicts the
 # instructions in force (knownGap in the contract): 8-digit codes, at most 25
 # accounts, saldoDia >= 0. The 4111 file is judged by the instructions instead.
-STALE_SCHEMA = {"4111"}
+STALE_SCHEMA = set()  # the 4111 XSD is the one in force since 02/01/2025 (catalog 1.4.3)
 
 
 class Reporter(Midaz):

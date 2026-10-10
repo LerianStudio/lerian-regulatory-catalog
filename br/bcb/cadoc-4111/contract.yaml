@@ -2,7 +2,7 @@
 #
 # QUEM CURA: a Lerian, a partir das Instruções de Preenchimento oficiais
 # (schema/4111-instrucoes.pdf; "I p.N" abaixo) e do XSD publicado
-# (schema/XSD_4111.xsd — ATENÇÃO: desatualizado, ver knownGaps). Res. BCB 208/2022,
+# (schema/XSD_4111.xsd, o vigente desde 02/01/2025). Res. BCB 208/2022,
 # IN BCB 524/2024, 644/2025.
 #
 # NÃO É UM CLONE DO 4010. Três coisas o separam, e todas vêm da fonte primária:
@@ -34,7 +34,7 @@ metadata:
   title: Saldos Contábeis Diários
   summary: >-
     Saldos diários de um conjunto fechado de contas COSIF — estoque no sinal da natureza e volume de pagamentos acumulado no mês. Conjunto de linhas definido pelo catálogo, não pelo cliente.
-  version: 1.4.2   # 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
+  version: 1.4.3   # 1.4.3: o XSD vigente (10 dígitos, 30 contas, saldo com sinal, raiz alfanumérica); 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
@@ -44,7 +44,7 @@ metadata:
     mandatoryFrom: "2025-01-02"
   sourceOfTruth:
     layoutManual: https://www.bcb.gov.br/content/estabilidadefinanceira/Documents/Leiaute_de_documentos/saldosDiariosInstrucoesPreenchimentoV2.pdf
-    schema: schema/XSD_4111.xsd            # material de curadoria — e desatualizado
+    schema: schema/XSD_4111.xsd            # o vigente desde 02/01/2025 (o cabeçalho ainda diz v1.0 de 30/03/2023)
     accountSet: contas.yaml                # o conjunto fechado de rubricas
     calendar: dias-nao-uteis.yaml          # dias não úteis (curadoria Lerian): cortam cada período
 
@@ -121,8 +121,7 @@ datasets:
       - name: cosifCode
         type: string
         required: true
-        # Dez dígitos desde 02/01/2025 (I, changelog 26/09/2024). O XSD publicado
-        # ainda diz oito — é ele que está velho, não o contrato. Ver knownGaps.
+        # Dez dígitos desde 02/01/2025 (I, changelog 26/09/2024), como o XSD vigente.
         pattern: '^[0-9]{10}$'
         normalize: digits
         description: Código COSIF da conta, do conjunto fechado (contas.yaml).
@@ -157,17 +156,6 @@ rules:
     message: Uma linha por conta (I §4.2.1); duplicidade é agrupamento errado no binding.
 
 knownGaps:
-  - id: xsd-publicado-desatualizado
-    description: >-
-      O XSD em schema/XSD_4111.xsd é a v1.0 de 30/03/2023 e CONTRADIZ as instruções
-      vigentes em três pontos: diz codigoConta de 8 dígitos (as instruções mandam 10
-      desde 02/01/2025), saldoDia com minInclusive=0 (as instruções mandam sinal pela
-      natureza, que admite negativo), e maxOccurs=25 contas (o conjunto atual tem 30
-      com as subcontas da IN 644/2025). Nos três, a instrução vigente prevalece e é o
-      que este contrato segue. Rebaixar para o XSD publicado geraria arquivo no
-      formato de 2023. Re-obter o XSD atualizado do BACEN antes de publicar (draft até
-      lá).
-
   - id: natureza-contabil-e-configuracao-do-cliente
     description: >-
       Como no 4010: o sinal do saldo de estoque segue da natureza da conta, que vem

@@ -53,8 +53,8 @@ branch do catálogo **antes** de cortar a release.
 
 O comando `reports` sai com código 1 se algum arquivo divergir. Cada arquivo é
 julgado por: XML bem formado com a declaração no primeiro byte; o XSD oficial que
-o catálogo guarda (menos o do 4111, que é a v1.0 de 2023 e contradiz as instruções
-vigentes — `knownGaps` do contrato); toda rubrica com dez dígitos e DV válido;
+o catálogo guarda (o do 4111 é o vigente desde 02/01/2025); toda rubrica com dez
+dígitos e DV válido;
 nada dos grupos 7 e 8 no 4016; e cada linha contra o gabarito.
 
 Três desfechos não geram arquivo, e o gabarito diz qual espera:
@@ -140,10 +140,8 @@ quais faltam depois de 30s.
   precisa ser lançado de novo vai para outra organização, nunca para um segundo
   ledger da mesma. O cross-ledger (cenário G) prova que a ponte zera na soma dos
   livros.
-- **O XSD do 4111 guardado aqui só aceita dígitos no `cnpj`** (`[0-9]{8}`; é a v1.0
-  de 2023, já marcada como desatualizada), enquanto o contrato, o XSD do 4010/4016 e
-  o Reporter aceitam a raiz alfanumérica. O cenário H gera o 4111 com `LR4ZAB12`;
-  falta o XSD vigente do BCB para confirmar que o regulador o aceita.
+- **O XSD do 4111 aceita a raiz alfanumérica** (`[A-Za-z0-9]{8}`, XSD vigente desde
+  02/01/2025): o cenário H gera o 4111 com `LR4ZAB12` e ele passa na validação.
 - **Uma retificadora declarada só pelo grupo sai com o sinal trocado.** A
   natureza é do plano de contas do cliente: o cenário a declara (`natures`), e o
   motor usa o prefixo mais longo.

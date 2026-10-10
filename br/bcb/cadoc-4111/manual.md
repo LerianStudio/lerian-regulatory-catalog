@@ -223,18 +223,11 @@ arquivo da segunda-feira dia 2. O 4010 corta o mês pelo mesmo calendário, ent�
 **O calendário cobre 2025 a 2027.** Uma data-base fora disso é recusada até a
 cobertura ser estendida, o que é parte da curadoria anual.
 
-**O XSD publicado está desatualizado.** O `schema/XSD_4111.xsd` é a v1.0 de
-30/03/2023 e contradiz as instruções vigentes em três pontos: diz código de conta
-de 8 dígitos (as instruções mandam 10 desde 02/01/2025), saldo com mínimo zero (as
-instruções mandam sinal pela natureza, que admite negativo) e no máximo 25 contas
-(o conjunto atual tem 30). Nos três, **a instrução vigente prevalece** e é o que
-este contrato segue. Validar contra o XSD publicado reprovaria um arquivo correto.
-
-Um quarto ponto ainda não tem resposta do BCB: o XSD aceita a raiz do CNPJ só com
-dígitos (`[0-9]{8}`), e o CNPJ alfanumérico (IN RFB 2.229/2024) passa a ser
-atribuído a partir de julho de 2026. O contrato já aceita letras na raiz; uma
-instituição com CNPJ alfanumérico deve confirmar com o BCB o leiaute vigente antes
-de remeter.
+**O XSD é o vigente desde 02/01/2025.** O `schema/XSD_4111.xsd` aceita o código de
+conta de 10 dígitos, até 30 contas, saldo com sinal (a natureza admite negativo) e a
+raiz do CNPJ alfanumérica (IN RFB 2.229/2024). O cabeçalho do arquivo ainda diz
+"Versão 1.0, criado em 30/03/2023": o BCB mudou o conteúdo sem mudar o rótulo, então
+é pelo conteúdo que se distingue do anterior, de 8 dígitos e 25 contas.
 
 ## Fonte primária
 

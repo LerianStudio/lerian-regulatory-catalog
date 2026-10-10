@@ -19,7 +19,7 @@
                 <xs:element name="contas" minOccurs="1" maxOccurs="1">
 					<xs:complexType>
 						<xs:sequence>
-							<xs:element name="conta" minOccurs="1" maxOccurs="25" type="tipoConta">
+							<xs:element name="conta" minOccurs="1" maxOccurs="30" type="tipoConta">
 							</xs:element>						
 						</xs:sequence>
 					</xs:complexType>
@@ -42,7 +42,7 @@
                 <xs:simpleType>
                     <xs:restriction base="xs:string">
                         <xs:whiteSpace value="collapse"/>
-                        <xs:pattern value="[0-9]{8}"/>
+                        <xs:pattern value="[A-Za-z0-9]{8}"/>
                     </xs:restriction>
                 </xs:simpleType>
             </xs:attribute>
@@ -76,14 +76,14 @@
     <xs:simpleType name="tipoCodigoConta">
         <xs:restriction base="xs:integer">
             <xs:whiteSpace value="collapse"/>
-            <xs:pattern value="[0-9]{8,8}" />
+            <xs:pattern value="[0-9]{10}" />
         </xs:restriction>
     </xs:simpleType>
     <xs:simpleType name="tipoSaldoDia">
         <xs:restriction base="xs:decimal">
             <xs:totalDigits value="18" />
             <xs:fractionDigits value="2" />
-            <xs:minInclusive value="0" />
+            <xs:minExclusive value="-100000000000000000" />
             <xs:maxExclusive value="100000000000000000" />            
         </xs:restriction>
     </xs:simpleType>

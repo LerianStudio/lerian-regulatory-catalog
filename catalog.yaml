@@ -51,7 +51,7 @@ documents:
     document: "4111"
     family: cadoc
     title: Saldos Contábeis Diários
-    version: 1.4.2
+    version: 1.4.3
     status: draft
     periodicity: daily
     appliesTo:
