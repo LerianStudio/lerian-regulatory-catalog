@@ -1904,6 +1904,90 @@ def _check_childof_cycles(doc_dir: Path, contract: dict) -> None:
             current = parents.get(current)
 
 
+
+FILING_KEYS = {"period", "remittance"}
+REMITTANCE_KEYS = {"parameter", "original", "replacement"}
+
+
+def check_filing(doc_dir: Path, contract: dict) -> None:
+    """O bloco `filing` diz o que faz duas gerações serem a MESMA entrega, nas palavras do contrato.
+
+    O motor é genérico: não sabe o que é data-base nem que, no BCB, "I" é inclusão e
+    "S" é substituição. Ele aplica três regras — uma original aprovada por período,
+    substituição só depois da original aprovada, e a geração mais nova do mesmo
+    período e da mesma remessa substitui a anterior não aprovada — sobre os
+    parâmetros que este bloco nomeia. Um nome errado aqui desliga a regra em
+    silêncio, ou a aplica sobre o parâmetro errado; por isso é conferido.
+    """
+    if "filing" not in contract:
+        return
+
+    where = f"{doc_dir.relative_to(ROOT)}: filing"
+    filing = mapping_at(where, contract.get("filing"),
+                        "filing é um mapeamento de period e remittance")
+    if filing is None:
+        return
+
+    for key in sorted(set(filing) - FILING_KEYS):
+        fail(f"{where} declara {key!r}, que o motor não conhece; filing aceita {sorted(FILING_KEYS)}")
+
+    params = {}
+    for param in parameters_of(contract):
+        if isinstance(param, dict) and isinstance(param.get("name"), str):
+            params[param["name"]] = param
+
+    period: list = []
+    if "period" in filing:
+        raw = filing.get("period")
+        period = sequence_at(f"{where}.period", raw,
+                             "period é a lista dos parâmetros que fazem duas gerações serem a mesma entrega")
+        if raw is None or raw == []:
+            fail(f"{where}.period está vazio; omita-o (todo parâmetro, menos o da remessa) ou nomeie ao menos um")
+        seen: set = set()
+        for name in period:
+            if not isinstance(name, str):
+                fail(f"{where}.period tem {name!r}; cada item é o nome de um parâmetro")
+                continue
+            if name in seen:
+                fail(f"{where}.period nomeia {name!r} duas vezes")
+            seen.add(name)
+            if name not in params:
+                fail(f"{where}.period nomeia {name!r}, que não é parâmetro deste contrato")
+
+    if "remittance" not in filing:
+        return
+
+    rwhere = f"{where}.remittance"
+    remittance = mapping_at(rwhere, filing.get("remittance"),
+                            "remittance é um mapeamento de parameter, original e replacement")
+    if remittance is None:
+        return
+
+    for key in sorted(set(remittance) - REMITTANCE_KEYS):
+        fail(f"{rwhere} declara {key!r}, que o motor não conhece; remittance aceita {sorted(REMITTANCE_KEYS)}")
+
+    name = required_text(f"{rwhere}.parameter", remittance.get("parameter"),
+                         "parameter nomeia o parâmetro que diz se a entrega é original ou substituição")
+    original = required_text(f"{rwhere}.original", remittance.get("original"),
+                             "original é o valor do parâmetro que marca a entrega original do período")
+    replacement = required_text(f"{rwhere}.replacement", remittance.get("replacement"),
+                                "replacement é o valor do parâmetro que marca a substituição")
+
+    if name is not None:
+        if name not in params:
+            fail(f"{rwhere}.parameter nomeia {name!r}, que não é parâmetro deste contrato")
+        elif name in period:
+            fail(f"{rwhere}.parameter {name!r} também está em period; a remessa não é parte do período")
+        else:
+            domain = params[name].get("domain")
+            values = domain if isinstance(domain, list) else []
+            for label, value in (("original", original), ("replacement", replacement)):
+                if value is not None and value not in values:
+                    fail(f"{rwhere}.{label} {value!r} está fora do domain do parâmetro {name!r} ({values})")
+
+    if original is not None and original == replacement:
+        fail(f"{rwhere} usa {original!r} para original e para replacement; as duas remessas precisam ser distintas")
+
 def check_parameters(doc_dir: Path, contract: dict) -> None:
     """Os parâmetros de geração são declarações que o motor consegue satisfazer.
 
@@ -2113,6 +2197,7 @@ def main() -> int:
         check_closed_account_set(doc_dir, contract)
         check_engine_parity(doc_dir, contract)
         check_parameters(doc_dir, contract)
+        check_filing(doc_dir, contract)
         check_structure(doc_dir, contract)
         check_template_parses(doc_dir)
         check_binding_example(doc_dir, contract)

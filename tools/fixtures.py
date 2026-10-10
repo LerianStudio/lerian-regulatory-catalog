@@ -60,6 +60,8 @@ PLANO_CONTRACT = {
         {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S"],
          "description": "Remessa."},
     ],
+    "filing": {"period": ["dataBase"],
+               "remittance": {"parameter": "tipoRemessa", "original": "I", "replacement": "S"}},
     "datasets": [
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
          "fields": [{"name": "cnpj", "type": "string", "length": 14, "required": True,

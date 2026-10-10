@@ -34,7 +34,7 @@ metadata:
   title: Saldos Contábeis Diários
   summary: >-
     Saldos diários de um conjunto fechado de contas COSIF — estoque no sinal da natureza e volume de pagamentos acumulado no mês. Conjunto de linhas definido pelo catálogo, não pelo cliente.
-  version: 1.4.3   # 1.4.3: o XSD vigente (10 dígitos, 30 contas, saldo com sinal, raiz alfanumérica); 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
+  version: 1.4.4   # 1.4.4: o que faz a entrega (período) e a remessa (original e substituição), nas palavras do contrato; 1.4.3: o XSD vigente (10 dígitos, 30 contas, saldo com sinal, raiz alfanumérica); 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
   status: draft
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
@@ -67,6 +67,27 @@ parameters:
     default: I
     domain: [I, S]
     description: Inclusão ou substituição.
+
+# ---------------------------------------------------------------------------
+# A entrega: o que faz duas gerações serem a MESMA entrega, e a remessa.
+#
+# O motor é genérico e não conhece o vocabulário do BCB. Ele aplica três regras
+# sobre os parâmetros que este bloco nomeia: (1) uma entrega ORIGINAL aprovada por
+# período, por assinatura; (2) substituição só depois de aprovada a original do
+# período; (3) a geração mais nova do mesmo período e da mesma remessa substitui a
+# anterior ainda não aprovada.
+#
+# `period` é opcional: ausente, o período é todo parâmetro menos o da remessa.
+# `remittance` é opcional: ausente, o motor não impõe regra de original e
+# substituição. Aqui, I = inclusão (a primeira remessa da data-base) e
+# S = substituição (o reenvio de uma data-base já remetida).
+# ---------------------------------------------------------------------------
+filing:
+  period: [dataBase]
+  remittance:
+    parameter: tipoRemessa
+    original: I
+    replacement: S
 
 datasets:
   - name: institution

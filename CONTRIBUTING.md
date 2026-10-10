@@ -31,6 +31,28 @@ abertura até a data-base" é parte do que o documento *é*; deixar isso no temp
 esconde o cálculo num artefato de apresentação, onde não pode ser conferido nem
 reaproveitado.
 
+## A entrega e a remessa (`filing`)
+
+O motor não sabe o que é data-base nem que, no BCB, `I` é inclusão e `S` é
+substituição. Quem diz é o contrato, no bloco `filing`:
+
+```yaml
+filing:
+  period: [dataBase]          # o que faz duas gerações serem a mesma entrega
+  remittance:
+    parameter: tipoRemessa    # o parâmetro que diz se é original ou substituição
+    original: I
+    replacement: S
+```
+
+Declarado, o motor aplica três regras: uma entrega **original** aprovada por período,
+por assinatura; **substituição** só depois de aprovada a original do período; e a
+geração mais nova do mesmo período e da mesma remessa substitui a anterior ainda não
+aprovada. `period` é opcional (ausente: todo parâmetro menos o da remessa) e
+`remittance` também (ausente: nenhuma regra de original e substituição). A
+ferramenta de conferência recusa um parâmetro que o contrato não declara, a remessa
+dentro do período e valores fora do `domain` do parâmetro.
+
 ## Regras e severidade
 
 Toda regra declara `severity`. Escolha pensando em quem recebe o resultado:

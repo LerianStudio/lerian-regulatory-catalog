@@ -757,6 +757,55 @@ MUTATIONS: list[Mutation] = [
         lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"type": "competencia"}),
         "o motor aceita",
     ),
+    # ---------------------------------------------------------------- filing
+    Mutation(
+        "filing-chave-desconhecida",
+        "uma chave que o motor não lê é regra que o curador acha que existe e não existe",
+        lambda b: b[PLANO]["contract"]["filing"].update({"periodo": ["dataBase"]}),
+        "que o motor não conhece",
+    ),
+    Mutation(
+        "filing-period-vazio",
+        "período vazio faria toda geração ser a mesma entrega",
+        lambda b: b[PLANO]["contract"]["filing"].update({"period": []}),
+        "period está vazio",
+    ),
+    Mutation(
+        "filing-period-parametro-inexistente",
+        "período por um parâmetro que não existe nunca casa duas gerações",
+        lambda b: b[PLANO]["contract"]["filing"].update({"period": ["competencia"]}),
+        "que não é parâmetro deste contrato",
+    ),
+    Mutation(
+        "filing-period-repetido",
+        "o mesmo parâmetro duas vezes no período é erro de digitação",
+        lambda b: b[PLANO]["contract"]["filing"].update({"period": ["dataBase", "dataBase"]}),
+        "duas vezes",
+    ),
+    Mutation(
+        "filing-remessa-parametro-inexistente",
+        "remessa por parâmetro inexistente desliga a regra de original e substituição",
+        lambda b: b[PLANO]["contract"]["filing"]["remittance"].update({"parameter": "tipo"}),
+        "que não é parâmetro deste contrato",
+    ),
+    Mutation(
+        "filing-remessa-no-periodo",
+        "a remessa no período separaria a original da sua substituição",
+        lambda b: b[PLANO]["contract"]["filing"].update({"period": ["dataBase", "tipoRemessa"]}),
+        "também está em period",
+    ),
+    Mutation(
+        "filing-remessa-fora-do-dominio",
+        "um valor que o parâmetro não aceita nunca marca uma entrega",
+        lambda b: b[PLANO]["contract"]["filing"]["remittance"].update({"replacement": "R"}),
+        "fora do domain",
+    ),
+    Mutation(
+        "filing-remessa-valores-iguais",
+        "original e substituição com o mesmo valor não se distinguem",
+        lambda b: b[PLANO]["contract"]["filing"]["remittance"].update({"replacement": "I"}),
+        "precisam ser distintas",
+    ),
     Mutation(
         "parametro-default-fora-do-dominio",
         "default que o próprio domínio recusa é declaração impossível",
