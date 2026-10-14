@@ -20,6 +20,7 @@ para ninguém confundir com contrato curado nem copiar daqui para o catálogo.
 
 from __future__ import annotations
 
+import hashlib
 from copy import deepcopy
 from pathlib import Path
 
@@ -37,6 +38,7 @@ def _meta(doc_id: str, doc: str, **extra) -> dict:
         "title": f"Fixture {doc}",
         "version": "1.0.0",
         "status": "draft",
+        "output": "xml",
         "appliesTo": {"institutionTypes": ["IP"]},
         "periodicity": "monthly",
         "sourceOfTruth": {"layoutManual": "https://example.invalid/leiaute", "schema": "schema/leiaute.txt"},
@@ -65,7 +67,7 @@ PLANO_CONTRACT = {
     "datasets": [
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
          "fields": [{"name": "cnpj", "type": "string", "length": 14, "required": True,
-                     "normalize": "alphanumeric", "checkDigit": "cnpj", "identifiesInstitution": "cnpj",
+                     "normalize": "alphanumeric", "checkDigit": "cnpj", "identifiesInstitution": True,
                      "description": "CNPJ."},
                     {"name": "cnpj8", "type": "string", "length": 8, "required": True, "prefixOf": "cnpj",
                      "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."}]},
@@ -76,11 +78,20 @@ PLANO_CONTRACT = {
              {"name": "valor", "type": "decimal", "required": True,
               "format": {"scale": 2, "scaleIsExact": True, "decimalSeparator": ".", "groupSeparator": ""},
               "means": "Saldo na natureza da conta.", "description": "Saldo."},
+             {"name": "naturezaRegistrada", "type": "string", "required": False,
+              "description": "Natureza que a base registra."},
          ]},
     ],
+    "tables": [{"name": "natureza", "from": "natureza.yaml", "match": "longestPrefix"}],
     "rules": [
+        {"id": "saldo-na-natureza", "appliesTo": "saldos",
+         "transform": {"negateWhen": {"field": "valor", "table": "natureza", "key": "codigo", "equals": "debit"}}},
+        {"id": "natureza-registrada", "severity": "error", "appliesTo": "saldos",
+         "check": {"equalsLookup": {"field": "naturezaRegistrada", "table": "natureza", "key": "codigo"}}},
         {"id": "sem-duplicata", "severity": "error", "appliesTo": "saldos",
-         "assert": "unique(codigo)", "message": "Uma linha por rubrica."},
+         "check": {"unique": ["codigo"]}, "message": "Uma linha por rubrica."},
+        {"id": "sem-resultado", "severity": "error", "appliesTo": "saldos",
+         "check": {"notStartsWith": {"field": "codigo", "values": ["7", "8"]}}},
     ],
 }
 
@@ -104,13 +115,15 @@ PLANO_BINDING = {
     "queries": [
         {"name": "declarante", "dataSource": "fonte_cadastro", "table": "organizacao"},
         {"name": "saldos_por_rubrica", "dataSource": "fonte_x", "table": "lancamento",
-         "filters": [{"field": "status", "operator": "eq", "values": ["OK"]}],
+         "filters": [{"field": "status", "operator": "eq", "values": ["OK"]},
+                     {"field": "criado_em", "operator": "lt", "values": [{"parameter": "dataBase", "at": "end"}]}],
+         "join": [{"table": "saldo", "match": {"saldo_id": "id"}, "columns": {"natureza": "lado_natural"}}],
+         "compute": [{"as": "valor_no_razao",
+                      "case": {"column": "lado", "when": {"+": {"column": "montante"}, "-": {"negate": "montante"}},
+                               "otherwise": "refuse"}}],
          "aggregate": {
-             "groupBy": ["rota"],
-             "measures": [{"as": "valor", "fn": "sum", "of": "montante",
-                           "sign": {"column": "lado", "debit": "-", "credit": "+"},
-                           "statedIn": {"natureByPrefix": {"1": "debit", "4": "credit"}, "key": "rota"}}],
-             "accumulate": {"on": "criado_em", "until": "system.dataBase"},
+             "groupBy": ["rota", "natureza"],
+             "measures": [{"as": "valor", "fn": "sum", "of": "valor_no_razao"}],
          }},
     ],
     "datasets": {
@@ -118,7 +131,8 @@ PLANO_BINDING = {
                         "fields": {"cnpj": {"from": "query", "column": "documento"}}},
         "saldos": {"from": {"query": "saldos_por_rubrica"},
                    "fields": {"codigo": {"from": "query", "column": "rota"},
-                              "valor": {"from": "query", "column": "valor"}}},
+                              "valor": {"from": "query", "column": "valor"},
+                              "naturezaRegistrada": {"from": "query", "column": "natureza"}}},
     },
     "manualOverrides": [],
 }
@@ -153,8 +167,9 @@ FECHADO_CONTRACT = {
          ]},
     ],
     "rules": [
-        {"id": "conta-do-conjunto", "severity": "error", "appliesTo": "linhas.codigo",
-         "assert": "existsIn(contas.yaml)", "message": "Só contas do conjunto fechado."},
+        {"id": "conta-do-conjunto", "severity": "error", "appliesTo": "linhas",
+         "check": {"existsIn": {"field": "codigo", "rowSet": "contas.yaml"}},
+         "message": "Só contas do conjunto fechado."},
     ],
 }
 
@@ -191,9 +206,9 @@ FECHADO_BINDING = {
     "incompleteFields": ["linhas.valor"],
     "queries": [
         {"name": "estoque", "dataSource": "fonte_x", "table": "lancamento",
+         "filters": [{"field": "criado_em", "operator": "lt", "values": [{"parameter": "dataBase", "at": "end"}]}],
          "aggregate": {"groupBy": ["rota"],
-                       "measures": [{"as": "valor", "fn": "sum", "of": "montante"}],
-                       "accumulate": {"on": "criado_em", "until": "system.dataBase"}}},
+                       "measures": [{"as": "valor", "fn": "sum", "of": "montante"}]}},
     ],
     "datasets": {
         "institution": {"fields": {"cnpj8": {"from": "constant", "value": "12345678"}}},
@@ -258,7 +273,7 @@ HIER_CONTRACT = {
     ],
     "rules": [
         {"id": "resumo-unico", "severity": "error", "appliesTo": "resumos",
-         "assert": "unique(codTitular)", "message": "Um resumo por titular."},
+         "check": {"unique": ["codTitular"]}, "message": "Um resumo por titular."},
     ],
 }
 
@@ -283,7 +298,7 @@ HIER_BINDING = {
     "contractVersion": "1.0.0",
     "queries": [
         {"name": "base_titulares", "dataSource": "crm", "table": "holders",
-         "join": [{"table": "aliases", "match": {"holder_id": "_id"}}]},
+         "join": [{"table": "aliases", "match": {"holder_id": "_id"}, "columns": {"apelido": "alias"}}]},
         {"name": "movimento", "dataSource": "fonte_x", "table": "lancamento",
          "join": [{"query": "base_titulares", "match": {"conta": "conta"}}],
          "derive": [{"as": "dia", "from": "criado_em", "apply": "date"}]},
@@ -342,6 +357,11 @@ JANELAS_CONTRACT = {
               "means": "Estoque ou fluxo, conforme a classe da conta.", "description": "Valor."},
          ]},
     ],
+    "rules": [
+        {"id": "estoque-sem-grupo-cinco", "severity": "error", "appliesTo": "linhas",
+         "where": {"rowSet": "measure", "equals": "stock"},
+         "check": {"notStartsWith": {"field": "codigo", "values": ["5"]}}},
+    ],
 }
 
 JANELAS_CONTAS = {
@@ -369,15 +389,17 @@ JANELAS_BINDING = {
     "contractVersion": "1.0.0",
     "queries": [
         {"name": "estoque", "dataSource": "fonte_x", "table": "lancamento",
+         "filters": [{"field": "criado_em", "operator": "lt",
+                      "values": [{"parameter": "dataBase", "at": "end", "calendar": "business"}]}],
          "aggregate": {"groupBy": ["rota"],
-                       "measures": [{"as": "saldo", "fn": "sum", "of": "montante"}],
-                       "accumulate": {"on": "criado_em", "until": "system.dataBase",
-                                      "from": "opening"}}},
+                       "measures": [{"as": "saldo", "fn": "sum", "of": "montante"}]}},
         {"name": "volume", "dataSource": "fonte_x", "table": "lancamento",
+         "filters": [{"field": "criado_em", "operator": "gte",
+                      "values": [{"parameter": "dataBase", "at": "start", "of": "month", "calendar": "business"}]},
+                     {"field": "criado_em", "operator": "lt",
+                      "values": [{"parameter": "dataBase", "at": "end", "calendar": "business"}]}],
          "aggregate": {"groupBy": ["rota"],
-                       "measures": [{"as": "volumeMes", "fn": "sum", "of": "montante"}],
-                       "accumulate": {"on": "criado_em", "until": "system.dataBase",
-                                      "from": "month"}}},
+                       "measures": [{"as": "volumeMes", "fn": "sum", "of": "montante"}]}},
     ],
     "datasets": {
         "linhas": {
@@ -397,6 +419,19 @@ JANELAS_BINDING = {
     "manualOverrides": [],
 }
 
+
+# A tabela de naturezas do doc-plano (forma do natureza.yaml do 4010), amarrada
+# pelo sha256 ao "elenco" que a fixture publica em zz/fixture/cosif/.
+ELENCO_PATH = "zz/fixture/cosif/elenco.pdf"
+ELENCO_BYTES = b"%PDF-1.4 fixture: elenco de contas\n"
+
+PLANO_NATUREZA = {
+    "source": "https://example.invalid/elenco.pdf",
+    "sha256": hashlib.sha256(ELENCO_BYTES).hexdigest(),
+    "byPrefix": {"1": "debit", "169": "credit", "4": "credit"},
+}
+
+NATUREZAS = {"zz/fixture/plano": PLANO_NATUREZA}
 
 DOCS = {
     "zz/fixture/plano": (PLANO_CONTRACT, PLANO_TEMPLATE, PLANO_BINDING, None),
@@ -429,6 +464,7 @@ def bundle() -> dict:
             "template": template,
             "binding": deepcopy(binding),
             "contas": deepcopy(contas),
+            "natureza": deepcopy(NATUREZAS.get(path)),
         }
         for path, (contract, template, binding, contas) in DOCS.items()
     }
@@ -458,7 +494,15 @@ def write(root: Path, data: dict) -> None:
             (doc_dir / "contas.yaml").write_text(
                 yaml.safe_dump(contas, sort_keys=False, allow_unicode=True), encoding="utf-8")
 
+        if parts.get("natureza") is not None:
+            (doc_dir / "natureza.yaml").write_text(
+                yaml.safe_dump(parts["natureza"], sort_keys=False, allow_unicode=True), encoding="utf-8")
+
         documents.append(parts.get("indexEntry") or _index_entry(contract, path))
+
+    elenco = root / ELENCO_PATH
+    elenco.parent.mkdir(parents=True, exist_ok=True)
+    elenco.write_bytes(ELENCO_BYTES)
 
     (root / "catalog.yaml").write_text(
         yaml.safe_dump({"apiVersion": APIV, "kind": "Catalog", "documents": documents},

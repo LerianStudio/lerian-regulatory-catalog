@@ -193,17 +193,11 @@ MUTATIONS: list[Mutation] = [
 
     # ---------------------------------------------------------------- regras
     Mutation(
-        "regra-sem-severidade",
-        "regra sem severidade não diz se bloqueia a geração ou apenas avisa",
-        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("severity"),
-        "use error, warning ou info",
-    ),
-    Mutation(
         "regra-para-conjunto-inexistente",
         "regra apontando para conjunto que não existe nunca é aplicada",
         lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update(
             {"appliesTo": "conjuntoFantasma"}),
-        "que o contrato não declara",
+        "que não é um conjunto do contrato",
     ),
     Mutation(
         "regra-duplicada",
@@ -255,28 +249,14 @@ MUTATIONS: list[Mutation] = [
         "origem fora do vocabulário é campo que o motor não sabe resolver",
         lambda b: b[FECHADO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
             {"from": "magica"}),
-        "use query, constant, parameter, manual, rowSet, institution ou byRowClass",
+        "use query, constant, parameter, manual, rowSet ou byRowClass",
     ),
     Mutation(
-        "binding-instituicao-valor-invalido",
-        "a instituição só escreve o CNPJ inteiro ou a raiz; outro nome não escreve nada",
+        "binding-origem-instituicao-removida",
+        "a origem `institution` saiu do motor: a raiz do CNPJ é um campo derivado do contrato",
         lambda b: b[FECHADO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
-            {"from": "institution", "institution": "cnpj14"}),
-        "resolve pela instituição e escreve 'cnpj14'",
-    ),
-    Mutation(
-        "binding-instituicao-valor-nao-texto",
-        "uma lista no lugar do nome reprova como valor inválido, sem derrubar a ferramenta",
-        lambda b: b[FECHADO]["binding"]["datasets"]["institution"]["fields"]["cnpj8"].update(
-            {"from": "institution", "institution": ["cnpj8"]}),
-        "resolve pela instituição e escreve ['cnpj8']",
-    ),
-    Mutation(
-        "binding-instituicao-valor-invalido-por-classe",
-        "a mesma conferência no caminho por classe de linha",
-        lambda b: b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1].update(
-            {"from": "institution", "institution": "raiz"}),
-        "byRowClass[1] resolve pela instituição e escreve 'raiz'",
+            {"from": "institution", "institution": "cnpj8"}),
+        "resolve por 'institution'",
     ),
     Mutation(
         "binding-consulta-inexistente",
@@ -437,11 +417,68 @@ MUTATIONS: list[Mutation] = [
     ),
     # ------------------------------------------------ duas janelas (fixture JANELAS)
     Mutation(
-        "acumulacao-sem-coluna-de-tempo",
-        "acumular sem dizer contra qual coluna o tempo é lido — o motor recusa e o "
-        "repositório publicou três bindings assim porque aqui ninguém olhava",
-        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["accumulate"].pop("on"),
-        "não declara `on`",
+        "acumulacao-removida",
+        "acumular saiu do motor: o período é um filtro na data-base",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"].update(
+            {"accumulate": {"on": "criado_em", "until": "system.dataBase"}}),
+        "usa `accumulate`, que o motor não tem mais",
+    ),
+    Mutation(
+        "sinal-removido",
+        "o sinal da medida saiu do motor: é uma coluna calculada",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["measures"][0].update(
+            {"sign": {"column": "lado", "debit": "-", "credit": "+"}}),
+        "usa `sign`, que o motor não tem mais",
+    ),
+    Mutation(
+        "natureza-na-medida-removida",
+        "a natureza saiu do binding: é regra do contrato",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["measures"][0].update(
+            {"statedIn": {"key": "rota"}}),
+        "usa `statedIn`, que o motor não tem mais",
+    ),
+    Mutation(
+        "fim-do-periodo-com-lte",
+        "o fim do período é o primeiro instante depois dele: com lte, o período seguinte entraria",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["filters"][0].update({"operator": "lte"}),
+        "use 'lt'",
+    ),
+    Mutation(
+        "ponta-do-periodo-inexistente",
+        "um período tem início e fim",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["filters"][0]["values"][0].update({"at": "meio"}),
+        "um período tem start e end",
+    ),
+    Mutation(
+        "periodo-sem-ponta",
+        "um período descrito sem dizer qual ponta é lida não compara com nada",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["filters"][0]["values"][0].pop("at"),
+        "sem dizer a ponta",
+    ),
+    Mutation(
+        "parametro-e-literal",
+        "um parâmetro ao lado de valores escritos não diz como os dois se combinam",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["filters"][0]["values"].append("2026-01-01"),
+        "lê um parâmetro e outros valores",
+    ),
+    Mutation(
+        "coluna-calculada-sem-otherwise",
+        "um valor não listado precisa de uma decisão escrita, nunca de um NULL que some da soma",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica")["compute"][0]["case"].pop("otherwise"),
+        "não tem otherwise",
+    ),
+    Mutation(
+        "coluna-calculada-sem-caso",
+        "sem caso nenhum, toda linha cai no otherwise",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica")["compute"][0]["case"].update({"when": {}}),
+        "não lista caso nenhum",
+    ),
+    Mutation(
+        "coluna-calculada-resposta-dupla",
+        "uma resposta é uma coluna, a coluna negada ou uma constante — uma delas",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica")["compute"][0]["case"]["when"].update(
+            {"+": {"column": "montante", "constant": "0"}}),
+        "responde com exatamente um de column, negate ou constant",
     ),
     Mutation(
         "campo-le-consulta-inexistente",
@@ -505,31 +542,10 @@ MUTATIONS: list[Mutation] = [
         "que a consulta 'estoque' não entrega",
     ),
     Mutation(
-        "acumulacao-que-nao-e-mapa",
-        "forma malformada deve reprovar, não ser ignorada em silêncio",
-        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"].__setitem__(
-            "accumulate", "month"),
-        "não é um mapa",
-    ),
-    Mutation(
-        "coluna-de-tempo-que-nao-e-nome",
-        "`on` com uma lista no lugar do nome da coluna não nomeia coluna nenhuma",
-        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["accumulate"]
-        .__setitem__("on", ["criado_em"]),
-        "não declara `on` como o nome de uma coluna",
-    ),
-    Mutation(
         "agregacao-que-nao-e-mapa",
         "forma malformada deve reprovar, não estourar em .get('accumulate')",
         lambda b: b[JANELAS]["binding"]["queries"][0].__setitem__("aggregate", "soma"),
         "não é um mapa",
-    ),
-    Mutation(
-        "coluna-de-tempo-so-com-espaco",
-        "`on: '   '` é texto não vazio e não nomeia coluna nenhuma",
-        lambda b: b[JANELAS]["binding"]["queries"][0]["aggregate"]["accumulate"]
-        .__setitem__("on", "   "),
-        "não declara `on` como o nome de uma coluna",
     ),
     Mutation(
         "consulta-nomeada-que-nao-e-nome",
@@ -882,13 +898,13 @@ MUTATIONS: list[Mutation] = [
     Mutation(
         "instituicao-identificador-desconhecido",
         "um identificador de instituição que o motor não confere não confere nada",
-        lambda b: field(b[PLANO]["contract"], "institution", "cnpj").update({"identifiesInstitution": "name"}),
-        "o motor confere",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj").update({"identifiesInstitution": "cnpj"}),
+        "o campo identifica a instituição (`true`)",
     ),
     Mutation(
         "instituicao-marcada-no-derivado",
         "o derivado não é lido da origem; a identidade é conferida no campo de onde ele é cortado",
-        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"identifiesInstitution": "cnpj"}),
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"identifiesInstitution": True}),
         "num derivado",
     ),
     Mutation(
@@ -898,19 +914,84 @@ MUTATIONS: list[Mutation] = [
         "regra sem id",
     ),
     Mutation(
-        "regra-sem-assert",
-        "regra sem assert é lida em revisão como se protegesse algo e não confere nada",
-        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("assert"),
-        "não tem assert",
+        "regra-em-texto-livre",
+        "uma regra em texto livre é lida em revisão como se protegesse algo e o motor não a executa",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update({"assert": "unique(codigo)"}),
+        "texto livre (`assert`)",
+    ),
+    Mutation(
+        "regra-sem-transformacao-nem-conferencia",
+        "uma regra que não transforma nem confere não faz nada",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("check"),
+        "exatamente um de transform ou check",
+    ),
+    Mutation(
+        "regra-com-transformacao-e-conferencia",
+        "uma regra faz uma coisa",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update(
+            {"transform": {"negateWhen": {"field": "valor", "table": "natureza", "key": "codigo", "equals": "debit"}}}),
+        "exatamente um de transform ou check",
+    ),
+    Mutation(
+        "regra-sem-severidade",
+        "uma conferência sem severidade não diz se bloqueia a geração",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").pop("severity"),
+        "o motor executa error",
+    ),
+    Mutation(
+        "conferencia-que-so-avisa",
+        "warning e info numa conferência estão definidos e não implementados",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update({"severity": "warning"}),
+        "o motor executa error",
+    ),
+    Mutation(
+        "transformacao-com-severidade",
+        "uma transformação não falha",
+        lambda b: rule(b[PLANO]["contract"], "saldo-na-natureza").update({"severity": "error"}),
+        "uma transformação não falha",
+    ),
+    Mutation(
+        "regra-definida-nao-implementada",
+        "um tipo que o motor ainda não executa é recusado, não carregado como promessa",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update({"check": {"equalsSumOf": {"field": "valor"}}}),
+        "definido e ainda não implementado",
+    ),
+    Mutation(
+        "regra-tipo-desconhecido",
+        "um tipo fora do vocabulário não é executado por ninguém",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update({"check": {"distinct": ["codigo"]}}),
+        "é 'distinct'",
     ),
     Mutation(
         "regra-aponta-campo-inexistente",
-        "a cabeça de appliesTo era conferida e a CAUDA não: regra sobre campo fantasma nunca dispara",
-        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update(
-            {"appliesTo": "saldos.naoDeclarado"}),
-        "campo que 'saldos' não declara",
+        "regra sobre campo fantasma nunca dispara",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update({"check": {"unique": ["naoDeclarado"]}}),
+        "campo 'naoDeclarado', que 'saldos' não declara",
     ),
-
+    Mutation(
+        "regra-tabela-nao-publicada",
+        "uma regra que consulta tabela que o contrato não publica não responde nada",
+        lambda b: rule(b[PLANO]["contract"], "natureza-registrada")["check"]["equalsLookup"].update({"table": "outra"}),
+        "a tabela 'outra', que o contrato não publica",
+    ),
+    Mutation(
+        "regra-aplica-a-conjunto-inexistente",
+        "o alvo de uma regra é um conjunto do contrato",
+        lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update({"appliesTo": "fantasma"}),
+        "que não é um conjunto do contrato",
+    ),
+    Mutation(
+        "regra-where-sem-comparacao",
+        "um where que não compara com nada não restringe linha nenhuma",
+        lambda b: rule(b[JANELAS]["contract"], "estoque-sem-grupo-cinco")["where"].pop("equals"),
+        "exatamente um de equals, in ou notIn",
+    ),
+    Mutation(
+        "regra-existsin-de-outro-conjunto",
+        "existsIn lê as linhas que o PRÓPRIO conjunto publica",
+        lambda b: rule(b[FECHADO]["contract"], "conta-do-conjunto")["check"]["existsIn"].update({"rowSet": "outro.yaml"}),
+        "e o conjunto publica",
+    ),
 
     # ------------------ texto onde YAML pode entregar lista ou mapa
     # Achadas pelo CodeRabbit no PR e confirmadas uma a uma: TODAS faziam a
@@ -971,7 +1052,7 @@ MUTATIONS: list[Mutation] = [
         "applies-to-e-lista",
         "appliesTo que não é texto não tem .partition",
         lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update({"appliesTo": ["saldos"]}),
-        "é o nome do que ela lê",
+        "que não é um conjunto do contrato",
     ),
 
 
@@ -1022,11 +1103,11 @@ MUTATIONS: list[Mutation] = [
         "childOf nomeia o conjunto pai por texto",
     ),
     Mutation(
-        "regra-sobre-parametro-fantasma",
-        "a cauda de appliesTo era conferida para conjunto e NÃO para parameters: regra que nunca dispara",
+        "regra-sobre-parametro",
+        "uma regra executada lê as linhas de um conjunto; parâmetros não são conjunto",
         lambda b: rule(b[PLANO]["contract"], "sem-duplicata").update(
             {"appliesTo": "parameters.fantasma"}),
-        "parâmetro que o contrato não declara",
+        "que não é um conjunto do contrato",
     ),
     Mutation(
         "retrorreferencia-apos-barra-escapada",
@@ -1183,6 +1264,83 @@ MUTATIONS: list[Mutation] = [
         "allowedMonths foi escrita e está vazia",
     ),
 
+
+    # ------------------------------------------------------ join de tabela
+    Mutation(
+        "join-de-tabela-sem-colunas",
+        "um join de tabela que não nomeia colunas não traz nada que a consulta leia",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica").update(
+            {"join": [{"table": "saldo", "match": {"rota": "id"}}]}),
+        "não diz que colunas traz",
+    ),
+    Mutation(
+        "join-de-consulta-com-colunas",
+        "as colunas de uma consulta já são dela; declarar `columns` num join dela não diz nada",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica").update(
+            {"join": [{"query": "declarante", "match": {"rota": "id"}, "columns": {"x": "y"}}]}),
+        "declara `columns`",
+    ),
+
+    # ------------------------------------------------- natureza das rubricas
+    Mutation(
+        "natureza-sem-arquivo",
+        "contrato declara a tabela e ela não está ao lado: toda retificadora sairia com o sinal trocado",
+        lambda b: b[PLANO].__setitem__("natureza", None),
+        "que não existe",
+    ),
+    Mutation(
+        "tabela-casada-de-outro-jeito",
+        "o motor casa uma tabela pelo prefixo mais longo, e só assim",
+        lambda b: b[PLANO]["contract"]["tables"][0].update({"match": "exact"}),
+        "o motor casa por longestPrefix",
+    ),
+    Mutation(
+        "natureza-em-diretorio",
+        "a tabela é arquivo ao lado do contrato; um caminho sai da pasta do documento",
+        lambda b: b[PLANO]["contract"]["tables"][0].update({"from": "../natureza.yaml"}),
+        "nomeado sem diretório",
+    ),
+    Mutation(
+        "natureza-prefixo-pontuado",
+        "o razão carrega o código sem pontuação, e um prefixo pontuado nunca casa",
+        lambda b: b[PLANO]["natureza"]["byPrefix"].update({"1.6.9": "credit"}),
+        "não é texto de dígitos",
+    ),
+    Mutation(
+        "natureza-lado-invalido",
+        "uma natureza é devedora ou credora, e a regra compara com essas palavras",
+        lambda b: b[PLANO]["natureza"]["byPrefix"].update({"4": "passivo"}),
+        "a natureza é debit ou credit",
+    ),
+    Mutation(
+        "natureza-de-elenco-nao-publicado",
+        "a tabela foi gerada de um elenco que o catálogo não publica, então ninguém a reproduz",
+        lambda b: b[PLANO]["natureza"].update({"sha256": "0" * 64}),
+        "que o catálogo não publica",
+    ),
+    Mutation(
+        "natureza-sem-sha",
+        "uma tabela sem o sha256 do elenco foi escrita à mão",
+        lambda b: b[PLANO]["natureza"].pop("sha256"),
+        "não traz o sha256",
+    ),
+    Mutation(
+        "natureza-solta",
+        "uma tabela que nenhum contrato declara não é regra de documento nenhum",
+        lambda b: (b[PLANO]["contract"].pop("tables"),
+                   [b[PLANO]["contract"]["rules"].remove(r) for r in list(b[PLANO]["contract"]["rules"])
+                    if r["id"] in ("saldo-na-natureza", "natureza-registrada")]),
+        "que o contrato não declara em `tables`",
+    ),
+    Mutation(
+        "natureza-copias-divergentes",
+        "duas cópias diferentes dariam a uma rubrica um sinal em um documento e outro no seguinte",
+        lambda b: (b[HIER]["contract"].update(
+                       {"tables": [{"name": "natureza", "from": "natureza.yaml", "match": "longestPrefix"}]}),
+                   b[HIER].__setitem__("natureza", {**copy.deepcopy(fixtures.PLANO_NATUREZA),
+                                                     "byPrefix": {"1": "debit", "4": "credit"}})),
+        "diferem",
+    ),
 ]
 
 
@@ -1195,12 +1353,17 @@ _NOT_CONTRACT_KEYS = {
     "byRowClass", "generatable", "incompleteReason", "incompleteFields",
     "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
     "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
-    "accumulate", "rowKey",
+    "accumulate", "rowKey", "compute", "case", "otherwise", "at", "calendar", "operator",
+    "values", "parameter",
+    # o texto livre que saiu da gramática: lido só para ser recusado
+    "assert",
     "when", "value", "statedIn", "pendingReason", "measures", "contract", "institution",
     # catalog.yaml
     "documents", "path",
     # contas.yaml — o conjunto fechado
     "rows", "masked",
+    # natureza.yaml — a tabela de naturezas do elenco
+    "byPrefix", "sha256",
 }
 
 

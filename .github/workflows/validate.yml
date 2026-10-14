@@ -21,4 +21,5 @@ jobs:
       # pegar. Uma conferência frouxa aprova um catálogo errado, então validar sem
       # antes provar o validador é confiar numa rede sem olhar se tem buraco.
       - run: python3 tools/test_validate.py
+      - run: python3 tools/test_natureza.py
       - run: python3 tools/validate.py

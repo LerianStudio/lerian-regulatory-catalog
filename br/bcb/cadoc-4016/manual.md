@@ -24,6 +24,9 @@ O binding de exemplo exclui essas rubricas na consulta, e o contrato confere no
 arquivo pronto: uma rubrica que começa com 7 ou 8 recusa o documento, porque
 indica que o filtro do binding não excluiu o resultado.
 
+Rubrica com saldo zero **pode ser omitida** (leiaute p.6): emitir ou não é decisão
+sua, e as duas formas são aceitas.
+
 ## A apuração do resultado precisa estar lançada
 
 Excluir as contas de resultado do arquivo **não apura o resultado**. O lucro ou o

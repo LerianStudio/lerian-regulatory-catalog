@@ -7,8 +7,10 @@
 # que grão, quais campos, o que cada um significa, que formato e domínio tem, e o
 # que precisa valer no arquivo pronto.
 #
-# O QUE ELE NÃO DIZ: de onde o dado vem nem como é extraído. Agregação, soma com
-# sinal, consulta à tabela de natureza — tudo isso é binding.
+# O QUE ELE NÃO DIZ: de onde o dado vem nem como é extraído. Consulta, agregação,
+# soma com sinal — tudo isso é binding. A REGRA do documento é daqui: em que
+# natureza cada saldo sai e o que precisa valer no arquivo pronto (`rules`), lida da
+# tabela que este contrato publica (`tables`).
 #
 # A LINHA QUE SEPARA: a resposta muda de cliente para cliente? Se muda, é binding.
 # "Saldo tem duas casas exatas" não muda — o BACEN manda. "Acumule os lançamentos
@@ -35,8 +37,9 @@ metadata:
   # Publicação é tag git (br.bcb.cadoc-4010/v1.0.0). A instalação do cliente fixa a
   # versão adotada, então uma correção publicada aqui não muda o que ele gera até
   # ele adotar.
-  version: 1.4.3   # 1.4.3: o que faz a entrega (período) e a remessa (original e substituição), nas palavras do contrato; 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
+  version: 1.6.0   # 1.6.0: a regra de cada documento é do contrato — a natureza vem de `tables` e é aplicada e conferida por `rules`, que o motor executa; o binding só lê; 1.5.0: a natureza de cada rubrica, retificadoras incluídas, vem do elenco COSIF (natureza.yaml) e a de cada conta lançada é a que o Midaz registra, conferida contra ele; 1.4.3: o que faz a entrega (período) e a remessa (original e substituição), nas palavras do contrato; 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
   status: draft
+  output: xml
   # A quem o documento se aplica. É o que permite filtrar o catálogo por tipo de
   # instituição em vez de o cliente adivinhar o que precisa entregar.
   appliesTo:
@@ -52,7 +55,7 @@ metadata:
 #
 # Respondidos por requisição, não pelo binding: mudam a cada emissão. O motor os
 # publica no contexto de render sob o nome reservado `system`, e o binding pode
-# referenciá-los na extração (`until: system.dataBase`).
+# filtrar por eles (`{parameter: dataBase, at: end}`, o fim do período).
 # ---------------------------------------------------------------------------
 parameters:
   - name: dataBase
@@ -123,7 +126,7 @@ datasets:
         # A declarante é a instituição da entrega: o CNPJ lido da base é conferido
         # contra o cadastro da instituição, e um diferente recusa a geração
         # (RPT-0196). O registro e o arquivo não nomeiam instituições diferentes.
-        identifiesInstitution: cnpj
+        identifiesInstitution: true
         description: CNPJ da instituição declarante (quatorze posições).
       - name: cnpj8
         type: string
@@ -155,6 +158,12 @@ datasets:
     # do dígito verificador, também declarada aqui: a soma das nove posições com
     # os pesos 9,3,7,9,3,7,9,3,7, módulo 10, que reproduz todas as rubricas que o
     # regulador publica.
+    # NATUREZA DE CADA RUBRICA: o lado em que o saldo normalmente fica, lido do
+    # elenco COSIF do BACEN (a tabela `natureza`, abaixo, gerada por
+    # tools/natureza.py). É dado do PLANO COSIF, não do cliente: o elenco marca as
+    # retificadoras — perda esperada, provisão, depreciação acumulada —, e quem
+    # lança na rubrica certa fez o que lhe cabe. As regras `saldo-na-natureza` e
+    # `natureza-registrada` aplicam e conferem; o binding só lê.
     hierarchy:
       levels: [1, 1, 1, 2, 2, 2]
       checkDigit: 1
@@ -195,28 +204,69 @@ datasets:
           crédito-menos-débito do razão não deve vazar para o arquivo.
         description: Saldo da rubrica em reais na data-base.
 
+      - name: naturezaRegistrada
+        type: string
+        required: false
+        # Campo de CONFERÊNCIA: não sai no arquivo (o leiaute não o lê). Quando a
+        # base registra a natureza de cada conta — o Midaz a guarda no saldo —, o
+        # binding a traz aqui e a regra `natureza-registrada` a confere contra o
+        # elenco. Uma conta configurada com a natureza errada, ou lançada numa
+        # rubrica que não é do seu tipo, recusa a geração nomeando a conta.
+        means: >-
+          A natureza (debit ou credit) que a base registra para a conta da rubrica.
+          As linhas-mãe, somadas das de baixo, não registram natureza própria.
+        description: Natureza da conta como a base a registra.
+
 # ---------------------------------------------------------------------------
 # Regras do arquivo pronto
 #
 # Só o que atravessa linhas. Regra de campo vive no campo. Regra de extração não
 # vive aqui — vive no binding.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Tabelas publicadas com o contrato
+#
+# Dado de referência que as regras consultam. O motor procura a chave e devolve o
+# valor; o que o valor quer dizer está nas regras abaixo.
+# ---------------------------------------------------------------------------
+tables:
+  - name: natureza
+    from: natureza.yaml        # prefixo da rubrica → debit | credit, do elenco COSIF
+    match: longestPrefix
+
 rules:
+  # O razão soma em convenção contábil (crédito positivo). Uma conta de natureza
+  # devedora sai com o sinal invertido, para que todo saldo apareça positivo na
+  # natureza da própria conta. Roda depois da soma das contas-mãe, em cada linha,
+  # pela natureza dela: uma provisão credora ABATE a mãe devedora.
+  - id: saldo-na-natureza
+    appliesTo: cosif_balances
+    transform:
+      negateWhen: {field: saldo, table: natureza, key: cosifCode, equals: debit}
+    message: >-
+      Cada saldo sai na natureza da própria conta.
+
+  - id: natureza-registrada
+    severity: error
+    appliesTo: cosif_balances
+    check:
+      equalsLookup: {field: naturezaRegistrada, table: natureza, key: cosifCode}
+    message: >-
+      A natureza que a base registra para a conta tem de ser a do elenco COSIF para
+      a rubrica. Divergência indica conta configurada com a natureza errada ou
+      lançada numa rubrica que não é do seu tipo.
+
   - id: no-duplicate-account
     severity: error
     appliesTo: cosif_balances
-    assert: unique(cosifCode)
+    check:
+      unique: [cosifCode]
     message: >-
       Uma linha por rubrica. Duplicidade indica agrupamento errado no binding e
       viola a chave que o BACEN aplica na recepção.
 
-  - id: zero-balance-optional
-    severity: info
-    appliesTo: cosif_balances
-    assert: always
-    message: >-
-      Rubrica com saldo zero pode ser omitida (manual §3.2.2.a). Emitir ou não é
-      decisão do cliente; as duas formas são aceitas.
+  # Rubrica com saldo zero pode ser omitida (manual §3.2.2.a); emitir ou não é
+  # decisão do cliente. É informação, não regra: está no manual.md.
 
 # ---------------------------------------------------------------------------
 # Pendências conhecidas
@@ -237,31 +287,19 @@ knownGaps:
       motor significaria o Reporter manter uma cópia do elenco COSIF, que é
       exatamente a segunda fonte de verdade que a separação em camadas evita.
 
-  - id: natureza-contabil-e-configuracao-do-cliente
+  - id: natureza-lida-do-elenco
     description: >-
-      NÃO é uma lacuna do motor nem do Midaz — é uma precondição de CONFIGURAÇÃO, e
-      fica registrada porque um arquivo gerado sobre configuração errada sai
-      bem-formado e com o sinal trocado, que nada a jusante distingue de um correto.
-
-      O sinal de cada saldo depende da natureza da conta, que é propriedade do PLANO
-      DE CONTAS. No Midaz o plano de contas são as ROTAS CONTÁBEIS: uma
-      `operation_route` carrega `accountingEntries` e, por ação (direct, hold,
-      commit, cancel, revert, overdraft, block, unblock), declara a rubrica que
-      recebe o DÉBITO e a que recebe o CRÉDITO — cada uma com código e descrição.
-      Cada lançamento postado carrega `operation.route_code`, que liga a operação à
-      rota, e `operation.type` (DEBIT ou CREDIT), que diz de que lado ele entrou.
-
-      Ou seja: a rubrica de cada movimento é derivável, e a natureza segue do próprio
-      código COSIF que o cliente referenciou na rota. Se as rotas contábeis
-      referenciam o COSIF corretamente, o arquivo sai correto sem que motor nem
-      contrato saibam nada de natureza contábil — que é exatamente o motivo de o
-      COSIF ter saído do motor.
-
-      Quando o cliente gera a partir da base dele em vez do Midaz, a obrigação é a
-      mesma e apenas muda de lugar: prover a informação correta é dele. O binding é
-      onde isso é declarado, e é a camada certa, porque a resposta muda de cliente
-      para cliente.
-
+      A natureza de cada rubrica vem do elenco COSIF do BACEN (natureza.yaml,
+      gerada por tools/natureza.py): a seção dá o lado, "(-)" marca a
+      retificadora, "(+/-)" herda a mãe. O que fica com o cliente é LANÇAR NA
+      RUBRICA CERTA — o COSIF referenciado nas rotas contábeis do Midaz
+      (`operation.route_code`). Dois limites, declarados: (1) uma rubrica que o
+      elenco não tem, mas que cai num grupo que existe, recebe a natureza do grupo
+      em silêncio (uma "provisão" inventada em 1.6.9 sai devedora); só uma rubrica
+      fora de todo grupo do elenco, como o grupo 5 a partir de 2025, recusa a
+      geração. (2) No grupo 8 o elenco escreve "(-)" em quase toda despesa, então o
+      grupo é tratado como devedor inteiro; as poucas contas sem a marca ficam
+      listadas no cabeçalho de natureza.yaml para revisão.
   - id: ordem-de-remessa
     description: >-
       O BACEN só recepciona a data-base N se a N-1 já foi aceita. Isso não é regra

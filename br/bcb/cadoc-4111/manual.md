@@ -103,7 +103,7 @@ larguras 1-1-1-2-2-2 e um dígito verificador), e o motor soma a árvore por ess
 declaração. É também o que decide **o que é lido** do razão: só as rubricas que
 estão sob alguma das trinta contas. Receitas, despesas, operações de crédito e o
 resto do seu plano de contas não entram na leitura, e por isso não precisam de
-natureza declarada no binding nem podem recusar a geração.
+natureza na tabela nem podem recusar a geração.
 
 Uma subconta sua **não vira linha** do arquivo: o conjunto é fechado. Ela só
 contribui para as linhas acima dela.
@@ -197,11 +197,11 @@ certo:
   o BCB. Um binding seu pode abater as correções (marcando-as e lendo-as), por sua
   conta e risco.
 
-A **natureza contábil** de cada rubrica — devedora ou credora — é propriedade do
-plano de contas do cliente, não deste catálogo. Publicar uma tabela nossa criaria
-uma segunda fonte de verdade que ninguém reconcilia. Ela é declarada no binding,
-do seu lado; no exemplo contra o Midaz vem do COSIF referenciado nas rotas
-contábeis.
+A **natureza contábil** de cada rubrica — devedora ou credora — é do plano COSIF,
+e o catálogo a publica junto com o contrato (`natureza.yaml`, gerada do elenco de
+contas do BACEN; a mesma tabela do 4010, para que o último dia do mês feche com
+ele). O que cabe a você é lançar na rubrica certa. Um plano de contas que não seja
+o COSIF declara a própria tabela no binding, por sua conta.
 
 ## Dias úteis
 

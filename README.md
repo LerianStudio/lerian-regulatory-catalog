@@ -54,13 +54,15 @@ pré-requisito para gerar.
 
 ## O que este repositório NÃO publica
 
-Tabela sobre o plano de contas do cliente. A natureza contábil de uma conta —
-devedora ou credora — é propriedade do plano de contas dele, e uma tabela nossa
-seria uma segunda fonte de verdade que ninguém reconcilia. Isso é declarado no
-binding, do lado do cliente. O validador recusa um arquivo desses aqui.
+Tabela sobre o plano de contas do cliente. O que é do cliente vai no binding, do
+lado dele; o validador recusa uma tabela de natureza que nenhum contrato declara.
 
-Tabelas de código do REGULADOR são outra coisa e cabem aqui, porque são parte do
-que o documento é.
+Tabelas do REGULADOR são outra coisa e cabem aqui, porque são parte do que o
+documento é. A **natureza das rubricas COSIF** é uma delas: o elenco de contas do
+BACEN diz quais são retificadoras, então ela é publicada ao lado de cada contrato
+(`natureza.yaml`), gerada do PDF do elenco em `br/bcb/cosif/` por
+`tools/natureza.py` — nunca escrita à mão. O validador confere que cada cópia traz
+o sha256 do elenco publicado e que todas são iguais.
 
 **Garantia sobre razões que não sejam o Midaz.** Os bindings de exemplo são
 escritos contra o Midaz, e é contra o Midaz que a geração é homologada. Eles são

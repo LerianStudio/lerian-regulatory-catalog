@@ -16,9 +16,9 @@ Três peças, e a separação entre elas é o que dá valor ao resultado:
 | Cenário | Perfil | O que cobre |
 |---|---|---|
 | `a-pagare-ip` | IP emissora pré-paga e credenciadora | conta pré-paga, recursos de clientes, controle de compensação, liquidação, fluxos do emissor e do credenciador; **hold → commit, hold → cancel e estorno** |
-| `b-crediflex-scfi` | Sociedade de crédito, financiamento e investimento | aceite cambial, saldo credor em conta de empréstimo, obrigação zerada no mês, estorno, e uma **retificadora** (provisão, credora dentro do grupo 1) |
+| `b-crediflex-scfi` | Sociedade de crédito, financiamento e investimento | aceite cambial, saldo credor em conta de empréstimo, obrigação zerada no mês, estorno, e uma **retificadora** real do elenco — (-) Perda Esperada sobre Empréstimos, credora dentro do grupo 1 — sem natureza declarada no binding |
 | `d-calendario` | **Sintético, declarado como tal** | fevereiro de 2026 termina num sábado: balancete fechado no último dia útil, volume de sábado e domingo no primeiro dia útil de março, e o 4111 de sábado recusado |
-| `c-cobertura` | **Sintético, declarado como tal** | toda linha do 4111 que A e B não alcançam; lançamento na linha-mãe e em subcontas do cliente (soma da árvore); fluxo de agosto fora da janela; corte diário (dia 15 x dia 30); lançamento depois da data-base; grupos 2 e 5 |
+| `c-cobertura` | **Sintético, declarado como tal** | toda linha do 4111 que A e B não alcançam; lançamento na linha-mãe e em subcontas do cliente (soma da árvore); fluxo de agosto fora da janela; corte diário (dia 15 x dia 30); lançamento depois da data-base; grupo 2 e uma retificadora do PL ((-) Capital a Realizar, devedora) |
 | `e-cheque-especial` | **Sintético, declarado como tal** | cheque especial no saldo de uma conta de depósito: o débito acima do saldo fica só com a parte coberta na rubrica do depósito (que vai a zero, nunca negativo) e o excedente vira uma operação companheira (`OVERDRAFT`) na rubrica de Adiantamentos a Depositantes que a rota declara; um crédito quita primeiro o adiantamento; um débito com saldo zero sai com a perna original de valor 0 |
 | `f-bloqueio` | **Sintético, declarado como tal** | bloqueio judicial como a transação BLOCK do Midaz: o valor vai do saldo `default` para um saldo `bloqueio` da mesma conta, sob a mesma rubrica, e o depósito continua inteiro no 4010 e no 4111 (o bloqueio limita o que se gasta, não o que se deve); o desbloqueio (UNBLOCK) devolve parte |
 | `g-livros-multiplos` | **Sintético, declarado como tal** | a instituição é a organização: dois ledgers (Contas e Tesouraria) lidos juntos pelo escopo só de organização, e lançamentos CROSS-LEDGER entre eles pela API v2 — cada parte fechada contra a `@external/BRL` do ledger com a rubrica da rota-ponte, que zera na soma dos livros. A v2 não retrodata: o 4111 do dia e o 4010 do mês dos lançamentos ficam como recusa esperada até o período fechar |
@@ -143,8 +143,12 @@ quais faltam depois de 30s.
 - **O XSD do 4111 aceita a raiz alfanumérica** (`[A-Za-z0-9]{8}`, XSD vigente desde
   02/01/2025): o cenário H gera o 4111 com `LR4ZAB12` e ele passa na validação.
 - **Uma retificadora declarada só pelo grupo sai com o sinal trocado.** A
-  natureza é do plano de contas do cliente: o cenário a declara (`natures`), e o
-  motor usa o prefixo mais longo.
+  natureza de cada rubrica é do elenco COSIF e é regra do contrato (a tabela
+  `natureza`, aplicada pela regra `saldo-na-natureza` pelo prefixo mais longo, e
+  conferida contra a natureza que o Midaz registra pela `natureza-registrada`). Os
+  cenários usam só rubricas do elenco vigente: uma rubrica inventada dentro de um
+  grupo existente receberia a natureza do grupo em silêncio, que é o erro que este
+  achado descreve.
 
 ## Regras
 

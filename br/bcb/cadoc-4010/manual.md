@@ -25,16 +25,30 @@ outro) e reexpresso na **natureza da própria conta**. Uma conta de ativo, deved
 com saldo devedor sai positiva; uma de passivo, credora, com saldo credor também. A
 convenção do razão não vaza para o arquivo.
 
-A natureza é do **plano de contas do cliente**, não deste catálogo, e é declarada
-no binding. No exemplo contra o Midaz ela é lida do primeiro dígito da rubrica
-(grupo COSIF). A exceção que todo plano tem é a **retificadora** — provisão para
-operações de crédito (1.6.9), depreciação acumulada —, credora dentro de um grupo
-devedor. Declarada só pelo grupo, ela sai com o sinal trocado num arquivo bem
-formado. Declare-a pelo prefixo dela: vale o prefixo mais longo que casa com a
-rubrica.
+A natureza de cada rubrica é do **plano COSIF**, e o catálogo a publica junto com
+o contrato (`natureza.yaml`), gerada do elenco de contas do BACEN. O elenco marca
+as **retificadoras** — perda esperada e provisão sob cada operação de crédito,
+depreciação e amortização acumuladas, capital a realizar —, credoras dentro de um
+grupo devedor ou o contrário; a tabela as declara pelo prefixo, e vale o prefixo
+mais longo que casa com a rubrica. O que cabe a você é **lançar na rubrica certa**:
+uma provisão lançada fora da subconta de perda do elenco sai com a natureza do
+grupo, e portanto com o sinal trocado, num arquivo bem formado.
 
-O motor **não confere** se o sinal está certo. Quem confere é a pessoa que revisa o
-rascunho antes de aprovar — é para isso que a geração termina em rascunho.
+A natureza é **regra do contrato**, não do mapeamento: a regra `saldo-na-natureza`
+inverte o saldo das contas devedoras pela tabela publicada, depois de somar as
+contas-mãe, e vale para qualquer base mapeada. O 4010 é um documento COSIF; um plano
+de contas que não é o COSIF precisa lançar nas rubricas do elenco para usá-lo. Um
+código que não casa com nenhum prefixo (um grupo que o elenco não tem, como o 5 a
+partir de 2025) recusa a geração, nomeando o código.
+
+Quando a base **registra** a natureza de cada conta — o Midaz a guarda no saldo —, o
+mapeamento a traz no campo `naturezaRegistrada`, e a regra `natureza-registrada`
+recusa a geração se ela divergir do elenco, nomeando a conta. Sem esse campo a
+conferência não acontece, e quem confere o sinal é a pessoa que revisa o rascunho
+antes de aprovar — é para isso que a geração termina em rascunho.
+
+Rubrica com saldo zero **pode ser omitida** (leiaute §3.2.2.a): emitir ou não é
+decisão sua, e as duas formas são aceitas.
 
 ## As contas-mãe são a soma do que está abaixo delas
 

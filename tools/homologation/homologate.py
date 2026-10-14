@@ -100,7 +100,10 @@ class Midaz:
 
         while True:
             sep = "&" if "?" in path else "?"
-            query = "limit=100&" + ("cursor=" + urllib.parse.quote(cursor) if cursor else "page=%d" % page)
+            # Sem `page` na primeira: as listas por cursor (relatórios) recusam o
+            # parâmetro, e as por página começam na primeira sem ele.
+            query = "limit=100" + ("&cursor=" + urllib.parse.quote(cursor) if cursor
+                                   else "&page=%d" % page if page > 1 else "")
             _, payload = self.get(path + sep + query)
             batch = payload.get("items") or []
             out.extend(batch)
@@ -528,7 +531,10 @@ def ensure_institution(rep, sc, org_id):
     conditions = {"organization_id": {"eq": [org_id]}}
     # The declarant's CNPJ is read from the organization itself (onboarding's
     # organization.legal_document), so the scope covers that table too: its own row.
-    scope = {"midaz_transaction": {"tables": {"operation": {"conditions": conditions}}},
+    # The balance is read beside each entry for the nature the account was
+    # configured with (the bindings' join), so it is the organization's too.
+    scope = {"midaz_transaction": {"tables": {"operation": {"conditions": conditions},
+                                              "balance": {"conditions": conditions}}},
              "midaz_onboarding": {"tables": {"organization": {"conditions": {"id": {"eq": [org_id]}}}}}}
     body = {"name": sc["organization"]["legalName"], "cnpj": cnpj, "scope": scope}
     for i in rep.items("/v1/institutions"):
@@ -635,78 +641,9 @@ def contract_version(root, number):
     return found.group(1) if found else None
 
 
-def structural(line):
-    """Whether a line carries YAML structure: not blank, not a comment on its own."""
-    stripped = line.strip()
-
-    return bool(stripped) and not stripped.startswith("#")
-
-
-def inside_block(lines, i, indent):
-    """Whether line i still belongs to a mapping whose entries are indented `indent`.
-
-    A blank line or a standalone comment — YAML allows one at any indentation —
-    carries no structure of its own: it belongs to the block while the mapping goes
-    on after it, and is kept as written either way.
-    """
-    if structural(lines[i]):
-        return len(lines[i]) - len(lines[i].lstrip()) >= indent
-
-    for later in lines[i + 1:]:
-        if structural(later):
-            return len(later) - len(later.lstrip()) >= indent
-
-    return False
-
-
-def with_natures(binding, natures):
-    """The binding with the scenario's own natures in every natureByPrefix.
-
-    Nature is a property of the client's chart of accounts, not of the catalog: a
-    contra-account (a provision, credit-natured inside the asset group) is declared
-    by a longer prefix, and the engine takes the longest prefix that matches.
-
-    Idempotent on the text: a prefix the block already declares is left alone when
-    its side agrees and rewritten when it does not, so running twice adds nothing
-    twice and a binding the scenario already shaped comes back unchanged.
-    """
-    if not natures:
-        return binding
-
-    lines = binding.decode().splitlines(keepends=True)
-    out, i = [], 0
-
-    while i < len(lines):
-        line = lines[i]
-        out.append(line)
-        i += 1
-
-        if line.strip() != "natureByPrefix:":
-            continue
-
-        pad = " " * (len(line) - len(line.lstrip()) + 2)
-        declared = {}
-
-        # The block's own entries: every following line indented deeper, blank
-        # lines included while the mapping goes on after them.
-        while i < len(lines) and inside_block(lines, i, len(pad)):
-            entry = re.match(r'^\s*"([^"]+)":\s*(\w+)(.*)$', lines[i])
-            if entry and entry.group(1) in natures and entry.group(2) != natures[entry.group(1)]:
-                lines[i] = '%s"%s": %s%s\n' % (pad, entry.group(1), natures[entry.group(1)], entry.group(3).rstrip("\n"))
-            if entry:
-                declared[entry.group(1)] = natures.get(entry.group(1), entry.group(2))
-            out.append(lines[i])
-            i += 1
-
-        out.extend('%s"%s": %s    # natureza do plano de contas deste cenário\n' % (pad, k, v)
-                   for k, v in sorted(natures.items()) if k not in declared)
-
-    return "".join(out).encode()
-
-
-def apply_binding(rep, subscription, binding_path, natures=None):
+def apply_binding(rep, subscription, binding_path):
     """Puts the catalog working tree's binding on the subscription, when it differs."""
-    wanted = with_natures(open(binding_path, "rb").read(), natures)
+    wanted = open(binding_path, "rb").read()
     _, headers, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
     if current == wanted:
         return "inalterado"
@@ -714,30 +651,6 @@ def apply_binding(rep, subscription, binding_path, natures=None):
     rep.raw("PUT", "/v1/regulatory/subscriptions/%s/binding" % subscription, wanted,
             {"Content-Type": "application/yaml", "If-Match": etag})
     return "aplicado"
-
-
-def apply_natures_in_force(rep, subscription, natures):
-    """Adds the scenario's natures to the binding the subscription already has.
-
-    The reference binding knows the natures by COSIF group; a contra-account
-    (the SCFI's provision, credit-natured inside the asset group) is a fact of
-    the client's own chart and is what a client adds to the reference. Done here
-    whether the binding came from a checkout or from the release, so the answers
-    can be judged on either origin.
-    """
-    if not natures:
-        return "em vigor"
-
-    _, headers, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
-    wanted = with_natures(current, natures)
-    if wanted == current:
-        return "em vigor"
-
-    etag = {k.lower(): v for k, v in headers.items()}.get("etag", "")
-    rep.raw("PUT", "/v1/regulatory/subscriptions/%s/binding" % subscription, wanted,
-            {"Content-Type": "application/yaml", "If-Match": etag})
-
-    return "em vigor + naturezas"
 
 
 def period_closed(data_base, now=None):
@@ -830,6 +743,24 @@ def generate(rep, subscription, data_base, kind="I"):
     return report, status, artifact
 
 
+def approved_original(rep, subscription, data_base):
+    """The original of a period an earlier run approved, or None."""
+    for r in rep.items("/v1/reports?regulatory=true&subscription_id=%s" % subscription):
+        if (r.get("status") == "Final" and r.get("remittance") == "original"
+                and (r.get("parameters") or {}).get("dataBase") == data_base):
+            return r
+    return None
+
+
+def approve(rep, report):
+    """Approves a draft at the version it is in, and answers its new status."""
+    _, got = rep.get("/v1/reports/" + report)
+    rep.call("POST", "/v1/regulatory/reports/%s/approve" % report,
+             headers={"If-Match": '"%s"' % got.get("draftVersion")})
+    _, got = rep.get("/v1/reports/" + report)
+    return got.get("status")
+
+
 def parsed_lines(artifact):
     """Each account line of a generated file, or None when it is not XML (judge says why)."""
     try:
@@ -916,11 +847,11 @@ def run_reports(lg, args):
         number = doc["document"]
         subscription = ensure_subscription(rep, "br.bcb.cadoc-" + number, institution,
                                            contract_version(args.bindings, number) if args.bindings else None)
+        # A natureza de cada rubrica é regra do contrato, não do cenário: o binding
+        # em vigor (da release ou do checkout) é o que a assinatura usa.
+        how = "em vigor"
         if args.bindings:
-            how = apply_binding(rep, subscription, os.path.join(args.bindings, "br/bcb/cadoc-%s/binding.example.yaml" % number),
-                                lg.sc.get("natures"))
-        else:
-            how = apply_natures_in_force(rep, subscription, lg.sc.get("natures"))
+            how = apply_binding(rep, subscription, os.path.join(args.bindings, "br/bcb/cadoc-%s/binding.example.yaml" % number))
         if doc.get("refused"):
             failures += expect_refusal(rep, subscription, number, doc)
             continue
@@ -931,7 +862,19 @@ def run_reports(lg, args):
 
         kind = doc.get("tipoRemessa", "I")
         started = datetime.datetime.now(datetime.timezone.utc)
-        report, status, artifact = generate(rep, subscription, doc["dataBase"], kind)
+        # A SUBSTITUIÇÃO SÓ EXISTE DEPOIS DA ORIGINAL APROVADA (RPT-0198), e uma
+        # original aprovada não se gera de novo (RPT-0197). Quando o gabarito traz a
+        # substituição de um período, a original é aprovada depois de julgada; numa
+        # execução seguinte, a já aprovada é a que se julga.
+        replaced = kind == "I" and any(
+            other["document"] == number and other["dataBase"] == doc["dataBase"]
+            and other.get("tipoRemessa", "I") != "I" for other in expected["documents"])
+        final = approved_original(rep, subscription, doc["dataBase"]) if replaced else None
+        if final:
+            report, status = final["id"], "Final"
+            _, _, artifact = rep.raw("GET", "/v1/reports/%s/download" % report)
+        else:
+            report, status, artifact = generate(rep, subscription, doc["dataBase"], kind)
         if doc.get("errored"):
             # Refused by the worker: the read answered nothing the document can be
             # filed from. An Error alone proves nothing — any failure ends there —
@@ -951,6 +894,8 @@ def run_reports(lg, args):
                                                             "" if kind == "I" else "-" + kind))
             with open(out, "wb") as fh:
                 fh.write(artifact)
+        if replaced and not final and artifact is not None and not problems:
+            status = approve(rep, report)
         verdict = "OK" if not problems else "FALHOU"
         failures += bool(problems)
         print("%-6s %-4s %-10s %s binding %-10s %-6s report %s" % (verdict, number, doc["dataBase"], kind, how, status, report))
