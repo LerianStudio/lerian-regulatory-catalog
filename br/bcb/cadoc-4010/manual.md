@@ -41,11 +41,11 @@ de contas que não é o COSIF precisa lançar nas rubricas do elenco para usá-l
 código que não casa com nenhum prefixo (um grupo que o elenco não tem, como o 5 a
 partir de 2025) recusa a geração, nomeando o código.
 
-Quando a base **registra** a natureza de cada conta — o Midaz a guarda no saldo —, o
-mapeamento a traz no campo `naturezaRegistrada`, e a regra `natureza-registrada`
-recusa a geração se ela divergir do elenco, nomeando a conta. Sem esse campo a
-conferência não acontece, e quem confere o sinal é a pessoa que revisa o rascunho
-antes de aprovar — é para isso que a geração termina em rascunho.
+A natureza com que a conta está **configurada na base** não é conferida. O contrato
+põe cada saldo na natureza da rubrica pelo elenco; configurar a conta com a natureza
+certa e lançá-la na rubrica do seu tipo é do cadastro do cliente, como a rubrica de
+cada rota (veja as precondições). Quem revisa o rascunho confere o resultado antes
+de aprovar — é para isso que a geração termina em rascunho.
 
 Rubrica com saldo zero **pode ser omitida** (leiaute §3.2.2.a): emitir ou não é
 decisão sua, e as duas formas são aceitas.
@@ -112,10 +112,10 @@ Para o arquivo sair certo:
   UTC: um lançamento às 22:00 do último dia do mês é dia 1º em UTC. Com o Reporter
   em UTC, ele sai do balancete do mês a que pertence.
 - **A instituição é a organização do Midaz.** O CNPJ do arquivo é lido da
-  organização (`organization.legal_document`); o contrato o normaliza, confere os
-  dígitos verificadores (numérico ou alfanumérico) e corta a raiz de oito
-  posições. O Midaz aceita qualquer texto no `legalDocument`: um CNPJ que não
-  verifica recusa a geração. O CNPJ lido também é conferido contra o cadastro da
+  organização (`organization.legal_document`); o contrato o normaliza (letras e
+  dígitos, em maiúsculas) e corta a raiz de oito posições. O Midaz aceita qualquer
+  texto no `legalDocument`: cadastrar a organização com o CNPJ certo é do cliente,
+  e o contrato não confere os dígitos verificadores. O CNPJ lido também é conferido contra o cadastro da
   instituição no Reporter, e um diferente recusa a geração (`RPT-0196`). Todo ledger da organização entra no balancete,
   inclusive um criado depois; outra instituição é outra organização. Por isso
   **nenhum ledger de teste fica na organização de produção**.

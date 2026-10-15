@@ -143,10 +143,10 @@ certo:
   também do balancete do mês. Provado na homologação (27/02/2026).
 - **A instituição é a organização do Midaz.** O CNPJ do arquivo é LIDO da
   organização (`organization.legal_document` na base de onboarding), como qualquer
-  outro valor; o contrato o normaliza, confere os dígitos verificadores (numérico
-  ou alfanumérico) e corta a raiz de oito posições. O Midaz aceita qualquer texto
-  no `legalDocument`: um CNPJ que não verifica recusa a geração, então cadastre a
-  organização com o CNPJ certo. E o CNPJ lido é conferido contra o cadastro da
+  outro valor; o contrato o normaliza (letras e dígitos, em maiúsculas) e corta a
+  raiz de oito posições. O Midaz aceita qualquer texto no `legalDocument`:
+  cadastrar a organização com o CNPJ certo é do cliente, e o contrato não confere
+  os dígitos verificadores. E o CNPJ lido é conferido contra o cadastro da
   instituição no Reporter: se forem diferentes, a geração é recusada (`RPT-0196`)
   em vez de sair um arquivo de uma instituição registrado em nome de outra. A instituição é escopada **só** pela organização
   (`organization_id` nas operações, `id` na tabela de organizações): todo ledger

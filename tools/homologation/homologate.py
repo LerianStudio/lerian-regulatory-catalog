@@ -531,10 +531,7 @@ def ensure_institution(rep, sc, org_id):
     conditions = {"organization_id": {"eq": [org_id]}}
     # The declarant's CNPJ is read from the organization itself (onboarding's
     # organization.legal_document), so the scope covers that table too: its own row.
-    # The balance is read beside each entry for the nature the account was
-    # configured with (the bindings' join), so it is the organization's too.
-    scope = {"midaz_transaction": {"tables": {"operation": {"conditions": conditions},
-                                              "balance": {"conditions": conditions}}},
+    scope = {"midaz_transaction": {"tables": {"operation": {"conditions": conditions}}},
              "midaz_onboarding": {"tables": {"organization": {"conditions": {"id": {"eq": [org_id]}}}}}}
     body = {"name": sc["organization"]["legalName"], "cnpj": cnpj, "scope": scope}
     for i in rep.items("/v1/institutions"):

@@ -144,8 +144,7 @@ quais faltam depois de 30s.
   02/01/2025): o cenário H gera o 4111 com `LR4ZAB12` e ele passa na validação.
 - **Uma retificadora declarada só pelo grupo sai com o sinal trocado.** A
   natureza de cada rubrica é do elenco COSIF e é regra do contrato (a tabela
-  `natureza`, aplicada pela regra `saldo-na-natureza` pelo prefixo mais longo, e
-  conferida contra a natureza que o Midaz registra pela `natureza-registrada`). Os
+  `natureza`, aplicada pela regra `saldo-na-natureza` pelo prefixo mais longo). Os
   cenários usam só rubricas do elenco vigente: uma rubrica inventada dentro de um
   grupo existente receberia a natureza do grupo em silêncio, que é o erro que este
   achado descreve.

@@ -44,7 +44,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4111
-contractVersion: 1.6.0
+contractVersion: 1.7.0
 
 queries:
   - name: declarante
@@ -88,14 +88,6 @@ queries:
         operator: lt
         values: [{parameter: dataBase, at: end, calendar: business}]
 
-    # A NATUREZA QUE O MIDAZ REGISTRA PARA CADA CONTA, guardada no saldo
-    # (`balance.direction`). O join a traz para cada lançamento; o contrato a confere
-    # contra o elenco COSIF nas linhas de estoque (regra `natureza-registrada`).
-    join:
-      - table: balance
-        match: {balance_id: id}
-        columns: {natureza: direction}
-
     # O VALOR DE CADA LANÇAMENTO NO RAZÃO: `direction` diz o lado, e um débito entra
     # negativo. Um lado que nenhum caso lista recusa a geração inteira.
     compute:
@@ -108,7 +100,7 @@ queries:
           otherwise: refuse
 
     aggregate:
-      groupBy: [route_code, natureza]
+      groupBy: [route_code]
       measures:
         - as: saldoDia
           fn: sum
@@ -207,12 +199,5 @@ datasets:
             from: query
             query: volumes_fluxo
             column: volumeMes
-      # A natureza que o Midaz registra, só nas linhas de estoque: o fluxo é volume e
-      # não tem natureza a conferir.
-      naturezaRegistrada:
-        byRowClass:
-          - when: { rowSet: measure, equals: stock }
-            from: query
-            column: natureza
 
 manualOverrides: []

@@ -23,7 +23,7 @@ metadata:
   title: Balanço Patrimonial Analítico
   summary: >-
     Posição patrimonial semestral por rubrica COSIF, sem as contas de resultado (grupos 7 e 8). O balanço do 4010 após a apuração do exercício.
-  version: 1.6.0   # 1.6.0: a regra de cada documento é do contrato — a natureza vem de `tables` e é aplicada e conferida por `rules`, que o motor executa, e a exclusão do resultado deixa de ser só promessa; o binding só lê; 1.5.0: a natureza de cada rubrica, retificadoras incluídas, vem do elenco COSIF (natureza.yaml) e a de cada conta lançada é a que o Midaz registra, conferida contra ele; 1.4.3: o que faz a entrega (período) e a remessa (original e substituição), nas palavras do contrato; 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
+  version: 1.7.0   # 1.7.0: o contrato confere o que o motor e o binding leem, não o cadastro do cliente — saem a conferência da natureza registrada (e, no binding de referência, o join com o saldo que a trazia) e a do dígito verificador do CNPJ; 1.6.0: a regra de cada documento é do contrato — a natureza vem de `tables` e é aplicada e conferida por `rules`, que o motor executa, e a exclusão do resultado deixa de ser só promessa; o binding só lê; 1.5.0: a natureza de cada rubrica, retificadoras incluídas, vem do elenco COSIF (natureza.yaml) e a de cada conta lançada é a que o Midaz registra, conferida contra ele; 1.4.3: o que faz a entrega (período) e a remessa (original e substituição), nas palavras do contrato; 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
   status: draft
   output: xml
   appliesTo:
@@ -86,13 +86,11 @@ datasets:
         type: string
         length: 14
         required: true
-        # O CNPJ da declarante é DADO: vem da base (a organização do Midaz), como
-        # qualquer outro valor. A regra é deste contrato: letras e dígitos, em
-        # maiúsculas, e os dois dígitos verificadores pela regra da Receita
-        # (numérico ou alfanumérico, IN RFB 2.229/2024). Um CNPJ que não verifica
-        # recusa a geração.
+        # O CNPJ da declarante é DADO: vem da base, como qualquer outro valor (no
+        # binding de referência, a organização do Midaz). O contrato só o escreve
+        # como o arquivo pede: letras e dígitos, em maiúsculas. Que o CNPJ seja
+        # válido é do cadastro do cliente, não deste arquivo.
         normalize: alphanumeric
-        checkDigit: cnpj
         # A declarante é a instituição da entrega: o CNPJ lido da base é conferido
         # contra o cadastro da instituição, e um diferente recusa a geração
         # (RPT-0196). O registro e o arquivo não nomeiam instituições diferentes.
@@ -132,8 +130,8 @@ datasets:
     # elenco COSIF do BACEN (natureza.yaml, gerado por tools/natureza.py). É dado
     # do PLANO COSIF, não do cliente: o elenco marca as retificadoras — perda
     # esperada, provisão, depreciação acumulada —, e quem lança na rubrica certa
-    # fez o que lhe cabe. As regras `saldo-na-natureza` e `natureza-registrada`
-    # aplicam e conferem, pela tabela `natureza`; o binding só lê.
+    # fez o que lhe cabe. A regra `saldo-na-natureza` a aplica,
+    # pela tabela `natureza`; o binding só lê.
     hierarchy:
       levels: [1, 1, 1, 2, 2, 2]
       checkDigit: 1
@@ -170,16 +168,6 @@ datasets:
           cliente no rascunho, antes de aprovar.
         description: Saldo da rubrica em reais na data-base.
 
-      - name: naturezaRegistrada
-        type: string
-        required: false
-        # Campo de CONFERÊNCIA: não sai no arquivo. Quando a base registra a natureza
-        # de cada conta — o Midaz a guarda no saldo —, o binding a traz aqui e a regra
-        # `natureza-registrada` a confere contra o elenco.
-        means: >-
-          A natureza (debit ou credit) que a base registra para a conta da rubrica.
-          As linhas-mãe, somadas das de baixo, não registram natureza própria.
-        description: Natureza da conta como a base a registra.
 
 tables:
   - name: natureza
@@ -194,15 +182,6 @@ rules:
     transform:
       negateWhen: {field: saldo, table: natureza, key: cosifCode, equals: debit}
     message: Cada saldo sai na natureza da própria conta.
-
-  - id: natureza-registrada
-    severity: error
-    appliesTo: cosif_balances
-    check:
-      equalsLookup: {field: naturezaRegistrada, table: natureza, key: cosifCode}
-    message: >-
-      A natureza que a base registra para a conta tem de ser a do elenco COSIF para
-      a rubrica.
 
   - id: no-duplicate-account
     severity: error
