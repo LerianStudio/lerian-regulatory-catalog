@@ -44,7 +44,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4111
-contractVersion: 1.7.0
+contractVersion: 1.7.2
 
 queries:
   - name: declarante

@@ -23,7 +23,7 @@ metadata:
   title: Balanço Patrimonial Analítico
   summary: >-
     Posição patrimonial semestral por rubrica COSIF, sem as contas de resultado (grupos 7 e 8). O balanço do 4010 após a apuração do exercício.
-  version: 1.7.0   # 1.7.0: o contrato confere o que o motor e o binding leem, não o cadastro do cliente — saem a conferência da natureza registrada (e, no binding de referência, o join com o saldo que a trazia) e a do dígito verificador do CNPJ; 1.6.0: a regra de cada documento é do contrato — a natureza vem de `tables` e é aplicada e conferida por `rules`, que o motor executa, e a exclusão do resultado deixa de ser só promessa; o binding só lê; 1.5.0: a natureza de cada rubrica, retificadoras incluídas, vem do elenco COSIF (natureza.yaml) e a de cada conta lançada é a que o Midaz registra, conferida contra ele; 1.4.3: o que faz a entrega (período) e a remessa (original e substituição), nas palavras do contrato; 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
+  version: 1.7.2   # 1.7.2: o que o campo do saldo espera do mapeamento, dito na língua de quem mapeia; 1.7.1: o campo do saldo diz o que o mapeamento entrega (`expects`) — crédito positivo, débito negativo —, a convenção de que a regra da natureza depende; 1.7.0: o contrato confere o que o motor e o binding leem, não o cadastro do cliente — saem a conferência da natureza registrada (e, no binding de referência, o join com o saldo que a trazia) e a do dígito verificador do CNPJ; 1.6.0: a regra de cada documento é do contrato — a natureza vem de `tables` e é aplicada e conferida por `rules`, que o motor executa, e a exclusão do resultado deixa de ser só promessa; o binding só lê; 1.5.0: a natureza de cada rubrica, retificadoras incluídas, vem do elenco COSIF (natureza.yaml) e a de cada conta lançada é a que o Midaz registra, conferida contra ele; 1.4.3: o que faz a entrega (período) e a remessa (original e substituição), nas palavras do contrato; 1.4.2: família (cadoc) no contrato; 1.4.1: resumo do documento no contrato; 1.4.0: o CNPJ da declarante é conferido contra a instituição; 1.3.3: Carnaval, Paixão e Corpus Christi no calendário; 1.3.2: manuais; 1.3.1: só o que o Midaz não apagou
   status: draft
   output: xml
   appliesTo:
@@ -166,6 +166,10 @@ datasets:
           NATUREZA DA PRÓPRIA CONTA. A convenção crédito-menos-débito do razão não
           deve vazar para o arquivo. O motor não confere o sinal — quem confere é o
           cliente no rascunho, antes de aprovar.
+        expects: >-
+          Entregue o saldo de cada rubrica com crédito positivo e débito negativo; o
+          documento depois põe cada saldo na natureza da conta. Entregue ao
+          contrário, todos os sinais saem trocados e nada avisa.
         description: Saldo da rubrica em reais na data-base.
 
 

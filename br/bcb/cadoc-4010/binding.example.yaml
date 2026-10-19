@@ -19,7 +19,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4010
-contractVersion: 1.7.0     # o catálogo pode publicar outra versão sem mudar o que
+contractVersion: 1.7.2     # o catálogo pode publicar outra versão sem mudar o que
                            # este cliente gera até ele adotar
 
 # ---------------------------------------------------------------------------
