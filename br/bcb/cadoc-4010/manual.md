@@ -139,28 +139,37 @@ Para o arquivo sair certo:
   cada uma contra a 9.0.9.70.00.00-7 no primeiro dia do mês; sem isso o balancete
   acumula o volume desde a abertura e deixa de coincidir com o 4111 do último dia.
 
-## Consolidação: um arquivo para o conglomerado
+## Mais de uma base: consolidação dentro da mesma instituição
 
-Um conglomerado entrega **um** arquivo. Quando as empresas do grupo mantêm a
-contabilidade em bases diferentes, o mapeamento pode ler os saldos por rubrica de mais de
-uma fonte: além da consulta do próprio conjunto, cada **fonte adicional** (`also`)
-traz a sua consulta, as suas colunas e as suas condições — é a condição de cada
-fonte que escolhe de qual empresa são os dados. As fontes adicionais leem sem o
-escopo da instituição da entrega.
+O 4010 é entregue **em base individual**: uma instituição, um arquivo, com os saldos
+dela. Somar os saldos de instituições diferentes num único 4010 é envio errado. O balancete do conglomerado prudencial é outro documento (4060), ainda não curado neste catálogo.
+
+Os saldos de uma mesma instituição podem, porém, estar em mais de uma base — mais de um
+ledger no Midaz, um core antigo e o novo durante uma migração, o razão de pagamentos no
+Midaz e as contas patrimoniais num ERP contábil. Para esses casos o mapeamento pode ler o
+conjunto de mais de uma fonte: além da consulta do próprio conjunto, cada **fonte
+adicional** (`also`) traz a sua consulta, as suas colunas e as suas condições.
 
 O contrato declara a regra: as linhas se unificam pela rubrica (`cosifCode`), e o
 `saldo` de todas as fontes é **somado**. Cada fonte é montada inteira, com as suas
-contas-mãe, antes de unificar; a conta-mãe do grupo é a soma das contas-mãe das
+contas-mãe, antes de unificar; a conta-mãe do arquivo é a soma das contas-mãe das
 fontes.
 
-Toda fonte precisa entregar o valor na mesma convenção (crédito positivo, débito
-negativo) e escrever a rubrica do mesmo jeito: o motor compara a rubrica como
-texto exato. **Eliminações entre as empresas do grupo não são feitas pelo
-motor**; se o documento as exigir, entram como dado informado pelo cliente.
+Cuidados:
 
-Quem usa o mapeamento de referência do Midaz pode acrescentar fontes adicionais
-sem deixar de usá-lo: a parte da referência continua homologada pela Lerian, e as
-fontes acrescentadas são do cliente.
+- **Só dados da própria instituição.** Uma fonte adicional lê **sem** o escopo da
+  instituição da entrega; são as condições dela que garantem que entram só os dados
+  desta instituição.
+- **Soma é soma.** A mesma rubrica em duas fontes é somada — o certo quando o saldo
+  está partido entre as bases, e o errado quando uma base é cópia da outra. Uma fonte
+  não deve repetir lançamentos que outra já traz.
+- **Mesma convenção.** Toda fonte entrega o valor na mesma convenção (crédito
+  positivo, débito negativo) e escreve a rubrica do mesmo jeito: o motor compara a
+  rubrica como texto exato.
+
+Quem usa o mapeamento de referência do Midaz pode acrescentar fontes adicionais sem
+deixar de usá-lo: a parte da referência continua homologada pela Lerian, e as fontes
+acrescentadas são do cliente.
 
 ## Limitações conhecidas desta versão
 

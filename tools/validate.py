@@ -1102,6 +1102,9 @@ def _check_computes(doc_dir: Path, qname: str, query: dict) -> None:
             continue
 
         name = compute.get("as")
+        if not isinstance(name, str) or not name:
+            fail(f"{where}: uma coluna calculada tem as {name!r}; as é o nome da coluna, em texto")
+            continue
         if name in names:
             fail(f"{where}: calcula '{name}' duas vezes")
         names.add(name)
@@ -1160,7 +1163,7 @@ def _check_parameter_values(doc_dir: Path, qname: str, filters: object) -> None:
             if "of" in reference or "calendar" in reference:
                 fail(f"{where}: descreve um período sem dizer a ponta (`at`)")
             continue
-        if at not in edges:
+        if not isinstance(at, str) or at not in edges:
             fail(f"{where}: at é {at!r}; um período tem start e end")
         elif condition.get("operator") != edges[at]:
             fail(f"{where}: compara o {at} do período com {condition.get('operator')!r}; use {edges[at]!r}")
@@ -1765,7 +1768,7 @@ def _check_nature_table(where: Path, source: str, path: Path, table: dict) -> No
     for prefix, side in (table.get("byPrefix") or {}).items():
         if not isinstance(prefix, str) or not prefix.isdigit():
             fail(f"{where}: {source}: o prefixo {prefix!r} não é texto de dígitos; o razão carrega o código sem pontuação, e o motor nunca casaria este")
-        if side not in NATURE_SIDES:
+        if not isinstance(side, str) or side not in NATURE_SIDES:
             fail(f"{where}: {source}: o prefixo {prefix!r} é {side!r}; a natureza é debit ou credit")
 
 
@@ -2205,16 +2208,25 @@ CONSOLIDATION_RULES = {"sum", "equal", "first"}
 
 
 def check_consolidation(doc_dir: Path, contract: dict) -> None:
-    """A consolidação de um conjunto é executável como escrita — a mesma regra que o motor confere.
+    """A consolidação de um conjunto é decidida e executável como escrita — a mesma regra que o motor confere.
 
-    Um conglomerado entrega um arquivo: um conjunto pode ser lido de mais de uma base
-    e as linhas se unificam pela chave que o curador nomeia, cada coluna pela sua
-    regra. O carregador do Reporter (pkg/reporter/contract, readConsolidation) recusa
-    o que não executaria; este validador recusa o mesmo, para que nenhum contrato
-    passe aqui e seja recusado na primeira geração.
+    Os dados de uma mesma instituição podem estar em mais de uma base (vários
+    ledgers, um core em migração, um ERP): um conjunto de várias linhas pode ser
+    lido de cada uma, e as linhas se unificam pela chave que o curador nomeia, cada
+    coluna pela sua regra. Por isso todo conjunto de várias linhas que não pende de
+    outro DECLARA a sua consolidação — a regra é do documento, e só quem cura sabe
+    qual é; um conjunto sem ela não poderia ser lido de outra base por esquecimento.
+
+    O carregador do Reporter (pkg/reporter/contract, readConsolidation) recusa o que
+    não executaria; este validador recusa o mesmo, para que nenhum contrato passe
+    aqui e seja recusado na primeira geração.
     """
     for ds in datasets_of(contract):
         if "consolidation" not in ds:
+            if ds.get("grain") != "singleton" and "childOf" not in ds:
+                fail(f"{doc_dir.relative_to(ROOT)}: {ds.get('name', '<sem nome>')} é um conjunto de várias linhas "
+                     f"sem consolidation; declare por qual chave as linhas de mais de uma base se unificam e o "
+                     f"que acontece com cada campo (CONTRIBUTING.md, Consolidação)")
             continue
 
         name = ds.get("name", "<sem nome>")

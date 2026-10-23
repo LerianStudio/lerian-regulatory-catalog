@@ -450,6 +450,12 @@ MUTATIONS: list[Mutation] = [
         "um período tem start e end",
     ),
     Mutation(
+        "ponta-do-periodo-que-nao-e-texto",
+        "uma ponta escrita como lista reprova, nunca derruba a ferramenta",
+        lambda b: b[JANELAS]["binding"]["queries"][0]["filters"][0]["values"][0].update({"at": ["end"]}),
+        "um período tem start e end",
+    ),
+    Mutation(
         "periodo-sem-ponta",
         "um período descrito sem dizer qual ponta é lida não compara com nada",
         lambda b: b[JANELAS]["binding"]["queries"][0]["filters"][0]["values"][0].pop("at"),
@@ -466,6 +472,12 @@ MUTATIONS: list[Mutation] = [
         "um valor não listado precisa de uma decisão escrita, nunca de um NULL que some da soma",
         lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica")["compute"][0]["case"].pop("otherwise"),
         "não tem otherwise",
+    ),
+    Mutation(
+        "coluna-calculada-sem-nome-em-texto",
+        "o nome de uma coluna calculada escrito como lista reprova, nunca derruba a ferramenta",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica")["compute"][0].update({"as": ["valor_no_razao"]}),
+        "as é o nome da coluna",
     ),
     Mutation(
         "coluna-calculada-sem-caso",
@@ -774,6 +786,12 @@ MUTATIONS: list[Mutation] = [
         "o motor aceita",
     ),
     # --------------------------------------------------------- consolidation
+    Mutation(
+        "consolidacao-ausente-em-conjunto-de-varias-linhas",
+        "um conjunto de várias linhas sem regra de consolidação não poderia ser lido de outra base por esquecimento",
+        lambda b: dataset(b[PLANO]["contract"], "saldos").pop("consolidation"),
+        "sem consolidation",
+    ),
     Mutation(
         "consolidacao-chave-desconhecida",
         "uma chave que o motor não lê é regra que o curador acha que existe e não existe",
@@ -1400,6 +1418,12 @@ MUTATIONS: list[Mutation] = [
         "natureza-lado-invalido",
         "uma natureza é devedora ou credora, e a regra compara com essas palavras",
         lambda b: b[PLANO]["natureza"]["byPrefix"].update({"4": "passivo"}),
+        "a natureza é debit ou credit",
+    ),
+    Mutation(
+        "natureza-lado-que-nao-e-texto",
+        "uma natureza escrita como lista reprova, nunca derruba a ferramenta",
+        lambda b: b[PLANO]["natureza"]["byPrefix"].update({"4": ["credit"]}),
         "a natureza é debit ou credit",
     ),
     Mutation(

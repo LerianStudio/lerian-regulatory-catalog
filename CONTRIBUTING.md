@@ -53,6 +53,31 @@ aprovada. `period` é opcional (ausente: todo parâmetro menos o da remessa) e
 ferramenta de conferência recusa um parâmetro que o contrato não declara, a remessa
 dentro do período e valores fora do `domain` do parâmetro.
 
+## Consolidação (`consolidation`)
+
+Os dados de uma mesma instituição podem estar em mais de uma base: mais de um ledger, um
+core antigo e o novo durante uma migração, um ERP ao lado do razão. Por isso **todo
+conjunto de várias linhas que não pende de outro declara a sua consolidação** — por qual
+chave as linhas de mais de uma fonte são a mesma linha, e o que acontece com cada campo:
+
+```yaml
+consolidation:
+  key: [cosifCode]            # a identidade da linha (a do conjunto, quando ele declara)
+  whenKeyRepeats: combine     # combine (padrão) | refuse: a mesma chave em duas fontes é recusada
+  columns: {saldo: sum}       # todo campo que não é chave nem derivado: sum | equal | first
+```
+
+A regra é do documento e só quem cura sabe qual é: num balancete o saldo da mesma rubrica
+em duas bases **soma**; num documento por operação, a mesma operação em duas bases é
+duplicidade e o certo é `refuse`; um dado cadastral repetido deve ser **igual** (`equal`)
+ou vale o da primeira fonte (`first`). A ferramenta de conferência recusa um conjunto de
+várias linhas sem `consolidation`, para que nenhum documento saia sem a possibilidade de
+ler de outra base por esquecimento.
+
+Consolidar é ler a **mesma instituição** de mais de uma base. Um documento entregue em
+base individual não soma instituições diferentes; o documento de um conglomerado é outro
+documento, com contrato próprio. O manual de cada documento diz isso ao cliente.
+
 ## Regras e severidade
 
 Toda regra declara `severity`. Escolha pensando em quem recebe o resultado:

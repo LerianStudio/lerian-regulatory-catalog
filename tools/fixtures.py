@@ -161,6 +161,7 @@ FECHADO_CONTRACT = {
                      "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."}]},
         {"name": "linhas", "description": "Uma linha por conta do conjunto fechado.",
          "rowSet": {"from": "contas.yaml", "key": "codigo"},
+         "consolidation": {"key": ["codigo"], "columns": {"valor": "sum"}},
          "fields": [
              {"name": "codigo", "type": "string", "required": True, "pattern": "^[0-9]{10}$",
               "normalize": "digits", "description": "Conta do conjunto."},
@@ -243,6 +244,8 @@ HIER_CONTRACT = {
     "parameters": [{"name": "dataBase", "type": "month", "required": True, "description": "Competência."}],
     "datasets": [
         {"name": "titulares", "description": "Titulares.", "grain": ["codigo"],
+         "consolidation": {"key": ["codigo"], "whenKeyRepeats": "refuse",
+                           "columns": {"tipo": "equal", "cnpj": "equal"}},
          "fields": [
              {"name": "codigo", "type": "string", "required": True, "description": "Código do titular."},
              {"name": "tipo", "type": "string", "required": True, "domain": ["PF", "PJ"], "description": "Tipo."},
@@ -251,6 +254,7 @@ HIER_CONTRACT = {
               "forbiddenWhen": {"field": "tipo", "equals": "PF"}},
          ]},
         {"name": "resumos", "description": "Resumo por titular.", "grain": ["codTitular"],
+         "consolidation": {"key": ["codTitular"], "columns": {"total": "sum", "inscricao": "first"}},
          "fields": [
              {"name": "codTitular", "type": "string", "required": True,
               "refersTo": {"dataset": "titulares", "field": "codigo"}},
@@ -352,6 +356,7 @@ JANELAS_CONTRACT = {
     "datasets": [
         {"name": "linhas", "description": "Uma linha por conta do conjunto fechado.",
          "rowSet": {"from": "contas.yaml", "key": "codigo"},
+         "consolidation": {"key": ["codigo"], "columns": {"valor": "sum"}},
          "fields": [
              {"name": "codigo", "type": "string", "required": True, "pattern": "^[0-9]{10}$",
               "normalize": "digits", "description": "Conta do conjunto."},

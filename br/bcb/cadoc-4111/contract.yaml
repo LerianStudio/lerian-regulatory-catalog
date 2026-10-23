@@ -144,12 +144,12 @@ datasets:
       hierarchy:
         levels: [1, 1, 1, 2, 2, 2]
         checkDigit: 1
-    # CONSOLIDAÇÃO: um conglomerado entrega UM arquivo. O conjunto pode ser lido de
-    # mais de uma base (as fontes adicionais do mapeamento, `also`), e as linhas se
-    # unificam pela rubrica, com o saldoDia das fontes somado. Cada fonte é montada
-    # inteira, com as suas contas-mãe, antes de unificar: a conta-mãe do grupo é a
-    # soma das contas-mãe das fontes. Eliminações entre as empresas não são feitas
-    # aqui; se o documento as exigir, entram como dado do cliente.
+    # CONSOLIDAÇÃO DENTRO DA MESMA INSTITUIÇÃO: o documento é individual, mas os
+    # saldos de uma instituição podem estar em mais de uma base (vários ledgers, um
+    # core em migração, um ERP). O conjunto pode ser lido de cada uma (as fontes
+    # adicionais do mapeamento, `also`), e as linhas se unificam pela rubrica, com o
+    # saldoDia das fontes somado. Cada fonte é montada inteira, com as suas contas-mãe,
+    # antes de unificar. Somar instituições diferentes não é este documento.
     consolidation:
       key: [cosifCode]
       columns: {saldoDia: sum}

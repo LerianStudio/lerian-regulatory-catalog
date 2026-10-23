@@ -4,7 +4,7 @@
 A natureza de uma rubrica — o lado em que o saldo dela normalmente fica — é do
 PLANO COSIF, não do cliente: o elenco publicado pelo BACEN diz quais contas são
 retificadoras. O cliente que lança na rubrica certa fez tudo o que lhe cabe. Por
-isso a tabela é curadoria do catálogo e viaja com o contrato (`nature:`), e o
+isso a tabela é curadoria do catálogo e viaja com o contrato (`tables`), e o
 binding de referência só diz em que coluna está o código.
 
 COMO O ELENCO DIZ A NATUREZA, e a regra que este script aplica:
@@ -37,8 +37,8 @@ Uso:
     pip install pypdf
     python3 tools/natureza.py br/bcb/cosif/elenco-contas.pdf
 
-Escreve `natureza.yaml` em todo documento cujo contrato declara `nature.from:
-natureza.yaml`, idêntico em todos. O validador confere que as cópias são iguais e
+Escreve `natureza.yaml` em todo documento cujo contrato declara uma tabela
+(`tables`) com `from: natureza.yaml`, idêntico em todos. O validador confere que as cópias são iguais e
 que o sha256 do cabeçalho é o do PDF publicado no catálogo.
 """
 
@@ -226,7 +226,7 @@ def documents_declaring_natures() -> list[Path]:
 
     found = []
     for path in sorted(ROOT.glob("*/*/*/contract.yaml")):
-        contract = yaml.safe_load(path.read_text()) or {}
+        contract = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         # A tabela é publicada pelo contrato em `tables`; quem a declara recebe a cópia.
         for table in contract.get("tables") or []:
             if isinstance(table, dict) and table.get("from") == TABLE_FILE:
@@ -259,10 +259,10 @@ def main(argv: list[str]) -> int:
 
     targets = documents_declaring_natures()
     for doc_dir in targets:
-        (doc_dir / TABLE_FILE).write_text(content)
+        (doc_dir / TABLE_FILE).write_text(content, encoding="utf-8")
         print(f"{(doc_dir / TABLE_FILE).relative_to(ROOT)}: {len(table)} prefixos")
     if not targets:
-        print("nenhum contrato declara nature.from: natureza.yaml; nada escrito")
+        print("nenhum contrato declara uma tabela com from: natureza.yaml; nada escrito")
     return 0
 
 

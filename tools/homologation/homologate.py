@@ -112,7 +112,9 @@ class Midaz:
             if cursor:
                 continue
 
-            if len(batch) < 100:
+            # A listing by cursor answers no `page`: with no next cursor it is over,
+            # even on a full last batch (asking `page` of it is refused).
+            if "page" not in payload or len(batch) < 100:
                 return out
 
             page += 1
