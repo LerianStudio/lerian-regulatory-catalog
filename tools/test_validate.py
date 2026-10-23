@@ -773,6 +773,96 @@ MUTATIONS: list[Mutation] = [
         lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"type": "competencia"}),
         "o motor aceita",
     ),
+    # --------------------------------------------------------- consolidation
+    Mutation(
+        "consolidacao-chave-desconhecida",
+        "uma chave que o motor não lê é regra que o curador acha que existe e não existe",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"].update({"ordem": ["codigo"]}),
+        "que o motor não conhece",
+    ),
+    Mutation(
+        "consolidacao-em-conjunto-de-uma-linha",
+        "o cabeçalho é uma linha só; não há o que unificar",
+        lambda b: dataset(b[PLANO]["contract"], "institution").update(
+            {"consolidation": {"key": ["cnpj"], "columns": {}}}),
+        "uma linha só",
+    ),
+    Mutation(
+        "consolidacao-em-conjunto-aninhado",
+        "o motor não consolida um conjunto que pende de outro",
+        lambda b: dataset(b[HIER]["contract"], "detalhes").update(
+            {"consolidation": {"key": ["id"], "columns": {"valor": "sum"}}}),
+        "aninhado",
+    ),
+    Mutation(
+        "consolidacao-sem-chave",
+        "sem chave nada diz quais linhas são a mesma",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"].update({"key": []}),
+        "não nomeia campo",
+    ),
+    Mutation(
+        "consolidacao-chave-repetida",
+        "um campo nomeado duas vezes na chave é erro de digitação que muda nada e engana o leitor",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"].update({"key": ["codigo", "codigo"]}),
+        "duas vezes",
+    ),
+    Mutation(
+        "consolidacao-chave-inexistente",
+        "chave num campo que não existe unifica por nada",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"].update({"key": ["conta"]}),
+        "não declara",
+    ),
+    Mutation(
+        "consolidacao-chave-fora-da-identidade",
+        "unificar por outra chave daria duas linhas da mesma rubrica",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"].update(
+            {"key": ["naturezaRegistrada"], "columns": {"valor": "sum", "codigo": "first"}}),
+        "identificada por",
+    ),
+    Mutation(
+        "consolidacao-modo-desconhecido",
+        "um modo que o motor não conhece seria aplicado como outro",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"].update({"whenKeyRepeats": "merge"}),
+        "'combine' ou 'refuse'",
+    ),
+    Mutation(
+        "consolidacao-recusar-no-conjunto-fechado",
+        "toda fonte escreve todas as linhas do catálogo: recusar repetidas recusaria sempre",
+        lambda b: dataset(b[FECHADO]["contract"], "linhas").update(
+            {"consolidation": {"key": ["codigo"], "whenKeyRepeats": "refuse", "columns": {"valor": "sum"}}}),
+        "achada duas vezes",
+    ),
+    Mutation(
+        "consolidacao-coluna-inexistente",
+        "regra num campo que não existe não se aplica a nada",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"]["columns"].update({"saldo": "sum"}),
+        "não declara",
+    ),
+    Mutation(
+        "consolidacao-regra-na-chave",
+        "a chave unifica as linhas; combinar a chave não tem sentido",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"]["columns"].update({"codigo": "first"}),
+        "é chave",
+    ),
+    Mutation(
+        "consolidacao-campo-sem-regra",
+        "um campo sem regra seria decidido pelo motor em silêncio",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"]["columns"].pop("naturezaRegistrada"),
+        "não diz nada de 'naturezaRegistrada'",
+    ),
+    Mutation(
+        "consolidacao-regra-desconhecida",
+        "uma regra que o motor não conhece seria aplicada como outra",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"]["columns"].update({"valor": "media"}),
+        "sum, equal ou first",
+    ),
+    Mutation(
+        "consolidacao-soma-de-texto",
+        "somar texto não é conta nenhuma",
+        lambda b: dataset(b[PLANO]["contract"], "saldos")["consolidation"]["columns"].update(
+            {"naturezaRegistrada": "sum"}),
+        "só número se soma",
+    ),
     # ---------------------------------------------------------------- filing
     Mutation(
         "filing-chave-desconhecida",

@@ -72,6 +72,9 @@ PLANO_CONTRACT = {
                     {"name": "cnpj8", "type": "string", "length": 8, "required": True, "prefixOf": "cnpj",
                      "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."}]},
         {"name": "saldos", "description": "Saldo por rubrica.", "grain": ["codigo"], "nonEmpty": True,
+         "hierarchy": {"levels": [1, 1, 1, 2, 2, 2], "checkDigit": 1},
+         "consolidation": {"key": ["codigo"], "whenKeyRepeats": "combine",
+                           "columns": {"valor": "sum", "naturezaRegistrada": "equal"}},
          "fields": [
              {"name": "codigo", "type": "string", "required": True, "pattern": "^[0-9]{10}$",
               "normalize": "digits", "description": "Rubrica."},

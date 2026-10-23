@@ -2199,6 +2199,98 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
     if original is not None and original == replacement:
         fail(f"{rwhere} usa {original!r} para original e para replacement; as duas remessas precisam ser distintas")
 
+CONSOLIDATION_KEYS = {"key", "whenKeyRepeats", "columns"}
+CONSOLIDATION_MODES = {"combine", "refuse"}
+CONSOLIDATION_RULES = {"sum", "equal", "first"}
+
+
+def check_consolidation(doc_dir: Path, contract: dict) -> None:
+    """A consolidação de um conjunto é executável como escrita — a mesma regra que o motor confere.
+
+    Um conglomerado entrega um arquivo: um conjunto pode ser lido de mais de uma base
+    e as linhas se unificam pela chave que o curador nomeia, cada coluna pela sua
+    regra. O carregador do Reporter (pkg/reporter/contract, readConsolidation) recusa
+    o que não executaria; este validador recusa o mesmo, para que nenhum contrato
+    passe aqui e seja recusado na primeira geração.
+    """
+    for ds in datasets_of(contract):
+        if "consolidation" not in ds:
+            continue
+
+        name = ds.get("name", "<sem nome>")
+        where = f"{doc_dir.relative_to(ROOT)}: {name}.consolidation"
+        block = mapping_at(where, ds.get("consolidation"),
+                           "consolidation é um mapeamento de key, whenKeyRepeats e columns")
+        if block is None:
+            continue
+
+        for key in sorted(set(block) - CONSOLIDATION_KEYS):
+            fail(f"{where} declara {key!r}, que o motor não conhece; consolidation aceita {sorted(CONSOLIDATION_KEYS)}")
+
+        if ds.get("grain") == "singleton":
+            fail(f"{where} está num conjunto de uma linha só, que não tem o que consolidar")
+            continue
+        if "childOf" in ds:
+            fail(f"{where} está num conjunto aninhado; consolidar um conjunto que pende de outro não é executado")
+            continue
+
+        fields = {f.get("name"): f for f in fields_of(ds) if isinstance(f, dict)}
+        key = block.get("key")
+        if not isinstance(key, list) or not key:
+            fail(f"{where}.key não nomeia campo; as linhas se unificam pelos campos que o curador nomeia aqui")
+            key = []
+        elif len(set(map(str, key))) != len(key):
+            fail(f"{where}.key nomeia um campo duas vezes")
+        for item in key:
+            if not isinstance(item, str):
+                fail(f"{where}.key tem {item!r}; cada item é o nome de um campo")
+            elif item not in fields:
+                fail(f"{where}.key nomeia {item!r}, que o conjunto não declara")
+        key = [item for item in key if isinstance(item, str)]
+
+        rowset = ds.get("rowSet")
+        identity = [rowset.get("key")] if isinstance(rowset, dict) else (
+            ds.get("grain") if isinstance(ds.get("grain"), list) else [])
+        if identity and key and sorted(map(str, key)) != sorted(map(str, identity)):
+            fail(f"{where}.key é {key}, e uma linha deste conjunto é identificada por {identity}; "
+                 f"unificadas por outra chave, sairiam duas linhas da mesma identidade")
+
+        mode = block.get("whenKeyRepeats", "combine")
+        if not isinstance(mode, str) or mode not in CONSOLIDATION_MODES:
+            fail(f"{where}.whenKeyRepeats é {mode!r}; é 'combine' ou 'refuse'")
+        elif mode == "refuse" and (isinstance(rowset, dict) or "hierarchy" in ds):
+            fail(f"{where}.whenKeyRepeats é 'refuse' num conjunto em que toda fonte escreve as mesmas "
+                 f"linhas (as do catálogo, ou as contas-mãe dos níveis): uma chave seria sempre achada duas vezes")
+
+        columns = block.get("columns")
+        if columns is None:
+            columns = {}
+        elif not isinstance(columns, dict):
+            fail(f"{where}.columns é um mapeamento de cada campo para sum, equal ou first")
+            columns = {}
+
+        for column, rule in columns.items():
+            field = fields.get(column)
+            if not isinstance(rule, str):
+                fail(f"{where}.columns.{column} é {rule!r}; a regra de uma coluna é sum, equal ou first")
+            elif field is None:
+                fail(f"{where}.columns.{column} nomeia um campo que o conjunto não declara")
+            elif column in key:
+                fail(f"{where}.columns.{column} é chave; a chave unifica as linhas, não é valor a combinar")
+            elif field.get("prefixOf"):
+                fail(f"{where}.columns.{column} é derivado e é recalculado depois de unificar; nunca é combinado")
+            elif rule not in CONSOLIDATION_RULES:
+                fail(f"{where}.columns.{column} é {rule!r}; a regra de uma coluna é sum, equal ou first")
+            elif rule == "sum" and field.get("type") not in ("decimal", "integer"):
+                fail(f"{where}.columns.{column} é 'sum', e só número se soma; este campo é {field.get('type')}")
+
+        for column, field in fields.items():
+            if column in key or field.get("prefixOf") or column in columns:
+                continue
+            fail(f"{where}.columns não diz nada de {column!r}; todo campo que não é chave diz o que "
+                 f"acontece com os seus valores: sum, equal ou first")
+
+
 def check_parameters(doc_dir: Path, contract: dict) -> None:
     """Os parâmetros de geração são declarações que o motor consegue satisfazer.
 
@@ -2495,6 +2587,7 @@ def main() -> int:
         check_engine_parity(doc_dir, contract)
         check_parameters(doc_dir, contract)
         check_filing(doc_dir, contract)
+        check_consolidation(doc_dir, contract)
         check_structure(doc_dir, contract)
         check_template_parses(doc_dir)
         check_binding_example(doc_dir, contract)

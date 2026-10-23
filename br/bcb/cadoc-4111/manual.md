@@ -218,6 +218,29 @@ arquivo da segunda-feira dia 2. O 4010 corta o mês pelo mesmo calendário, ent�
 último 4111 do mês e o balancete fecham no mesmo instante. Provado na homologação
 (cenário D).
 
+## Consolidação: um arquivo para o conglomerado
+
+Um conglomerado entrega **um** arquivo. Quando as empresas do grupo mantêm a
+contabilidade em bases diferentes, o mapeamento pode ler os saldos diários de cada conta do conjunto fechado de mais de
+uma fonte: além da consulta do próprio conjunto, cada **fonte adicional** (`also`)
+traz a sua consulta, as suas colunas e as suas condições — é a condição de cada
+fonte que escolhe de qual empresa são os dados. As fontes adicionais leem sem o
+escopo da instituição da entrega.
+
+O contrato declara a regra: as linhas se unificam pela rubrica (`cosifCode`), e o
+`saldoDia` de todas as fontes é **somado**. Cada fonte é montada inteira, com as suas
+contas-mãe, antes de unificar; a conta-mãe do grupo é a soma das contas-mãe das
+fontes.
+
+Toda fonte precisa entregar o valor na mesma convenção (crédito positivo, débito
+negativo) e escrever a rubrica do mesmo jeito: o motor compara a rubrica como
+texto exato. **Eliminações entre as empresas do grupo não são feitas pelo
+motor**; se o documento as exigir, entram como dado informado pelo cliente.
+
+Quem usa o mapeamento de referência do Midaz pode acrescentar fontes adicionais
+sem deixar de usá-lo: a parte da referência continua homologada pela Lerian, e as
+fontes acrescentadas são do cliente.
+
 ## Limitações conhecidas desta versão
 
 **O calendário cobre 2025 a 2027.** Uma data-base fora disso é recusada até a
