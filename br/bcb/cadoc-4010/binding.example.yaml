@@ -19,8 +19,8 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4010
-contractVersion: 1.3.0     # o catálogo pode publicar 1.1.0 sem mudar o que este
-                           # cliente gera até ele adotar
+contractVersion: 1.0.0     # o catálogo pode publicar outra versão sem mudar o que
+                           # este cliente gera até ele adotar
 
 # ---------------------------------------------------------------------------
 # Consultas
@@ -29,7 +29,12 @@ contractVersion: 1.3.0     # o catálogo pode publicar 1.1.0 sem mudar o que est
 # product-console: `dataSource` é o configName da fonte, `table` é a chave da
 # tabela (`schema__tabela` no PostgreSQL, nome puro no MongoDB), e os operadores
 # de filtro são os mesmos que o Reporter já aceita na API de relatórios —
-# eq, gt, gte, lt, lte, between, in, nin.
+# eq, gt, gte, lt, lte, between, in, nin, startsWith, notStartsWith, isNull, notNull.
+# Um valor de filtro pode vir de um parâmetro da geração: `{parameter: dataBase}`,
+# ou uma ponta do período que ele nomeia, `{parameter: dataBase, at: end}`.
+#
+# ESTE ARQUIVO SÓ LÊ. Em que natureza cada saldo sai e o que precisa valer no
+# arquivo são regras do contrato (`rules`), que o motor aplica depois da leitura.
 # ---------------------------------------------------------------------------
 queries:
   - name: declarante
@@ -39,6 +44,10 @@ queries:
     # Qual organização: o escopo da instituição, que filtra organization.id pela
     # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
     # uma linha só recusa a geração em vez de escolher uma.
+    filters:
+      # Uma organização apagada não declara nada.
+      - field: deleted_at
+        operator: isNull
 
   - name: saldos_cosif
     description: Lançamentos do razão, agregados em saldo por rubrica.
@@ -58,6 +67,31 @@ queries:
       - field: asset_code
         operator: eq
         values: ["BRL"]
+      # Só o que o Midaz não apagou: as leituras do próprio Midaz filtram
+      # deleted_at IS NULL, e o documento lê o mesmo razão que ele.
+      - field: deleted_at
+        operator: isNull
+      # ATÉ O FIM DA DATA-BASE, pelo calendário de dias úteis do contrato: o saldo
+      # é o do último dia útil do mês (leiaute §3.2.2.b), e o que for lançado num
+      # sábado que fecha o mês é do mês seguinte. Sem limite inferior: o saldo de
+      # fechamento carrega tudo que já foi lançado, inclusive a abertura que a
+      # migração de um sistema anterior postou.
+      - field: created_at
+        operator: lt
+        values: [{parameter: dataBase, at: end, calendar: business}]
+
+    # O VALOR DE CADA LANÇAMENTO NO RAZÃO: no Midaz a coluna `direction` diz o lado,
+    # e um débito entra negativo. A chave é o VALOR QUE A COLUNA CARREGA ('debit' ou
+    # 'credit', validateOperationDirection); um lado que nenhum caso lista recusa a
+    # geração inteira em vez de somar pela metade.
+    compute:
+      - as: valor_no_razao
+        case:
+          column: direction
+          when:
+            credit: {column: amount}
+            debit: {negate: amount}
+          otherwise: refuse
 
     # A agregação vive aqui e não no contrato porque depende da forma da origem:
     # um cliente que já mantém tabela de saldos por rubrica não agrega nada, ele
@@ -67,73 +101,7 @@ queries:
       measures:
         - as: saldo
           fn: sum
-          of: amount
-          # Soma COM SINAL: no razão o lançamento a débito entra negativo, e a
-          # coluna que diz o lado é esta.
-          # A CHAVE É O LADO, O VALOR É A GRAFIA QUE O DADO USA. `debit: "debit"`
-          # lê-se "a linha cuja coluna direction carrega 'debit' é um débito, e
-          # débito subtrai". Escrever `debit: "-"` afirma que a coluna carrega o
-          # caractere '-' — no Midaz ela carrega 'debit' ou 'credit'
-          # (validateOperationDirection), nenhuma linha casaria, e o motor recusa o
-          # relatório INTEIRO em vez de somar pela metade.
-          sign:
-            column: direction
-            debit: "debit"
-            credit: "credit"
-          # Reexpressa o resultado na natureza da própria conta, senão toda conta
-          # de ativo sai negativa no arquivo.
-          #
-          # A natureza é propriedade do PLANO DE CONTAS, não do gerador de arquivo
-          # nem do catálogo. Ela está aqui porque é dado do cliente: é o plano de
-          # contas DELE que diz quais contas são devedoras.
-          #
-          # POR QUE ESTAS NOVE LINHAS EXISTEM, e quando elas somem.
-          #
-          # O Midaz TEM onde guardar isto: as rotas contábeis são o plano de contas
-          # dele. Uma `operation_route` declara, por ação, a rubrica que recebe o
-          # débito e a que recebe o crédito, cada uma com código e descrição; cada
-          # lançamento carrega `operation.route_code`, que o liga à rota, e
-          # `operation.type`, que diz de que lado ele entrou.
-          #
-          # Então, se o cliente referenciou o COSIF corretamente nas rotas, a
-          # natureza segue do próprio código da rubrica — e é isso que o mapa
-          # abaixo faz, lendo o primeiro dígito. Ele é atalho de LEITURA do código,
-          # não fonte de verdade: quem sabe a natureza é o plano de contas.
-          #
-          # Um cliente que já mantenha a natureza como coluna própria troca este
-          # bloco por essa coluna e nada mais muda. O motor e o catálogo seguem sem
-          # saber o que é natureza contábil, que é o ponto de ela estar aqui.
-          statedIn:
-            # Grupos de 1º nível do plano COSIF. Nove linhas, não uma tabela de
-            # milhares de rubricas: quem tem exceção acrescenta a rubrica inteira.
-            # A exceção que todo plano tem é a RETIFICADORA — provisão para
-            # operações de crédito (1.6.9), depreciação acumulada — credora dentro
-            # de um grupo devedor. Declarada só pelo grupo, ela sai com o sinal
-            # trocado, num arquivo bem formado. Declare-a pelo prefixo dela
-            # (`"169": credit`): vale o prefixo MAIS LONGO que casa com a rubrica.
-            natureByPrefix:
-              "1": debit    # Circulante e Realizável a Longo Prazo
-              "2": debit    # Permanente
-              "3": debit    # Compensação devedora
-              "4": credit   # Circulante e Exigível a Longo Prazo
-              "5": credit   # Resultados de Exercícios Futuros
-              "6": credit   # Patrimônio Líquido
-              "7": credit   # Contas de Resultado Credoras
-              "8": debit    # Contas de Resultado Devedoras
-              "9": credit   # Compensação credora
-            key: route_code
-
-      accumulate:
-        # A coluna que carrega o momento do lançamento. `until` nomeia o instante;
-        # esta nomeia onde ele é lido. No Midaz é o carimbo de criação da operação;
-        # um razão próprio guarda isso com o nome dele.
-        on: created_at
-        until: system.dataBase
-        # Estoque: a janela abre no começo do razão, então o saldo de fechamento
-        # carrega tudo que já foi lançado — inclusive os lançamentos de abertura
-        # que a migração de um sistema anterior postou. Um volume que reinicia a
-        # cada mês declararia `from: month`.
-        from: opening
+          of: valor_no_razao
 
 # ---------------------------------------------------------------------------
 # Conjuntos

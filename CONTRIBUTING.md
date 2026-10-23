@@ -31,6 +31,53 @@ abertura até a data-base" é parte do que o documento *é*; deixar isso no temp
 esconde o cálculo num artefato de apresentação, onde não pode ser conferido nem
 reaproveitado.
 
+## A entrega e a remessa (`filing`)
+
+O motor não sabe o que é data-base nem que, no BCB, `I` é inclusão e `S` é
+substituição. Quem diz é o contrato, no bloco `filing`:
+
+```yaml
+filing:
+  period: [dataBase]          # o que faz duas gerações serem a mesma entrega
+  remittance:
+    parameter: tipoRemessa    # o parâmetro que diz se é original ou substituição
+    original: I
+    replacement: S
+```
+
+Declarado, o motor aplica três regras: uma entrega **original** aprovada por período,
+por assinatura; **substituição** só depois de aprovada a original do período; e a
+geração mais nova do mesmo período e da mesma remessa substitui a anterior ainda não
+aprovada. `period` é opcional (ausente: todo parâmetro menos o da remessa) e
+`remittance` também (ausente: nenhuma regra de original e substituição). A
+ferramenta de conferência recusa um parâmetro que o contrato não declara, a remessa
+dentro do período e valores fora do `domain` do parâmetro.
+
+## Consolidação (`consolidation`)
+
+Os dados de uma mesma instituição podem estar em mais de uma base: mais de um ledger, um
+core antigo e o novo durante uma migração, um ERP ao lado do razão. Por isso **todo
+conjunto de várias linhas que não pende de outro declara a sua consolidação** — por qual
+chave as linhas de mais de uma fonte são a mesma linha, e o que acontece com cada campo:
+
+```yaml
+consolidation:
+  key: [cosifCode]            # a identidade da linha (a do conjunto, quando ele declara)
+  whenKeyRepeats: combine     # combine (padrão) | refuse: a mesma chave em duas fontes é recusada
+  columns: {saldo: sum}       # todo campo que não é chave nem derivado: sum | equal | first
+```
+
+A regra é do documento e só quem cura sabe qual é: num balancete o saldo da mesma rubrica
+em duas bases **soma**; num documento por operação, a mesma operação em duas bases é
+duplicidade e o certo é `refuse`; um dado cadastral repetido deve ser **igual** (`equal`)
+ou vale o da primeira fonte (`first`). A ferramenta de conferência recusa um conjunto de
+várias linhas sem `consolidation`, para que nenhum documento saia sem a possibilidade de
+ler de outra base por esquecimento.
+
+Consolidar é ler a **mesma instituição** de mais de uma base. Um documento entregue em
+base individual não soma instituições diferentes; o documento de um conglomerado é outro
+documento, com contrato próprio. O manual de cada documento diz isso ao cliente.
+
 ## Regras e severidade
 
 Toda regra declara `severity`. Escolha pensando em quem recebe o resultado:

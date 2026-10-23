@@ -11,8 +11,8 @@
 #
 # measure: stock = saldo ao fim do dia no sinal da natureza (coincide com o 4010 no
 # fim do mês); flow = volume absoluto das transações acumulado no mês, reiniciando
-# (3.0.9.70.XX). As duas classes são geráveis: o binding declara uma janela de
-# acumulação para cada uma.
+# (3.0.9.70.XX). As duas classes são geráveis: o binding lê cada uma pelo período
+# que lhe cabe, com filtros nas pontas da data-base.
 #
 # A FORMA É A GRAMÁTICA DE CONJUNTO FECHADO DO MOTOR: sequência de topo `rows`, e
 # cada linha carregando a coluna que o contrato nomeia em `rowSet.key` — aqui

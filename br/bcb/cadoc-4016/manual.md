@@ -1,0 +1,104 @@
+# Cadoc 4016 — Balanço Patrimonial Analítico
+
+> Documento de leitura. Explica o que este regulatório é e o que a Lerian assume
+> ao gerá-lo. **Não repete o contrato**: campos, formatos, padrões e periodicidade
+> são declarados em `contract.yaml`, e é ele que vale. O que está aqui é o que
+> nenhum arquivo consegue dizer.
+
+## O que é
+
+O balanço **semestral** da instituição ao Banco Central, com data-base em junho e
+dezembro. O leiaute é o mesmo do 4010 (um documento só para os dois), e o arquivo
+também: saldo de fechamento por rubrica COSIF, acumulado desde a abertura e
+expresso na natureza de cada conta, com as contas-mãe derivadas da soma das filhas.
+Tudo o que o manual do 4010 diz sobre saldo, natureza, retificadoras, contas-mãe,
+último dia útil e precondições do cadastro no Midaz vale aqui sem mudança.
+
+## O que o torna diferente do 4010
+
+Uma coisa: **o balanço é a posição depois de apurado o resultado.** Por isso o
+arquivo não admite as contas de resultado — grupos 7 (Receitas) e 8 (Despesas)
+(leiaute p.6).
+
+O binding de exemplo exclui essas rubricas na consulta, e o contrato confere no
+arquivo pronto: uma rubrica que começa com 7 ou 8 recusa o documento, porque
+indica que o filtro do binding não excluiu o resultado.
+
+Rubrica com saldo zero **pode ser omitida** (leiaute p.6): emitir ou não é decisão
+sua, e as duas formas são aceitas.
+
+## A apuração do resultado precisa estar lançada
+
+Excluir as contas de resultado do arquivo **não apura o resultado**. O lucro ou o
+prejuízo do semestre só aparece no Patrimônio Líquido se o encerramento das contas
+de resultado contra o PL estiver **lançado no razão** até a data-base, como o COSIF
+manda fazer ao fim de cada semestre.
+
+Sem esse lançamento, o arquivo sai bem formado e o balanço não fecha: o ativo
+reflete o resultado do semestre e o PL não. Nada no arquivo aponta o erro, e o
+motor **não confere** se ativo é igual a passivo mais PL.
+
+No Midaz, o encerramento é uma transação como outra qualquer, com as rubricas de
+resultado de um lado e a de lucros ou prejuízos acumulados do outro, configuradas
+nas rotas. Lançá-la é parte do fechamento do semestre do cliente, e conferir o
+rascunho — o PL inclui o resultado? o balanço fecha? — é parte de aprovar.
+
+## Precondições do cadastro no Midaz
+
+As mesmas do 4010 (veja o manual dele), mais a apuração acima. Em resumo: rotas
+obrigatórias com rubrica COSIF de dez dígitos em toda ação; reserva que se anula
+pela própria rubrica; Reporter no fuso de Brasília; a instituição é a organização
+do Midaz, com o CNPJ certo no cadastro dela e igual ao da instituição
+cadastrada no Reporter; só reais, só o que moveu saldo
+e só o que não foi apagado.
+
+## Mais de uma base: consolidação dentro da mesma instituição
+
+O 4016 é entregue **em base individual**: uma instituição, um arquivo, com os saldos
+dela. Somar os saldos de instituições diferentes num único 4016 é envio errado. O balancete do conglomerado prudencial é outro documento (4066), ainda não curado neste catálogo.
+
+Os saldos de uma mesma instituição podem, porém, estar em mais de uma base — mais de um
+ledger no Midaz, um core antigo e o novo durante uma migração, o razão de pagamentos no
+Midaz e as contas patrimoniais num ERP contábil. Para esses casos o mapeamento pode ler o
+conjunto de mais de uma fonte: além da consulta do próprio conjunto, cada **fonte
+adicional** (`also`) traz a sua consulta, as suas colunas e as suas condições.
+
+O contrato declara a regra: as linhas se unificam pela rubrica (`cosifCode`), e o
+`saldo` de todas as fontes é **somado**. Cada fonte é montada inteira, com as suas
+contas-mãe, antes de unificar; a conta-mãe do arquivo é a soma das contas-mãe das
+fontes.
+
+Cuidados:
+
+- **Só dados da própria instituição.** Uma fonte adicional lê **sem** o escopo da
+  instituição da entrega; são as condições dela que garantem que entram só os dados
+  desta instituição.
+- **Soma é soma.** A mesma rubrica em duas fontes é somada — o certo quando o saldo
+  está partido entre as bases, e o errado quando uma base é cópia da outra. Uma fonte
+  não deve repetir lançamentos que outra já traz.
+- **Mesma convenção.** Toda fonte entrega o valor na mesma convenção (crédito
+  positivo, débito negativo) e escreve a rubrica do mesmo jeito: o motor compara a
+  rubrica como texto exato.
+
+Quem usa o mapeamento de referência do Midaz pode acrescentar fontes adicionais sem
+deixar de usá-lo: a parte da referência continua homologada pela Lerian, e as fontes
+acrescentadas são do cliente.
+
+## Limitações conhecidas desta versão
+
+- **O fechamento do balanço não é conferido** (ativo = passivo + PL). É o que a
+  pessoa que revisa o rascunho confere antes de aprovar.
+- **Existência da rubrica não é conferida.** O contrato confere a forma do código,
+  não que a rubrica exista no elenco COSIF vigente.
+- **Ordem de remessa.** O BCB só recepciona a data-base N depois de aceita a N-1;
+  o Reporter não faz o envio, e um arquivo gerado fora de ordem é válido.
+- **O calendário cobre 2025 a 2027.** Uma data-base fora disso é recusada até a
+  cobertura ser estendida, o que é parte da curadoria anual.
+
+## Fonte primária
+
+O leiaute dos documentos 4010 e 4016, citado acima como "leiaute":
+<https://www.bcb.gov.br/content/estabilidadefinanceira/cosif_leiautes/Leiaute_4010_xmlV0.pdf>
+
+Em qualquer divergência entre este manual e a fonte primária, **a fonte primária
+prevalece** — e a divergência é um defeito da curadoria, que deve ser reportado.

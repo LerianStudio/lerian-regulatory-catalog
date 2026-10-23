@@ -2,7 +2,7 @@
 #
 # QUEM CURA: a Lerian, a partir das Instruções de Preenchimento oficiais
 # (schema/4111-instrucoes.pdf; "I p.N" abaixo) e do XSD publicado
-# (schema/XSD_4111.xsd — ATENÇÃO: desatualizado, ver knownGaps). Res. BCB 208/2022,
+# (schema/XSD_4111.xsd, o vigente desde 02/01/2025). Res. BCB 208/2022,
 # IN BCB 524/2024, 644/2025.
 #
 # NÃO É UM CLONE DO 4010. Três coisas o separam, e todas vêm da fonte primária:
@@ -30,9 +30,13 @@ metadata:
   country: BR
   regulator: BCB
   document: "4111"
+  family: cadoc          # o agrupamento: os documentos contábeis do BCB
   title: Saldos Contábeis Diários
-  version: 1.3.0   # 1.3.0: o CNPJ da declarante vem da base (organização do Midaz); a raiz é derivada pelo contrato
+  summary: >-
+    Saldos diários de um conjunto fechado de contas COSIF — estoque no sinal da natureza e volume de pagamentos acumulado no mês. Conjunto de linhas definido pelo catálogo, não pelo cliente.
+  version: 1.0.0
   status: draft
+  output: xml
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
   periodicity: daily
@@ -41,7 +45,7 @@ metadata:
     mandatoryFrom: "2025-01-02"
   sourceOfTruth:
     layoutManual: https://www.bcb.gov.br/content/estabilidadefinanceira/Documents/Leiaute_de_documentos/saldosDiariosInstrucoesPreenchimentoV2.pdf
-    schema: schema/XSD_4111.xsd            # material de curadoria — e desatualizado
+    schema: schema/XSD_4111.xsd            # o vigente desde 02/01/2025 (o cabeçalho ainda diz v1.0 de 30/03/2023)
     accountSet: contas.yaml                # o conjunto fechado de rubricas
     calendar: dias-nao-uteis.yaml          # dias não úteis (curadoria Lerian): cortam cada período
 
@@ -65,6 +69,27 @@ parameters:
     domain: [I, S]
     description: Inclusão ou substituição.
 
+# ---------------------------------------------------------------------------
+# A entrega: o que faz duas gerações serem a MESMA entrega, e a remessa.
+#
+# O motor é genérico e não conhece o vocabulário do BCB. Ele aplica três regras
+# sobre os parâmetros que este bloco nomeia: (1) uma entrega ORIGINAL aprovada por
+# período, por assinatura; (2) substituição só depois de aprovada a original do
+# período; (3) a geração mais nova do mesmo período e da mesma remessa substitui a
+# anterior ainda não aprovada.
+#
+# `period` é opcional: ausente, o período é todo parâmetro menos o da remessa.
+# `remittance` é opcional: ausente, o motor não impõe regra de original e
+# substituição. Aqui, I = inclusão (a primeira remessa da data-base) e
+# S = substituição (o reenvio de uma data-base já remetida).
+# ---------------------------------------------------------------------------
+filing:
+  period: [dataBase]
+  remittance:
+    parameter: tipoRemessa
+    original: I
+    replacement: S
+
 datasets:
   - name: institution
     description: Identificação da instituição declarante (cabeçalho).
@@ -74,13 +99,15 @@ datasets:
         type: string
         length: 14
         required: true
-        # O CNPJ da declarante é DADO: vem da base (a organização do Midaz), como
-        # qualquer outro valor. A regra é deste contrato: letras e dígitos, em
-        # maiúsculas, e os dois dígitos verificadores pela regra da Receita
-        # (numérico ou alfanumérico, IN RFB 2.229/2024). Um CNPJ que não verifica
-        # recusa a geração.
+        # O CNPJ da declarante é DADO: vem da base, como qualquer outro valor (no
+        # binding de referência, a organização do Midaz). O contrato só o escreve
+        # como o arquivo pede: letras e dígitos, em maiúsculas. Que o CNPJ seja
+        # válido é do cadastro do cliente, não deste arquivo.
         normalize: alphanumeric
-        checkDigit: cnpj
+        # A declarante é a instituição da entrega: o CNPJ lido da base é conferido
+        # contra o cadastro da instituição, e um diferente recusa a geração
+        # (RPT-0196). O registro e o arquivo não nomeiam instituições diferentes.
+        identifiesInstitution: true
         description: CNPJ da instituição declarante (quatorze posições).
       - name: cnpj8
         type: string
@@ -97,6 +124,13 @@ datasets:
     # rowSet, NÃO grain: as linhas são o conjunto do catálogo, uma por conta
     # declarada em contas.yaml. O binding fornece o saldoDia de cada uma; contas de
     # saldo zero podem ser omitidas (I §4.2.2.a).
+    # NATUREZA DE CADA RUBRICA: o lado em que o saldo normalmente fica, lido do
+    # elenco COSIF do BACEN (natureza.yaml, gerado por tools/natureza.py). É dado
+    # do PLANO COSIF, não do cliente: o elenco marca as retificadoras — perda
+    # esperada, provisão, depreciação acumulada —, e quem lança na rubrica certa
+    # fez o que lhe cabe. A regra `saldo-na-natureza`, pela
+    # tabela `natureza`, vale só nas linhas de ESTOQUE (`measure: stock` em
+    # contas.yaml): o fluxo é volume absoluto do mês, e não tem natureza a aplicar.
     rowSet:
       from: contas.yaml
       key: cosifCode
@@ -110,12 +144,20 @@ datasets:
       hierarchy:
         levels: [1, 1, 1, 2, 2, 2]
         checkDigit: 1
+    # CONSOLIDAÇÃO DENTRO DA MESMA INSTITUIÇÃO: o documento é individual, mas os
+    # saldos de uma instituição podem estar em mais de uma base (vários ledgers, um
+    # core em migração, um ERP). O conjunto pode ser lido de cada uma (as fontes
+    # adicionais do mapeamento, `also`), e as linhas se unificam pela rubrica, com o
+    # saldoDia das fontes somado. Cada fonte é montada inteira, com as suas contas-mãe,
+    # antes de unificar. Somar instituições diferentes não é este documento.
+    consolidation:
+      key: [cosifCode]
+      columns: {saldoDia: sum}
     fields:
       - name: cosifCode
         type: string
         required: true
-        # Dez dígitos desde 02/01/2025 (I, changelog 26/09/2024). O XSD publicado
-        # ainda diz oito — é ele que está velho, não o contrato. Ver knownGaps.
+        # Dez dígitos desde 02/01/2025 (I, changelog 26/09/2024), como o XSD vigente.
         pattern: '^[0-9]{10}$'
         normalize: digits
         description: Código COSIF da conta, do conjunto fechado (contas.yaml).
@@ -131,14 +173,38 @@ datasets:
           Para conta de ESTOQUE: saldo em R$ ao fim do dia, no sinal da natureza da
           conta; no último dia do mês coincide com o 4010 (I §4.2.2.b). Para conta de
           FLUXO (3.0.9.70.XX): somatório do valor ABSOLUTO das transações do dia,
-          acumulado no mês e reiniciado a cada mês (I §4.2.2.a). Qual medida vale
-          para cada conta está em contas.yaml.
+          acumulado no mês e reiniciado a cada mês (I §4.2.2.a) — o MOVIMENTO A DÉBITO
+          da conta no mês, do primeiro instante após o último dia útil do mês anterior
+          até o fim do dia da data-base. Qual medida vale para cada conta está em
+          contas.yaml.
+        expects: >-
+          Para conta de estoque, entregue o saldo com crédito positivo e débito
+          negativo; o documento depois põe cada saldo na natureza da conta, e
+          entregue ao contrário sai com o sinal trocado sem aviso. Para conta de
+          fluxo, entregue o volume do período, sem sinal, como vai no arquivo.
+
+
+tables:
+  - name: natureza
+    from: natureza.yaml        # prefixo da rubrica → debit | credit, do elenco COSIF
+    match: longestPrefix
 
 rules:
+  # O razão soma o estoque em convenção contábil (crédito positivo); uma conta de
+  # natureza devedora sai com o sinal invertido, em cada linha publicada, depois da
+  # soma das filhas. Só no estoque: o fluxo é volume do mês, positivo como lido.
+  - id: saldo-na-natureza
+    appliesTo: saldos_diarios
+    where: {rowSet: measure, equals: stock}
+    transform:
+      negateWhen: {field: saldoDia, table: natureza, key: cosifCode, equals: debit}
+    message: Cada saldo de estoque sai na natureza da própria conta.
+
   - id: conta-do-conjunto-fechado
     severity: error
-    appliesTo: saldos_diarios.cosifCode
-    assert: existsIn(contas.yaml)
+    appliesTo: saldos_diarios
+    check:
+      existsIn: {field: cosifCode, rowSet: contas.yaml}
     message: >-
       O 4111 só admite as contas do conjunto fechado (I §4.2.2.a). Uma rubrica fora
       de contas.yaml indica binding apontando para conta que o documento não prevê.
@@ -146,33 +212,21 @@ rules:
   - id: uma-linha-por-conta
     severity: error
     appliesTo: saldos_diarios
-    assert: unique(cosifCode)
+    check:
+      unique: [cosifCode]
     message: Uma linha por conta (I §4.2.1); duplicidade é agrupamento errado no binding.
 
 knownGaps:
-  - id: xsd-publicado-desatualizado
+  - id: natureza-lida-do-elenco
     description: >-
-      O XSD em schema/XSD_4111.xsd é a v1.0 de 30/03/2023 e CONTRADIZ as instruções
-      vigentes em três pontos: diz codigoConta de 8 dígitos (as instruções mandam 10
-      desde 02/01/2025), saldoDia com minInclusive=0 (as instruções mandam sinal pela
-      natureza, que admite negativo), e maxOccurs=25 contas (o conjunto atual tem 30
-      com as subcontas da IN 644/2025). Nos três, a instrução vigente prevalece e é o
-      que este contrato segue. Rebaixar para o XSD publicado geraria arquivo no
-      formato de 2023. Re-obter o XSD atualizado do BACEN antes de publicar (draft até
-      lá).
-
-  - id: natureza-contabil-e-configuracao-do-cliente
-    description: >-
-      Como no 4010: o sinal do saldo de estoque segue da natureza da conta, que vem
-      do COSIF referenciado nas rotas contábeis do Midaz (`accountingEntries` da
-      `operation_route`, alcançada por `operation.route_code`). Precondição de
-      configuração do cliente, declarada no binding — não é lacuna do motor.
-
-  - id: acumulo-fim-de-semana
-    description: >-
-      Volumes de sábado, domingo e feriado devem ser acumulados no próximo dia útil
-      (I §4.2.2.b). A janela mensal do volume existe e o binding de exemplo a declara;
-      o que falta é o calendário de dias úteis que desloca a apuração do fim de semana
-      — regra de calendário, não de acumulação. Fora do escopo desta versão: um
-      arquivo gerado para um dia útil está correto, e um gerado para sábado reporta o
-      próprio sábado em vez de somar no dia útil seguinte.
+      A natureza de cada rubrica vem do elenco COSIF do BACEN (natureza.yaml,
+      gerada por tools/natureza.py): a seção dá o lado, "(-)" marca a
+      retificadora, "(+/-)" herda a mãe. O que fica com o cliente é LANÇAR NA
+      RUBRICA CERTA — o COSIF referenciado nas rotas contábeis do Midaz
+      (`operation.route_code`). Dois limites, declarados: (1) uma rubrica que o
+      elenco não tem, mas que cai num grupo que existe, recebe a natureza do grupo
+      em silêncio (uma "provisão" inventada em 1.6.9 sai devedora); só uma rubrica
+      fora de todo grupo do elenco, como o grupo 5 a partir de 2025, recusa a
+      geração. (2) No grupo 8 o elenco escreve "(-)" em quase toda despesa, então o
+      grupo é tratado como devedor inteiro; as poucas contas sem a marca ficam
+      listadas no cabeçalho de natureza.yaml para revisão.

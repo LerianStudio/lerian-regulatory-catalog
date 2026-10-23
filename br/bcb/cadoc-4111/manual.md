@@ -103,7 +103,7 @@ larguras 1-1-1-2-2-2 e um dígito verificador), e o motor soma a árvore por ess
 declaração. É também o que decide **o que é lido** do razão: só as rubricas que
 estão sob alguma das trinta contas. Receitas, despesas, operações de crédito e o
 resto do seu plano de contas não entram na leitura, e por isso não precisam de
-natureza declarada no binding nem podem recusar a geração.
+natureza na tabela nem podem recusar a geração.
 
 Uma subconta sua **não vira linha** do arquivo: o conjunto é fechado. Ela só
 contribui para as linhas acima dela.
@@ -143,10 +143,12 @@ certo:
   também do balancete do mês. Provado na homologação (27/02/2026).
 - **A instituição é a organização do Midaz.** O CNPJ do arquivo é LIDO da
   organização (`organization.legal_document` na base de onboarding), como qualquer
-  outro valor; o contrato o normaliza, confere os dígitos verificadores (numérico
-  ou alfanumérico) e corta a raiz de oito posições. O Midaz aceita qualquer texto
-  no `legalDocument`: um CNPJ que não verifica recusa a geração, então cadastre a
-  organização com o CNPJ certo. A instituição é escopada **só** pela organização
+  outro valor; o contrato o normaliza (letras e dígitos, em maiúsculas) e corta a
+  raiz de oito posições. O Midaz aceita qualquer texto no `legalDocument`:
+  cadastrar a organização com o CNPJ certo é do cliente, e o contrato não confere
+  os dígitos verificadores. E o CNPJ lido é conferido contra o cadastro da
+  instituição no Reporter: se forem diferentes, a geração é recusada (`RPT-0196`)
+  em vez de sair um arquivo de uma instituição registrado em nome de outra. A instituição é escopada **só** pela organização
   (`organization_id` nas operações, `id` na tabela de organizações): todo ledger
   dela é um livro da mesma instituição e entra nos documentos, inclusive um ledger
   criado depois. Outra instituição — outro CNPJ — é outra organização. Por isso
@@ -195,35 +197,69 @@ certo:
   o BCB. Um binding seu pode abater as correções (marcando-as e lendo-as), por sua
   conta e risco.
 
-A **natureza contábil** de cada rubrica — devedora ou credora — é propriedade do
-plano de contas do cliente, não deste catálogo. Publicar uma tabela nossa criaria
-uma segunda fonte de verdade que ninguém reconcilia. Ela é declarada no binding,
-do seu lado; no exemplo contra o Midaz vem do COSIF referenciado nas rotas
-contábeis.
+A **natureza contábil** de cada rubrica — devedora ou credora — é do plano COSIF,
+e o catálogo a publica junto com o contrato (`natureza.yaml`, gerada do elenco de
+contas do BACEN; a mesma tabela do 4010, para que o último dia do mês feche com
+ele). O que cabe a você é lançar na rubrica certa. Um plano de contas que não seja
+o COSIF declara a própria tabela no binding, por sua conta.
+
+## Dias úteis
+
+O 4111 é gerado só para **dia útil já encerrado**, pelo calendário de dias não
+úteis publicado com o documento (`dias-nao-uteis.yaml`): sábado, domingo, feriado
+nacional e os dias não úteis bancários (Carnaval, Sexta-feira da Paixão e Corpus
+Christi) não têm remessa, e o pedido para um deles é recusado dizendo qual
+é o último dia útil antes dele.
+
+O volume de sábado, domingo e feriado vai para o **primeiro dia útil seguinte**
+(Instruções §4.2.2.b), mesmo quando ele cai no mês seguinte: a janela de volume de
+um mês abre logo depois do último dia útil do mês anterior. Um sábado 31 entra no
+arquivo da segunda-feira dia 2. O 4010 corta o mês pelo mesmo calendário, então o
+último 4111 do mês e o balancete fecham no mesmo instante. Provado na homologação
+(cenário D).
+
+## Mais de uma base: consolidação dentro da mesma instituição
+
+O 4111 é entregue **em base individual**: uma instituição, um arquivo, com os saldos
+dela. Somar os saldos de instituições diferentes num único 4111 é envio errado.
+
+Os saldos de uma mesma instituição podem, porém, estar em mais de uma base — mais de um
+ledger no Midaz, um core antigo e o novo durante uma migração, o razão de pagamentos no
+Midaz e as contas patrimoniais num ERP contábil. Para esses casos o mapeamento pode ler o
+conjunto de mais de uma fonte: além da consulta do próprio conjunto, cada **fonte
+adicional** (`also`) traz a sua consulta, as suas colunas e as suas condições.
+
+O contrato declara a regra: as linhas se unificam pela rubrica (`cosifCode`), e o
+`saldoDia` de todas as fontes é **somado**. Cada fonte é montada inteira, com as suas
+contas-mãe, antes de unificar; a conta-mãe do arquivo é a soma das contas-mãe das
+fontes.
+
+Cuidados:
+
+- **Só dados da própria instituição.** Uma fonte adicional lê **sem** o escopo da
+  instituição da entrega; são as condições dela que garantem que entram só os dados
+  desta instituição.
+- **Soma é soma.** A mesma rubrica em duas fontes é somada — o certo quando o saldo
+  está partido entre as bases, e o errado quando uma base é cópia da outra. Uma fonte
+  não deve repetir lançamentos que outra já traz.
+- **Mesma convenção.** Toda fonte entrega o valor na mesma convenção (crédito
+  positivo, débito negativo) e escreve a rubrica do mesmo jeito: o motor compara a
+  rubrica como texto exato.
+
+Quem usa o mapeamento de referência do Midaz pode acrescentar fontes adicionais sem
+deixar de usá-lo: a parte da referência continua homologada pela Lerian, e as fontes
+acrescentadas são do cliente.
 
 ## Limitações conhecidas desta versão
 
-**Acúmulo de fim de semana.** Volumes de sábado, domingo e feriado devem ser
-acumulados no próximo dia útil (Instruções §4.2.2.b). O calendário de dias úteis
-que faz esse deslocamento não existe nesta versão, e o efeito disso depende de o
-fim de semana atravessar ou não a virada do mês:
+**O calendário cobre 2025 a 2027.** Uma data-base fora disso é recusada até a
+cobertura ser estendida, o que é parte da curadoria anual.
 
-- **Dentro do mesmo mês**, o volume do fim de semana entra no arquivo do próximo
-  dia útil naturalmente, porque a janela do fluxo cobre o mês inteiro até a
-  data-base. É o resultado que a regra pede, alcançado por outro caminho.
-- **Atravessando a virada do mês** — um sábado dia 31 com o próximo dia útil já no
-  mês seguinte —, não entra: a janela do arquivo do dia 1º abre no dia 1º, e o
-  volume do dia 31 ficou no mês anterior, cujo último arquivo é anterior a ele.
-  **Esse volume não é reportado em arquivo nenhum.**
-- Um arquivo gerado **para o próprio sábado** reporta o sábado, em vez de somá-lo
-  ao dia útil seguinte.
-
-**O XSD publicado está desatualizado.** O `schema/XSD_4111.xsd` é a v1.0 de
-30/03/2023 e contradiz as instruções vigentes em três pontos: diz código de conta
-de 8 dígitos (as instruções mandam 10 desde 02/01/2025), saldo com mínimo zero (as
-instruções mandam sinal pela natureza, que admite negativo) e no máximo 25 contas
-(o conjunto atual tem 30). Nos três, **a instrução vigente prevalece** e é o que
-este contrato segue. Validar contra o XSD publicado reprovaria um arquivo correto.
+**O XSD é o vigente desde 02/01/2025.** O `schema/XSD_4111.xsd` aceita o código de
+conta de 10 dígitos, até 30 contas, saldo com sinal (a natureza admite negativo) e a
+raiz do CNPJ alfanumérica (IN RFB 2.229/2024). O cabeçalho do arquivo ainda diz
+"Versão 1.0, criado em 30/03/2023": o BCB mudou o conteúdo sem mudar o rótulo, então
+é pelo conteúdo que se distingue do anterior, de 8 dígitos e 25 contas.
 
 ## Fonte primária
 

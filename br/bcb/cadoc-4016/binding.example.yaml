@@ -11,7 +11,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4016
-contractVersion: 1.3.0
+contractVersion: 1.0.0
 
 queries:
   - name: declarante
@@ -21,6 +21,10 @@ queries:
     # Qual organização: o escopo da instituição, que filtra organization.id pela
     # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
     # uma linha só recusa a geração em vez de escolher uma.
+    filters:
+      # Uma organização apagada não declara nada.
+      - field: deleted_at
+        operator: isNull
 
   - name: saldos_cosif
     description: Lançamentos do razão agregados em saldo por rubrica, SEM resultado.
@@ -39,6 +43,10 @@ queries:
       - field: asset_code
         operator: eq
         values: ["BRL"]
+      # Só o que o Midaz não apagou: as leituras do próprio Midaz filtram
+      # deleted_at IS NULL, e o documento lê o mesmo razão que ele.
+      - field: deleted_at
+        operator: isNull
       # A exclusão dos grupos 7 e 8: o primeiro caractere da rota contábil é o grupo
       # COSIF. É filtro de EXTRAÇÃO — o 4016 não admite resultado — então vive aqui,
       # não no contrato. A regra sem-contas-de-resultado do contrato confere o
@@ -49,45 +57,30 @@ queries:
       - field: route_code
         operator: notStartsWith
         values: ["7", "8"]
+      # ATÉ O FIM DA DATA-BASE, pelo calendário de dias úteis do contrato, e sem
+      # limite inferior: o saldo de fechamento carrega tudo que já foi lançado.
+      - field: created_at
+        operator: lt
+        values: [{parameter: dataBase, at: end, calendar: business}]
+
+    # O VALOR DE CADA LANÇAMENTO NO RAZÃO: `direction` diz o lado, e um débito entra
+    # negativo. A chave é o VALOR QUE A COLUNA CARREGA ('debit' ou 'credit'); um lado
+    # que nenhum caso lista recusa a geração inteira.
+    compute:
+      - as: valor_no_razao
+        case:
+          column: direction
+          when:
+            credit: {column: amount}
+            debit: {negate: amount}
+          otherwise: refuse
+
     aggregate:
       groupBy: [route_code]
       measures:
         - as: saldo
           fn: sum
-          of: amount
-          # A CHAVE É O LADO, O VALOR É A GRAFIA QUE O DADO USA. `debit: "debit"`
-          # lê-se "a linha cuja coluna direction carrega 'debit' é um débito, e
-          # débito subtrai". Escrever `debit: "-"` afirma que a coluna carrega o
-          # caractere '-' — no Midaz ela carrega 'debit' ou 'credit'
-          # (validateOperationDirection), nenhuma linha casaria, e o motor recusa o
-          # relatório INTEIRO em vez de somar pela metade.
-          sign:
-            column: direction
-            debit: "debit"
-            credit: "credit"
-          statedIn:
-            # Retificadora (provisão 1.6.9, depreciação acumulada): declare pelo
-            # prefixo dela, `"169": credit` — vale o mais longo. Ver o 4010.
-            natureByPrefix:
-              "1": debit
-              "2": debit
-              "3": debit
-              "4": credit
-              "5": credit
-              "6": credit
-              "9": credit
-            key: route_code
-      accumulate:
-        # A coluna que carrega o momento do lançamento. `until` nomeia o instante;
-        # esta nomeia onde ele é lido. No Midaz é o carimbo de criação da operação;
-        # um razão próprio guarda isso com o nome dele.
-        on: created_at
-        until: system.dataBase
-        # Estoque: a janela abre no começo do razão, então o saldo de fechamento
-        # carrega tudo que já foi lançado — inclusive os lançamentos de abertura
-        # que a migração de um sistema anterior postou. Um volume que reinicia a
-        # cada mês declararia `from: month`.
-        from: opening
+          of: valor_no_razao
 
 datasets:
   institution:

@@ -19,9 +19,13 @@ metadata:
   country: BR
   regulator: BCB
   document: "4016"
+  family: cadoc          # o agrupamento: os documentos contábeis do BCB
   title: Balanço Patrimonial Analítico
-  version: 1.3.0   # 1.3.0: o CNPJ da declarante vem da base (organização do Midaz); a raiz é derivada pelo contrato
+  summary: >-
+    Posição patrimonial semestral por rubrica COSIF, sem as contas de resultado (grupos 7 e 8). O balanço do 4010 após a apuração do exercício.
+  version: 1.0.0
   status: draft
+  output: xml
   appliesTo:
     institutionTypes: [IP, SCD, SCFI]
   periodicity: semiannual     # §2.1.4 — o 4010 é mensal, o 4016 semestral
@@ -52,6 +56,27 @@ parameters:
     domain: [I, S]           # I = inclusão, S = substituição (XSD)
     description: Natureza da remessa ao BACEN.
 
+# ---------------------------------------------------------------------------
+# A entrega: o que faz duas gerações serem a MESMA entrega, e a remessa.
+#
+# O motor é genérico e não conhece o vocabulário do BCB. Ele aplica três regras
+# sobre os parâmetros que este bloco nomeia: (1) uma entrega ORIGINAL aprovada por
+# período, por assinatura; (2) substituição só depois de aprovada a original do
+# período; (3) a geração mais nova do mesmo período e da mesma remessa substitui a
+# anterior ainda não aprovada.
+#
+# `period` é opcional: ausente, o período é todo parâmetro menos o da remessa.
+# `remittance` é opcional: ausente, o motor não impõe regra de original e
+# substituição. Aqui, I = inclusão (a primeira remessa da data-base) e
+# S = substituição (o reenvio de uma data-base já remetida).
+# ---------------------------------------------------------------------------
+filing:
+  period: [dataBase]
+  remittance:
+    parameter: tipoRemessa
+    original: I
+    replacement: S
+
 datasets:
   - name: institution
     description: Identificação da instituição declarante.
@@ -61,13 +86,15 @@ datasets:
         type: string
         length: 14
         required: true
-        # O CNPJ da declarante é DADO: vem da base (a organização do Midaz), como
-        # qualquer outro valor. A regra é deste contrato: letras e dígitos, em
-        # maiúsculas, e os dois dígitos verificadores pela regra da Receita
-        # (numérico ou alfanumérico, IN RFB 2.229/2024). Um CNPJ que não verifica
-        # recusa a geração.
+        # O CNPJ da declarante é DADO: vem da base, como qualquer outro valor (no
+        # binding de referência, a organização do Midaz). O contrato só o escreve
+        # como o arquivo pede: letras e dígitos, em maiúsculas. Que o CNPJ seja
+        # válido é do cadastro do cliente, não deste arquivo.
         normalize: alphanumeric
-        checkDigit: cnpj
+        # A declarante é a instituição da entrega: o CNPJ lido da base é conferido
+        # contra o cadastro da instituição, e um diferente recusa a geração
+        # (RPT-0196). O registro e o arquivo não nomeiam instituições diferentes.
+        identifiesInstitution: true
         description: CNPJ da instituição declarante (quatorze posições).
       - name: cnpj8
         type: string
@@ -99,6 +126,12 @@ datasets:
     # do dígito verificador, também declarada aqui: a soma das nove posições com
     # os pesos 9,3,7,9,3,7,9,3,7, módulo 10, que reproduz todas as rubricas que o
     # regulador publica.
+    # NATUREZA DE CADA RUBRICA: o lado em que o saldo normalmente fica, lido do
+    # elenco COSIF do BACEN (natureza.yaml, gerado por tools/natureza.py). É dado
+    # do PLANO COSIF, não do cliente: o elenco marca as retificadoras — perda
+    # esperada, provisão, depreciação acumulada —, e quem lança na rubrica certa
+    # fez o que lhe cabe. A regra `saldo-na-natureza` a aplica,
+    # pela tabela `natureza`; o binding só lê.
     hierarchy:
       levels: [1, 1, 1, 2, 2, 2]
       checkDigit: 1
@@ -109,6 +142,15 @@ datasets:
       porque o Balanço representa a posição APÓS a apuração do resultado do
       exercício (L p.6). Filtrar essas rubricas é regra de EXTRAÇÃO, então vive na
       consulta do binding; a regra abaixo confere no arquivo pronto.
+    # CONSOLIDAÇÃO DENTRO DA MESMA INSTITUIÇÃO: o documento é individual, mas os
+    # saldos de uma instituição podem estar em mais de uma base (vários ledgers, um
+    # core em migração, um ERP). O conjunto pode ser lido de cada uma (as fontes
+    # adicionais do mapeamento, `also`), e as linhas se unificam pela rubrica, com o
+    # saldo das fontes somado. Cada fonte é montada inteira, com as suas contas-mãe,
+    # antes de unificar. Somar instituições diferentes não é este documento.
+    consolidation:
+      key: [cosifCode]
+      columns: {saldo: sum}
     fields:
       - name: cosifCode
         type: string
@@ -133,43 +175,63 @@ datasets:
           NATUREZA DA PRÓPRIA CONTA. A convenção crédito-menos-débito do razão não
           deve vazar para o arquivo. O motor não confere o sinal — quem confere é o
           cliente no rascunho, antes de aprovar.
+        expects: >-
+          Entregue o saldo de cada rubrica com crédito positivo e débito negativo; o
+          documento depois põe cada saldo na natureza da conta. Entregue ao
+          contrário, todos os sinais saem trocados e nada avisa.
         description: Saldo da rubrica em reais na data-base.
 
+
+tables:
+  - name: natureza
+    from: natureza.yaml        # prefixo da rubrica → debit | credit, do elenco COSIF
+    match: longestPrefix
+
 rules:
+  # O razão soma em convenção contábil (crédito positivo); uma conta de natureza
+  # devedora sai com o sinal invertido, em cada linha, depois da soma das mães.
+  - id: saldo-na-natureza
+    appliesTo: cosif_balances
+    transform:
+      negateWhen: {field: saldo, table: natureza, key: cosifCode, equals: debit}
+    message: Cada saldo sai na natureza da própria conta.
+
   - id: no-duplicate-account
     severity: error
     appliesTo: cosif_balances
-    assert: unique(cosifCode)
+    check:
+      unique: [cosifCode]
     message: Uma linha por rubrica; duplicidade indica agrupamento errado no binding.
 
+  # O primeiro dígito da rubrica é o grupo COSIF; 7 e 8 são resultado. O binding de
+  # referência já os deixa de fora; esta regra recusa um binding que esqueceu.
   - id: sem-contas-de-resultado
     severity: error
-    appliesTo: cosif_balances.cosifCode
-    # O primeiro dígito da rubrica é o grupo COSIF. 7 e 8 são resultado.
-    assert: firstDigitNotIn(cosifCode, "7", "8")
+    appliesTo: cosif_balances
+    check:
+      notStartsWith: {field: cosifCode, values: ["7", "8"]}
     message: >-
       O 4016 é a posição após a apuração do resultado, então não admite contas dos
       grupos 7 (Receitas) nem 8 (Despesas) (L p.6). A presença de uma indica que o
       filtro do binding não excluiu o resultado.
 
-  - id: zero-balance-optional
-    severity: info
-    appliesTo: cosif_balances
-    assert: always
-    message: >-
-      Rubrica com saldo zero pode ser omitida (L p.6). Emitir ou não é decisão do
-      cliente; as duas formas são aceitas.
+  # Rubrica com saldo zero pode ser omitida (L p.6); emitir ou não é decisão do
+  # cliente. É informação, não regra: está no manual.md.
 
 knownGaps:
-  - id: natureza-contabil-e-configuracao-do-cliente
+  - id: natureza-lida-do-elenco
     description: >-
-      Idêntico ao 4010, e pelo mesmo motivo não é lacuna de ninguém: o plano de
-      contas do Midaz são as rotas contábeis, cujo `accountingEntries` declara a
-      rubrica de débito e a de crédito por ação; `operation.route_code` liga o
-      lançamento à rota e `operation.type` diz o lado. Referenciado o COSIF
-      corretamente nas rotas, o sinal segue do próprio código. É precondição de
-      configuração do cliente, declarada no binding.
-
+      A natureza de cada rubrica vem do elenco COSIF do BACEN (natureza.yaml,
+      gerada por tools/natureza.py): a seção dá o lado, "(-)" marca a
+      retificadora, "(+/-)" herda a mãe. O que fica com o cliente é LANÇAR NA
+      RUBRICA CERTA — o COSIF referenciado nas rotas contábeis do Midaz
+      (`operation.route_code`). Dois limites, declarados: (1) uma rubrica que o
+      elenco não tem, mas que cai num grupo que existe, recebe a natureza do grupo
+      em silêncio (uma "provisão" inventada em 1.6.9 sai devedora); só uma rubrica
+      fora de todo grupo do elenco, como o grupo 5 a partir de 2025, recusa a
+      geração. (2) No grupo 8 o elenco escreve "(-)" em quase toda despesa, então o
+      grupo é tratado como devedor inteiro; as poucas contas sem a marca ficam
+      listadas no cabeçalho de natureza.yaml para revisão.
   - id: elenco-cosif-ausente
     description: >-
       Como no 4010, não há regra conferindo que a rubrica existe no elenco COSIF

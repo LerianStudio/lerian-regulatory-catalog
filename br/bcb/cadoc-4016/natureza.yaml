@@ -1,0 +1,317 @@
+# Natureza das rubricas do COSIF — o lado em que o saldo de cada uma
+# normalmente fica. GERADO por tools/natureza.py a partir do elenco de contas
+# publicado pelo BACEN; não edite à mão, regere.
+#
+# É dado do PLANO COSIF, não do cliente: o elenco diz quais rubricas são
+# retificadoras. O motor decide pelo prefixo mais longo que casa com o código,
+# então uma retificadora declarada abaixo vence o grupo em que está.
+#
+# Regra: ativo (1, 2, 3) devedor; passivo, PL, resultado credor e compensação
+# (4, 6, 7, 9) credores; "(-)" no título inverte; "(+/-)" herda a mãe; o grupo 8
+# (resultado devedor) é devedor inteiro — ver tools/natureza.py.
+#
+# Grupo 8 sem a marca "(-)" no elenco, tratadas como devedoras (revisar):
+#   8.1.9.04.00.00-0  DESPESAS DE PRESTAÇÃO DE SERVIÇOS DE ATIVOS
+
+source: https://www3.bcb.gov.br/aplica/cosif/manual/completo_contas.pdf
+sha256: 1734efdca6712452c662c9de2a5de9f1a982f8e11a0604672021d2451d7a56df
+
+byPrefix:
+  "1": debit
+  "121100140": credit  # 1.2.1.10.01.40-2 (-) Perda Incorrida Associada ao Risco de
+  "121100160": credit  # 1.2.1.10.01.60-8 (-) Perda Esperada Associada ao Risco de
+  "121103140": credit  # 1.2.1.10.31.40-3 (-) Perda Incorrida Associada ao Risco de
+  "121103160": credit  # 1.2.1.10.31.60-9 (-) Perda Esperada Associada ao Risco de
+  "121107040": credit  # 1.2.1.10.70.40-2 (-) Perda Incorrida Associada ao Risco de
+  "121107060": credit  # 1.2.1.10.70.60-8 (-) Perda Esperada Associada ao Risco de
+  "121108540": credit  # 1.2.1.10.85.40-4 (-) Perda Incorrida Associada ao Risco de
+  "121108560": credit  # 1.2.1.10.85.60-0 (-) Perda Esperada Associada a o Risco de
+  "121109140": credit  # 1.2.1.10.91.40-5 (-) Perda Incorrida Associada ao Risco de
+  "121109160": credit  # 1.2.1.10.91.60-1 (-) Perda Esperada Associada ao Risco de
+  "121109940": credit  # 1.2.1.10.99.40-7 (-) Perda Incorrida Associada ao Risco de
+  "121109960": credit  # 1.2.1.10.99.60-3 (-) Perda Esperada Associada ao Risco de
+  "121200140": credit  # 1.2.1.20.01.40-1 (-) Perda Incorrida Associada ao Risco de
+  "121200160": credit  # 1.2.1.20.01.60-7 (-) Perda Esperada Associada ao Risco de
+  "121203140": credit  # 1.2.1.20.31.40-2 (-) Perda Incorrida Associada ao Risco de
+  "121203160": credit  # 1.2.1.20.31.60-8 (-) Perda Esperada Associada ao Risco de
+  "121207040": credit  # 1.2.1.20.70.40-1 (-) Perda Incorrida Associada ao Risco de
+  "121207060": credit  # 1.2.1.20.70.60-7 (-) Perda Esperada Associada ao Risco de
+  "121208540": credit  # 1.2.1.20.85.40-3 (-) Perda Incorrida Associada ao Risco de
+  "121208560": credit  # 1.2.1.20.85.60-9 (-) Perda Esperada Associada ao Risco de
+  "121209940": credit  # 1.2.1.20.99.40-6 (-) Perda Incorrida Associada ao Risco de
+  "121209960": credit  # 1.2.1.20.99.60-2 (-) Perda Esperada Associada ao Risco de
+  "121300140": credit  # 1.2.1.30.01.40-0 (-) Perda Incorrida Associada ao Risco de
+  "121300160": credit  # 1.2.1.30.01.60-6 (-) Perda Esperada Associada ao Risco de
+  "121303140": credit  # 1.2.1.30.31.40-1 (-) Perda Incorrida Associada ao Risco de
+  "121303160": credit  # 1.2.1.30.31.60-7 (-) Perda Esperada Associada ao Risco de
+  "121309940": credit  # 1.2.1.30.99.40-5 (-) Perda Incorrida Associada ao Risco de
+  "121309960": credit  # 1.2.1.30.99.60-1 (-) Perda Esperada Associada ao Risco de
+  "122100140": credit  # 1.2.2.10.01.40-9 (-) Perda Incorrida Associada ao Risco de
+  "122100160": credit  # 1.2.2.10.01.60-5 (-) Perda Esperada Associada ao Risco de
+  "12699": credit  # 1.2.6.99.00.00-5 (-) Provisão para Perdas Associadas a Risco de
+  "131100140": credit  # 1.3.1.10.01.40-5 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131103140": credit  # 1.3.1.10.31.40-6 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131103160": credit  # 1.3.1.10.31.60-2 (-) Perda Esperada Associada ao Risco de Crédito
+  "131103240": credit  # 1.3.1.10.32.40-5 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131103260": credit  # 1.3.1.10.32.60-1 (-) Perda Esperada Associada ao Risco de Crédito
+  "131103340": credit  # 1.3.1.10.33.40-4 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131103360": credit  # 1.3.1.10.33.60-0 (-) Perda Esperada Associada ao Risco de Crédito
+  "131109540": credit  # 1.3.1.10.95.40-4 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131109560": credit  # 1.3.1.10.95.60-0 (-) Perda Esperada Associada ao Risco de Crédito
+  "131109940": credit  # 1.3.1.10.99.40-0 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131109960": credit  # 1.3.1.10.99.60-6 (-) Perda Esperada Associada ao Risco de Crédito
+  "131851040": credit  # 1.3.1.85.10.40-1 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131852040": credit  # 1.3.1.85.20.40-8 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131852060": credit  # 1.3.1.85.20.60-4 (-) Perda Esperada Associada ao Risco de Crédito
+  "131852540": credit  # 1.3.1.85.25.40-3 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131852560": credit  # 1.3.1.85.25.60-9 (-) Perda Esperada Associada ao Risco de Crédito
+  "131852640": credit  # 1.3.1.85.26.40-2 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131852660": credit  # 1.3.1.85.26.60-8 (-) Perda Esperada Associada ao Risco de Crédito
+  "131853140": credit  # 1.3.1.85.31.40-4 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131853160": credit  # 1.3.1.85.31.60-0 (-) Perda Esperada Associada ao Risco de Crédito
+  "131859040": credit  # 1.3.1.85.90.40-7 (-) Perda Incorrida Associada ao Risco de Crédito
+  "131859060": credit  # 1.3.1.85.90.60-3 (-) Perda Esperada Associada ao Risco de Crédito
+  "132100140": credit  # 1.3.2.10.01.40-2 (-) Perda Incorrida Associada ao Risco de Crédito
+  "132103140": credit  # 1.3.2.10.31.40-3 (-) Perda Incorrida Associada ao Risco de Crédito
+  "132103160": credit  # 1.3.2.10.31.60-9 (-) Perda Esperada Associada ao Risco de Crédito
+  "132103240": credit  # 1.3.2.10.32.40-2 (-) Perda Incorrida Associada ao Risco de Crédito
+  "132103260": credit  # 1.3.2.10.32.60-8 (-) Perda Esperada Associada ao Risco de Crédito
+  "132103340": credit  # 1.3.2.10.33.40-1 (-) Perda Incorrida Associada ao Risco de Crédito
+  "132103360": credit  # 1.3.2.10.33.60-7 (-) Perda Esperada Associada ao Risco de Crédito
+  "132107040": credit  # 1.3.2.10.70.40-2 (-) Perda Incorrida Associada ao Risco de Crédito
+  "132108540": credit  # 1.3.2.10.85.40-4 (-) Perda Incorrida Associada ao Risco de Crédito
+  "132108560": credit  # 1.3.2.10.85.60-0 (-) Perda Esperada Associada ao Risco de Crédito
+  "132109940": credit  # 1.3.2.10.99.40-7 (-) Perda Incorrida Associada ao Risco de Crédito
+  "132109960": credit  # 1.3.2.10.99.60-3 (-) Perda Esperada Associada ao Risco de Crédito
+  "134100140": credit  # 1.3.4.10.01.40-6 (-) Perda Incorrida Associada ao Risco de Crédito
+  "134109940": credit  # 1.3.4.10.99.40-1 (-) Perda Incorrida Associada ao Risco de Crédito
+  "134109960": credit  # 1.3.4.10.99.60-7 (-) Perda Esperada Associada ao Risco de Crédito
+  "134200140": credit  # 1.3.4.20.01.40-5 (-) Perda Incorrida Associada ao Risco de Crédito
+  "134209940": credit  # 1.3.4.20.99.40-0 (-) Perda Incorrida Associada ao Risco de Crédito
+  "134209960": credit  # 1.3.4.20.99.60-6 (-) Perda Esperada Associada ao Risco de Crédito
+  "134300140": credit  # 1.3.4.30.01.40-4 (-) Perda Incorrida Associada ao Risco de Crédito
+  "134309940": credit  # 1.3.4.30.99.40-9 (-) Perda Incorrida Associada ao Risco de Crédito
+  "134309960": credit  # 1.3.4.30.99.60-5 (-) Perda Esperada Associada ao Risco de Crédito
+  "134400140": credit  # 1.3.4.40.01.40-3 (-) Perda Incorrida Associada ao Risco de Crédito
+  "134409940": credit  # 1.3.4.40.99.40-8 (-) Perda Incorrida Associada ao Risco de Crédito
+  "134409960": credit  # 1.3.4.40.99.60-4 (-) Perda Esperada Associada ao Risco de Crédito
+  "134450140": credit  # 1.3.4.45.01.40-8 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136100140": credit  # 1.3.6.10.01.40-0 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136103140": credit  # 1.3.6.10.31.40-1 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136103160": credit  # 1.3.6.10.31.60-7 (-) Perda Esperada Associada ao Risco de Crédito
+  "136109940": credit  # 1.3.6.10.99.40-5 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136109960": credit  # 1.3.6.10.99.60-1 (-) Perda Esperada Associada ao Risco de Crédito
+  "136150140": credit  # 1.3.6.15.01.40-5 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136153140": credit  # 1.3.6.15.31.40-6 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136153160": credit  # 1.3.6.15.31.60-2 (-) Perda Esperada Associada ao Risco de Crédito
+  "136159940": credit  # 1.3.6.15.99.40-0 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136159960": credit  # 1.3.6.15.99.60-6 (-) Perda Esperada Associada ao Risco de Crédito
+  "136161040": credit  # 1.3.6.16.10.40-6 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136163140": credit  # 1.3.6.16.31.40-9 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136163160": credit  # 1.3.6.16.31.60-5 (-) Perda Esperada Associada ao Risco de Crédito
+  "136169940": credit  # 1.3.6.16.99.40-3 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136169960": credit  # 1.3.6.16.99.60-9 (-) Perda Esperada Associada ao Risco de Crédito
+  "136171040": credit  # 1.3.6.17.10.40-9 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136200140": credit  # 1.3.6.20.01.40-9 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136203140": credit  # 1.3.6.20.31.40-0 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136203160": credit  # 1.3.6.20.31.60-6 (-) Perda Esperada Associada ao Risco de Crédito
+  "136209940": credit  # 1.3.6.20.99.40-4 (-) Perda Incorrida Associada ao Risco de Crédito
+  "136209960": credit  # 1.3.6.20.99.60-0 (-) Perda Esperada Associada ao Risco de Crédito
+  "136250140": credit  # 1.3.6.25.01.40-4 (-) Perda Incorrida Associada ao Risco de Crédito
+  "137100140": credit  # 1.3.7.10.01.40-7 (-) Perda Incorrida Associada ao Risco de Crédito
+  "137109040": credit  # 1.3.7.10.90.40-1 (-) Perda Incorrida Associada ao Risco de Crédito
+  "137109060": credit  # 1.3.7.10.90.60-7 (-) Perda Esperada Associada ao Risco de Crédito
+  "139100140": credit  # 1.3.9.10.01.40-1 (-) Perda Incorrida Associada ao Risco de Crédito
+  "139101140": credit  # 1.3.9.10.11.40-8 (-) Perda Incorrida Associada ao Risco de Crédito
+  "139101160": credit  # 1.3.9.10.11.60-4 (-) Perda Esperada Associada ao Risco de Crédito
+  "149": credit  # 1.4.9.00.00.00-4 (-) Provisão Para Perdas Associadas a Risco de Crédito
+  "161100112": credit  # 1.6.1.10.01.12-9 (-) Receitas Diferidas - TJEO Diferenciada
+  "161100140": credit  # 1.6.1.10.01.40-4 (-) Perda incorrida Associada ao Risco de Crédito
+  "161100150": credit  # 1.6.1.10.01.50-7 (-) Provisão Adicional
+  "161100160": credit  # 1.6.1.10.01.60-0 (-) Perda Esperada Associada ao Risco de Crédito
+  "161200112": credit  # 1.6.1.20.01.12-8 (-) Receitas Diferidas - TJEO Diferenciada
+  "161200140": credit  # 1.6.1.20.01.40-3 (-) Perda incorrida Associada ao Risco de Crédito
+  "161200150": credit  # 1.6.1.20.01.50-6 (-) Provisão Adicional
+  "161200160": credit  # 1.6.1.20.01.60-9 (-) Perda Esperada Associada ao Risco de Crédito
+  "161300112": credit  # 1.6.1.30.01.12-7 (-) Receitas Diferidas - TJEO Diferenciada
+  "161300140": credit  # 1.6.1.30.01.40-2 (-) Perda incorrida Associada ao Risco de Crédito
+  "161300150": credit  # 1.6.1.30.01.50-5 (-) Provisão Adicional
+  "161300160": credit  # 1.6.1.30.01.60-8 (-) Perda Esperada Associada ao Risco de Crédito
+  "162100112": credit  # 1.6.2.10.01.12-6 (-) Receitas Diferidas - TJEO Diferenciada
+  "162100140": credit  # 1.6.2.10.01.40-1 (-) Perda incorrida Associada ao Risco de Crédito
+  "162100150": credit  # 1.6.2.10.01.50-4 (-) Provisão Adicional
+  "162100160": credit  # 1.6.2.10.01.60-7 (-) Perda Esperada Associada ao Risco de Crédito
+  "162150112": credit  # 1.6.2.15.01.12-1 (-) Receitas Diferidas - TJEO Diferenciada
+  "162150140": credit  # 1.6.2.15.01.40-6 (-) Perda incorrida Associada ao Risco de Crédito
+  "162150150": credit  # 1.6.2.15.01.50-9 (-) Provisão Adicional
+  "162150160": credit  # 1.6.2.15.01.60-2 (-) Perda Esperada Associada ao Risco de Crédito
+  "162200112": credit  # 1.6.2.20.01.12-5 (-) Receitas Diferidas - TJEO Diferenciada
+  "162200140": credit  # 1.6.2.20.01.40-0 (-) Perda incorrida Associada ao Risco de Crédito
+  "162200150": credit  # 1.6.2.20.01.50-3 (-) Provisão Adicional
+  "162200160": credit  # 1.6.2.20.01.60-6 (-) Perda Esperada Associada ao Risco de Crédito
+  "162250112": credit  # 1.6.2.25.01.12-0 (-) Receitas Diferidas - TJEO Diferenciada
+  "162250140": credit  # 1.6.2.25.01.40-5 (-) Perda incorrida Associada ao Risco de Crédito
+  "162250150": credit  # 1.6.2.25.01.50-8 (-) Provisão Adicional
+  "162250160": credit  # 1.6.2.25.01.60-1 (-) Perda Esperada Associada ao Risco de Crédito
+  "162300112": credit  # 1.6.2.30.01.12-4 (-) Receitas Diferidas - TJEO Diferenciada
+  "162300140": credit  # 1.6.2.30.01.40-9 (-) Perda incorrida Associada ao Risco de Crédito
+  "162300150": credit  # 1.6.2.30.01.50-2 (-) Provisão Adicional
+  "162300160": credit  # 1.6.2.30.01.60-5 (-) Perda Esperada Associada ao Risco de Crédito
+  "162400112": credit  # 1.6.2.40.01.12-3 (-) Receitas Diferidas - TJEO Diferenciada
+  "162400140": credit  # 1.6.2.40.01.40-8 (-) Perda incorrida Associada ao Risco de Crédito
+  "162400150": credit  # 1.6.2.40.01.50-1 (-) Provisão Adicional
+  "162400160": credit  # 1.6.2.40.01.60-4 (-) Perda Esperada Associada ao Risco de Crédito
+  "163050112": credit  # 1.6.3.05.01.12-9 (-) Receitas Diferidas - TJEO Diferenciada
+  "163050140": credit  # 1.6.3.05.01.40-4 (-) Perda incorrida Associada ao Risco de Crédito
+  "163050150": credit  # 1.6.3.05.01.50-7 (-) Provisão Adicional
+  "163050160": credit  # 1.6.3.05.01.60-0 (-) Perda Esperada Associada ao Risco de Crédito
+  "163150112": credit  # 1.6.3.15.01.12-8 (-) Receitas Diferidas - TJEO Diferenciada
+  "163150140": credit  # 1.6.3.15.01.40-3 (-) Perda incorrida Associada ao Risco de Crédito
+  "163150150": credit  # 1.6.3.15.01.50-6 (-) Provisão Adicional
+  "163150160": credit  # 1.6.3.15.01.60-9 (-) Perda Esperada Associada ao Risco de Crédito
+  "163250112": credit  # 1.6.3.25.01.12-7 (-) Receitas Diferidas - TJEO Diferenciada
+  "163250140": credit  # 1.6.3.25.01.40-2 (-) Perda incorrida Associada ao Risco de Crédito
+  "163250150": credit  # 1.6.3.25.01.50-5 (-) Provisão Adicional
+  "163250160": credit  # 1.6.3.25.01.60-8 (-) Perda Esperada Associada ao Risco de Crédito
+  "163350112": credit  # 1.6.3.35.01.12-6 (-) Receitas Diferidas - TJEO Diferenciada
+  "163350140": credit  # 1.6.3.35.01.40-1 (-) Perda incorrida Associada ao Risco de Crédito
+  "163350150": credit  # 1.6.3.35.01.50-4 (-) Provisão Adicional
+  "163350160": credit  # 1.6.3.35.01.60-7 (-) Perda Esperada Associada ao Risco de Crédito
+  "163450112": credit  # 1.6.3.45.01.12-5 (-) Receitas Diferidas - TJEO Diferenciada
+  "163450140": credit  # 1.6.3.45.01.40-0 (-) Perda incorrida Associada ao Risco de Crédito
+  "163450150": credit  # 1.6.3.45.01.50-3 (-) Provisão Adicional
+  "163450160": credit  # 1.6.3.45.01.60-6 (-) Perda Esperada Associada ao Risco de Crédito
+  "164100112": credit  # 1.6.4.10.01.12-0 (-) Receitas Diferidas - TJEO Diferenciada
+  "164100140": credit  # 1.6.4.10.01.40-5 (-) Perda incorrida Associada ao Risco de Crédito
+  "164100150": credit  # 1.6.4.10.01.50-8 (-) Provisão Adicional
+  "164100160": credit  # 1.6.4.10.01.60-1 (-) Perda Esperada Associada ao Risco de Crédito
+  "164300112": credit  # 1.6.4.30.01.12-8 (-) Receitas Diferidas - TJEO Diferenciada
+  "164300140": credit  # 1.6.4.30.01.40-3 (-) Perda incorrida Associada ao Risco de Crédito
+  "164300150": credit  # 1.6.4.30.01.50-6 (-) Provisão Adicional
+  "164300160": credit  # 1.6.4.30.01.60-9 (-) Perda Esperada Associada ao Risco de Crédito
+  "164400112": credit  # 1.6.4.40.01.12-7 (-) Receitas Diferidas - TJEO Diferenciada
+  "164400140": credit  # 1.6.4.40.01.40-2 (-) Perda incorrida Associada ao Risco de Crédito
+  "164400150": credit  # 1.6.4.40.01.50-5 (-) Provisão Adicional
+  "164400160": credit  # 1.6.4.40.01.60-8 (-) Perda Esperada Associada ao Risco de Crédito
+  "165200112": credit  # 1.6.5.20.01.12-6 (-) Receitas Diferidas - TJEO Diferenciada
+  "165200140": credit  # 1.6.5.20.01.40-1 (-) Perda incorrida Associada ao Risco de Crédito
+  "165200150": credit  # 1.6.5.20.01.50-4 (-) Provisão Adicional
+  "165200160": credit  # 1.6.5.20.01.60-7 (-) Perda Esperada Associada ao Risco de Crédito
+  "165204512": credit  # 1.6.5.20.45.12-0 (-) Receitas Diferidas - TJEO Diferenciada
+  "165204540": credit  # 1.6.5.20.45.40-5 (-) Perda Incorrida Associada ao Risco de Crédito
+  "165204550": credit  # 1.6.5.20.45.50-8 (-) Provisão Adicional
+  "165204560": credit  # 1.6.5.20.45.60-1 (-) Perda Esperada Associada ao Risco de Crédito
+  "166100112": credit  # 1.6.6.10.01.12-4 (-) Receitas Diferidas - TJEO Diferenciada
+  "166100140": credit  # 1.6.6.10.01.40-9 (-) Perda incorrida Associada ao Risco de Crédito
+  "166100150": credit  # 1.6.6.10.01.50-2 (-) Provisão Adicional
+  "166100160": credit  # 1.6.6.10.01.60-5 (-) Perda Esperada Associada ao Risco de Crédito
+  "1741040": credit  # 1.7.4.10.40.00-5 (-) Perda Incorrida Associada ao Risco de
+  "1741050": credit  # 1.7.4.10.50.00-2 (-) Provisão Adicional
+  "1741060": credit  # 1.7.4.10.60.00-9 (-) Perda Esperada Associada ao Risco de
+  "1742040": credit  # 1.7.4.20.40.00-4 (-) Perda Incorrida Associada ao Risco de
+  "1742060": credit  # 1.7.4.20.60.00-8 (-) Perda Esperada Associada ao Risco de
+  "1751040": credit  # 1.7.5.10.40.00-2 (-) Perda Incorrida Associada ao Risco de
+  "1751050": credit  # 1.7.5.10.50.00-9 (-) Provisão Adicional
+  "1751060": credit  # 1.7.5.10.60.00-6 (-) Perda Esperada Associada ao Risco de
+  "1752040": credit  # 1.7.5.20.40.00-1 (-) Perda Incorrida Associada ao Risco de
+  "1752060": credit  # 1.7.5.20.60.00-5 (-) Perda Esperada Associada ao Risco de
+  "181101012": credit  # 1.8.1.10.10.12-3 (-) Receitas Diferidas - TJEO Diferenciada
+  "181101040": credit  # 1.8.1.10.10.40-8 (-) Perda incorrida Associada ao Risco de Crédito
+  "181101050": credit  # 1.8.1.10.10.50-1 (-) Provisão Adicional
+  "181101060": credit  # 1.8.1.10.10.60-4 (-) Perda Esperada Associada ao Risco de Crédito
+  "181201012": credit  # 1.8.1.20.10.12-2 (-) Receitas Diferidas - TJEO Diferenciada
+  "181201040": credit  # 1.8.1.20.10.40-7 (-) Perda incorrida Associada ao Risco de Crédito
+  "181201050": credit  # 1.8.1.20.10.50-0 (-) Provisão Adicional
+  "181201060": credit  # 1.8.1.20.10.60-3 (-) Perda Esperada Associada ao Risco de Crédito
+  "181301012": credit  # 1.8.1.30.10.12-1 (-) Receitas Diferidas - TJEO Diferenciada
+  "181301040": credit  # 1.8.1.30.10.40-6 (-) Perda incorrida Associada ao Risco de Crédito
+  "181301050": credit  # 1.8.1.30.10.50-9 (-) Provisão Adicional
+  "181301060": credit  # 1.8.1.30.10.60-2 (-) Perda Esperada Associada ao Risco de Crédito
+  "181401012": credit  # 1.8.1.40.10.12-0 (-) Receitas Diferidas - TJEO Diferenciada
+  "181401040": credit  # 1.8.1.40.10.40-5 (-) Perda incorrida Associada ao Risco de Crédito
+  "181401050": credit  # 1.8.1.40.10.50-8 (-) Provisão Adicional
+  "181401060": credit  # 1.8.1.40.10.60-1 (-) Perda Esperada Associada ao Risco de Crédito
+  "181501012": credit  # 1.8.1.50.10.12-9 (-) Receitas Diferidas - TJEO Diferenciada
+  "181501040": credit  # 1.8.1.50.10.40-4 (-) Perda Incorrida Associada ao Risco de Crédito
+  "181501050": credit  # 1.8.1.50.10.50-7 (-) Provisão Adicional
+  "181501060": credit  # 1.8.1.50.10.60-0 (-) Perda Esperada Associada ao Risco de Crédito
+  "181901012": credit  # 1.8.1.90.10.12-5 (-) Receitas Diferidas - TJEO Diferenciada
+  "181901040": credit  # 1.8.1.90.10.40-0 (-) Perda incorrida Associada ao Risco de Crédito
+  "181901050": credit  # 1.8.1.90.10.50-3 (-) Provisão Adicional
+  "181901060": credit  # 1.8.1.90.10.60-6 (-) Perda Esperada Associada ao Risco de Crédito
+  "189": credit  # 1.8.9.00.00.00-6 (-) Provisões para Outros Créditos
+  "19897": credit  # 1.9.8.97.00.00-4 (-) PROVISÃO PARA DESVALORIZAÇÃO DE ATIVOS NÃO
+  "19898": credit  # 1.9.8.98.00.00-7 (-) PROVISÃO PARA DESVALORIZAÇÃO DE ATIVOS NÃO
+  "19899": credit  # 1.9.8.99.00.00-0 (-) PROVISÃO PARA DESVALORIZAÇÃO DE OUTROS
+  "2": debit
+  "21199": credit  # 2.1.1.99.00.00-6 (-) PROVISÃO PARA PERDAS EM INVESTIMENTOS NO
+  "21299": credit  # 2.1.2.99.00.00-3 (-) PROVISÃO PARA PERDAS EM SOCIEDADES
+  "21695": credit  # 2.1.6.95.00.00-9 (-) REDUÇÃO AO VALOR RECUPERÁVEL DE
+  "21699": credit  # 2.1.6.99.00.00-1 (-) DEPRECIAÇÃO ACUMULADA DE PROPRIEDADES
+  "22595": credit  # 2.2.5.95.00.00-5 (-) REDUÇÃO AO VALOR RECUPERÁVEL DE ATIVO
+  "22599": credit  # 2.2.5.99.00.00-7 (-) DEPRECIAÇÃO ACUMULADA DE ATIVO
+  "2321030": credit  # 2.3.2.10.30.00-1 (-) Depreciação acumulada
+  "2321040": credit  # 2.3.2.10.40.00-8 (-) Redução ao valor recuperável
+  "2322030": credit  # 2.3.2.20.30.00-0 (-) Depreciação Acumulada
+  "2322040": credit  # 2.3.2.20.40.00-7 (-) Redução ao valor recuperável
+  "2351030": credit  # 2.3.5.10.30.00-2 (-) Amortização Acumulada
+  "2351040": credit  # 2.3.5.10.40.00-9 (-) Redução ao Valor Recuperável
+  "2352030": credit  # 2.3.5.20.30.00-1 (-) Amortização Acumulada
+  "2352040": credit  # 2.3.5.20.40.00-8 (-) Redução ao Valor Recuperável
+  "25195": credit  # 2.5.1.95.00.00-6 (-) REDUÇÃO AO VALOR RECUPERÁVEL DE ATIVOS
+  "25199": credit  # 2.5.1.99.00.00-8 (-) AMORTIZAÇÃO ACUMULADA DE ATIVOS
+  "25290": credit  # 2.5.2.90.00.00-8 (-) AMORTIZAÇÃO ACUMULADA DE ÁGIO NA
+  "25295": credit  # 2.5.2.95.00.00-3 (-) REDUÇÃO AO VALOR RECUPERÁVEL DE ÁGIO NA
+  "3": debit  # 3.0.0.00.00.00-7 Compensação Ativa
+  "381101090": credit  # 3.8.1.10.10.90-1 (-) Perdas Esperadas
+  "381101590": credit  # 3.8.1.10.15.90-6 (-) Perdas Esperadas
+  "381102090": credit  # 3.8.1.10.20.90-8 (-) Perdas Esperadas
+  "381102590": credit  # 3.8.1.10.25.90-3 (-) Perdas Esperadas
+  "381103090": credit  # 3.8.1.10.30.90-5 (-) Perdas Esperadas
+  "381103590": credit  # 3.8.1.10.35.90-0 (-) Perdas Esperadas
+  "381104090": credit  # 3.8.1.10.40.90-2 (-) Perdas Esperadas
+  "381104190": credit  # 3.8.1.10.41.90-1 (-) Perdas Esperadas
+  "381104590": credit  # 3.8.1.10.45.90-7 (-) Perdas Esperadas
+  "381105090": credit  # 3.8.1.10.50.90-9 (-) Perdas Esperadas
+  "381201590": credit  # 3.8.1.20.15.90-5 (-) Perdas Esperadas
+  "381202590": credit  # 3.8.1.20.25.90-2 (-) Perdas Esperadas
+  "381203090": credit  # 3.8.1.20.30.90-4 (-) Perdas Esperadas
+  "381203590": credit  # 3.8.1.20.35.90-9 (-) Perdas Esperadas
+  "381204090": credit  # 3.8.1.20.40.90-1 (-) Perdas Esperadas
+  "381204590": credit  # 3.8.1.20.45.90-6 (-) Perdas Esperadas
+  "381205090": credit  # 3.8.1.20.50.90-8 (-) Perdas Esperadas
+  "381205590": credit  # 3.8.1.20.55.90-3 (-) Perdas Esperadas
+  "381206090": credit  # 3.8.1.20.60.90-5 (-) Perdas Esperadas - Recursos Tesouro Nacional
+  "381206095": credit  # 3.8.1.20.60.95-0 (-) Perdas Esperadas ? Recursos Livres
+  "382202012": credit  # 3.8.2.20.20.12-4 (-) Revendas a Liquidar - Posição Financiada - Saldo
+  "382202013": credit  # 3.8.2.20.20.13-1 (-) Revendas a Liquidar - Posição Vendida - Saldo
+  "382202050": credit  # 3.8.2.20.20.50-2 (-) Ativos com Origem de Recursos Vinculados a
+  "382203013": credit  # 3.8.2.20.30.13-8 (-) Instrumentos Financeiros Derivativos Contratados
+  "382203014": credit  # 3.8.2.20.30.14-5 (-) Posição Passiva de Instrumentos Financeiros
+  "382203016": credit  # 3.8.2.20.30.16-9 (-) Títulos Privados Não Elegíveis às Linhas Financeiras
+  "382203019": credit  # 3.8.2.20.30.19-0 (-) Ativos de Fundos Não Caracterizados como Ativos
+  "382203050": credit  # 3.8.2.20.30.50-9 (-) Ativos com Origem de Recursos Vinculados a
+  "382204020": credit  # 3.8.2.20.40.20-7 (-) Relações Interfinanceiras - Transações de Pagamento
+  "382204050": credit  # 3.8.2.20.40.50-6 (-) Ativos com Origem de Recursos Vinculados a
+  "382206050": credit  # 3.8.2.20.60.50-0 (-) Ativos com Origem de Recursos Vinculados a
+  "382207050": credit  # 3.8.2.20.70.50-7 (-) Ativos com Origem de Recursos Vinculados a
+  "382208150": credit  # 3.8.2.20.81.50-3 (-) Ativos com Origem de Recursos Vinculados a
+  "382208641": credit  # 3.8.2.20.86.41-2 (-) Relações Interfinanceiras - Obrigações por
+  "382208643": credit  # 3.8.2.20.86.43-6 (-) Obrigações por Transações de Pagamento - Saldo
+  "382208645": credit  # 3.8.2.20.86.45-0 (-) Antecipação de Obrigações de Transações de
+  "4": credit
+  "4371390": debit  # 4.3.7.13.90.00-5 (-) Certificados de Operações Estruturadas Recompras
+  "4989818": debit  # 4.9.8.98.18.00-3 (-) Recursos Utilizados do Fundo de Reserva
+  "4989890": debit  # 4.9.8.98.90.00-7 (-) Valores Irrecuperáveis
+  "6": credit
+  "61140": debit  # 6.1.1.40.00.00-0 (-) REDUÇÃO DE CAPITAL
+  "61150": debit  # 6.1.1.50.00.00-9 (-) CAPITAL A REALIZAR
+  "61665": debit  # 6.1.6.65.00.00-8 (-) GOODWILL EM NOVAS AQUISIÇÕES DE
+  "61880": debit  # 6.1.8.80.00.00-5 (-) REMUNERAÇÃO DO CAPITAL PAGA
+  "619": debit  # 6.1.9.00.00.00-0 (-) Ações em Tesouraria.
+  "7": credit
+  "8": debit
+  "9": credit  # 9.0.0.00.00.00-1 Compensação Passiva
+  "982100302": debit  # 9.8.2.10.03.02-9 (-) Captação de Entidades Ligadas
+  "982100303": debit  # 9.8.2.10.03.03-6 (-) Captação de Instituições Financeiras
+  "9822560": debit  # 9.8.2.25.60.00-4 (-) Instrumentos Excluídos da Exposição ao FGC

@@ -1,7 +1,7 @@
 {
-  "_about": "Org B — sociedade de crédito, financiamento e investimento (SCFI). Contabilidade FICTÍCIA para homologação. Cobre: captação por aceite cambial (4310000002, no conjunto do 4111), saldo credor de cliente em conta de empréstimo (4119000007, filha de Depósitos à Vista no 4111), obrigação em nome de terceiros zerada no mês (4992700005), operações de crédito e rendas/despesas fora do conjunto do 4111, e uma conta RETIFICADORA (provisão 1691000009, natureza credora dentro do grupo 1) — o caso em que decidir a natureza pelo primeiro dígito da rubrica erra o sinal. O estorno de outubro roda na data da execução. O cenário declara a natureza da retificadora (prefixo 169, credora) — dado do plano de contas do cliente, que o script acrescenta ao natureByPrefix do binding de referência. B12 é uma anotação NOTED de 999.00: aparece nas operações com balance_affected=false e não pode entrar em documento nenhum.",
+  "_about": "Org B — sociedade de crédito, financiamento e investimento (SCFI). Contabilidade FICTÍCIA para homologação, com rubricas REAIS do elenco COSIF vigente. Cobre: captação por aceite cambial (4310000002, no conjunto do 4111), saldo credor de cliente em conta de empréstimo (4119000007, filha de Depósitos à Vista no 4111), obrigação em nome de terceiros zerada no mês (4992700005), empréstimo (1.6.1.20.01.10-4 Saldo Contratual) com a sua RETIFICADORA (1.6.1.20.01.60-9 (-) Perda Esperada Associada ao Risco de Crédito, credora dentro do grupo 1), rendas e despesas fora do conjunto do 4111. A natureza da retificadora vem do elenco publicado com o contrato (natureza.yaml): o binding de referência não declara nada. O estorno de outubro roda na data da execução. B12 é uma anotação NOTED de 999.00: aparece nas operações com balance_affected=false e não pode entrar em documento nenhum.",
   "organization": {
-    "legalName": "Crediflex SCFI S.A. (homologação)",
+    "legalName": "Crediflex SCFI S.A. (homologação, COSIF vigente)",
     "doingBusinessAs": "Crediflex",
     "legalDocument": "44556677000186",
     "address": {
@@ -13,9 +13,6 @@
     }
   },
   "ledger": "Razão COSIF",
-  "natures": {
-    "169": "credit"
-  },
   "accountTypes": [
     {
       "keyValue": "ativo",
@@ -68,15 +65,15 @@
     {
       "alias": "@emprestimo_joao",
       "type": "emprestimo",
-      "code": "1611000003",
+      "code": "1612001104",
       "routeByType": true,
-      "name": "João — Empréstimos"
+      "name": "João — Empréstimos, Saldo Contratual"
     },
     {
       "alias": "@provisao_credito",
       "type": "ativo_retificadora",
-      "code": "1691000009",
-      "name": "(-) Provisões para Empréstimos e Títulos Descontados"
+      "code": "1612001609",
+      "name": "(-) Perda Esperada Associada ao Risco de Crédito — Empréstimos"
     },
     {
       "alias": "@investidor_lc",
@@ -112,14 +109,14 @@
     {
       "alias": "@desp_captacao",
       "type": "despesa",
-      "code": "8110500007",
-      "name": "Despesas de Aceites Cambiais"
+      "code": "8116000006",
+      "name": "(-) Despesas de Aceites Cambiais"
     },
     {
       "alias": "@desp_provisao",
       "type": "despesa",
-      "code": "8183000008",
-      "name": "Despesas de Provisões para Operações de Crédito"
+      "code": "8199200005",
+      "name": "(-) Despesas de Provisão para Risco de Crédito"
     }
   ],
   "transactions": [

@@ -1,7 +1,7 @@
 {
-  "_about": "Org C — COBERTURA SINTÉTICA, declarada como tal: não é o perfil de nenhuma instituição real. Existe para que cada linha do conjunto do 4111 que A e B não alcançam receba um valor distinguível, e para exercitar o que o motor faz e o template não mostra: lançamento na própria linha-mãe e em subcontas do cliente abaixo de uma linha publicada (roll-up), janela do fluxo que reinicia no mês (agosto não conta), corte diário (dataBase 2026-09-15 x 2026-09-30) e lançamento depois da data-base (outubro, fora). Grupos 2 e 5 do 4010 também entram aqui. A contrapartida de toda 3.0.9.70.XX é o título único 9.0.9.70.00.00-7 (IN BCB 538), num ledger próprio (Razão COSIF 4, o do campo ledger): os ledgers anteriores registraram subcontas 9.0.9.70.XX que o COSIF não tem, ou datas de reversão em UTC. Horários em -03:00 (Brasília): o dia regulatório é o dia civil brasileiro, e REPORT_TIMEZONE=America/Sao_Paulo é precondição; uma reversão às 00:05Z cairia às 21:05 do dia anterior.",
+  "_about": "Org C — COBERTURA SINTÉTICA, declarada como tal: não é o perfil de nenhuma instituição real. Existe para que cada linha do conjunto do 4111 que A e B não alcançam receba um valor distinguível, e para exercitar o que o motor faz e o template não mostra: lançamento na própria linha-mãe e em subcontas do cliente abaixo de uma linha publicada (roll-up), janela do fluxo que reinicia no mês (agosto não conta), corte diário (dataBase 2026-09-15 x 2026-09-30) e lançamento depois da data-base (outubro, fora). O grupo 2 do 4010 também entra aqui, e uma retificadora do patrimônio líquido: (-) Capital a Realizar (6.1.1.50.00.00-9), devedora dentro de um grupo credor, que abate o Capital na conta-mãe. Todas as rubricas são do elenco COSIF vigente. A contrapartida de toda 3.0.9.70.XX é o título único 9.0.9.70.00.00-7 (IN BCB 538), num ledger próprio (Razão COSIF 4, o do campo ledger): os ledgers anteriores registraram subcontas 9.0.9.70.XX que o COSIF não tem, ou datas de reversão em UTC. Horários em -03:00 (Brasília): o dia regulatório é o dia civil brasileiro, e REPORT_TIMEZONE=America/Sao_Paulo é precondição; uma reversão às 00:05Z cairia às 21:05 do dia anterior.",
   "organization": {
-    "legalName": "Cobertura COSIF (sintética, homologação)",
+    "legalName": "Cobertura COSIF (sintética, homologação, COSIF vigente)",
     "doingBusinessAs": "Cobertura",
     "legalDocument": "55667788000186",
     "address": {
@@ -38,6 +38,11 @@
       "keyValue": "compensacao_credora",
       "name": "Compensação credora",
       "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "patrimonio_retificadora",
+      "name": "Retificadora do patrimônio líquido",
+      "defaultDirection": "debit"
     }
   ],
   "accounts": [
@@ -63,7 +68,7 @@
       "alias": "@permanente",
       "type": "ativo",
       "code": "2111000007",
-      "name": "Permanente (grupo 2)"
+      "name": "Dependências no Exterior (grupo 2)"
     },
     {
       "alias": "@dep_vista",
@@ -82,12 +87,6 @@
       "type": "passivo",
       "code": "4111000005",
       "name": "Depósitos de Pessoas Naturais"
-    },
-    {
-      "alias": "@dep_pn_sub",
-      "type": "passivo",
-      "code": "4111005000",
-      "name": "Depósitos de Pessoas Naturais — subconta do cliente (4.1.1.10.05)"
     },
     {
       "alias": "@dep_pj",
@@ -144,10 +143,10 @@
       "name": "Outras Obrigações por Negociação e Intermediação de Valores"
     },
     {
-      "alias": "@rfe",
-      "type": "passivo",
-      "code": "5111000004",
-      "name": "Resultados de Exercícios Futuros (grupo 5)"
+      "alias": "@capital_a_realizar",
+      "type": "patrimonio_retificadora",
+      "code": "6115000009",
+      "name": "(-) Capital a Realizar"
     },
     {
       "alias": "@capital",
@@ -233,9 +232,9 @@
       "key": "C07",
       "date": "2026-09-04T10:01:00Z",
       "amount": "400.00",
-      "description": "Depósito de pessoa natural em subconta do cliente",
+      "description": "Depósito de pessoa natural",
       "debit": "@caixa",
-      "credit": "@dep_pn_sub"
+      "credit": "@dep_pn"
     },
     {
       "key": "C08",
@@ -321,9 +320,9 @@
       "key": "C18",
       "date": "2026-09-14T10:00:00Z",
       "amount": "1500.00",
-      "description": "Resultado de exercício futuro",
-      "debit": "@caixa",
-      "credit": "@rfe"
+      "description": "Capital subscrito a integralizar",
+      "debit": "@capital_a_realizar",
+      "credit": "@capital"
     },
     {
       "key": "C19",
