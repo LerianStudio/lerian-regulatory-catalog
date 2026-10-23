@@ -116,14 +116,14 @@ quais faltam depois de 30s.
   às quais a entidade deve prestar informação" e o exemplo do BCB lista sintéticas
   (`1000000009`, `1100000002`) ao lado das analíticas; as instruções do 4111 pedem
   que o último dia coincida com o 4010. A conferência cruzada falhava nos três
-  cenários. Corrigido: o contrato 1.1.0 do 4010/4016 declara a hierarquia e o
+  cenários. Corrigido: o contrato do 4010/4016 declara a hierarquia e o
   motor deriva cada conta-mãe, somando em convenção contábil (a provisão abate
   Operações de Crédito). A conferência passa nos três.
 - **O período era cortado pelo mês corrido, e não pelo dia útil.** O volume de um
   sábado que fecha o mês sumia de todo 4111, o balancete fechava no fim do mês em
   vez do último dia útil, e o 4111 de sábado era gerado. Corrigido com o calendário
   de dias não úteis (`dias-nao-uteis.yaml`, curadoria da Lerian) que o contrato
-  1.2.0 declara; o cenário D prova os três cortes.
+  declara; o cenário D prova os três cortes.
 - **O Midaz lista só o recente por padrão.** Sem `start_date`/`end_date`, a listagem
   de operações devolve vazio para lançamentos de meses atrás. A ferramenta passa o
   intervalo explícito; o Reporter lê o banco e não é afetado.

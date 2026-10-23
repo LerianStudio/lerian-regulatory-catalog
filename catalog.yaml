@@ -19,7 +19,7 @@ documents:
     document: "4010"
     family: cadoc
     title: Balancete Patrimonial Analítico
-    version: 1.7.2
+    version: 1.0.0
     status: draft            # draft | published | deprecated
     periodicity: monthly
     appliesTo:
@@ -35,7 +35,7 @@ documents:
     document: "4016"
     family: cadoc
     title: Balanço Patrimonial Analítico
-    version: 1.7.2
+    version: 1.0.0
     status: draft
     periodicity: semiannual
     appliesTo:
@@ -51,7 +51,7 @@ documents:
     document: "4111"
     family: cadoc
     title: Saldos Contábeis Diários
-    version: 1.7.2
+    version: 1.0.0
     status: draft
     periodicity: daily
     appliesTo:

@@ -34,7 +34,7 @@
 #     na conta de origem e o cancel outro, cada um com a rubrica de `hold` e de
 #     `cancel` da rota; com a mesma rubrica nos dois lados, o par se anula, e só o
 #     commit move saldo. Um binding que filtrasse `status = APPROVED` não leria
-#     linha nenhuma (versões até a v0.1.1 deste catálogo faziam isso). Noutro
+#     linha nenhuma. Noutro
 #     razão, o que separa reserva de movimento é outra coisa, e o binding é seu.
 #
 # O Reporter é homologado contra o Midaz. Mapear outro razão é decisão e
@@ -44,7 +44,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.cadoc-4111
-contractVersion: 1.7.2
+contractVersion: 1.0.0
 
 queries:
   - name: declarante
