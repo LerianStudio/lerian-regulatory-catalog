@@ -110,11 +110,16 @@ O consumo do catálogo é por **tag** (`br.bcb.cadoc-4010/v1.0.0`): é o que a
 instalação do cliente fixa, e é o que faz uma correção publicada aqui não mudar o
 que ele gera até ele adotar. As branches existem para o que acontece antes disso.
 
-| Branch | Papel |
-|---|---|
-| `develop` | onde um documento é curado; é o que um Reporter de desenvolvimento acompanha, para o documento ser exercitado de ponta a ponta antes de virar tag |
-| `main` | o que já passou por revisão e está pronto para virar tag |
-| tags | o que o cliente fixa |
+| Branch | Papel | Quem lê |
+|---|---|---|
+| `develop` | onde um documento é curado | o Reporter de desenvolvimento, pelo diretório montado (`REGULATORY_CATALOG_DIR`) |
+| `release-candidate` | o que vai ser homologado em staging; dela saem as tags `vX.Y.Z-rc.N`, publicadas como **pré-release** | o Reporter de staging (`REGULATORY_CATALOG_CHANNEL=prerelease`) |
+| `main` | o que passou pelo staging; dela saem as tags `vX.Y.Z`, publicadas como **release** | o Reporter de produção (`REGULATORY_CATALOG_CHANNEL=stable`, o padrão) |
+
+O conteúdo anda `develop → release-candidate → main`, sempre por PR. É o mesmo
+fluxo dos serviços que leem o catálogo: um documento chega ao staging como
+candidata, é exercitado lá contra dados reais, e só então vira release que um
+cliente de produção pode assinar.
 
 Trabalho novo sai de `develop`, volta por **PR**, e a conferência do CI é
 obrigatória. Sem isso o processo desta página é convenção de honra: os três
@@ -148,13 +153,20 @@ Ao acrescentar uma construção ao formato, ela nasce com três coisas:
 
 ## Publicar uma release
 
-O Reporter não lê este repositório. Ele busca a release **mais recente** e baixa o
-único `.tar.gz` anexado a ela — um pacote com o índice, os documentos publicados e
+O Reporter não lê este repositório. Ele busca a release **mais recente do seu
+canal** — a release estável em produção, a mais nova de qualquer tipo (candidatas
+incluídas) em staging — e baixa o único `.tar.gz` anexado a ela — um pacote com o índice, os documentos publicados e
 um manifesto com o SHA-256 de cada arquivo, que o próprio Reporter confere antes de
 instalar. Nada aqui chega a um cliente até uma release existir.
 
-A tag é a versão do **catálogo**, no formato `vX.Y.Z`, e é o que dispara a
-publicação. Ela não tem relação com as versões dos documentos: `metadata.version`
+A tag é a versão do **catálogo** e é o que dispara a publicação. Há dois formatos,
+e cada um só pode ser cortado da sua branch (o CI recusa os dois de outro lugar):
+
+| Tag | Branch | Publicada como |
+|---|---|---|
+| `vX.Y.Z-rc.N` | `release-candidate` | pré-release — o staging lê, a produção nunca |
+| `vX.Y.Z` | `main` | release — a produção lê |
+ Ela não tem relação com as versões dos documentos: `metadata.version`
 em cada contrato é por documento, independente, e é o que o cliente fixa quando
 assina. Uma release `v1.4.0` pode carregar o 4010 na 1.0.0 e o 4111 na 2.3.1 — a
 versão da release diz quando o conjunto foi publicado, nunca o que cada documento é.
@@ -162,9 +174,14 @@ versão da release diz quando o conjunto foi publicado, nunca o que cada documen
 Como cortar:
 
 1. Confira localmente: `python3 tools/validate.py`.
-2. `git tag -s v1.0.0 -m "catálogo 1.0.0"` e `git push origin v1.0.0`.
-3. O CI valida, monta o pacote, confere que ele é reproduzível, o relê como o
-   Reporter releria e publica a release. Nada disso acontece sem a tag.
+2. Para o staging: leve a `develop` para a `release-candidate` por PR e, nela,
+   `git tag -s v1.0.0-rc.1 -m "catálogo 1.0.0-rc.1"` e `git push origin v1.0.0-rc.1`.
+   Cada correção durante a homologação é uma nova candidata (`-rc.2`, `-rc.3`…).
+3. Para a produção: leve a `release-candidate` homologada para a `main` por PR e,
+   nela, `git tag -s v1.0.0 -m "catálogo 1.0.0"` e `git push origin v1.0.0`.
+4. O CI valida, confere que a tag saiu da branch certa, monta o pacote, confere
+   que ele é reproduzível, o relê como o Reporter releria e publica a release.
+   Nada disso acontece sem a tag.
 
 Para montar e conferir sem publicar — o que o CI faz em todo PR:
 

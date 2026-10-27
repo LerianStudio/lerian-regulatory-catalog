@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release.outputs.version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
 
@@ -48,15 +49,34 @@ jobs:
             exit 0
           fi
 
-          # vX.Y.Z E NADA MAIS. O gatilho `v*` também casa com `vnext`, `v1` e
-          # `v1.2.3-rc1`, e qualquer um deles publicaria uma release cuja versão
-          # contradiz o que o CONTRIBUTING promete a quem a consome.
-          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "a tag '$GITHUB_REF_NAME' não é vX.Y.Z, então não versiona um catálogo" >&2
+          # vX.Y.Z OU vX.Y.Z-rc.N E NADA MAIS. O gatilho `v*` também casa com
+          # `vnext`, `v1` e `v1.2.3-rc1`, e qualquer um deles publicaria uma
+          # release cuja versão contradiz o que o CONTRIBUTING promete.
+          if printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            branch=main
+            prerelease=false
+          elif printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$'; then
+            branch=release-candidate
+            prerelease=true
+          else
+            echo "a tag '$GITHUB_REF_NAME' não é vX.Y.Z nem vX.Y.Z-rc.N, então não versiona um catálogo" >&2
+            exit 1
+          fi
+
+          # A RELEASE SAI DA BRANCH QUE A PROMETE. Uma candidata (vX.Y.Z-rc.N) é
+          # o que o staging lê, e sai da `release-candidate`; uma release
+          # (vX.Y.Z) é o que a produção lê, e sai da `main`. Uma tag cortada de
+          # outro lugar levaria ao ambiente um conteúdo que não passou pela
+          # branch que o revisa.
+          git fetch --quiet --no-tags --unshallow origin 2>/dev/null || true
+          git fetch --quiet --no-tags origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$branch"; then
+            echo "a tag '$GITHUB_REF_NAME' aponta para um commit fora da '$branch', de onde uma tag assim é cortada" >&2
             exit 1
           fi
 
           echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
       - name: monta o pacote
         env:
@@ -88,6 +108,7 @@ jobs:
       contents: write
     env:
       VERSION: ${{ needs.archive.outputs.version }}
+      PRERELEASE: ${{ needs.archive.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
 
@@ -141,8 +162,13 @@ jobs:
           # aqui, o gh CRIA uma apontando para o topo do branch padrão: a release
           # sairia dizendo ser vX.Y.Z e apontando para outra árvore. Melhor
           # falhar alto do que publicar uma tag que ninguém cortou.
+          # Uma candidata sai como PRÉ-RELEASE: o /releases/latest do GitHub não
+          # a devolve, então o Reporter de produção (canal `stable`) nunca a
+          # lê, e o de staging (canal `prerelease`) lê a mais nova de qualquer tipo.
+          if [ "$PRERELEASE" = "true" ]; then kind=--prerelease; else kind=--latest; fi
           gh release create "$GITHUB_REF_NAME" \
             --verify-tag \
+            "$kind" \
             --title "$GITHUB_REF_NAME" \
             --notes "Catálogo regulatório $VERSION. O Reporter busca a release mais recente e lê o único \`.tar.gz\` anexado; \`SHA256SUMS\` é para conferência humana." \
             "dist/catalog-$VERSION.tar.gz" \
