@@ -203,7 +203,7 @@ do regulador em `contas.yaml`, por exemplo — mora na raiz do documento, nunca 
 
 Uma release publica **exatamente um** `.tar.gz`. O Reporter recusa uma que tenha
 dois: de lá não há como dizer qual é o catálogo, e escolher um instalaria conteúdo
-por acidente de ordenação. A assinatura (`.tar.gz.sig`), o `SHA256SUMS`, o `LICENSE`
+por acidente de ordenação. O atestado (`.tar.gz.sigstore.json`), o `SHA256SUMS`, o `LICENSE`
 e o `NOTICE` que acompanham não terminam em `.tar.gz` de propósito — qualquer anexo
 novo precisa respeitar isso.
 
@@ -217,32 +217,16 @@ O pacote é **reproduzível**: a mesma árvore produz os mesmos bytes, sempre. �
 permite a alguém remontar a release e comparar com o que publicamos. O CI confere
 isso a cada execução, montando duas vezes.
 
-### A assinatura
+### O atestado
 
-Cada release publica, ao lado do pacote, `catalog-X.Y.Z.tar.gz.sig`: uma assinatura
-Ed25519, em base64, sobre a mensagem `lerian-regulatory-catalog archive sha256:`
-seguida do SHA-256 do pacote em hexadecimal. O Reporter confere a assinatura com as
-chaves públicas que carrega no próprio código e **recusa** a release cuja assinatura
-não confere. É ela que diz que a release foi publicada pela curadoria da Lerian:
-o manifesto e o `SHA256SUMS` só dizem que o pacote chegou inteiro, e quem troca o
-pacote troca os dois junto.
-
-A mensagem é contrato com o Reporter (`pkg/reporter/catalog/signature.go`), como os
-nomes dos arquivos abaixo: mudá-la aqui sem mudar lá faz toda release ser recusada.
-
-**A chave.** A privada fica no segredo `CATALOG_SIGNING_KEY` do ambiente `release`
-do repositório, em PEM (`openssl genpkey -algorithm ed25519`), e nunca sai dele. A
-pública, em base64 dos 32 bytes (o job de publicação a imprime), vai para a lista
-de chaves do Reporter. O ambiente `release` exige a aprovação de um administrador
-antes de cada publicação.
-
-**Trocar a chave** sem deixar ninguém sem catálogo: o Reporter passa a confiar nas
-duas chaves, as releases passam a sair assinadas pela nova, e só numa versão
-seguinte do Reporter a antiga sai da lista.
-
-**Sem a chave configurada**, a release sai sem assinatura e o job avisa. Por
-enquanto o Reporter ainda aceita uma release sem assinatura; quando ele passar a
-exigir, publicar sem a chave deixará de ser possível.
+Cada release publica, ao lado do pacote, `catalog-X.Y.Z.tar.gz.sigstore.json`: o
+atestado do Sigstore que o próprio job de publicação faz sobre o SHA-256 do pacote,
+com uma identidade que o GitHub dá ao workflow. O Reporter **recusa** a release sem
+atestado ou cujo atestado não prove que foi feito pelo `.github/workflows/release.yml`
+deste repositório, para a tag da release, sobre aqueles bytes. Não há chave para
+guardar. O processo inteiro — o que garante, a configuração do repositório, o que é
+contrato com o Reporter e a ordem de implantação — está em
+[AUTENTICIDADE.md](AUTENTICIDADE.md).
 
 ### Os nomes dos arquivos são contrato com o Reporter
 

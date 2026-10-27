@@ -104,11 +104,15 @@ jobs:
     needs: archive
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
-    # O ambiente `release` é onde mora a chave de assinatura e onde a
-    # administração do repositório exige aprovação antes de cada publicação.
+    # O ambiente `release` é onde a administração do repositório exige aprovação
+    # antes de cada publicação: só um job aprovado chega a atestar o pacote.
     environment: release
     permissions:
       contents: write
+      # O certificado do atestado é emitido contra o token OIDC deste job, e o
+      # atestado fica também registrado no repositório.
+      id-token: write
+      attestations: write
     env:
       VERSION: ${{ needs.archive.outputs.version }}
       PRERELEASE: ${{ needs.archive.outputs.prerelease }}
@@ -139,46 +143,37 @@ jobs:
         working-directory: dist
         run: sha256sum "catalog-$VERSION.tar.gz" > SHA256SUMS
 
-      # A ASSINATURA diz quem publicou o pacote, coisa que nem o manifesto nem o
-      # SHA256SUMS dizem: quem troca o pacote troca os dois junto. O Reporter
-      # confere `catalog-X.tar.gz.sig` contra as chaves públicas que carrega e
-      # recusa a release que não confere.
+      # O ATESTADO diz quem publicou o pacote, coisa que nem o manifesto nem o
+      # SHA256SUMS dizem: quem troca o pacote troca os dois junto. O GitHub dá a
+      # este job um certificado de minutos que nomeia o workflow, o repositório e a
+      # tag; o job assina o SHA-256 do pacote com ele, e o Sigstore registra a
+      # assinatura no log público. Não há chave guardada em lugar nenhum.
       #
-      # A mensagem assinada é um rótulo fixo e o SHA-256 do pacote, exatamente
-      # como o Reporter a monta (pkg/reporter/catalog/signature.go); mudar um lado
-      # sem o outro faz toda release ser recusada.
-      #
-      # Sem a chave no ambiente a release sai sem assinatura, como antes, e o
-      # Reporter ainda a aceita; quando ele passar a exigir, este passo passa a
-      # falhar sem a chave.
-      - name: assina o pacote
-        working-directory: dist
+      # O Reporter só instala a release cujo atestado foi feito por ESTE arquivo
+      # (`.github/workflows/release.yml`) DESTE repositório PARA ESTA tag, sobre
+      # ESTES bytes (pkg/reporter/catalog/attestation.go). Renomear ou mover este
+      # workflow faz toda release ser recusada até o Reporter mudar junto.
+      - name: atesta o pacote
+        id: attest
+        uses: actions/attest-build-provenance@v4.2.2
+        with:
+          subject-path: dist/catalog-${{ env.VERSION }}.tar.gz
+
+      # Conferido aqui com a mesma identidade que o Reporter exige, para que um
+      # atestado errado falhe neste job e não em cada Reporter.
+      - name: confere o atestado como o Reporter confere
         env:
-          SIGNING_KEY: ${{ secrets.CATALOG_SIGNING_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
         run: |
-          if [ -z "$SIGNING_KEY" ]; then
-            echo "::warning::CATALOG_SIGNING_KEY não está configurada; a release sai sem assinatura"
-            exit 0
-          fi
-
-          umask 077
-          key=$(mktemp)
-          trap 'rm -f "$key" message signature.bin' EXIT
-          printf '%s\n' "$SIGNING_KEY" > "$key"
-
-          digest=$(sha256sum "catalog-$VERSION.tar.gz" | cut -d' ' -f1)
-          printf 'lerian-regulatory-catalog archive sha256:%s' "$digest" > message
-          openssl pkeyutl -sign -inkey "$key" -rawin -in message -out signature.bin
-
-          # Conferida aqui com a pública derivada da mesma chave, para que uma
-          # chave errada falhe neste job e não em cada Reporter.
-          openssl pkey -in "$key" -pubout > public.pem
-          openssl pkeyutl -verify -pubin -inkey public.pem -rawin -in message -sigfile signature.bin
-          echo "chave pública: $(openssl pkey -pubin -in public.pem -outform DER | tail -c 32 | base64)"
-          rm -f public.pem
-
-          base64 -w0 signature.bin > "catalog-$VERSION.tar.gz.sig"
-          echo >> "catalog-$VERSION.tar.gz.sig"
+          # Um atestado por linha, compacto: o mesmo arquivo serve ao Reporter e
+          # ao `gh attestation verify` de quem quiser conferir à mão.
+          jq -c . "$BUNDLE" | head -n 1 > "dist/catalog-$VERSION.tar.gz.sigstore.json"
+          gh attestation verify "dist/catalog-$VERSION.tar.gz" \
+            --bundle "dist/catalog-$VERSION.tar.gz.sigstore.json" \
+            --repo LerianStudio/lerian-regulatory-catalog \
+            --cert-identity "https://github.com/LerianStudio/lerian-regulatory-catalog/.github/workflows/release.yml@$GITHUB_REF" \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com
 
       # A tag pode ter sido MOVIDA entre o disparo e agora, e aí a release
       # apontaria para uma árvore e carregaria o pacote de outra — as duas
@@ -214,15 +209,13 @@ jobs:
           # a que a produção lê.
           kind=()
           if [ "$PRERELEASE" = "true" ]; then kind=(--prerelease); fi
-          signature=()
-          if [ -f "dist/catalog-$VERSION.tar.gz.sig" ]; then signature=("dist/catalog-$VERSION.tar.gz.sig"); fi
           gh release create "$GITHUB_REF_NAME" \
             --verify-tag \
             "${kind[@]}" \
             --title "$GITHUB_REF_NAME" \
-            --notes "Catálogo regulatório $VERSION. O Reporter busca a release mais recente e lê o único \`.tar.gz\` anexado; \`.sig\` é a assinatura que o Reporter confere; \`SHA256SUMS\` é para conferência humana; \`LICENSE\` e \`NOTICE\` acompanham a release." \
+            --notes "Catálogo regulatório $VERSION. O Reporter busca a release mais recente e lê o único \`.tar.gz\` anexado; \`.sigstore.json\` é o atestado que o Reporter confere; \`SHA256SUMS\` é para conferência humana; \`LICENSE\` e \`NOTICE\` acompanham a release." \
             "dist/catalog-$VERSION.tar.gz" \
-            "${signature[@]}" \
+            "dist/catalog-$VERSION.tar.gz.sigstore.json" \
             "dist/SHA256SUMS" \
             "LICENSE" \
             "NOTICE"
