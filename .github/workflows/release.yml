@@ -174,6 +174,8 @@ jobs:
             --verify-tag \
             "${kind[@]}" \
             --title "$GITHUB_REF_NAME" \
-            --notes "Catálogo regulatório $VERSION. O Reporter busca a release mais recente e lê o único \`.tar.gz\` anexado; \`SHA256SUMS\` é para conferência humana." \
+            --notes "Catálogo regulatório $VERSION. O Reporter busca a release mais recente e lê o único \`.tar.gz\` anexado; \`SHA256SUMS\` é para conferência humana; \`LICENSE\` e \`NOTICE\` acompanham a release." \
             "dist/catalog-$VERSION.tar.gz" \
-            "dist/SHA256SUMS"
+            "dist/SHA256SUMS" \
+            "LICENSE" \
+            "NOTICE"

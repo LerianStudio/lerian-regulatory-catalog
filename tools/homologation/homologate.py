@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Lerian Studio Ltd.
+# Use of this source code is governed by the Elastic License 2.0
+# that can be found in the LICENSE file.
 """Homologação dos documentos do catálogo contra um Midaz real.
 
 Monta, SÓ PELA API do Midaz, uma contabilidade fictícia descrita num arquivo de

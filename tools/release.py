@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Lerian Studio Ltd.
+# Use of this source code is governed by the Elastic License 2.0
+# that can be found in the LICENSE file.
 """Monta e confere o pacote .tar.gz de uma release do catálogo.
 
 O Reporter baixa UM `.tar.gz` da release mais recente e o lê pelo manifesto que
