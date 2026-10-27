@@ -110,8 +110,10 @@ contribuições de fora entram apenas quando a Lerian as revisa e aceita.
 
 Distribuído sob a [Elastic License 2.0](LICENSE). Em resumo, ela permite usar, copiar,
 modificar e redistribuir o conteúdo, e proíbe oferecê-lo a terceiros como serviço
-hospedado ou gerenciado, contornar mecanismos de licença do produto e remover os
-avisos de licença e de autoria. O texto da licença é o que vale.
+hospedado ou gerenciado que dê acesso a uma parte substancial das suas
+funcionalidades, contornar mecanismos de licença do produto e remover os avisos de
+licença e de autoria. O texto da licença é o que vale. Cada release publica o
+`LICENSE` e o `NOTICE` ao lado do pacote.
 
 Os documentos do Banco Central do Brasil guardados como fonte (os `schema/` e o
 elenco COSIF) não são da Lerian e não estão sob esta licença — ver [NOTICE](NOTICE).
