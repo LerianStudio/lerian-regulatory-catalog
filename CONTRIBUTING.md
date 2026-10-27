@@ -206,9 +206,11 @@ dois: de lá não há como dizer qual é o catálogo, e escolher um instalaria c
 por acidente de ordenação. O `SHA256SUMS` que acompanha é para conferência humana e
 não termina em `.tar.gz` de propósito — qualquer anexo novo precisa respeitar isso.
 
-Uma release marcada como *pre-release* ou *draft* é invisível para o Reporter, que
-pede `releases/latest`. Publicar uma não corrige um catálogo quebrado, e também não
-quebra um que esteja no ar.
+O que cada Reporter vê depende do seu canal. O de produção (`stable`) pede
+`releases/latest`, que o GitHub responde sem *pre-releases* nem *drafts*: uma
+candidata publicada não chega a ele. O de staging (`prerelease`) lê a release mais
+nova que não seja *draft*, candidata ou não. Um *draft* não é lido por nenhum dos
+dois.
 
 O pacote é **reproduzível**: a mesma árvore produz os mesmos bytes, sempre. É o que
 permite a alguém remontar a release e comparar com o que publicamos. O CI confere
