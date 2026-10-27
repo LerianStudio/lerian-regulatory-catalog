@@ -6,7 +6,7 @@ name: validate catalog
 on:
   pull_request:
   push:
-    branches: [main, develop]
+    branches: [main, release-candidate, develop]
 
 jobs:
   validate:
