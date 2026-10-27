@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Lerian Studio Ltd.
+# Use of this source code is governed by the Elastic License 2.0
+# that can be found in the LICENSE file.
 """Gera a tabela de naturezas do COSIF a partir do elenco de contas do BACEN.
 
 A natureza de uma rubrica — o lado em que o saldo dela normalmente fica — é do

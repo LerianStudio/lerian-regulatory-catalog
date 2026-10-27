@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Lerian Studio Ltd.
+# Use of this source code is governed by the Elastic License 2.0
+# that can be found in the LICENSE file.
 """A regra com que tools/natureza.py lê a natureza das rubricas no elenco COSIF.
 
 Sobre um trecho de elenco escrito à mão, com as formas que o PDF do BACEN tem: a

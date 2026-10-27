@@ -93,9 +93,25 @@ Cada contrato declara sua versão em `metadata.version`, e a instalação do cli
 fixa a versão que adotou — uma correção publicada aqui não muda o que ele gera até
 ele adotar.
 
-Publicar é cortar uma tag `vX.Y.Z`, que versiona o **catálogo** e não os documentos:
-o CI monta um pacote com tudo e o anexa a uma release, que é o que o Reporter busca.
-Ver [CONTRIBUTING.md](CONTRIBUTING.md).
+Publicar é cortar uma tag, que versiona o **catálogo** e não os documentos: o CI monta
+um pacote com tudo e o anexa a uma release, que é o que o Reporter busca. Uma
+candidata `vX.Y.Z-rc.N`, cortada da `release-candidate`, sai como pré-release e é lida
+pelo staging; uma release `vX.Y.Z`, cortada da `main`, é a que a produção lê. Ver
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 Não há diretório por versão: duplicar a árvore inteira a cada revisão torna o
 histórico ilegível, e é exatamente o que o git já resolve.
+
+## Licença
+
+O catálogo é **público para consulta**: qualquer pessoa pode ler, baixar as releases e
+usá-las com o Reporter. A **curadoria é da Lerian**: só a Lerian publica releases, e
+contribuições de fora entram apenas quando a Lerian as revisa e aceita.
+
+Distribuído sob a [Elastic License 2.0](LICENSE). Em resumo, ela permite usar, copiar,
+modificar e redistribuir o conteúdo, e proíbe oferecê-lo a terceiros como serviço
+hospedado ou gerenciado, contornar mecanismos de licença do produto e remover os
+avisos de licença e de autoria. O texto da licença é o que vale.
+
+Os documentos do Banco Central do Brasil guardados como fonte (os `schema/` e o
+elenco COSIF) não são da Lerian e não estão sob esta licença — ver [NOTICE](NOTICE).

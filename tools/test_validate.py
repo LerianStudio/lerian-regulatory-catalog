@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Lerian Studio Ltd.
+# Use of this source code is governed by the Elastic License 2.0
+# that can be found in the LICENSE file.
 """Suíte do validador do catálogo — as provas de mutação, versionadas.
 
 ## Por que existe
