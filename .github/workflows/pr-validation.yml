@@ -47,3 +47,19 @@ jobs:
       enable_slack_notification: false
     secrets:
       MANAGE_TOKEN: ${{ secrets.MANAGE_TOKEN }}
+
+  catalog:
+    name: Validate Catalog
+    if: github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --require-hashes -r tools/requirements.txt
+      - run: python3 tools/test_validate.py
+      - run: python3 tools/test_natureza.py
+      - run: python3 tools/validate.py
