@@ -89,7 +89,7 @@ junto (`pkg/reporter/catalog/attestation.go`):
 
 | Origem | Uso | Conferência |
 |---|---|---|
-| Releases do GitHub (`REGULATORY_CATALOG_GITHUB_REPO`) | dev, staging, produção, clientes com internet | exige o atestado; sem ele, ou com um que não confere, recusa (`RPT-0154`) |
+| Releases do GitHub (`REGULATORY_CATALOG_GITHUB_REPO`) | dev, staging, produção, clientes com internet | exige o atestado; sem ele, ou com um que não confere, recusa (`RPT-0155`, release indisponível) |
 | Diretório montado (`REGULATORY_CATALOG_DIR`) | desenvolvimento e homologação local | não confere: a árvore já chega aberta. Não é caminho de produção |
 
 Cada ambiente lê só o seu tipo de release (`REGULATORY_CATALOG_CHANNEL`):
