@@ -29,9 +29,9 @@ jobs:
         ci
         deps
         docs
-      enable_slack_notification: false
     secrets:
       MANAGE_TOKEN: ${{ secrets.MANAGE_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   security:
     name: Security
@@ -44,9 +44,9 @@ jobs:
     uses: LerianStudio/shared-workflows-public/.github/workflows/pr-security-scan.yml@tier-1
     with:
       enable_docker_scan: false
-      enable_slack_notification: false
     secrets:
       MANAGE_TOKEN: ${{ secrets.MANAGE_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   catalog:
     name: Validate Catalog
