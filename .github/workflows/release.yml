@@ -121,6 +121,12 @@ jobs:
     # código, capaz de atestar bytes que o Reporter aceitaria.
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        # O token não fica gravado no checkout: nenhum passo daqui usa o git com
+        # ele (o repositório é público, o `git ls-remote` funciona sem), e o `gh`
+        # recebe o seu explicitamente. Gravado, ficaria ao alcance de qualquer
+        # dependência que o empacotamento rode.
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:

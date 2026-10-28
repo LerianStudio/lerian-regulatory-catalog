@@ -92,6 +92,13 @@ Feita uma vez, por um administrador:
 
    Uma tag errada não é corrigida: publica-se a versão seguinte.
 
+   **O limite destas regras são os administradores do repositório.** Quem administra o
+   repositório pode editar ou desativar uma regra antes de mexer numa tag, e cada
+   mudança numa regra fica registrada no log de auditoria do repositório. Por isso a
+   lista de administradores é curta e é ela que se confia. Se for preciso resistir até
+   a um administrador comprometido, as mesmas duas regras viram regras da organização,
+   geridas só pelos proprietários da organização.
+
 **Ambiente `release`** — em *Settings → Environments → release*:
 
 - *Required reviewers*: quem aprova uma publicação;
