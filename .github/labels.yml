@@ -1,0 +1,122 @@
+# Label definitions for lerian-regulatory-catalog
+# Synced via .github/workflows/routine.yml -> shared labels-sync.
+
+# ── Scopes (aligned with .github/labeler.yml) ─────────────────────────────────
+
+- name: cadoc-4010
+  color: "1d76db"
+  description: Cadoc 4010 — Balancete Patrimonial Analítico
+
+- name: cadoc-4016
+  color: "0e8a16"
+  description: Cadoc 4016 — Balanço Patrimonial Analítico
+
+- name: cadoc-4111
+  color: "5319e7"
+  description: Cadoc 4111 — Saldos Contábeis Diários
+
+- name: cosif
+  color: "c5def5"
+  description: COSIF chart of accounts (regulator source)
+
+- name: catalog
+  color: "fbca04"
+  description: Catalog index read by the Reporter
+
+- name: homologation
+  color: "7c3aed"
+  description: Homologation against a real Midaz ledger
+
+- name: release
+  color: "0052cc"
+  description: Release packaging and what travels with each release
+
+- name: tools
+  color: "f9d0c4"
+  description: Validation and curation tooling
+
+- name: ci
+  color: "2088FF"
+  description: Continuous integration pipelines
+
+- name: docs
+  color: "0075ca"
+  description: Documentation and document manuals
+
+- name: tests
+  color: "00ADD8"
+  description: Validator suites and homologation expectations
+
+- name: deps
+  color: "ededed"
+  description: Python tooling dependencies (usually opened by Dependabot)
+
+# ── Change types ──────────────────────────────────────────────────────────────
+
+- name: bug
+  color: "d73a4a"
+  description: Something is not working as expected
+
+- name: enhancement
+  color: "a2eeef"
+  description: New feature or improvement request
+
+- name: dependencies
+  color: "ededed"
+  description: Dependency updates (Dependabot)
+
+- name: github-actions
+  color: "2088FF"
+  description: Updates to GitHub Actions dependencies
+
+- name: breaking-change
+  color: "b60205"
+  description: Callers must update their integration after this change
+
+- name: skip-changelog
+  color: "ffffff"
+  description: This change does not need a changelog entry
+
+# ── PR size ───────────────────────────────────────────────────────────────────
+
+- name: size/XS
+  color: "3CBF00"
+  description: "PR changes < 50 lines"
+
+- name: size/S
+  color: "5D9801"
+  description: "PR changes 50–199 lines"
+
+- name: size/M
+  color: "7F7203"
+  description: "PR changes 200–499 lines"
+
+- name: size/L
+  color: "A14C05"
+  description: "PR changes 500–999 lines"
+
+- name: size/XL
+  color: "C32607"
+  description: "PR changes ≥ 1000 lines — consider splitting"
+
+# ── Triage and stale management ───────────────────────────────────────────────
+
+- name: triage
+  color: "e4e669"
+  description: Needs initial assessment
+
+- name: stale
+  color: "795548"
+  description: No recent activity — will be closed if not updated
+
+- name: no-stale
+  color: "fef2c0"
+  description: Exempt from stale auto-close
+
+- name: work-in-progress
+  color: "ffa500"
+  description: Active work — exempt from stale auto-close
+
+- name: pinned
+  color: "d4a017"
+  description: Pinned discussion/tracker — exempt from stale auto-close
