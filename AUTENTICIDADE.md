@@ -122,6 +122,7 @@ atestado e são recusadas; ficam como histórico.
 | Sigstore fora do ar na publicação | o job falha antes de publicar | rodar o job de novo |
 | O atestado não confere no próprio job | o job falha antes de publicar | investigar; nada foi publicado |
 | O `publish` falhou depois de a tag existir | a tag fica sem release; o Reporter segue lendo a anterior do canal | rodar o job da tag de novo; se o problema for do conteúdo, corrigir por PR, que gera a versão seguinte |
+| O `publish` falhou no meio da publicação (release criada, anexos incompletos) | a release existe sem algum dos cinco anexos (pacote, `.sigstore.json`, `SHA256SUMS`, `LICENSE`, `NOTICE`); é a mais nova do canal, e o Reporter a recusa | conferir os anexos com `gh release view <tag>`; se faltar algum, apagar a release (`gh release delete <tag>`, mantendo a tag) e rodar o job da tag de novo |
 | Release publicada sem atestado (por fora do workflow) | todo Reporter recusa | apagar a release; o próximo merge publica a versão seguinte |
 | Suspeita de publicação indevida | aparece no log público do Sigstore e na aba *Attestations* do repositório | revogar acessos, apagar a release; o próximo merge publica a versão seguinte |
 | O Sigstore troca a raiz de confiança (escala de anos) | releases novas deixam de conferir num Reporter antigo | versão do Reporter com a raiz nova antes da troca valer |
