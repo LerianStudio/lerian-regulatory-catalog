@@ -49,25 +49,30 @@ jobs:
             exit 0
           fi
 
-          # vX.Y.Z OU vX.Y.Z-rc.N E NADA MAIS. O gatilho `v*` também casa com
-          # `vnext`, `v1` e `v1.2.3-rc1`, e qualquer um deles publicaria uma
-          # release cuja versão contradiz o que o CONTRIBUTING promete.
+          # vX.Y.Z, vX.Y.Z-rc.N OU vX.Y.Z-beta.N E NADA MAIS. O gatilho `v*`
+          # também casa com `vnext`, `v1` e `v1.2.3-rc1`, e qualquer um deles
+          # publicaria uma release cuja versão contradiz o que o CONTRIBUTING
+          # promete.
           if printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             branch=main
             prerelease=false
           elif printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$'; then
             branch=release-candidate
             prerelease=true
+          elif printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$'; then
+            branch=develop
+            prerelease=true
           else
-            echo "a tag '$GITHUB_REF_NAME' não é vX.Y.Z nem vX.Y.Z-rc.N, então não versiona um catálogo" >&2
+            echo "a tag '$GITHUB_REF_NAME' não é vX.Y.Z, vX.Y.Z-rc.N nem vX.Y.Z-beta.N, então não versiona um catálogo" >&2
             exit 1
           fi
 
-          # A RELEASE SAI DA BRANCH QUE A PROMETE. Uma candidata (vX.Y.Z-rc.N) é
-          # o que o staging lê, e sai da `release-candidate`; uma release
-          # (vX.Y.Z) é o que a produção lê, e sai da `main`. Uma tag cortada de
-          # outro lugar levaria ao ambiente um conteúdo que não passou pela
-          # branch que o revisa.
+          # A RELEASE SAI DA BRANCH QUE A PROMETE. Uma beta (vX.Y.Z-beta.N) sai
+          # da `develop`; uma candidata (vX.Y.Z-rc.N) sai da `release-candidate`;
+          # as duas são pré-releases, que o staging lê. Uma release (vX.Y.Z) é o
+          # que a produção lê, e sai da `main`. Uma tag cortada de outro lugar
+          # levaria ao ambiente um conteúdo que não passou pela branch que o
+          # revisa.
           git fetch --quiet --no-tags --unshallow origin 2>/dev/null || true
           git fetch --quiet --no-tags origin "+refs/heads/$branch:refs/remotes/origin/$branch"
           if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$branch"; then
