@@ -1,0 +1,49 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [develop, release-candidate, main]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate PR
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    uses: LerianStudio/shared-workflows-public/.github/workflows/pr-validation.yml@tier-1
+    with:
+      pr_title_scopes: |
+        4010
+        4016
+        4111
+        catalog
+        cosif
+        homologation
+        tools
+        release
+        ci
+        deps
+        docs
+      enable_slack_notification: false
+    secrets:
+      MANAGE_TOKEN: ${{ secrets.MANAGE_TOKEN }}
+
+  security:
+    name: Security
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      pull-requests: write
+      security-events: write
+    uses: LerianStudio/shared-workflows-public/.github/workflows/pr-security-scan.yml@tier-1
+    with:
+      enable_docker_scan: false
+      enable_slack_notification: false
+    secrets:
+      MANAGE_TOKEN: ${{ secrets.MANAGE_TOKEN }}

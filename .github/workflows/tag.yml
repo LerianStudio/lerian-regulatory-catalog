@@ -1,0 +1,23 @@
+name: Release Tag
+
+on:
+  push:
+    branches: [main, release-candidate, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    uses: LerianStudio/shared-workflows-public/.github/workflows/release.yml@tier-1
+    with:
+      ignore_globs: "README.md CONTRIBUTING.md AGENTS.md CLAUDE.md tools/* .github/* .gitignore .coderabbit.yml .coderabbit.yaml"
+      enable_release_announcement: false
+    secrets: inherit
