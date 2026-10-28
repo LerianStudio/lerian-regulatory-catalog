@@ -113,7 +113,8 @@ modificar e redistribuir o conteúdo, e proíbe oferecê-lo a terceiros como ser
 hospedado ou gerenciado que dê acesso a uma parte substancial das suas
 funcionalidades, contornar mecanismos de licença do produto e remover os avisos de
 licença e de autoria. O texto da licença é o que vale. Cada release publica o
-`LICENSE` e o `NOTICE` ao lado do pacote.
+`LICENSE` e o `NOTICE` ao lado do pacote, e o atestado que prova que foi a curadoria
+da Lerian que a publicou — ver [AUTENTICIDADE.md](AUTENTICIDADE.md).
 
 Os documentos do Banco Central do Brasil guardados como fonte (os `schema/` e o
 elenco COSIF) não são da Lerian e não estão sob esta licença — ver [NOTICE](NOTICE).
