@@ -173,11 +173,12 @@ em cada contrato é por documento, independente, e é o que o cliente fixa quand
 assina. Uma release `v1.4.0` pode carregar o 4010 na 1.0.0 e o 4111 na 2.3.1 — a
 versão da release diz quando o conjunto foi publicado, nunca o que cada documento é.
 
-**Ninguém corta tag à mão.** Todo merge numa das três branches roda o
-`.github/workflows/tag.yml`, que calcula a próxima versão pelos commits desde a
-última tag do canal (Conventional Commits: `feat` sobe o minor, `fix` e `docs` o
-patch, `!` ou `BREAKING CHANGE` o major — regras em `.releaserc.yml`) e empurra a
-tag. A tag dispara o `.github/workflows/release.yml`, que publica. Um merge que só
+**Ninguém corta tag à mão.** O `.github/workflows/release.yml` cuida das duas
+metades. Num merge numa das três branches, o job `tag` calcula a próxima versão
+pelos commits desde a última tag do canal (Conventional Commits: `feat` sobe o
+minor, `fix` e `docs` o patch, `!` ou `BREAKING CHANGE` o major — regras em
+`.releaserc.yml`) e empurra a tag. A tag dispara o mesmo workflow, agora nos jobs
+`archive` e `publish`, que montam, conferem e publicam. Um merge que só
 toca `.github/`, `tools/` ou os `.md` da raiz não corta tag: nada disso entra no
 pacote. Um `manual.md` de documento corta, porque entra.
 
