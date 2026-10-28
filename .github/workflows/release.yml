@@ -1,27 +1,33 @@
 name: release catalog
 
-# UMA RELEASE É UM ATO PARA FORA. O Reporter de cada cliente busca a release MAIS
-# RECENTE deste repositório e instala o que ela carregar — sem revisão no meio.
-# Por isso o mesmo pacote é montado e conferido em todo PR: uma árvore que não
-# empacota, ou que empacota errado, não chega a uma tag.
-#
-# UM ÚNICO .tar.gz POR RELEASE. O Reporter recusa uma release com dois, porque de
-# lá não há como dizer qual é o catálogo, e escolher um instalaria conteúdo por
-# acidente de ordenação. Qualquer anexo novo aqui precisa NÃO terminar em .tar.gz.
 on:
   pull_request:
   push:
+    branches: [main, release-candidate, develop]
     tags: ["v*"]
 
-# LEITURA POR PADRÃO. O job que monta o pacote executa o código do PR — inclusive
-# `tools/release.py` como aquele PR o escreveu —, então ele não pode segurar um
-# token capaz de criar release ou mover tag. A escrita vive só no job de
-# publicação, que roda exclusivamente sobre uma tag.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
+  tag:
+    if: github.event_name == 'push' && github.ref_type == 'branch'
+    permissions:
+      contents: write
+      id-token: write
+      issues: write
+      pull-requests: write
+    uses: LerianStudio/shared-workflows-public/.github/workflows/release.yml@tier-1
+    with:
+      ignore_globs: "README.md CONTRIBUTING.md AGENTS.md CLAUDE.md tools/* .github/* .gitignore .coderabbit.yml .coderabbit.yaml"
+    secrets: inherit
+
   archive:
+    if: github.event_name == 'pull_request' || github.ref_type == 'tag'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release.outputs.version }}
@@ -33,7 +39,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install -r tools/requirements.txt
+      - run: pip install --require-hashes -r tools/requirements.txt
 
       - name: confere o conteúdo do catálogo
         run: python3 tools/validate.py
@@ -49,25 +55,20 @@ jobs:
             exit 0
           fi
 
-          # vX.Y.Z OU vX.Y.Z-rc.N E NADA MAIS. O gatilho `v*` também casa com
-          # `vnext`, `v1` e `v1.2.3-rc1`, e qualquer um deles publicaria uma
-          # release cuja versão contradiz o que o CONTRIBUTING promete.
           if printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             branch=main
             prerelease=false
           elif printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$'; then
             branch=release-candidate
             prerelease=true
+          elif printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$'; then
+            branch=develop
+            prerelease=true
           else
-            echo "a tag '$GITHUB_REF_NAME' não é vX.Y.Z nem vX.Y.Z-rc.N, então não versiona um catálogo" >&2
+            echo "a tag '$GITHUB_REF_NAME' não é vX.Y.Z, vX.Y.Z-rc.N nem vX.Y.Z-beta.N, então não versiona um catálogo" >&2
             exit 1
           fi
 
-          # A RELEASE SAI DA BRANCH QUE A PROMETE. Uma candidata (vX.Y.Z-rc.N) é
-          # o que o staging lê, e sai da `release-candidate`; uma release
-          # (vX.Y.Z) é o que a produção lê, e sai da `main`. Uma tag cortada de
-          # outro lugar levaria ao ambiente um conteúdo que não passou pela
-          # branch que o revisa.
           git fetch --quiet --no-tags --unshallow origin 2>/dev/null || true
           git fetch --quiet --no-tags origin "+refs/heads/$branch:refs/remotes/origin/$branch"
           if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$branch"; then
@@ -83,9 +84,6 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
         run: python3 tools/release.py build --version "$VERSION" --out "dist/catalog-$VERSION.tar.gz"
 
-      # MESMA ÁRVORE, MESMOS BYTES. Sem isto, quem conferir o que publicamos
-      # remontando o pacote encontra uma diferença e não sabe se o conteúdo mudou
-      # ou se foi só o empacotador carimbando a hora.
       - name: o pacote é reproduzível
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -93,8 +91,6 @@ jobs:
           python3 tools/release.py build --version "$VERSION" --out /tmp/again/catalog.tar.gz
           cmp "dist/catalog-$VERSION.tar.gz" /tmp/again/catalog.tar.gz
 
-      # LIDO COMO O REPORTER LERIA: desempacota, recalcula cada SHA-256 contra o
-      # manifesto que viaja dentro, e recusa caminho que escape da raiz.
       - name: confere o pacote
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -104,9 +100,6 @@ jobs:
     needs: archive
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
-    # O ambiente `release` é onde a administração do repositório exige aprovação
-    # antes de cada publicação: só um job aprovado chega a atestar o pacote.
-    environment: release
     permissions:
       contents: write
       # O certificado do atestado é emitido contra o token OIDC deste job, e o
@@ -132,17 +125,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install -r tools/requirements.txt
+      - run: pip install --require-hashes -r tools/requirements.txt
 
-      # Remontado em vez de carregado do job anterior: o pacote é determinístico,
-      # então estes são os mesmos bytes que já passaram pela conferência — e um
-      # artefato transportado entre jobs seria uma quarta cópia para desconfiar.
       - name: monta o pacote da release
         run: python3 tools/release.py build --version "$VERSION" --out "dist/catalog-$VERSION.tar.gz"
 
-      # Ao PUBLICAR, exige também que cada documento do índice esteja COMPLETO.
-      # Um pacote pode estar perfeitamente íntegro e ainda carregar um documento
-      # sem template, que o cliente assina e que nunca gera.
       - name: confere o pacote e o layout de cada documento
         run: |
           python3 tools/release.py verify "dist/catalog-$VERSION.tar.gz" \
@@ -184,12 +171,6 @@ jobs:
             --cert-identity "https://github.com/LerianStudio/lerian-regulatory-catalog/.github/workflows/release.yml@$GITHUB_REF" \
             --cert-oidc-issuer https://token.actions.githubusercontent.com
 
-      # A tag pode ter sido MOVIDA entre o disparo e agora, e aí a release
-      # apontaria para uma árvore e carregaria o pacote de outra — as duas
-      # metades discordando sem nada dizer isso. A conferência não é livre de
-      # corrida (a tag pode mudar no instante seguinte); fechar de verdade é uma
-      # regra de proteção de tag no repositório, que é decisão de quem o
-      # administra. O que esta etapa garante é que a janela deixe rastro.
       - name: a tag ainda aponta para o que foi conferido
         run: |
           target=$(git ls-remote origin "refs/tags/$GITHUB_REF_NAME^{}" | cut -f1)
@@ -206,23 +187,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # --verify-tag porque sem ele, se a tag tiver sumido entre o push e
-          # aqui, o gh CRIA uma apontando para o topo do branch padrão: a release
-          # sairia dizendo ser vX.Y.Z e apontando para outra árvore. Melhor
-          # falhar alto do que publicar uma tag que ninguém cortou.
-          # Uma candidata sai como PRÉ-RELEASE: o /releases/latest do GitHub não
-          # a devolve, então o Reporter de produção (canal `stable`) nunca a
-          # lê, e o de staging (canal `prerelease`) lê a mais nova de qualquer tipo.
-          # Uma release NÃO força `--latest`: o GitHub escolhe a latest pela
-          # versão, e forçar faria uma v1.0.1 cortada depois de uma v2.0.0 virar
-          # a que a produção lê.
           kind=()
           if [ "$PRERELEASE" = "true" ]; then kind=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" \
             --verify-tag \
             "${kind[@]}" \
             --title "$GITHUB_REF_NAME" \
-            --notes "Catálogo regulatório $VERSION. O Reporter busca a release mais recente e lê o único \`.tar.gz\` anexado; \`.sigstore.json\` é o atestado que o Reporter confere; \`SHA256SUMS\` é para conferência humana; \`LICENSE\` e \`NOTICE\` acompanham a release." \
+            --notes "Catálogo regulatório $VERSION. O Reporter busca a release mais recente do seu canal e lê o único \`.tar.gz\` anexado; \`.sigstore.json\` é o atestado que o Reporter confere; \`SHA256SUMS\` é para conferência humana; \`LICENSE\` e \`NOTICE\` acompanham a release." \
             "dist/catalog-$VERSION.tar.gz" \
             "dist/catalog-$VERSION.tar.gz.sigstore.json" \
             "dist/SHA256SUMS" \

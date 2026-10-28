@@ -7,8 +7,8 @@ Lerian e não foi alterado no caminho. Este é o processo da **primeira versão*
 
 Garante que o Reporter **recusa**:
 
-- uma release publicada por quem não é da curadoria (acesso de escrita indevido, token
-  vazado, conta comprometida que não passe pela aprovação);
+- uma release publicada fora do workflow de publicação deste repositório (acesso de
+  escrita indevido, token vazado);
 - um pacote alterado depois de publicado — num espelho, numa cópia, num proxy;
 - uma release apresentada sob uma tag que não é a dela.
 
@@ -20,20 +20,23 @@ Isso é papel da revisão, da homologação e do fluxo `develop → release-cand
 Não há chave guardada. Quem assina é o próprio workflow de publicação, com uma
 identidade que o GitHub dá a ele.
 
-1. Uma tag `vX.Y.Z` ou `vX.Y.Z-rc.N` dispara o `.github/workflows/release.yml`.
-2. O job de publicação espera a aprovação no ambiente `release`.
-3. Aprovado, ele monta e confere o pacote e pede ao GitHub um **certificado de poucos
-   minutos** que diz: "sou o `release.yml` do `LerianStudio/lerian-regulatory-catalog`,
-   rodando na tag `<tag>`" — `vX.Y.Z` numa release, `vX.Y.Z-rc.N` numa candidata. O certificado é emitido pelo **Sigstore**, um serviço
-   público de assinatura mantido pela OpenSSF.
-4. O job assina o SHA-256 do pacote com esse certificado. A assinatura fica registrada
+1. Um PR aprovado é mergeado numa das três branches. O job `tag` do
+   `.github/workflows/release.yml` calcula a versão (semantic-release) e empurra a tag:
+   `vX.Y.Z-beta.N` da `develop`, `vX.Y.Z-rc.N` da `release-candidate`, `vX.Y.Z` da
+   `main`. Ninguém cria tag à mão.
+2. A tag dispara o mesmo workflow, agora no job `publish`, que confere que a tag aponta
+   para um commit da sua branch, monta e confere o pacote e pede ao GitHub um
+   **certificado de poucos minutos** que diz: "sou o `release.yml` do
+   `LerianStudio/lerian-regulatory-catalog`, rodando na tag `<tag>`". O certificado é
+   emitido pelo **Sigstore**, um serviço público de assinatura mantido pela OpenSSF.
+3. O job assina o SHA-256 do pacote com esse certificado. A assinatura fica registrada
    no **log de transparência** público do Sigstore, que não aceita apagar nem reescrever
    entradas. O certificado expira em seguida e não serve para assinar mais nada; ele
    continua dentro do atestado, onde prova quem assinou aquela vez.
-5. O resultado — o **atestado** — é anexado à release como
+4. O resultado — o **atestado** — é anexado à release como
    `catalog-X.Y.Z.tar.gz.sigstore.json`, ao lado do pacote. O job confere o atestado
    com a mesma identidade que o Reporter exige antes de publicar.
-6. O Reporter, ao assinar ou adotar um documento, baixa o atestado e o pacote e só
+5. O Reporter, ao assinar ou adotar um documento, baixa o atestado e o pacote e só
    instala a release quando o atestado prova, ao mesmo tempo:
    - que foi feito por **este** workflow (`release.yml`) **deste** repositório;
    - para **a tag desta** release;
@@ -53,61 +56,24 @@ mudados ou não naquela versão. O pacote carrega o manifesto com o SHA-256 de c
 arquivo, e o Reporter confere cada arquivo contra ele; o atestado garante o pacote, e
 portanto o manifesto e cada documento. Uma release nova sempre ganha atestado novo.
 
-## Configuração do repositório
+## Onde está o controle
 
-Feita uma vez, por um administrador:
+Não há regra de tag nem ambiente de aprovação: o catálogo segue o mesmo padrão dos
+demais repositórios da Lerian. O controle está em três pontos, e nenhum depende de
+uma chave:
 
-**Proteção das tags `v*`** — duas regras, porque são duas garantias diferentes:
+- **a revisão do PR** — conteúdo só chega à `release-candidate` e à `main` com PR
+  aprovado, como em todo repositório;
+- **a tag só publica conteúdo já mergeado** — o job `publish` recusa uma tag cujo
+  commit não está na branch do seu formato. Mesmo uma tag criada à mão por quem tem
+  acesso de escrita só publica o que já passou pela revisão;
+- **o atestado** — prova que foi este workflow, já revisado, que publicou aqueles
+  bytes. Um pacote alterado depois é recusado pelo Reporter.
 
-1. **Criar** uma tag de release é só para administradores:
-
-   ```bash
-   gh api -X POST repos/LerianStudio/lerian-regulatory-catalog/rulesets --input - <<'EOF'
-   {
-     "name": "release-tags-creation",
-     "target": "tag",
-     "enforcement": "active",
-     "conditions": { "ref_name": { "include": ["refs/tags/v*"], "exclude": [] } },
-     "rules": [{ "type": "creation" }],
-     "bypass_actors": [{ "actor_type": "RepositoryRole", "actor_id": 5, "bypass_mode": "always" }]
-   }
-   EOF
-   ```
-
-2. **Mover ou apagar** uma tag publicada é para ninguém — nem administradores, por isso
-   esta regra não tem exceção:
-
-   ```bash
-   gh api -X POST repos/LerianStudio/lerian-regulatory-catalog/rulesets --input - <<'EOF'
-   {
-     "name": "release-tags-immutable",
-     "target": "tag",
-     "enforcement": "active",
-     "conditions": { "ref_name": { "include": ["refs/tags/v*"], "exclude": [] } },
-     "rules": [{ "type": "update" }, { "type": "deletion" }],
-     "bypass_actors": []
-   }
-   EOF
-   ```
-
-   Uma tag errada não é corrigida: publica-se a versão seguinte.
-
-   **O limite destas regras são os administradores do repositório.** Quem administra o
-   repositório pode editar ou desativar uma regra antes de mexer numa tag, e cada
-   mudança numa regra fica registrada no log de auditoria do repositório. Por isso a
-   lista de administradores é curta e é ela que se confia. Se for preciso resistir até
-   a um administrador comprometido, as mesmas duas regras viram regras da organização,
-   geridas só pelos proprietários da organização.
-
-**Ambiente `release`** — em *Settings → Environments → release*:
-
-- *Required reviewers*: quem aprova uma publicação;
-- *Prevent self-review*: marcado, para que quem criou a tag não aprove sozinho;
-- *Allow administrators to bypass configured protection rules*: **desmarcado** — o
-  GitHub deixa marcado por padrão, e com ele um administrador publica sem aprovação;
-- *Deployment branches and tags*: apenas tags `v*`.
-
-Não há segredo para cadastrar.
+O que fica descoberto é menor e está registrado: quem tem acesso de escrita pode criar
+uma tag fora de hora (sobre conteúdo já revisado) ou mover e apagar uma tag (a release
+publicada e o seu atestado não mudam com isso). A lista de quem tem acesso de escrita é,
+por isso, a fronteira de confiança.
 
 ## O que é contrato com o Reporter
 
@@ -123,8 +89,16 @@ junto (`pkg/reporter/catalog/attestation.go`):
 
 | Origem | Uso | Conferência |
 |---|---|---|
-| Releases do GitHub (`REGULATORY_CATALOG_GITHUB_REPO`) | staging, produção, clientes com internet | exige o atestado; sem ele, ou com um que não confere, recusa (`RPT-0154`) |
+| Releases do GitHub (`REGULATORY_CATALOG_GITHUB_REPO`) | dev, staging, produção, clientes com internet | exige o atestado; sem ele, ou com um que não confere, recusa (`RPT-0154`) |
 | Diretório montado (`REGULATORY_CATALOG_DIR`) | desenvolvimento e homologação local | não confere: a árvore já chega aberta. Não é caminho de produção |
+
+Cada ambiente lê só o seu tipo de release (`REGULATORY_CATALOG_CHANNEL`):
+
+| Canal | Lê | Ambiente |
+|---|---|---|
+| `beta` | a mais nova de qualquer tipo | dev |
+| `rc` | a candidata ou release mais nova, nunca uma beta | staging |
+| `stable` (padrão) | só a release `vX.Y.Z` | produção |
 
 ## Ordem de implantação
 
@@ -133,10 +107,13 @@ esse ambiente lê estiver atestada. Antes disso ele recusaria a release sem ates
 assinar ou adotar um documento (o que já está materializado continua gerando: a geração
 não toca o catálogo).
 
-1. Este workflow entra na `develop` e segue para a `release-candidate`.
-2. Uma rc é publicada atestada.
-3. O Reporter que exige o atestado sobe no staging.
+1. Este workflow entra na `develop`; o merge publica a primeira beta atestada.
+2. A `develop` vai para a `release-candidate`; o merge publica a primeira rc atestada.
+3. O Reporter que exige o atestado sobe no staging, com `REGULATORY_CATALOG_CHANNEL=rc`.
 4. Para produção, o mesmo: a release da `main` atestada antes do Reporter.
+
+As releases publicadas antes deste workflow (`v1.0.0-rc.1`, `v1.0.0-beta.1`) não têm
+atestado e são recusadas; ficam como histórico.
 
 ## Quando algo dá errado
 
@@ -144,8 +121,9 @@ não toca o catálogo).
 |---|---|---|
 | Sigstore fora do ar na publicação | o job falha antes de publicar | rodar o job de novo |
 | O atestado não confere no próprio job | o job falha antes de publicar | investigar; nada foi publicado |
-| Release publicada sem atestado (por fora do workflow) | todo Reporter recusa | apagar a release e publicar a versão seguinte pelo workflow (a tag não é reaproveitada) |
-| Suspeita de publicação indevida | aparece no log público do Sigstore e na aba *Attestations* do repositório | revogar acessos, apagar a release, publicar a versão seguinte pelo fluxo |
+| O `publish` falhou depois de a tag existir | a tag fica sem release; o Reporter segue lendo a anterior do canal | rodar o job da tag de novo; se o problema for do conteúdo, corrigir por PR, que gera a versão seguinte |
+| Release publicada sem atestado (por fora do workflow) | todo Reporter recusa | apagar a release; o próximo merge publica a versão seguinte |
+| Suspeita de publicação indevida | aparece no log público do Sigstore e na aba *Attestations* do repositório | revogar acessos, apagar a release; o próximo merge publica a versão seguinte |
 | O Sigstore troca a raiz de confiança (escala de anos) | releases novas deixam de conferir num Reporter antigo | versão do Reporter com a raiz nova antes da troca valer |
 
 ## Conferir à mão
