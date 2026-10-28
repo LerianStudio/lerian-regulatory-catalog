@@ -15,7 +15,7 @@ jobs:
       contents: read
       issues: write
       pull-requests: write
-    uses: LerianStudio/github-actions-shared-workflows/.github/workflows/pr-validation.yml@tier-2
+    uses: LerianStudio/shared-workflows-public/.github/workflows/pr-validation.yml@tier-1
     with:
       pr_title_scopes: |
         4010
@@ -41,7 +41,7 @@ jobs:
       id-token: write
       pull-requests: write
       security-events: write
-    uses: LerianStudio/github-actions-shared-workflows/.github/workflows/pr-security-scan.yml@tier-2
+    uses: LerianStudio/shared-workflows-public/.github/workflows/pr-security-scan.yml@tier-1
     with:
       enable_docker_scan: false
       enable_slack_notification: false
