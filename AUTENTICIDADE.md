@@ -24,11 +24,12 @@ identidade que o GitHub dá a ele.
 2. O job de publicação espera a aprovação no ambiente `release`.
 3. Aprovado, ele monta e confere o pacote e pede ao GitHub um **certificado de poucos
    minutos** que diz: "sou o `release.yml` do `LerianStudio/lerian-regulatory-catalog`,
-   rodando na tag `vX.Y.Z`". O certificado é emitido pelo **Sigstore**, um serviço
+   rodando na tag `<tag>`" — `vX.Y.Z` numa release, `vX.Y.Z-rc.N` numa candidata. O certificado é emitido pelo **Sigstore**, um serviço
    público de assinatura mantido pela OpenSSF.
 4. O job assina o SHA-256 do pacote com esse certificado. A assinatura fica registrada
    no **log de transparência** público do Sigstore, que não aceita apagar nem reescrever
-   entradas. O certificado expira em seguida e não serve para mais nada.
+   entradas. O certificado expira em seguida e não serve para assinar mais nada; ele
+   continua dentro do atestado, onde prova quem assinou aquela vez.
 5. O resultado — o **atestado** — é anexado à release como
    `catalog-X.Y.Z.tar.gz.sigstore.json`, ao lado do pacote. O job confere o atestado
    com a mesma identidade que o Reporter exige antes de publicar.
@@ -39,9 +40,11 @@ identidade que o GitHub dá a ele.
    - sobre **estes** bytes;
    - e que está no log do Sigstore.
 
-O Reporter confere **sem acessar a internet**: a raiz de confiança do Sigstore vai
-embutida nele, e o horário do log, que vem dentro do atestado, prova que o certificado
-estava válido quando a assinatura foi feita.
+A **conferência** não acessa a internet: a raiz de confiança do Sigstore vai embutida
+no Reporter, e o horário do log, que vem dentro do atestado, prova que o certificado
+estava válido quando a assinatura foi feita. O Reporter continua precisando alcançar o
+GitHub para **baixar** a release e o atestado — exatamente o acesso que já tem hoje;
+nada além disso.
 
 ## Um atestado por release
 
@@ -54,26 +57,47 @@ portanto o manifesto e cada documento. Uma release nova sempre ganha atestado no
 
 Feita uma vez, por um administrador:
 
-**Proteção das tags `v*`** — só administradores criam uma tag de release, e ninguém
-move nem apaga uma tag publicada:
+**Proteção das tags `v*`** — duas regras, porque são duas garantias diferentes:
 
-```bash
-gh api -X POST repos/LerianStudio/lerian-regulatory-catalog/rulesets --input - <<'EOF'
-{
-  "name": "release-tags",
-  "target": "tag",
-  "enforcement": "active",
-  "conditions": { "ref_name": { "include": ["refs/tags/v*"], "exclude": [] } },
-  "rules": [{ "type": "creation" }, { "type": "update" }, { "type": "deletion" }],
-  "bypass_actors": [{ "actor_type": "RepositoryRole", "actor_id": 5, "bypass_mode": "always" }]
-}
-EOF
-```
+1. **Criar** uma tag de release é só para administradores:
+
+   ```bash
+   gh api -X POST repos/LerianStudio/lerian-regulatory-catalog/rulesets --input - <<'EOF'
+   {
+     "name": "release-tags-creation",
+     "target": "tag",
+     "enforcement": "active",
+     "conditions": { "ref_name": { "include": ["refs/tags/v*"], "exclude": [] } },
+     "rules": [{ "type": "creation" }],
+     "bypass_actors": [{ "actor_type": "RepositoryRole", "actor_id": 5, "bypass_mode": "always" }]
+   }
+   EOF
+   ```
+
+2. **Mover ou apagar** uma tag publicada é para ninguém — nem administradores, por isso
+   esta regra não tem exceção:
+
+   ```bash
+   gh api -X POST repos/LerianStudio/lerian-regulatory-catalog/rulesets --input - <<'EOF'
+   {
+     "name": "release-tags-immutable",
+     "target": "tag",
+     "enforcement": "active",
+     "conditions": { "ref_name": { "include": ["refs/tags/v*"], "exclude": [] } },
+     "rules": [{ "type": "update" }, { "type": "deletion" }],
+     "bypass_actors": []
+   }
+   EOF
+   ```
+
+   Uma tag errada não é corrigida: publica-se a versão seguinte.
 
 **Ambiente `release`** — em *Settings → Environments → release*:
 
 - *Required reviewers*: quem aprova uma publicação;
 - *Prevent self-review*: marcado, para que quem criou a tag não aprove sozinho;
+- *Allow administrators to bypass configured protection rules*: **desmarcado** — o
+  GitHub deixa marcado por padrão, e com ele um administrador publica sem aprovação;
 - *Deployment branches and tags*: apenas tags `v*`.
 
 Não há segredo para cadastrar.
@@ -113,8 +137,8 @@ não toca o catálogo).
 |---|---|---|
 | Sigstore fora do ar na publicação | o job falha antes de publicar | rodar o job de novo |
 | O atestado não confere no próprio job | o job falha antes de publicar | investigar; nada foi publicado |
-| Release publicada sem atestado (por fora do workflow) | todo Reporter recusa | apagar a release e publicar pelo workflow |
-| Suspeita de publicação indevida | aparece no log público do Sigstore e na aba *Attestations* do repositório | revogar acessos, apagar a release, publicar uma nova pelo fluxo |
+| Release publicada sem atestado (por fora do workflow) | todo Reporter recusa | apagar a release e publicar a versão seguinte pelo workflow (a tag não é reaproveitada) |
+| Suspeita de publicação indevida | aparece no log público do Sigstore e na aba *Attestations* do repositório | revogar acessos, apagar a release, publicar a versão seguinte pelo fluxo |
 | O Sigstore troca a raiz de confiança (escala de anos) | releases novas deixam de conferir num Reporter antigo | versão do Reporter com a raiz nova antes da troca valer |
 
 ## Conferir à mão
