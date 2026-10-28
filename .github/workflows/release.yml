@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install -r tools/requirements.txt
+      - run: pip install --require-hashes -r tools/requirements.txt
 
       - name: confere o conteúdo do catálogo
         run: python3 tools/validate.py
@@ -94,7 +94,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install -r tools/requirements.txt
+      - run: pip install --require-hashes -r tools/requirements.txt
 
       - name: monta o pacote da release
         run: python3 tools/release.py build --version "$VERSION" --out "dist/catalog-$VERSION.tar.gz"
