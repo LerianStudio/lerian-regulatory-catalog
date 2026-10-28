@@ -112,8 +112,8 @@ que ele gera até ele adotar. As branches existem para o que acontece antes diss
 
 | Branch | Papel | Quem lê |
 |---|---|---|
-| `develop` | onde um documento é curado | o Reporter de desenvolvimento, pelo diretório montado (`REGULATORY_CATALOG_DIR`) |
-| `release-candidate` | o que vai ser homologado em staging; dela saem as tags `vX.Y.Z-rc.N`, publicadas como **pré-release** | o Reporter de staging (`REGULATORY_CATALOG_CHANNEL=prerelease`) |
+| `develop` | onde um documento é curado; dela saem as tags `vX.Y.Z-beta.N`, publicadas como **pré-release** | o Reporter de dev (`REGULATORY_CATALOG_CHANNEL=beta`); localmente, também pelo diretório montado (`REGULATORY_CATALOG_DIR`) |
+| `release-candidate` | o que vai ser homologado em staging; dela saem as tags `vX.Y.Z-rc.N`, publicadas como **pré-release** | o Reporter de staging (`REGULATORY_CATALOG_CHANNEL=rc`) |
 | `main` | o que passou pelo staging; dela saem as tags `vX.Y.Z`, publicadas como **release** | o Reporter de produção (`REGULATORY_CATALOG_CHANNEL=stable`, o padrão) |
 
 O conteúdo anda `develop → release-candidate → main`, sempre por PR. É o mesmo
@@ -154,34 +154,47 @@ Ao acrescentar uma construção ao formato, ela nasce com três coisas:
 ## Publicar uma release
 
 O Reporter não lê este repositório. Ele busca a release **mais recente do seu
-canal** — a release estável em produção, a mais nova de qualquer tipo (candidatas
-incluídas) em staging — e baixa o único `.tar.gz` anexado a ela — um pacote com o índice, os documentos publicados e
+canal** — a beta em dev, a candidata em staging (nunca uma beta), a release estável em
+produção — e baixa o único `.tar.gz` anexado a ela — um pacote com o índice, os documentos publicados e
 um manifesto com o SHA-256 de cada arquivo, que o próprio Reporter confere antes de
 instalar. Nada aqui chega a um cliente até uma release existir.
 
-A tag é a versão do **catálogo** e é o que dispara a publicação. Há dois formatos,
-e cada um só pode ser cortado da sua branch (o CI recusa os dois de outro lugar):
+A tag é a versão do **catálogo** e é o que dispara a publicação. Há três formatos,
+e cada um só pode ser cortado da sua branch (o CI recusa os três de outro lugar):
 
 | Tag | Branch | Publicada como |
 |---|---|---|
+| `vX.Y.Z-beta.N` | `develop` | pré-release — o dev lê; staging e produção nunca |
 | `vX.Y.Z-rc.N` | `release-candidate` | pré-release — o staging lê, a produção nunca |
 | `vX.Y.Z` | `main` | release — a produção lê |
- Ela não tem relação com as versões dos documentos: `metadata.version`
+
+Ela não tem relação com as versões dos documentos: `metadata.version`
 em cada contrato é por documento, independente, e é o que o cliente fixa quando
 assina. Uma release `v1.4.0` pode carregar o 4010 na 1.0.0 e o 4111 na 2.3.1 — a
 versão da release diz quando o conjunto foi publicado, nunca o que cada documento é.
 
-Como cortar:
+**Ninguém corta tag à mão.** O `.github/workflows/release.yml` cuida das duas
+metades. Num merge numa das três branches, o job `tag` calcula a próxima versão
+pelos commits desde a última tag do canal (Conventional Commits: `feat` sobe o
+minor, `fix` e `docs` o patch, `!` ou `BREAKING CHANGE` o major — regras em
+`.releaserc.yml`) e empurra a tag. A tag dispara o mesmo workflow, agora nos jobs
+`archive` e `publish`, que montam, conferem e publicam. Um merge que só
+toca `.github/`, `tools/`, o `README.md`, o `CONTRIBUTING.md`, o `AGENTS.md` ou o
+`CLAUDE.md` não corta tag: nada disso entra no pacote (lista em `ignore_globs`, no
+`release.yml`). Um `manual.md` de documento corta, porque entra.
+
+O caminho até a produção:
 
 1. Confira localmente: `python3 tools/validate.py`.
-2. Para o staging: leve a `develop` para a `release-candidate` por PR e, nela,
-   `git tag -s v1.0.0-rc.1 -m "catálogo 1.0.0-rc.1"` e `git push origin v1.0.0-rc.1`.
-   Cada correção durante a homologação é uma nova candidata (`-rc.2`, `-rc.3`…).
-3. Para a produção: leve a `release-candidate` homologada para a `main` por PR e,
-   nela, `git tag -s v1.0.0 -m "catálogo 1.0.0"` e `git push origin v1.0.0`.
-4. O CI valida, confere que a tag saiu da branch certa, monta o pacote, confere
-   que ele é reproduzível, o relê como o Reporter releria e publica a release.
-   Nada disso acontece sem a tag.
+2. Merge na `develop` gera uma beta (`v1.0.0-beta.1`, `-beta.2`…), que o dev lê
+   na hora.
+3. Leve a `develop` para a `release-candidate` por PR: o merge gera uma candidata
+   (`v1.0.0-rc.1`). Cada correção durante a homologação é uma nova candidata.
+4. Leve a `release-candidate` homologada para a `main` por PR: o merge gera a
+   release (`v1.0.0`), que a produção lê. A `main` volta para a `develop` sozinha.
+5. Em cada tag, o CI valida, confere que ela saiu da branch certa, monta o pacote,
+   confere que ele é reproduzível, o relê como o Reporter releria, **atesta** o pacote
+   (ver [AUTENTICIDADE.md](AUTENTICIDADE.md)) e publica a release.
 
 Para montar e conferir sem publicar — o que o CI faz em todo PR:
 
@@ -203,18 +216,30 @@ do regulador em `contas.yaml`, por exemplo — mora na raiz do documento, nunca 
 
 Uma release publica **exatamente um** `.tar.gz`. O Reporter recusa uma que tenha
 dois: de lá não há como dizer qual é o catálogo, e escolher um instalaria conteúdo
-por acidente de ordenação. O `SHA256SUMS` que acompanha é para conferência humana e
-não termina em `.tar.gz` de propósito — qualquer anexo novo precisa respeitar isso.
+por acidente de ordenação. O atestado (`.tar.gz.sigstore.json`), o `SHA256SUMS`, o `LICENSE`
+e o `NOTICE` que acompanham não terminam em `.tar.gz` de propósito — qualquer anexo
+novo precisa respeitar isso.
 
 O que cada Reporter vê depende do seu canal. O de produção (`stable`) pede
-`releases/latest`, que o GitHub responde sem *pre-releases* nem *drafts*: uma
-candidata publicada não chega a ele. O de staging (`prerelease`) lê a release mais
-nova que não seja *draft*, candidata ou não. Um *draft* não é lido por nenhum dos
-dois.
+`releases/latest`, que o GitHub responde sem *pre-releases* nem *drafts*: nem beta nem
+candidata chega a ele. O de staging (`rc`) lê a candidata ou release mais nova e nunca
+uma beta, mesmo que ela seja mais recente. O de dev (`beta`) lê a mais nova de
+qualquer tipo. Um *draft* não é lido por nenhum dos três.
 
 O pacote é **reproduzível**: a mesma árvore produz os mesmos bytes, sempre. É o que
 permite a alguém remontar a release e comparar com o que publicamos. O CI confere
 isso a cada execução, montando duas vezes.
+
+### O atestado
+
+Cada release publica, ao lado do pacote, `catalog-X.Y.Z.tar.gz.sigstore.json`: o
+atestado do Sigstore que o próprio job de publicação faz sobre o SHA-256 do pacote,
+com uma identidade que o GitHub dá ao workflow. O Reporter **recusa** a release sem
+atestado ou cujo atestado não prove que foi feito pelo `.github/workflows/release.yml`
+deste repositório, para a tag da release, sobre aqueles bytes. Não há chave para
+guardar. O processo inteiro — o que garante, a configuração do repositório, o que é
+contrato com o Reporter e a ordem de implantação — está em
+[AUTENTICIDADE.md](AUTENTICIDADE.md).
 
 ### Os nomes dos arquivos são contrato com o Reporter
 

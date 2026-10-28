@@ -1,0 +1,69 @@
+# Pull Request Labeler configuration
+#
+# Labels are aligned with the pr_title_scopes in pr-validation.yml.
+
+# Cadoc 4010 — Balancete Patrimonial Analítico (monthly)
+cadoc-4010:
+  - changed-files:
+      - any-glob-to-any-file: 'br/bcb/cadoc-4010/**/*'
+
+# Cadoc 4016 — Balanço Patrimonial Analítico (semiannual)
+cadoc-4016:
+  - changed-files:
+      - any-glob-to-any-file: 'br/bcb/cadoc-4016/**/*'
+
+# Cadoc 4111 — Saldos Contábeis Diários (daily)
+cadoc-4111:
+  - changed-files:
+      - any-glob-to-any-file: 'br/bcb/cadoc-4111/**/*'
+
+# COSIF chart of accounts (regulator source)
+cosif:
+  - changed-files:
+      - any-glob-to-any-file: 'br/bcb/cosif/**/*'
+
+# Catalog index read by the Reporter
+catalog:
+  - changed-files:
+      - any-glob-to-any-file: 'catalog.yaml'
+
+# Homologation against a real Midaz ledger
+homologation:
+  - changed-files:
+      - any-glob-to-any-file: 'tools/homologation/**/*'
+
+# Release packaging and what travels with each release
+release:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'tools/release.py'
+          - 'tools/test_release.py'
+          - 'LICENSE'
+          - 'NOTICE'
+
+# Validation and curation tooling
+tools:
+  - changed-files:
+      - any-glob-to-any-file: 'tools/**/*'
+
+# Validator suites and homologation expectations
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'tools/test_*.py'
+          - 'tools/homologation/expected/**/*'
+
+# Continuous integration pipelines and shared workflows
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/workflows/**/*'
+
+# Markdown docs and document manuals
+docs:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.md'
+
+# Python tooling dependencies
+deps:
+  - changed-files:
+      - any-glob-to-any-file: 'tools/requirements.txt'

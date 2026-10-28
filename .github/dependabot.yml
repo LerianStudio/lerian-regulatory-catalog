@@ -1,0 +1,37 @@
+version: 2
+updates:
+  # Python tooling
+  - package-ecosystem: "pip"
+    directory: "/tools"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 10
+    labels:
+      - "deps"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # Pinned third-party GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 10
+    labels:
+      - "deps"
+      - "ci"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      actions-core:
+        patterns:
+          - "actions/*"
