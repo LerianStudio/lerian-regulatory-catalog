@@ -3,13 +3,32 @@ name: release catalog
 on:
   pull_request:
   push:
+    branches: [main, release-candidate, develop]
     tags: ["v*"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  tag:
+    if: github.event_name == 'push' && github.ref_type == 'branch'
+    permissions:
+      contents: write
+      id-token: write
+      issues: write
+      pull-requests: write
+    uses: LerianStudio/shared-workflows-public/.github/workflows/release.yml@tier-1
+    with:
+      ignore_globs: "README.md CONTRIBUTING.md AGENTS.md CLAUDE.md tools/* .github/* .gitignore .coderabbit.yml .coderabbit.yaml"
+      enable_release_announcement: false
+    secrets: inherit
+
   archive:
+    if: github.event_name == 'pull_request' || github.ref_type == 'tag'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release.outputs.version }}
