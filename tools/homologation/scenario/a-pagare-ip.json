@@ -1,0 +1,343 @@
+{
+  "_about": "Org A — instituição de pagamento emissora de moeda eletrônica (pré-paga) e credenciadora. Contabilidade FICTÍCIA para homologação: rubricas fora do conjunto do 4111 têm nome plausível do COSIF e DV calculado, a conferir por um contador. Cada rubrica é uma conta do Midaz com a natureza da rubrica (o defaultDirection do tipo vira a natureza do saldo), então o saldo da conta no Midaz é o saldo COSIF. Agosto abre saldos, setembro é a data-base; hold/commit, hold/cancel e estorno rodam na data da execução, porque o Midaz não retrodata commit nem estorno. A contrapartida de toda 3.0.9.70.XX é o título único 9.0.9.70.00.00-7 (IN BCB 538), num ledger próprio (Razão COSIF 4, o do campo ledger): os ledgers anteriores registraram subcontas 9.0.9.70.XX que o COSIF não tem, ou datas de reversão em UTC. Horários em -03:00 (Brasília): o dia regulatório é o dia civil brasileiro, e REPORT_TIMEZONE=America/Sao_Paulo é precondição; uma reversão às 00:05Z cairia às 21:05 do dia anterior.",
+  "organization": {
+    "legalName": "Pagare IP S.A. (homologação)",
+    "doingBusinessAs": "Pagare",
+    "legalDocument": "33445566000186",
+    "address": {
+      "line1": "Av. Paulista 1000",
+      "zipCode": "01310100",
+      "city": "São Paulo",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "ledger": "Razão COSIF 4",
+  "accountTypes": [
+    {
+      "keyValue": "ativo",
+      "name": "Ativo",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "despesa",
+      "name": "Despesa",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "compensacao_devedora",
+      "name": "Compensação devedora",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "passivo",
+      "name": "Passivo",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "patrimonio",
+      "name": "Patrimônio líquido",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "receita",
+      "name": "Receita",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "compensacao_credora",
+      "name": "Compensação credora",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "conta_pre_paga",
+      "name": "Conta de pagamento pré-paga",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "estabelecimento",
+      "name": "Estabelecimento credenciado",
+      "defaultDirection": "credit"
+    }
+  ],
+  "accounts": [
+    {
+      "alias": "@dep_bancarios",
+      "type": "ativo",
+      "code": "1120000006",
+      "name": "Depósitos Bancários"
+    },
+    {
+      "alias": "@titulos",
+      "type": "ativo",
+      "code": "1311000004",
+      "name": "Títulos de Renda Fixa"
+    },
+    {
+      "alias": "@cx_liquidacao",
+      "type": "ativo",
+      "code": "1841000000",
+      "name": "Caixa de Registro e Liquidação"
+    },
+    {
+      "alias": "@dev_liquidacao",
+      "type": "ativo",
+      "code": "1843000008",
+      "name": "Devedores - Contas Liquidação Pendentes"
+    },
+    {
+      "alias": "@despesas_adm",
+      "type": "despesa",
+      "code": "8179900002",
+      "name": "Outras Despesas Administrativas"
+    },
+    {
+      "alias": "@ctrl_pre_paga",
+      "type": "compensacao_devedora",
+      "code": "3096600002",
+      "name": "Controle - Conta de Pagamento Pré-Paga (devedora)"
+    },
+    {
+      "alias": "@fluxo_emissor",
+      "type": "compensacao_devedora",
+      "code": "3097020007",
+      "name": "Transações realizadas no mês - Emissor Pré-pago"
+    },
+    {
+      "alias": "@fluxo_credenciador",
+      "type": "compensacao_devedora",
+      "code": "3097030004",
+      "name": "Transações realizadas no mês - Credenciador"
+    },
+    {
+      "alias": "@credores_liquidacao",
+      "type": "passivo",
+      "code": "4953000005",
+      "name": "Credores - Conta Liquidações Pendentes"
+    },
+    {
+      "alias": "@capital",
+      "type": "patrimonio",
+      "code": "6111000003",
+      "name": "Capital de Domiciliados no País"
+    },
+    {
+      "alias": "@receita_tarifas",
+      "type": "receita",
+      "code": "7179900003",
+      "name": "Outras Rendas de Tarifas"
+    },
+    {
+      "alias": "@ctrl_pre_paga_cp",
+      "type": "compensacao_credora",
+      "code": "9096600006",
+      "name": "Controle - Conta de Pagamento Pré-Paga"
+    },
+    {
+      "alias": "@ana",
+      "type": "conta_pre_paga",
+      "code": "4193000009",
+      "routeByType": true,
+      "name": "Ana — conta pré-paga"
+    },
+    {
+      "alias": "@bruno",
+      "type": "conta_pre_paga",
+      "code": "4193000009",
+      "routeByType": true,
+      "name": "Bruno — conta pré-paga"
+    },
+    {
+      "alias": "@loja_x",
+      "type": "estabelecimento",
+      "code": "4192500005",
+      "routeByType": true,
+      "name": "Loja X — Recursos Disponíveis de Clientes"
+    },
+    {
+      "alias": "@controle_transacoes",
+      "type": "compensacao_credora",
+      "code": "9097000007",
+      "name": "Transações de Pagamento Realizadas no Mês - Controle"
+    }
+  ],
+  "transactions": [
+    {
+      "key": "A01",
+      "date": "2026-08-01T10:00:00Z",
+      "amount": "200000.00",
+      "description": "Integralização de capital",
+      "debit": "@dep_bancarios",
+      "credit": "@capital"
+    },
+    {
+      "key": "A02",
+      "date": "2026-08-05T10:00:00Z",
+      "amount": "150000.00",
+      "description": "Aplicação em títulos públicos",
+      "debit": "@titulos",
+      "credit": "@dep_bancarios"
+    },
+    {
+      "key": "A03",
+      "date": "2026-08-10T10:00:00Z",
+      "amount": "1000.00",
+      "description": "Carga pré-paga de Ana (TED recebida)",
+      "debit": "@dep_bancarios",
+      "credit": "@ana"
+    },
+    {
+      "key": "A04",
+      "date": "2026-08-31T20:00:00Z",
+      "amount": "1000.00",
+      "description": "Controle de agosto: saldo das contas pré-pagas",
+      "debit": "@ctrl_pre_paga",
+      "credit": "@ctrl_pre_paga_cp"
+    },
+    {
+      "key": "A05",
+      "date": "2026-09-03T10:00:00Z",
+      "amount": "2500.00",
+      "description": "Carga pré-paga de Bruno (TED recebida)",
+      "debit": "@dep_bancarios",
+      "credit": "@bruno"
+    },
+    {
+      "key": "A06",
+      "date": "2026-09-12T10:00:00Z",
+      "amount": "300.00",
+      "description": "Compra on-us de Ana na Loja X",
+      "debit": "@ana",
+      "credit": "@loja_x"
+    },
+    {
+      "key": "A07",
+      "date": "2026-09-12T10:01:00Z",
+      "amount": "300.00",
+      "description": "Fluxo do mês: emissor pré-pago (A06)",
+      "debit": "@fluxo_emissor",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "A08",
+      "date": "2026-09-12T10:02:00Z",
+      "amount": "300.00",
+      "description": "Fluxo do mês: credenciador (A06)",
+      "debit": "@fluxo_credenciador",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "A09",
+      "date": "2026-09-15T10:00:00Z",
+      "amount": "10.00",
+      "description": "Tarifa mensal da conta de Ana",
+      "debit": "@ana",
+      "credit": "@receita_tarifas"
+    },
+    {
+      "key": "A10",
+      "date": "2026-09-18T10:00:00Z",
+      "amount": "290.00",
+      "description": "Repasse à Loja X",
+      "debit": "@loja_x",
+      "credit": "@dep_bancarios"
+    },
+    {
+      "key": "A11",
+      "date": "2026-09-20T10:00:00Z",
+      "amount": "1000.00",
+      "description": "Venda off-us na Loja X (cartão de outro emissor), a receber",
+      "debit": "@dev_liquidacao",
+      "credit": "@loja_x"
+    },
+    {
+      "key": "A12",
+      "date": "2026-09-20T10:01:00Z",
+      "amount": "1000.00",
+      "description": "Fluxo do mês: credenciador (A11)",
+      "debit": "@fluxo_credenciador",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "A13",
+      "date": "2026-09-22T10:00:00Z",
+      "amount": "150.00",
+      "description": "Compra off-us de Ana em outro credenciador, a pagar",
+      "debit": "@ana",
+      "credit": "@credores_liquidacao"
+    },
+    {
+      "key": "A14",
+      "date": "2026-09-22T10:01:00Z",
+      "amount": "150.00",
+      "description": "Fluxo do mês: emissor pré-pago (A13)",
+      "debit": "@fluxo_emissor",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "A15",
+      "date": "2026-09-25T10:00:00Z",
+      "amount": "1000.00",
+      "description": "Liquidação da venda A11 recebida na câmara",
+      "debit": "@cx_liquidacao",
+      "credit": "@dev_liquidacao"
+    },
+    {
+      "key": "A16",
+      "date": "2026-09-28T10:00:00Z",
+      "amount": "120.00",
+      "description": "Despesa administrativa paga",
+      "debit": "@despesas_adm",
+      "credit": "@dep_bancarios"
+    },
+    {
+      "key": "A17",
+      "date": "2026-09-30T20:00:00Z",
+      "amount": "2040.00",
+      "description": "Controle de setembro: ajuste ao saldo pré-pago (3040.00)",
+      "debit": "@ctrl_pre_paga",
+      "credit": "@ctrl_pre_paga_cp"
+    },
+    {
+      "key": "A18",
+      "now": true,
+      "pending": true,
+      "then": "commit",
+      "amount": "400.00",
+      "description": "Compra de Bruno na Loja X autorizada (hold) e capturada (commit)",
+      "debit": "@bruno",
+      "credit": "@loja_x"
+    },
+    {
+      "key": "A19",
+      "now": true,
+      "pending": true,
+      "then": "cancel",
+      "amount": "50.00",
+      "description": "Compra de Ana autorizada (hold) e desfeita (cancel)",
+      "debit": "@ana",
+      "credit": "@loja_x"
+    },
+    {
+      "key": "A20",
+      "revert": "A09",
+      "description": "Estorno da tarifa A09"
+    },
+    {
+      "key": "A21",
+      "date": "2026-10-01T00:05:00-03:00",
+      "amount": "450.00",
+      "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): emissor pré-pago de setembro",
+      "debit": "@controle_transacoes",
+      "credit": "@fluxo_emissor"
+    },
+    {
+      "key": "A22",
+      "date": "2026-10-01T00:06:00-03:00",
+      "amount": "1300.00",
+      "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): credenciador de setembro",
+      "debit": "@controle_transacoes",
+      "credit": "@fluxo_credenciador"
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+name: release catalog
+
+on:
+  pull_request:
+  push:
+    branches: [main, release-candidate, develop]
+    tags: ["v*"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    if: github.event_name == 'push' && github.ref_type == 'branch'
+    permissions:
+      contents: write
+      id-token: write
+      issues: write
+      pull-requests: write
+    uses: LerianStudio/shared-workflows-public/.github/workflows/release.yml@tier-1
+    with:
+      ignore_globs: "README.md CONTRIBUTING.md AGENTS.md CLAUDE.md tools/* .github/* .gitignore .coderabbit.yml .coderabbit.yaml"
+    secrets: inherit
+
+  archive:
+    if: github.event_name == 'pull_request' || github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install --require-hashes -r tools/requirements.txt
+
+      - name: confere o conteúdo do catálogo
+        run: python3 tools/validate.py
+
+      - name: confere que a conferência morde
+        run: python3 tools/test_release.py
+
+      - name: a versão da release
+        id: release
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then
+            echo "version=0.0.0-dry-run" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            branch=main
+            prerelease=false
+          elif printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$'; then
+            branch=release-candidate
+            prerelease=true
+          elif printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$'; then
+            branch=develop
+            prerelease=true
+          else
+            echo "a tag '$GITHUB_REF_NAME' não é vX.Y.Z, vX.Y.Z-rc.N nem vX.Y.Z-beta.N, então não versiona um catálogo" >&2
+            exit 1
+          fi
+
+          git fetch --quiet --no-tags --unshallow origin 2>/dev/null || true
+          git fetch --quiet --no-tags origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$branch"; then
+            echo "a tag '$GITHUB_REF_NAME' aponta para um commit fora da '$branch', de onde uma tag assim é cortada" >&2
+            exit 1
+          fi
+
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      - name: monta o pacote
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: python3 tools/release.py build --version "$VERSION" --out "dist/catalog-$VERSION.tar.gz"
+
+      - name: o pacote é reproduzível
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          python3 tools/release.py build --version "$VERSION" --out /tmp/again/catalog.tar.gz
+          cmp "dist/catalog-$VERSION.tar.gz" /tmp/again/catalog.tar.gz
+
+      - name: confere o pacote
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: python3 tools/release.py verify "dist/catalog-$VERSION.tar.gz" --version "$VERSION"
+
+  publish:
+    needs: archive
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # O certificado do atestado é emitido contra o token OIDC deste job, e o
+      # atestado fica também registrado no repositório.
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.archive.outputs.version }}
+      PRERELEASE: ${{ needs.archive.outputs.prerelease }}
+    # AS ACTIONS DESTE JOB SÃO FIXADAS PELO COMMIT, não pela tag: ele tem o token
+    # que emite o atestado, e uma tag movida ou comprometida rodaria aqui outro
+    # código, capaz de atestar bytes que o Reporter aceitaria.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        # O token não fica gravado no checkout: nenhum passo daqui usa o git com
+        # ele (o repositório é público, o `git ls-remote` funciona sem), e o `gh`
+        # recebe o seu explicitamente. Gravado, ficaria ao alcance de qualquer
+        # dependência que o empacotamento rode.
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - run: pip install --require-hashes -r tools/requirements.txt
+
+      - name: monta o pacote da release
+        run: python3 tools/release.py build --version "$VERSION" --out "dist/catalog-$VERSION.tar.gz"
+
+      - name: confere o pacote e o layout de cada documento
+        run: |
+          python3 tools/release.py verify "dist/catalog-$VERSION.tar.gz" \
+            --version "$VERSION" --require-document-layout
+
+      - name: SHA256SUMS
+        working-directory: dist
+        run: sha256sum "catalog-$VERSION.tar.gz" > SHA256SUMS
+
+      # O ATESTADO diz quem publicou o pacote, coisa que nem o manifesto nem o
+      # SHA256SUMS dizem: quem troca o pacote troca os dois junto. O GitHub dá a
+      # este job um certificado de minutos que nomeia o workflow, o repositório e a
+      # tag; o job assina o SHA-256 do pacote com ele, e o Sigstore registra a
+      # assinatura no log público. Não há chave guardada em lugar nenhum.
+      #
+      # O Reporter só instala a release cujo atestado foi feito por ESTE arquivo
+      # (`.github/workflows/release.yml`) DESTE repositório PARA ESTA tag, sobre
+      # ESTES bytes (pkg/reporter/catalog/attestation.go). Renomear ou mover este
+      # workflow faz toda release ser recusada até o Reporter mudar junto.
+      - name: atesta o pacote
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/catalog-${{ env.VERSION }}.tar.gz
+
+      # Conferido aqui com a mesma identidade que o Reporter exige, para que um
+      # atestado errado falhe neste job e não em cada Reporter.
+      - name: confere o atestado como o Reporter confere
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          # Um atestado por linha, compacto: o mesmo arquivo serve ao Reporter e
+          # ao `gh attestation verify` de quem quiser conferir à mão.
+          jq -c . "$BUNDLE" | head -n 1 > "dist/catalog-$VERSION.tar.gz.sigstore.json"
+          gh attestation verify "dist/catalog-$VERSION.tar.gz" \
+            --bundle "dist/catalog-$VERSION.tar.gz.sigstore.json" \
+            --repo LerianStudio/lerian-regulatory-catalog \
+            --cert-identity "https://github.com/LerianStudio/lerian-regulatory-catalog/.github/workflows/release.yml@$GITHUB_REF" \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com
+
+      - name: a tag ainda aponta para o que foi conferido
+        run: |
+          target=$(git ls-remote origin "refs/tags/$GITHUB_REF_NAME^{}" | cut -f1)
+          if [ -z "$target" ]; then
+            target=$(git ls-remote origin "refs/tags/$GITHUB_REF_NAME" | cut -f1)
+          fi
+
+          if [ "$target" != "$GITHUB_SHA" ]; then
+            echo "a tag '$GITHUB_REF_NAME' aponta para ${target:-nada} e o pacote foi montado de $GITHUB_SHA" >&2
+            exit 1
+          fi
+
+      - name: publica a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          kind=()
+          if [ "$PRERELEASE" = "true" ]; then kind=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            "${kind[@]}" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Catálogo regulatório $VERSION. O Reporter busca a release mais recente do seu canal e lê o único \`.tar.gz\` anexado; \`.sigstore.json\` é o atestado que o Reporter confere; \`SHA256SUMS\` é para conferência humana; \`LICENSE\` e \`NOTICE\` acompanham a release." \
+            "dist/catalog-$VERSION.tar.gz" \
+            "dist/catalog-$VERSION.tar.gz.sigstore.json" \
+            "dist/SHA256SUMS" \
+            "LICENSE" \
+            "NOTICE"

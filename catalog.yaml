@@ -17,6 +17,7 @@ documents:
     country: BR
     regulator: BCB
     document: "4010"
+    family: cadoc
     title: Balancete Patrimonial Analítico
     version: 1.0.0
     status: draft            # draft | published | deprecated
@@ -26,3 +27,36 @@ documents:
     summary: >-
       Saldos por rubrica COSIF na data-base, acumulados desde a abertura e
       expressos na natureza de cada conta.
+
+  - id: br.bcb.cadoc-4016
+    path: br/bcb/cadoc-4016
+    country: BR
+    regulator: BCB
+    document: "4016"
+    family: cadoc
+    title: Balanço Patrimonial Analítico
+    version: 1.0.0
+    status: draft
+    periodicity: semiannual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Posição patrimonial semestral por rubrica COSIF, sem as contas de resultado
+      (grupos 7 e 8). O balanço do 4010 após a apuração do exercício.
+
+  - id: br.bcb.cadoc-4111
+    path: br/bcb/cadoc-4111
+    country: BR
+    regulator: BCB
+    document: "4111"
+    family: cadoc
+    title: Saldos Contábeis Diários
+    version: 1.0.0
+    status: draft
+    periodicity: daily
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Saldos diários de um conjunto fechado de contas COSIF — estoque no sinal da
+      natureza e volume de pagamentos acumulado no mês. Conjunto de linhas definido
+      pelo catálogo, não pelo cliente.

@@ -1,0 +1,65 @@
+# Calendário de dias úteis para as remessas ao BCB — CURADORIA DA LERIAN.
+#
+# O motor do Reporter não sabe quais dias são úteis: lê este arquivo, fixado na
+# assinatura junto com o contrato. Ele decide onde cada período é cortado:
+#   * o balancete (4010/4016) fecha no ÚLTIMO DIA ÚTIL do mês (leiaute §3.2.2.b);
+#   * o volume do 4111 (3.0.9.70.XX) de sábado, domingo e feriado nacional vai para
+#     o PRIMEIRO DIA ÚTIL seguinte, mesmo no mês seguinte (instruções §4.2.2.b);
+#   * o 4111 só é gerado para dia útil: as remessas são por data-base de dia útil,
+#     em sequência, e feriado nacional não tem remessa.
+#
+# Sábado e domingo nunca são dias úteis (weekends: true). Abaixo, os feriados
+# NACIONAIS fixados em lei federal. Feriado local NÃO entra: as instruções mandam
+# remeter nesses dias, repetindo os saldos do dia útil anterior.
+#
+# Também não são dias úteis: Carnaval (segunda e terça), Sexta-feira da Paixão e
+# Corpus Christi. Não são feriados nacionais por lei federal, mas não são dias
+# úteis bancários, e a remessa segue o calendário bancário. São móveis (contados
+# a partir da Páscoa): conferir as datas a cada extensão da cobertura.
+#
+# Um dia fora de `covers` é recusado: o calendário não sabe nada além do que lista.
+# Estender a cobertura antes do fim dela é parte da curadoria anual.
+apiVersion: reporter.lerian.io/v1alpha1
+kind: BusinessCalendar
+weekends: true
+covers: { from: "2025-01-01", until: "2027-12-31" }
+nonBusinessDays:
+  - { date: "2025-01-01", description: "Confraternização Universal (Lei 662/1949)" }
+  - { date: "2025-03-03", description: "Carnaval (segunda-feira)" }
+  - { date: "2025-03-04", description: "Carnaval (terça-feira)" }
+  - { date: "2025-04-18", description: "Sexta-feira da Paixão" }
+  - { date: "2025-04-21", description: "Tiradentes (Lei 662/1949)" }
+  - { date: "2025-05-01", description: "Dia do Trabalho (Lei 662/1949)" }
+  - { date: "2025-06-19", description: "Corpus Christi" }
+  - { date: "2025-09-07", description: "Independência do Brasil (Lei 662/1949)" }
+  - { date: "2025-10-12", description: "Nossa Senhora Aparecida (Lei 6.802/1980)" }
+  - { date: "2025-11-02", description: "Finados (Lei 10.607/2002)" }
+  - { date: "2025-11-15", description: "Proclamação da República (Lei 662/1949)" }
+  - { date: "2025-11-20", description: "Dia Nacional de Zumbi e da Consciência Negra (Lei 14.759/2023)" }
+  - { date: "2025-12-25", description: "Natal (Lei 662/1949)" }
+  - { date: "2026-01-01", description: "Confraternização Universal (Lei 662/1949)" }
+  - { date: "2026-02-16", description: "Carnaval (segunda-feira)" }
+  - { date: "2026-02-17", description: "Carnaval (terça-feira)" }
+  - { date: "2026-04-03", description: "Sexta-feira da Paixão" }
+  - { date: "2026-04-21", description: "Tiradentes (Lei 662/1949)" }
+  - { date: "2026-05-01", description: "Dia do Trabalho (Lei 662/1949)" }
+  - { date: "2026-06-04", description: "Corpus Christi" }
+  - { date: "2026-09-07", description: "Independência do Brasil (Lei 662/1949)" }
+  - { date: "2026-10-12", description: "Nossa Senhora Aparecida (Lei 6.802/1980)" }
+  - { date: "2026-11-02", description: "Finados (Lei 10.607/2002)" }
+  - { date: "2026-11-15", description: "Proclamação da República (Lei 662/1949)" }
+  - { date: "2026-11-20", description: "Dia Nacional de Zumbi e da Consciência Negra (Lei 14.759/2023)" }
+  - { date: "2026-12-25", description: "Natal (Lei 662/1949)" }
+  - { date: "2027-01-01", description: "Confraternização Universal (Lei 662/1949)" }
+  - { date: "2027-02-08", description: "Carnaval (segunda-feira)" }
+  - { date: "2027-02-09", description: "Carnaval (terça-feira)" }
+  - { date: "2027-03-26", description: "Sexta-feira da Paixão" }
+  - { date: "2027-04-21", description: "Tiradentes (Lei 662/1949)" }
+  - { date: "2027-05-01", description: "Dia do Trabalho (Lei 662/1949)" }
+  - { date: "2027-05-27", description: "Corpus Christi" }
+  - { date: "2027-09-07", description: "Independência do Brasil (Lei 662/1949)" }
+  - { date: "2027-10-12", description: "Nossa Senhora Aparecida (Lei 6.802/1980)" }
+  - { date: "2027-11-02", description: "Finados (Lei 10.607/2002)" }
+  - { date: "2027-11-15", description: "Proclamação da República (Lei 662/1949)" }
+  - { date: "2027-11-20", description: "Dia Nacional de Zumbi e da Consciência Negra (Lei 14.759/2023)" }
+  - { date: "2027-12-25", description: "Natal (Lei 662/1949)" }

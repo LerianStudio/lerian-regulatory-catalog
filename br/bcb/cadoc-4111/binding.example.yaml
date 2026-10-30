@@ -1,0 +1,203 @@
+# Binding do Cadoc 4111 — QUEM PREENCHE É O CLIENTE.
+# Exemplo contra o Midaz, cobrindo as DUAS classes de conta do documento.
+#
+# A diferença estrutural frente ao 4010: as LINHAS do dataset vêm do conjunto
+# fechado (contas.yaml), não das consultas. As consultas fornecem o VALOR de cada
+# conta declarada; contas.yaml diz quais existem e o que cada valor significa. O
+# motor casa as duas pela chave cosifCode.
+#
+# DUAS CONSULTAS SOBRE A MESMA TABELA, e não é redundância: o período é um filtro
+# da consulta, e as duas classes de conta leem períodos diferentes. Estoque soma
+# desde a abertura do razão, no valor contábil; fluxo soma o valor absoluto do mês
+# corrente, reiniciando a cada virada. A natureza do saldo é regra do contrato. Cada campo diz de qual das
+# duas lê, e o motor executa as duas leituras separadas.
+#
+# O que é DESTE exemplo e não do documento: o nome da fonte (midaz_transaction),
+# da tabela (operation) e das colunas (route_code, amount, direction, created_at),
+# e os valores que a coluna de direção carrega.
+#
+# APONTAR ISTO PARA OUTRO RAZÃO NÃO É SÓ RENOMEAR, e o motor não tem como avisar.
+# Ele lê as colunas como elas são, então o outro razão precisa SIGNIFICAR o mesmo.
+# Duas coisas em particular, porque erram em silêncio e o arquivo sai com a mesma
+# cara:
+#
+#   * `amount` é uma MAGNITUDE, e o lado do lançamento vive em `direction`. É por
+#     isso que a consulta de estoque calcula o valor com sinal (`compute`) e a de
+#     fluxo não pode calcular:
+#     somar `amount` cru é o volume que o documento pede. Num razão que gravasse o
+#     lado no próprio valor, a mesma soma devolveria volume LÍQUIDO — 100 de
+#     entrada e 100 de saída dariam zero onde o documento espera 200.
+#   * Toda linha da tabela é um lançamento contábil, inclusive as de uma
+#     reserva: não há status a filtrar. O Midaz não grava status na operação —
+#     a coluna existe e fica vazia; `APPROVED` vive na transação. O que separa
+#     reservar de mover é a RUBRICA das ações: o hold grava um par débito/crédito
+#     na conta de origem e o cancel outro, cada um com a rubrica de `hold` e de
+#     `cancel` da rota; com a mesma rubrica nos dois lados, o par se anula, e só o
+#     commit move saldo. Um binding que filtrasse `status = APPROVED` não leria
+#     linha nenhuma. Noutro
+#     razão, o que separa reserva de movimento é outra coisa, e o binding é seu.
+#
+# O Reporter é homologado contra o Midaz. Mapear outro razão é decisão e
+# responsabilidade de quem mapeia.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.cadoc-4111
+contractVersion: 1.0.0
+
+queries:
+  - name: declarante
+    description: A organização do Midaz, que é a instituição declarante — o CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    # Qual organização: o escopo da instituição, que filtra organization.id pela
+    # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
+    # uma linha só recusa a geração em vez de escolher uma.
+    filters:
+      # Uma organização apagada não declara nada.
+      - field: deleted_at
+        operator: isNull
+
+  - name: saldos_estoque
+    description: Saldo diário por rubrica das contas de ESTOQUE.
+    dataSource: midaz_transaction
+    table: operation
+
+    filters:
+      # SÓ O QUE MOVEU SALDO, SÓ EM REAIS. Uma transação NOTED (anotação) grava
+      # operações com a rubrica da rota, valor ZERO e `balance_affected = false`:
+      # não altera saldo, mas faria a rubrica aparecer como linha de 0,00 sem nunca
+      # ter sido lançada. E um ledger do Midaz pode ter outros ativos além do BRL,
+      # que não são lançamento em reais. Nenhum dos dois é lançamento deste
+      # documento.
+      - field: balance_affected
+        operator: eq
+        values: ["true"]
+      - field: asset_code
+        operator: eq
+        values: ["BRL"]
+      # Só o que o Midaz não apagou: as leituras do próprio Midaz filtram
+      # deleted_at IS NULL, e o documento lê o mesmo razão que ele.
+      - field: deleted_at
+        operator: isNull
+
+      # ATÉ O FIM DA DATA-BASE, pelo calendário de dias úteis do contrato, e sem
+      # limite inferior: o saldo de estoque carrega tudo que já foi lançado.
+      - field: created_at
+        operator: lt
+        values: [{parameter: dataBase, at: end, calendar: business}]
+
+    # O VALOR DE CADA LANÇAMENTO NO RAZÃO: `direction` diz o lado, e um débito entra
+    # negativo. Um lado que nenhum caso lista recusa a geração inteira.
+    compute:
+      - as: valor_no_razao
+        case:
+          column: direction
+          when:
+            credit: {column: amount}
+            debit: {negate: amount}
+          otherwise: refuse
+
+    aggregate:
+      groupBy: [route_code]
+      measures:
+        - as: saldoDia
+          fn: sum
+          of: valor_no_razao
+
+  - name: volumes_fluxo
+    description: Volume absoluto do mês corrente por rubrica, para as contas de FLUXO.
+    dataSource: midaz_transaction
+    table: operation
+
+    # SÓ OS DÉBITOS. Cada transação de pagamento é registrada a débito da
+    # 3.0.9.70.XX contra a 9.0.9.70.00.00-7, pelo valor absoluto. Um CRÉDITO na
+    # 3.0.9.70 não é transação: é a reversão que zera a conta na virada do mês, ou
+    # a correção de um registro errado (ponto em aberto: ver o manual). Uma
+    # devolução é transação nova e entra a débito. As instruções pedem as duas
+    # coisas ao mesmo tempo —
+    # o volume "se reinicia a cada mês" e, no último dia, "deve corresponder ao
+    # saldo desta conta do correspondente Balancete Cosif 4010" (I §4.2.2.a/b) —, e
+    # só fecham se a instituição zerar a conta todo mês; somar a reversão como
+    # volume declararia o mês anterior de novo.
+    filters:
+      # SÓ O QUE MOVEU SALDO, SÓ EM REAIS. Uma transação NOTED (anotação) grava
+      # operações com a rubrica da rota, valor ZERO e `balance_affected = false`:
+      # não altera saldo, mas faria a rubrica aparecer como linha de 0,00 sem nunca
+      # ter sido lançada. E um ledger do Midaz pode ter outros ativos além do BRL,
+      # que não são lançamento em reais. Nenhum dos dois é lançamento deste
+      # documento.
+      - field: balance_affected
+        operator: eq
+        values: ["true"]
+      - field: asset_code
+        operator: eq
+        values: ["BRL"]
+      # Só o que o Midaz não apagou: as leituras do próprio Midaz filtram
+      # deleted_at IS NULL, e o documento lê o mesmo razão que ele.
+      - field: deleted_at
+        operator: isNull
+      - field: direction
+        operator: eq
+        values: ["debit"]
+      # O MÊS DA DATA-BASE, pelo calendário de dias úteis do contrato: do primeiro
+      # instante após o último dia útil do mês anterior até o fim do dia da
+      # data-base. O que é lançado num sábado que fecha um mês é do mês seguinte.
+      - field: created_at
+        operator: gte
+        values: [{parameter: dataBase, at: start, of: month, calendar: business}]
+      - field: created_at
+        operator: lt
+        values: [{parameter: dataBase, at: end, calendar: business}]
+    aggregate:
+      groupBy: [route_code]
+      measures:
+        # SEM sinal: o documento pede o somatório do valor ABSOLUTO das
+        # transações (I §4.2.2.a), não o saldo líquido.
+        - as: volumeMes
+          fn: sum
+          of: amount
+
+datasets:
+  institution:
+    # O CNPJ vem da organização do Midaz (legal_document); a raiz que o arquivo
+    # leva é derivada pelo contrato (cnpj8: prefixOf cnpj).
+    from:
+      query: declarante
+    fields:
+      cnpj:
+        from: query
+        column: legal_document
+
+  saldos_diarios:
+    # As linhas vêm do conjunto fechado; as consultas fornecem o valor por conta.
+    # rowSet casa contas.yaml.cosifCode com o route_code que a consulta agrega.
+    from:
+      query: saldos_estoque
+    rowKey:
+      cosifCode: route_code
+    fields:
+      cosifCode:
+        from: rowSet
+        column: cosifCode
+      # saldoDia se resolve por CLASSE de conta (contas.yaml.measure), e as duas
+      # classes leem períodos diferentes — por isso é uma lista de casos, não uma
+      # origem só. Nenhuma linha fica sem origem, e nenhuma conta do conjunto é
+      # descartada: uma rubrica sem lançamento no período sai zero, que é o que o
+      # documento pede.
+      saldoDia:
+        byRowClass:
+          # Estoque: saldo do razão desde a abertura; a regra do contrato o põe na
+          # natureza da conta. Lê a consulta do próprio conjunto.
+          - when: { rowSet: measure, equals: stock }
+            from: query
+            column: saldoDia
+          # Fluxo: volume absoluto do mês, reiniciando. Lê a OUTRA consulta, porque
+          # é o período que difere — e o período é filtro de uma consulta.
+          - when: { rowSet: measure, equals: flow }
+            from: query
+            query: volumes_fluxo
+            column: volumeMes
+
+manualOverrides: []

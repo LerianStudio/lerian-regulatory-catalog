@@ -1,0 +1,100 @@
+{
+  "_about": "Org E — CHEQUE ESPECIAL, sintética e declarada como tal. Uma conta de depósito à vista com cheque especial ligado no saldo (o Midaz guarda no BALANCE, não na conta) e a rota com a entrada `overdraft` apontando para Adiantamentos a Depositantes (1.6.1.10.00.00-3, ativo). Prova o que o Midaz grava quando o débito passa do saldo: a perna original fica só com a parte coberta (o depósito vai a zero, nunca negativo) e o excedente é uma operação COMPANHEIRA (type OVERDRAFT, balance_affected) na rubrica de adiantamento. Um crédito depois quita primeiro o adiantamento. E05 debita com saldo zero: a perna original sai com valor 0. Contabilidade FICTÍCIA para homologação; a rubrica do adiantamento é dado da rota do cliente, a conferir por um contador. Horários em -03:00 (Brasília); REPORT_TIMEZONE=America/Sao_Paulo é precondição.",
+  "organization": {
+    "legalName": "Cheque Especial COSIF (sintética, homologação)",
+    "doingBusinessAs": "Cheque Especial",
+    "legalDocument": "77889900000166",
+    "address": {
+      "line1": "Av. Paulista 1000",
+      "zipCode": "01310100",
+      "city": "São Paulo",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "ledger": "Razão COSIF",
+  "accountTypes": [
+    {
+      "keyValue": "ativo",
+      "name": "Ativo",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "passivo",
+      "name": "Passivo",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "patrimonio",
+      "name": "Patrimônio líquido",
+      "defaultDirection": "credit"
+    }
+  ],
+  "accounts": [
+    {
+      "alias": "@caixa",
+      "type": "ativo",
+      "code": "1110000009",
+      "name": "Caixa"
+    },
+    {
+      "alias": "@capital",
+      "type": "patrimonio",
+      "code": "6111000003",
+      "name": "Capital de Domiciliados no País"
+    },
+    {
+      "alias": "@ana",
+      "type": "passivo",
+      "code": "4111000005",
+      "name": "Ana — Depósitos de Pessoas Naturais",
+      "overdraft": {
+        "rubric": "1611000003",
+        "description": "Adiantamentos a Depositantes",
+        "limit": "1000.00"
+      }
+    }
+  ],
+  "transactions": [
+    {
+      "key": "E01",
+      "date": "2026-09-01T10:00:00-03:00",
+      "amount": "10000.00",
+      "description": "Integralização de capital",
+      "debit": "@caixa",
+      "credit": "@capital"
+    },
+    {
+      "key": "E02",
+      "date": "2026-09-02T10:00:00-03:00",
+      "amount": "1000.00",
+      "description": "Depósito em espécie da Ana",
+      "debit": "@caixa",
+      "credit": "@ana"
+    },
+    {
+      "key": "E03",
+      "date": "2026-09-10T10:00:00-03:00",
+      "amount": "1500.00",
+      "description": "Saque de 1.500 com 1.000 de saldo: 500 no cheque especial",
+      "debit": "@ana",
+      "credit": "@caixa"
+    },
+    {
+      "key": "E04",
+      "date": "2026-09-20T10:00:00-03:00",
+      "amount": "300.00",
+      "description": "Depósito de 300: quita 300 do cheque especial",
+      "debit": "@caixa",
+      "credit": "@ana"
+    },
+    {
+      "key": "E05",
+      "date": "2026-09-25T10:00:00-03:00",
+      "amount": "100.00",
+      "description": "Saque de 100 com saldo zero: tudo no cheque especial",
+      "debit": "@ana",
+      "credit": "@caixa"
+    }
+  ]
+}

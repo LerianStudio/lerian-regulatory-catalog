@@ -1,0 +1,93 @@
+{
+  "_about": "Org G — LIVROS MÚLTIPLOS, sintética e declarada como tal. A instituição é a ORGANIZAÇÃO (um CNPJ), com dois ledgers que são livros dela: Contas (depósitos) e Tesouraria (caixa e capital). O escopo da instituição é só a organização: todo ledger dela entra nos documentos. Setembro: capital lançado dentro da Tesouraria (v1, retroativo). Outubro: Ana deposita em espécie e saca — o caixa está na Tesouraria e o depósito em Contas, então cada movimento é CROSS-LEDGER (v2): o Midaz grava uma transação por ledger, cada uma fechada contra a @external/BRL do ledger com a rubrica da rota-ponte (accountingEntries.crossLedger). A ponte usa a mesma rubrica dos dois lados e, somados os livros, zera. A API v2 não aceita data retroativa: os lançamentos cross-ledger têm a data em que rodam (06/10/2026 na montagem original), então o 4111 do dia só é gerável no dia seguinte e o 4010 de outubro a partir de 01/11. Rubrica da ponte FICTÍCIA (1.5.1 Relações Interdependências), a conferir por um contador. Horários em -03:00; REPORT_TIMEZONE=America/Sao_Paulo é precondição.",
+  "organization": {
+    "legalName": "Livros Múltiplos COSIF (sintética, homologação)",
+    "doingBusinessAs": "Livros Múltiplos",
+    "legalDocument": "99001122000160",
+    "address": {
+      "line1": "Av. Paulista 1000",
+      "zipCode": "01310100",
+      "city": "São Paulo",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "bridge": {
+    "code": "1510000001",
+    "description": "Relações Interdependências — ponte entre os livros"
+  },
+  "ledgers": {
+    "Contas": {
+      "accountTypes": [
+        {
+          "keyValue": "passivo",
+          "name": "Passivo",
+          "defaultDirection": "credit"
+        }
+      ],
+      "accounts": [
+        {
+          "alias": "@ana",
+          "type": "passivo",
+          "code": "4111000005",
+          "name": "Ana — Depósitos de Pessoas Naturais"
+        }
+      ]
+    },
+    "Tesouraria": {
+      "accountTypes": [
+        {
+          "keyValue": "ativo",
+          "name": "Ativo",
+          "defaultDirection": "debit"
+        },
+        {
+          "keyValue": "patrimonio",
+          "name": "Patrimônio líquido",
+          "defaultDirection": "credit"
+        }
+      ],
+      "accounts": [
+        {
+          "alias": "@caixa",
+          "type": "ativo",
+          "code": "1110000009",
+          "name": "Caixa"
+        },
+        {
+          "alias": "@capital",
+          "type": "patrimonio",
+          "code": "6111000003",
+          "name": "Capital de Domiciliados no País"
+        }
+      ]
+    }
+  },
+  "transactions": [
+    {
+      "key": "G01",
+      "ledger": "Tesouraria",
+      "date": "2026-09-01T10:00:00-03:00",
+      "amount": "10000.00",
+      "description": "Integralização de capital",
+      "debit": "@caixa",
+      "credit": "@capital"
+    }
+  ],
+  "crossTransactions": [
+    {
+      "key": "G02",
+      "amount": "1000.00",
+      "description": "Depósito em espécie da Ana: caixa na Tesouraria, depósito em Contas",
+      "debit": "@caixa",
+      "credit": "@ana"
+    },
+    {
+      "key": "G03",
+      "amount": "300.00",
+      "description": "Saque de 300 da Ana",
+      "debit": "@ana",
+      "credit": "@caixa"
+    }
+  ]
+}

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Lerian Studio Ltd.
+# Use of this source code is governed by the Elastic License 2.0
+# that can be found in the LICENSE file.
 """Confere a integridade do catálogo.
 
 Existe porque a disciplina que o CONTRIBUTING descreve não se sustenta só na
@@ -11,19 +14,42 @@ reflete o manual. Isso é revisão humana contra a fonte primária, e nenhum scr
 substitui.
 """
 
+from __future__ import annotations
+
+import os
 import re
 import sys
 from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parent.parent
+# A raiz do catálogo. Sobrescrevível por CATALOG_ROOT para a suíte de teste poder
+# apontar a ferramenta para uma árvore de fixtures — sem isso, as provas de mutação
+# só existiriam como comandos digitados à mão, que é como elas nasceram.
+ROOT = Path(os.environ.get("CATALOG_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+
+# O marcador de formato de um conjunto fechado, escrito como o motor o lê
+# (pkg/reporter/yamldoc). Um arquivo que se anuncia como outra coisa não é lido como
+# conjunto — nem lá, nem aqui.
+ROW_SET_KIND = "DocumentRowSet"
+
+
 FAILURES: list[str] = []
 WARNINGS: list[str] = []
 
 
 def fail(msg: str) -> None:
-    FAILURES.append(msg)
+    """Registra uma reprovação, uma vez.
+
+    Repetição é descartada porque toda mensagem daqui NOMEIA seu ponto — o arquivo, o
+    conjunto, o campo —, então duas mensagens idênticas são o mesmo problema contado
+    duas vezes, nunca dois problemas. E contar duas vezes acontece o tempo todo agora
+    que as leituras passam por portas: uma porta chamada por oito leitores reprova
+    oito vezes, e as sete cópias empurram para fora da tela as outras reprovações,
+    que são justamente o que o curador precisa ver.
+    """
+    if msg not in FAILURES:
+        FAILURES.append(msg)
 
 
 def warn(msg: str) -> None:
@@ -31,21 +57,296 @@ def warn(msg: str) -> None:
 
 
 def load(path: Path):
+    """Lê um YAML do catálogo, reprovando em vez de estourar.
+
+    Arquivo ausente é reprovação e não exceção: a ferramenta é a rede que impede um
+    contrato errado de entrar, e uma rede que quebra não reprova nada.
+    """
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        try:
+            shown = path.relative_to(ROOT)
+        except ValueError:
+            shown = path
+        fail(f"{shown}: não foi possível ler — {exc.strerror}")
+        return None
+
+    try:
+        return yaml.safe_load(text)
     except yaml.YAMLError as exc:
         fail(f"{path.relative_to(ROOT)}: YAML inválido — {exc}")
         return None
 
 
+def sequence_at(where: str, value: object, requirement: str) -> list:
+    """Lê um valor que TEM de ser uma lista, reprovando em vez de estourar.
+
+    A terceira porta, e ela fecha o último jeito de YAML surpreender um leitor:
+    `datasets:` sem nada embaixo não é lista vazia, é `null` — e `for ds in None`
+    estoura. Vale para os quatro lugares onde um contrato tem coleção: datasets,
+    fields, parameters e rules.
+
+    Ausente e nulo são a mesma resposta, LISTA VAZIA, porque é o que
+    `.get(k, [])` já queria dizer: quem exige que a coleção exista é a conferência
+    de conteúdo, não o leitor. Já um valor que existe e não é lista é recusa: o
+    curador escreveu alguma coisa ali, e ignorá-la seria conferir um contrato
+    diferente do que ele escreveu.
+    """
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return value
+
+    fail(f"{where} é {value!r}; {requirement}")
+
+    return []
+
+
+def parameters_of(contract: dict) -> list:
+    """Os parâmetros de geração declarados, como lista."""
+    return sequence_at("parameters", contract.get("parameters"),
+                       "parameters é a lista dos parâmetros com que o documento é gerado")
+
+
+def rules_of(contract: dict) -> list:
+    """As regras declaradas, como lista."""
+    return sequence_at("rules", contract.get("rules"),
+                       "rules é a lista das conferências sobre o arquivo pronto")
+
+
+def tables_of(contract: dict) -> list:
+    """As tabelas que o contrato publica, ou nenhuma quando a chave não é lista."""
+    tables = contract.get("tables") or []
+    return tables if isinstance(tables, list) else []
+
+
+def fields_read_by_rules(contract: dict) -> set[tuple[str, str]]:
+    """Os campos que uma regra estruturada lê, por (conjunto, campo)."""
+    read: set[tuple[str, str]] = set()
+
+    for rule in rules_of(contract):
+        if not isinstance(rule, dict) or not isinstance(rule.get("appliesTo"), str):
+            continue
+
+        for block in (rule.get("transform"), rule.get("check")):
+            if not isinstance(block, dict):
+                continue
+
+            for spec in block.values():
+                if isinstance(spec, dict) and isinstance(spec.get("field"), str):
+                    read.add((rule["appliesTo"], spec["field"]))
+
+    return read
+
+
+def source_of_truth(contract: dict, key: str) -> str | None:
+    """O arquivo que o contrato ANUNCIA sob metadata.sourceOfTruth.
+
+    Porta porque `metadata` e `sourceOfTruth` eram encadeados com `.get({}).get()`
+    em dois lugares, e esse encadeamento só funciona quando cada degrau é mapeamento:
+    `sourceOfTruth: []` levantava AttributeError, e um caminho que não é texto
+    chegava inteiro ao operador `/` de Path.
+    """
+    metadata = contract.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+
+    declared = metadata.get("sourceOfTruth")
+    if not isinstance(declared, dict):
+        return None
+
+    value = declared.get(key)
+
+    return value if isinstance(value, str) and value else None
+
+
+def child_parent(ds: dict, where: str = "um conjunto") -> str | None:
+    """O conjunto de que este pende, quando ele pende de algum.
+
+    Uma porta, e deliberadamente sem dizer quantos leitores ela serve. Escrevi
+    "dois" aqui e estava errado; corrigi para "três" e estava errado de novo; eram
+    quatro. Todos tomavam `.get("dataset")` na fé de que `childOf` fosse um
+    mapeamento, e `childOf: []` estourava em todos.
+
+    Contar de cabeça é o que falha. Um número no comentário envelhece no primeiro
+    leitor novo e ainda dá a quem lê a impressão de que alguém conferiu — a porta
+    existe para que ninguém precise contar.
+    """
+    childof = optional_at(where, ds, "childOf")
+    if childof is None:
+        return None
+
+    if not isinstance(childof, dict):
+        return None
+
+    parent = childof.get("dataset")
+
+    return parent if isinstance(parent, str) and parent else None
+
+
+def required_text(where: str, value: object, requirement: str) -> str | None:
+    """Lê um valor que TEM de ser texto, reprovando em vez de estourar.
+
+    A segunda porta guardada deste arquivo, e ela existe pelo mesmo motivo da
+    primeira: YAML entrega listas e mapas onde o leitor esperava uma palavra, e
+    Python NÃO reclama disso educadamente — `["a"] in {"string"}` levanta
+    `unhashable type`, e uma lista usada como chave de dicionário faz o mesmo. O
+    resultado é traceback, e ferramenta que estoura com entrada malformada não
+    reprova nada.
+
+    Nove lugares deste arquivo assumiam texto: nome de conjunto, nome de campo,
+    `type` e `normalize` de campo, nome e `type` de parâmetro, item de
+    `allowedMonths`, a própria regra e o `appliesTo` dela. Guardar um por um seria
+    escrever a mesma conferência nove vezes e esquecê-la na décima — que é
+    literalmente o que aconteceu quando guardei `declared_names` e esqueci o
+    `by_name` ao lado.
+
+    Devolve None quando não é texto, e a recusa já foi registrada.
+    """
+    if isinstance(value, str) and value:
+        return value
+
+    fail(f"{where} é {value!r}; {requirement}")
+
+    return None
+
+
+def optional_at(where: str, node: dict, key: str) -> object:
+    """Lê uma construção OPCIONAL, separando ausente de escrita-e-vazia.
+
+    A quarta porta. As três anteriores guardam a FORMA de um valor; esta guarda a
+    diferença entre não escrever nada e escrever `chave:` sem nada embaixo — que em
+    YAML é `null`, e que `.get(chave)` devolve idêntico a ausente.
+
+    A diferença importa porque as duas vêm de pessoas diferentes. Ausente é o curador
+    dizendo "este documento não tem isso". Escrita e vazia é o curador tendo começado
+    a escrever e parado: ele declarou `refersTo:` e foi cuidar de outra coisa, e o
+    contrato entrou no catálogo com a integridade referencial que ele quis e que
+    ninguém confere.
+
+    Nenhum contrato curado usa `null` explícito para dizer "nenhum" — ausência é como
+    isso se diz aqui —, então uma chave escrita e vazia é sempre um trabalho pela
+    metade, nunca uma escolha.
+
+    Devolve None nos dois casos; a recusa da segunda já foi registrada.
+    """
+    if key not in node:
+        return None
+
+    value = node[key]
+    if value is None:
+        fail(f"{where}.{key} foi escrita e está vazia; ou declare o que ela diz, ou tire a linha")
+        return None
+
+    return value
+
+
+def mapping_at(where: str, value: object, requirement: str) -> dict | None:
+    """Idem para um valor que TEM de ser um mapeamento."""
+    if isinstance(value, dict):
+        return value
+
+    fail(f"{where} é {value!r}; {requirement}")
+
+    return None
+
+
+def datasets_of(contract: dict) -> list[dict]:
+    """A única porta por onde os conjuntos de um contrato são LIDOS.
+
+    Existe como porta e não como conveniência porque o mesmo defeito entrou duas
+    vezes: um leitor que toma `ds["name"]` na fé ESTOURA num contrato que não o tem,
+    e uma ferramenta que estoura com entrada malformada não reprova nada. Guardei
+    declared_names, esqueci o `by_name` de check_structure, e a suíte de mutação
+    encontrou o gêmeo — que é exatamente o que ela existe para fazer.
+
+    Quem DENUNCIA a ausência é check_dataset_shapes, que lê a forma crua e roda
+    primeiro. Todo o resto lê por aqui.
+    """
+    datasets = sequence_at("datasets", contract.get("datasets"),
+                           "datasets é a lista dos conjuntos de que o documento é escrito")
+
+    return [ds for ds in datasets if isinstance(ds, dict) and isinstance(ds.get("name"), str) and ds["name"]]
+
+
+def fields_of(ds: dict) -> list[dict]:
+    """Idem para os campos de um conjunto."""
+    fields = sequence_at(f"os fields de {ds.get('name', '<sem nome>')!r}", ds.get("fields"),
+                         "fields é a lista dos campos do conjunto")
+
+    return [f for f in fields if isinstance(f, dict) and isinstance(f.get("name"), str) and f["name"]]
+
 def declared_names(contract: dict) -> tuple[dict[str, set[str]], set[str]]:
-    """Conjuntos e seus campos, mais os parâmetros de geração."""
+    """Conjuntos e seus campos, mais os parâmetros de geração.
+
+    O que não tem nome é OMITIDO, e não tomado na fé de que exista: quase toda
+    conferência abaixo lê por aqui, então um conjunto sem `name` fazia a ferramenta
+    ESTOURAR — e uma ferramenta que estoura com entrada malformada não reprova nada.
+    Quem denuncia a ausência é check_dataset_shapes, que roda primeiro.
+    """
     datasets = {
-        ds["name"]: {f["name"] for f in ds.get("fields", [])}
-        for ds in contract.get("datasets", [])
+        ds["name"]: {f["name"] for f in fields_of(ds) if isinstance(f, dict) and f.get("name")}
+        for ds in datasets_of(contract)
+        if isinstance(ds, dict) and ds.get("name")
     }
-    parameters = {p["name"] for p in contract.get("parameters", [])}
+    parameters = {
+        p["name"]
+        for p in parameters_of(contract)
+        if isinstance(p, dict) and isinstance(p.get("name"), str) and p["name"]
+    }
     return datasets, parameters
+
+
+def derived_fields(contract: dict) -> dict[tuple[str, str], str]:
+    """Os campos DERIVADOS de cada conjunto: (conjunto, campo) -> campo de onde são cortados.
+
+    Um campo com `prefixOf` não vem de origem nenhuma: o motor o corta de outro campo
+    da mesma linha. Nenhum binding o mapeia, e o campo de onde ele é cortado conta
+    como posicionado sempre que o derivado é.
+    """
+    out: dict[tuple[str, str], str] = {}
+    for ds in datasets_of(contract):
+        for field in fields_of(ds):
+            if isinstance(field, dict) and isinstance(field.get("prefixOf"), str):
+                out[(ds.get("name"), field.get("name"))] = field["prefixOf"]
+    return out
+
+
+def query_list(binding: dict) -> list[dict]:
+    """As consultas de um binding, só as bem formadas.
+
+    UMA porta de leitura, e não uma guarda repetida em cada leitor: três funções
+    diferentes liam `binding["queries"]` e eu blindei duas, deixando a terceira
+    estourar. Caminho gêmeo esquecido é o defeito que mais se repetiu neste
+    validador — a resposta estrutural é não ter caminhos gêmeos.
+
+    Quem precisa REPROVAR a forma malformada faz isso explicitamente
+    (check_binding_queries); os demais leitores só querem a lista utilizável.
+    """
+    raw = binding.get("queries")
+    if not isinstance(raw, list):
+        return []
+
+    usable = []
+    for q in raw:
+        if not isinstance(q, dict):
+            continue
+
+        # Não basta a CONSULTA ser mapa: um `join` malformado dentro dela chega
+        # intacto a quem consome a lista, e produced_columns percorre os joins de uma
+        # consulta composta sem agregação. A porta só entrega o que é utilizável de
+        # ponta a ponta; quem REPROVA a forma é check_binding_queries, num lugar só.
+        join = q.get("join")
+        if join is not None and (
+            not isinstance(join, list) or any(not isinstance(j, dict) for j in join)
+        ):
+            continue
+
+        usable.append(q)
+
+    return usable
 
 
 def check_template(doc_dir: Path, contract: dict) -> None:
@@ -66,14 +367,53 @@ def check_template(doc_dir: Path, contract: dict) -> None:
     body = re.sub(r"\{#.*?#\}", "", body, flags=re.DOTALL)  # comentários não contam
 
     datasets, parameters = declared_names(contract)
-    loops = dict(re.findall(r"\{%-?\s*for\s+(\w+)\s+in\s+(\w+)", body))
+    children = {
+        ds["name"]: child_parent(ds)
+        for ds in datasets_of(contract)
+        if child_parent(ds) is not None
+    }
+    # Multimapa, não dict: `dict(findall(...))` guardaria só a ÚLTIMA ocorrência de
+    # cada nome de iterador, e dois `for r in ...` em blocos irmãos — comum — passariam
+    # a resolver ambos pelo último iterável, aprovando ou reprovando a referência
+    # errada em silêncio.
+    loops: dict[str, list[str]] = {}
+    for head, iterable in re.findall(r"\{%-?\s*for\s+(\w+)\s+in\s+([\w.]+)", body):
+        loops.setdefault(head, []).append(iterable)
+
+    def dataset_of(head: str, depth: int = 0) -> str | None:
+        """Resolve um iterador até o conjunto que ele percorre.
+
+        Um conjunto childOf é alcançado como lista aninhada na linha do pai
+        (`{% for d in r.operacoesDiarias %}`), então o iterável pode ser
+        `<iterador-pai>.<conjunto-filho>` — e o filho só é legítimo se o contrato
+        declara exatamente essa filiação. Um `.filho` sobre o pai errado é um
+        conjunto que o render nunca vai popular, e a seção sai vazia num arquivo
+        que parece completo.
+        """
+        if depth > 8 or head not in loops:
+            return head if head in datasets else None
+
+        # Um nome de iterador pode ser reusado; aceita se QUALQUER um dos iteráveis
+        # resolver, para não reprovar um template legítimo por homonímia.
+        for iterable in loops[head]:
+            if "." not in iterable:
+                if iterable in datasets:
+                    return iterable
+                continue
+
+            parent_iter, child = iterable.split(".", 1)
+            parent_ds = dataset_of(parent_iter, depth + 1)
+
+            if child in children and children[child] == parent_ds:
+                return child
+
+        return None
+
     refs = set(re.findall(r"\{\{\s*([A-Za-z_]\w*)\.(\w+)", body))
 
     placed: set[tuple[str, str]] = set()
     for head, field in sorted(refs):
-        dataset = loops.get(head, head)
-
-        if dataset == "system":
+        if head == "system":
             if field not in parameters:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: template usa system.{field}, "
@@ -81,10 +421,12 @@ def check_template(doc_dir: Path, contract: dict) -> None:
                 )
             continue
 
-        if dataset not in datasets:
+        dataset = dataset_of(head)
+        if dataset is None:
             fail(
-                f"{doc_dir.relative_to(ROOT)}: template itera sobre '{dataset}', "
-                f"que o contrato não declara em datasets"
+                f"{doc_dir.relative_to(ROOT)}: template lê {head}.{field}, e "
+                f"'{head}' não resolve para nenhum conjunto do contrato "
+                f"(loop aninhado só alcança um conjunto childOf do pai certo)"
             )
             continue
 
@@ -95,6 +437,15 @@ def check_template(doc_dir: Path, contract: dict) -> None:
             )
             continue
 
+        placed.add((dataset, field))
+
+    # O campo de onde um derivado é cortado está no arquivo através dele.
+    for (dataset, field), source in derived_fields(contract).items():
+        if (dataset, field) in placed:
+            placed.add((dataset, source))
+
+    # Um campo que existe para uma regra conferir não vai ao arquivo.
+    for dataset, field in fields_read_by_rules(contract):
         placed.add((dataset, field))
 
     for dataset, fields in datasets.items():
@@ -155,6 +506,10 @@ def check_no_extraction_in_contract(doc_dir: Path, contract: dict) -> None:
     def walk(node, path: str) -> None:
         if isinstance(node, dict):
             for key, value in node.items():
+                # As regras e as tabelas são o vocabulário do PRÓPRIO contrato: uma
+                # regra cita a `table` que o contrato publica, não uma do cliente.
+                if not path and key in ("rules", "tables"):
+                    continue
                 if key in EXTRACTION_KEYS:
                     fail(
                         f"{doc_dir.relative_to(ROOT)}: contrato usa '{key}' em "
@@ -191,9 +546,79 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             f"'{binding.get('contract')}', não para este contrato"
         )
 
-    queries = {q.get("name") for q in binding.get("queries", [])}
+    check_binding_queries(doc_dir, binding)
+    check_parent_match(doc_dir, contract, binding)
+    check_column_survival(doc_dir, binding)
+
+    queries = {q.get("name") for q in query_list(binding)}
     declared, _ = declared_names(contract)
     bound = binding.get("datasets", {})
+
+    # Um campo OBRIGATÓRIO resolvido por `manual` sem valor é um regulatório saindo a
+    # que faltam dados obrigatórios. A regra tem de ser EXECUTÁVEL: dizer em
+    # comentário que "o motor deve bloquear" não bloqueia nada — era o que este
+    # repositório fazia.
+    #
+    # Um binding pode declarar-se `generatable: false` — o caso de um exemplo que
+    # exercita o formato antes de a fonte existir. Aí a incompletude tem de ser
+    # ENUMERADA (incompleteFields) e justificada (incompleteReason). Sem essa
+    # declaração, manual pendente em campo obrigatório REPROVA.
+    required_by_dataset = {
+        ds["name"]: {f["name"] for f in fields_of(ds) if f.get("required") is True}
+        for ds in datasets_of(contract)
+    }
+    contract_row_sets = {ds["name"]: ds.get("rowSet") for ds in datasets_of(contract)}
+    generatable = binding.get("generatable", True)
+
+    # Um override só LIMPA a pendência se trouxer VALOR. Aceitar
+    # `manualOverrides: [{field: x}]` sem valor reabria exatamente o furo que a regra
+    # de manual pendente fechou, uma camada abaixo: o campo saía de `blocking` e o
+    # arquivo seguia sem o dado obrigatório.
+    overrides: set[str] = set()
+    for i, override in enumerate(binding.get("manualOverrides") or []):
+        if not isinstance(override, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: manualOverrides[{i}] não é um mapa")
+            continue
+
+        field_ref = override.get("field")
+        if not isinstance(field_ref, str) or not field_ref.strip():
+            fail(f"{doc_dir.relative_to(ROOT)}: manualOverrides[{i}] não nomeia um `field`")
+            continue
+
+        value = override.get("value")
+        if value is None or (isinstance(value, str) and not value.strip()):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: manualOverrides de '{field_ref}' não traz "
+                f"`value` — um override sem valor não preenche o campo e não pode "
+                f"dispensar a pendência"
+            )
+            continue
+
+        overrides.add(field_ref)
+
+    # incompleteFields tem de ser lista de nomes: um aninhamento acidental
+    # (`[[campo]]`) fazia set() estourar em vez de reprovar.
+    raw_incomplete = binding.get("incompleteFields") or []
+    declared_incomplete: set[str] = set()
+    if not isinstance(raw_incomplete, list):
+        fail(f"{doc_dir.relative_to(ROOT)}: `incompleteFields` não é uma lista")
+    else:
+        for i, item in enumerate(raw_incomplete):
+            if not isinstance(item, str) or not item.strip():
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: incompleteFields[{i}] não é um nome de "
+                    f"campo: {item!r}"
+                )
+                continue
+            declared_incomplete.add(item)
+
+    pending: set[str] = set()
+
+    if generatable is False and not binding.get("incompleteReason"):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: binding declara generatable: false sem "
+            f"`incompleteReason` — a incompletude precisa ser justificada"
+        )
 
     for dataset, fields in declared.items():
         entry = bound.get(dataset)
@@ -201,7 +626,15 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve o conjunto '{dataset}'")
             continue
 
-        source = entry.get("from", {}).get("query")
+        raw_from = entry.get("from")
+        if raw_from is not None and not isinstance(raw_from, dict):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: o `from` do conjunto '{dataset}' não é um "
+                f"mapa: {raw_from!r}"
+            )
+            raw_from = None
+
+        source = (raw_from or {}).get("query")
         if source is not None and source not in queries:
             fail(
                 f"{doc_dir.relative_to(ROOT)}: conjunto '{dataset}' vem da consulta "
@@ -209,79 +642,1884 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             )
 
         resolved = entry.get("fields", {})
+        derived = derived_fields(contract)
         for field in sorted(fields):
             spec = resolved.get(field)
+            if (dataset, field) in derived:
+                # Calculado pelo motor a partir de outro campo: o binding mapeia a
+                # ORIGEM, nunca o derivado — o motor recusaria o binding. Pela
+                # PRESENÇA da chave: `cnpj8:` sem valor também é um mapeamento.
+                if isinstance(resolved, dict) and field in resolved:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: binding.example mapeia {dataset}.{field}, que o "
+                        f"contrato deriva de '{derived[(dataset, field)]}' (prefixOf); mapeie a origem"
+                    )
+                continue
             if spec is None:
-                fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}")
+                # Um campo INCONDICIONALMENTE obrigatório sem origem é erro: toda
+                # geração falharia. Um condicional/opcional pode legitimamente não se
+                # resolver quando o binding torna a condição impossível (marca com
+                # terminalProprio fixo em 0) — mas fica em aviso, para o exemplo ser
+                # omisso por decisão e não por esquecimento.
+                if field in required_by_dataset.get(dataset, set()):
+                    fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve {dataset}.{field}, que é obrigatório incondicional")
+                else:
+                    warn(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve o condicional {dataset}.{field} — confirme que a condição nunca vale neste binding")
+                continue
+
+            valid = {"query", "constant", "parameter", "manual", "rowSet"}
+
+            # byRowClass: um campo cuja origem depende da CLASSE da linha (no 4111, o
+            # saldoDia vem da consulta para estoque e é manual para fluxo). Cada caso
+            # é uma origem própria, e todo caso precisa declarar `when` e um `from`
+            # válido — assim nenhuma linha fica sem origem em silêncio, que é
+            # justamente como um regulatório sai a que faltam contas obrigatórias.
+            cases = spec.get("byRowClass")
+            if isinstance(cases, list):
+                if not cases:
+                    fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass está vazio")
+                for i, case in enumerate(cases):
+                    if not case.get("when"):
+                        fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] sem `when`")
+                    if case.get("from") not in valid:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                            f"resolve por {case.get('from')!r}; use {', '.join(sorted(valid))}"
+                        )
+                    # A MESMA precondição do caminho direto: `rowSet` só significa
+                    # algo se o conjunto declarar rowSet no contrato. Aplicá-la num
+                    # caminho e não no outro é o furo de sempre — a origem existe em
+                    # dois lugares, a conferência tem de existir nos dois.
+                    if case.get("from") == "rowSet" and not contract_row_sets.get(dataset):
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                            f"resolve por rowSet, mas o contrato não declara rowSet no "
+                            f"conjunto '{dataset}'"
+                        )
+
+                    if case.get("from") == "manual" and case.get("value") is None:
+                        if not case.get("pendingReason"):
+                            fail(
+                                f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                                f"é manual sem valor e sem `pendingReason`"
+                            )
+                        if field in required_by_dataset.get(dataset, set()):
+                            pending.add(f"{dataset}.{field}")
                 continue
 
             how = spec.get("from")
-            if how not in {"query", "constant", "parameter", "manual"}:
+            # rowSet: o valor da linha vem do conjunto fechado que o catálogo
+            # declara (contas.yaml), não da consulta — é a origem própria de um
+            # documento cujo conjunto de linhas é do catálogo e não do cliente.
+            if how not in valid:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
-                    f"{how!r}; use query, constant, parameter ou manual"
+                    f"{how!r}; use query, constant, parameter, manual, rowSet ou byRowClass"
                 )
+
+            # `rowSet` só significa algo se o CONJUNTO declarar rowSet no contrato:
+            # aceitar o nome da origem sem conferir a precondição deixa o campo
+            # apontando para um conjunto de linhas que não existe.
+            if how == "rowSet" and not contract_row_sets.get(dataset):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por rowSet, "
+                    f"mas o contrato não declara rowSet no conjunto '{dataset}'"
+                )
+
+            if how == "manual" and spec.get("value") is None:
+                if not spec.get("pendingReason"):
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} é manual sem "
+                        f"valor e sem `pendingReason`"
+                    )
+                if field in required_by_dataset.get(dataset, set()):
+                    pending.add(f"{dataset}.{field}")
+
+    _verdict_on_pending(doc_dir, generatable, declared_incomplete, overrides, pending)
+
+
+def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
+    """Um documento de conjunto FECHADO declara suas linhas num arquivo do catálogo,
+    e esse arquivo tem de existir e bater com o contrato.
+
+    Diferente do balancete, onde as linhas são do cliente, aqui elas são do catálogo
+    (contas.yaml). Um arquivo ausente é um documento que sai VAZIO em silêncio; um
+    código no conjunto que não bate com o pattern do campo é a deriva 8-vs-10 dígitos
+    entrando pela porta dos fundos.
+    """
+    set_path = source_of_truth(contract, "accountSet")
+
+    row_datasets = [
+        ds for ds in datasets_of(contract)
+        if isinstance(optional_at(f"{doc_dir.relative_to(ROOT)}: {ds['name']}", ds, "rowSet"), dict)
+    ]
+
+    if not set_path and not row_datasets:
+        return
+
+    if set_path and not (doc_dir / set_path).exists():
+        fail(f"{doc_dir.relative_to(ROOT)}: metadata.accountSet cita {set_path}, que não existe")
+
+    for ds in row_datasets:
+        ref = ds["rowSet"].get("from")
+        if not isinstance(ref, str) or not ref:
+            fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `from`")
+            continue
+
+        # rowSet sem accountSet: a consistência abaixo só roda quando o contrato
+        # ANUNCIA o conjunto em metadata; sem isso a conferência se apaga e o
+        # conjunto usado nunca é confrontado com o declarado. Um rowSet obriga o
+        # accountSet.
+        if not set_path:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ds['name']} tem rowSet mas o contrato "
+                f"não declara metadata.sourceOfTruth.accountSet — o conjunto usado "
+                f"precisa ser o anunciado"
+            )
+
+        # accountSet e rowSet.from têm de ser o MESMO conjunto: dois arquivos válidos
+        # mas diferentes passariam cada um em sua conferência isolada enquanto o
+        # binding resolve um conjunto e o contrato anuncia outro.
+        if set_path and ref != set_path:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.from é '{ref}' e "
+                f"metadata.accountSet é '{set_path}' — o conjunto anunciado e o usado "
+                f"têm de ser o mesmo arquivo"
+            )
+
+        ref_file = doc_dir / ref
+        if not ref_file.exists():
+            fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.from cita {ref}, que não existe")
+            continue
+
+        # Robustez de forma: um conjunto com raiz que não é mapa, `rows` que não é
+        # lista, ou uma linha que não é mapa faria os .get() abaixo estourarem em vez
+        # de reprovar. Um validador que quebra com entrada malformada é pior que um
+        # que reprova.
+        loaded = load(ref_file)
+        if not isinstance(loaded, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não é um mapa YAML na raiz")
+            continue
+
+        # O conjunto se anuncia. O motor aceita o marcador ausente porque lê também
+        # fixtura escrita à mão; um arquivo CURADO não tem essa desculpa — sem o
+        # marcador, um contrato ou um binding colocado neste caminho seria lido como
+        # conjunto e publicaria o que quer que seu primeiro mapa carregasse.
+        kind = loaded.get("kind")
+        if kind != ROW_SET_KIND:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ref} declara kind {kind!r} — um conjunto "
+                f"curado se anuncia como {ROW_SET_KIND!r}"
+            )
+
+        rows = loaded.get("rows")
+        if not isinstance(rows, list):
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} não tem uma lista `rows`")
+            continue
+
+        malformed = [r for r in rows if not isinstance(r, dict)]
+        for r in malformed:
+            fail(f"{doc_dir.relative_to(ROOT)}: {ref} tem uma conta que não é mapa: {r!r}")
+        rows = [r for r in rows if isinstance(r, dict)]
+
+        # A COLUNA QUE IDENTIFICA A LINHA É A QUE O CONTRATO DECLARA, e é lida daqui
+        # em vez de fixada no validador: o motor exige que cada linha carregue a
+        # coluna nomeada em `rowSet.key`, e um segundo nome escrito aqui passaria a
+        # conferir uma coluna que o motor não olha.
+        key = ds["rowSet"].get("key")
+        if not isinstance(key, str) or not key:
+            fail(f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet não declara `key`")
+            continue
+        key_field = next((f for f in fields_of(ds) if f["name"] == key), None)
+
+        # A CHAVE NOMEIA UM CAMPO DO CONJUNTO. Sem esta conferência, `key` com erro
+        # de digitação passa desde que as linhas carreguem uma propriedade com esse
+        # nome — e aí `key_field` é None, o pattern do campo não é conferido, e a
+        # identidade aceita é uma que o documento não declara.
+        if key_field is None:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {ds['name']}.rowSet.key é '{key}', que "
+                f"não é campo declarado do conjunto — a identidade da linha tem de ser "
+                f"um campo do documento"
+            )
+
+        pattern = key_field.get("pattern") if key_field else None
+        if pattern is not None and not isinstance(pattern, str):
+            # _check_field_shape já recusa isto nomeando o campo; aqui só não se
+            # pode ENTREGÁ-LO ao motor de expressões regulares.
+            pattern = None
+
+        for r in rows:
+            code = str(r.get(key, ""))
+            if not code:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, uma linha não carrega "
+                    f"`{key}` — é a coluna que identifica a linha do conjunto"
+                )
+
+            # O código de dez dígitos é o mascarado sem pontuação. Conferir isso é o
+            # que pega a transcrição manual errada — que já aconteceu (um código de
+            # controle e os cinco de fluxo saíram trocados na primeira versão). Por
+            # isso `masked` é OBRIGATÓRIO: sem ele o code não tem contra o que ser
+            # conferido e a conta escapa exatamente da checagem que mais importa.
+            masked = r.get("masked")
+            if not masked:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, a conta '{code}' não tem "
+                    f"`masked` — o código fica sem a forma oficial contra a qual conferir"
+                )
+            elif code != re.sub(r"[.\-]", "", str(masked)):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: em {ref}, {key} '{code}' não é o "
+                    f"masked '{masked}' sem pontuação — transcrição do código diverge"
+                )
+
+            if pattern and not re.fullmatch(pattern, code):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: conta '{code}' em {ref} não bate com o "
+                    f"pattern de {ds['name']}.{key} — deriva de formato do código"
+                )
+
+        codes = [str(r.get(key)) for r in rows]
+        for dup in {c for c in codes if codes.count(c) > 1}:
+            fail(f"{doc_dir.relative_to(ROOT)}: conta '{dup}' duplicada em {ref}")
+
+
+
+def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrides, pending) -> None:
+    """O veredito de gerabilidade: campo obrigatório manual sem valor bloqueia.
+
+    É a regra que a prosa do binding descrevia e nada impunha.
+    """
+    blocking = {f for f in pending if f not in overrides}
+
+    if generatable is False:
+        for field in sorted(blocking - declared_incomplete):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {field} é obrigatório e está manual sem "
+                f"valor, mas não consta em `incompleteFields` — a incompletude precisa "
+                f"ser enumerada, não vaga"
+            )
+        for field in sorted(declared_incomplete - blocking):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: `incompleteFields` lista {field}, que não "
+                f"é campo obrigatório pendente — lista desatualizada"
+            )
+        return
+
+    for field in sorted(blocking):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: {field} é obrigatório e resolve por manual sem "
+            f"valor: este binding NÃO gera documento válido. Forneça o valor em "
+            f"`manualOverrides`, ou declare `generatable: false` com `incompleteReason` e "
+            f"`incompleteFields`"
+        )
+
+
+CONDITION_OPS = {"equals", "in", "notIn", "is"}
+
+
+# O que cada construção que aponta para outro lugar TEM de nomear. `via` é opcional
+# em toda condição e por isso não está aqui.
+REFERENCE_MEMBERS = {
+    "refersTo": ("dataset", "field"),
+    "equalsSumOf": ("dataset", "field"),
+    "requiredWhen": ("field",),
+    "forbiddenWhen": ("field",),
+}
+
+
+def reference_at(doc_dir: Path, where: str, field: dict, key: str) -> dict | None:
+    """Lê uma construção que aponta para outro lugar: refersTo, equalsSumOf, uma
+    condição.
+
+    Todas são mapeamentos e todas eram lidas com `.get()` direto. Ausente responde
+    None, que é "não declarou"; presente e malformado é RECUSA, porque o curador
+    escreveu a construção e engoli-la é a seção sumir do arquivo sem nada acusar.
+    """
+    declared = optional_at(f"{doc_dir.relative_to(ROOT)}: {where}", field, key)
+    if declared is None:
+        return None
+
+    at = f"{doc_dir.relative_to(ROOT)}: {where}.{key}"
+
+    reference = mapping_at(at, declared, f"{key} é um mapeamento")
+    if reference is None:
+        return None
+
+    # O MIOLO também, e aqui e não em cada uso: `dataset`, `field` e `via` são
+    # nomes, e cada um vira busca em conjunto ou chave de dicionário logo adiante.
+    # Conferir no uso seria a mesma conferência escrita seis vezes.
+    #
+    # Os OBRIGATÓRIOS são exigidos, e não apenas conferidos quando presentes. Um
+    # `refersTo: {}` respondia mapeamento vazio, que é falso em Python, e o chamador
+    # lia isso como "não declarou" e pulava a conferência inteira — o curador escreveu
+    # a integridade referencial e ela não valia para nada.
+    for inner in REFERENCE_MEMBERS[key]:
+        if required_text(f"{at}.{inner}", reference.get(inner),
+                         "aponta para um nome, escrito como texto") is None:
+            return None
+
+    for inner in ("via",):
+        if inner in reference and required_text(f"{at}.{inner}", reference.get(inner),
+                                                "aponta para um nome, escrito como texto") is None:
+            return None
+
+    return reference
+
+
+def check_structure(doc_dir: Path, contract: dict) -> None:
+    """As construções estruturais do contrato apontam para coisas que existem.
+
+    Cada uma nasceu de uma exigência real e cada referência quebrada tem um modo de
+    falha silencioso próprio: um childOf para pai errado é uma seção que o render
+    nunca popula; um refersTo para campo inexistente é integridade referencial que
+    ninguém confere; um equalsSumOf órfão é uma reconciliação que diz sempre sim; e
+    um requiredWhen sobre campo fantasma é uma condicional que nunca dispara — o
+    campo vira opcional de fato num arquivo em que era obrigatório.
+    """
+    datasets, _ = declared_names(contract)
+    by_name = {ds["name"]: ds for ds in datasets_of(contract)}
+
+    for ds in datasets_of(contract):
+        name = ds["name"]
+
+        parent = child_parent(ds)
+        if parent is not None and parent not in datasets:
+            fail(f"{doc_dir.relative_to(ROOT)}: {name} é childOf de '{parent}', que não existe")
+
+        for field in fields_of(ds):
+            fname = field["name"]
+
+            ref = reference_at(doc_dir, f"{name}.{fname}", field, "refersTo")
+            if ref:
+                target = ref.get("dataset")
+                if target not in datasets:
+                    fail(f"{doc_dir.relative_to(ROOT)}: {name}.{fname} refersTo conjunto '{target}', que não existe")
+                elif ref.get("field") not in datasets[target]:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {name}.{fname} refersTo "
+                        f"{target}.{ref.get('field')}, campo que não existe"
+                    )
+
+            sum_of = reference_at(doc_dir, f"{name}.{fname}", field, "equalsSumOf")
+            if sum_of:
+                target = sum_of.get("dataset")
+                target_ds = by_name.get(target)
+                if target_ds is None:
+                    fail(f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf conjunto '{target}', que não existe")
+                else:
+                    if child_parent(target_ds) != name:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf "
+                            f"'{target}', que não é childOf de {name} — uma soma de "
+                            f"não-filhos reconcilia coisa nenhuma"
+                        )
+                    if sum_of.get("field") not in datasets.get(target, set()):
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} equalsSumOf "
+                            f"{target}.{sum_of.get('field')}, campo que não existe"
+                        )
+
+            for kind in ("requiredWhen", "forbiddenWhen"):
+                cond = reference_at(doc_dir, f"{name}.{fname}", field, kind)
+                if not cond:
+                    continue
+
+                ops = set(cond) & CONDITION_OPS
+                if len(ops) != 1:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} precisa de "
+                        f"exatamente uma condição dentre {sorted(CONDITION_OPS)}"
+                    )
+
+                via = cond.get("via")
+                if via is not None:
+                    via_field = next((f for f in fields_of(ds) if f["name"] == via), None)
+                    # Pela mesma porta que as outras duas leituras de refersTo. Esta
+                    # ficou de fora quando a porta foi criada, e a varredura não a
+                    # denunciou porque fixture nenhuma usava `via` — o ramo inteiro
+                    # nunca era executado por ela. A cobertura da varredura é a
+                    # cobertura das fixturas.
+                    ref = reference_at(doc_dir, f"{name}.{via}", via_field or {}, "refersTo")
+                    if ref is None:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} usa "
+                            f"via '{via}', que não é um campo com refersTo deste conjunto"
+                        )
+                    elif cond.get("field") not in datasets.get(ref.get("dataset"), set()):
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} via "
+                            f"{via} aponta para {ref.get('dataset')}.{cond.get('field')}, "
+                            f"campo que não existe"
+                        )
+                elif cond.get("field") not in datasets[name]:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: {name}.{fname} {kind} condiciona "
+                        f"em '{cond.get('field')}', campo que este conjunto não declara"
+                    )
+
+
+REMOVED_QUERY_KEYS = {
+    "accumulate": "o período é um filtro na data-base: `{parameter: dataBase, at: end}`",
+}
+REMOVED_MEASURE_KEYS = {
+    "sign": "o sinal é uma coluna calculada (`compute`)",
+    "statedIn": "a natureza é regra do contrato (`rules`, tabela `natureza`)",
+}
+PARAMETER_VALUE_KEYS = {"parameter", "at", "of", "calendar"}
+
+
+def _check_removed_grammar(doc_dir: Path, qname: str, query: dict) -> None:
+    """A gramática que saiu do motor: ele a recusa como chave desconhecida, e aqui
+    ela é recusada dizendo o que a substitui."""
+    aggregate = _aggregation(query) or {}
+
+    for key, instead in REMOVED_QUERY_KEYS.items():
+        if key in aggregate or key in query:
+            fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' usa `{key}`, que o motor não tem mais; {instead}")
+
+    for measure in aggregate.get("measures") or []:
+        if not isinstance(measure, dict):
+            continue
+        for key, instead in REMOVED_MEASURE_KEYS.items():
+            if key in measure:
+                fail(f"{doc_dir.relative_to(ROOT)}: a medida '{measure.get('as')}' de '{qname}' usa `{key}`, que o motor não tem mais; {instead}")
+
+
+def _check_computes(doc_dir: Path, qname: str, query: dict) -> None:
+    """Uma coluna calculada é um `case` fechado sobre uma coluna, com `otherwise`."""
+    computes = query.get("compute")
+    if computes is None:
+        return
+
+    where = f"{doc_dir.relative_to(ROOT)}: consulta '{qname}'"
+    if not isinstance(computes, list):
+        fail(f"{where}: compute não é uma lista")
+        return
+
+    names: set[str] = set()
+    for compute in computes:
+        if not isinstance(compute, dict) or set(compute) != {"as", "case"}:
+            fail(f"{where}: cada coluna calculada é um mapeamento de as e case")
+            continue
+
+        name = compute.get("as")
+        if not isinstance(name, str) or not name:
+            fail(f"{where}: uma coluna calculada tem as {name!r}; as é o nome da coluna, em texto")
+            continue
+        if name in names:
+            fail(f"{where}: calcula '{name}' duas vezes")
+        names.add(name)
+
+        case = compute.get("case")
+        if not isinstance(case, dict) or set(case) - {"column", "when", "otherwise"}:
+            fail(f"{where}: o case de '{name}' é um mapeamento de column, when e otherwise")
+            continue
+        if not isinstance(case.get("column"), str) or not case["column"]:
+            fail(f"{where}: o case de '{name}' não diz que coluna escolhe o caso")
+        when = case.get("when")
+        if not isinstance(when, dict) or not when:
+            fail(f"{where}: o case de '{name}' não lista caso nenhum em `when`")
+            when = {}
+        for value, answer in when.items():
+            _check_case_answer(where, name, f"when {value!r}", answer)
+        if "otherwise" not in case:
+            fail(f"{where}: o case de '{name}' não tem otherwise; diga o que um valor não listado vira — refuse ou {{constant: ...}}")
+        elif case["otherwise"] != "refuse":
+            _check_case_answer(where, name, "otherwise", case["otherwise"])
+
+
+def _check_case_answer(where: str, name: str, which: str, answer: object) -> None:
+    if not isinstance(answer, dict) or len(answer) != 1 or not set(answer) <= {"column", "negate", "constant"}:
+        fail(f"{where}: {which} de '{name}' responde com exatamente um de column, negate ou constant")
+
+
+def _check_parameter_values(doc_dir: Path, qname: str, filters: object) -> None:
+    """Um valor de filtro lido de um parâmetro: um só, e a ponta certa do período."""
+    if not isinstance(filters, list):
+        return
+
+    edges = {"start": "gte", "end": "lt"}
+    for condition in filters:
+        if not isinstance(condition, dict):
+            continue
+        values = condition.get("values")
+        if not isinstance(values, list):
+            continue
+        references = [v for v in values if isinstance(v, dict)]
+        if not references:
+            continue
+
+        where = f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}'"
+        if len(values) != 1:
+            fail(f"{where}: lê um parâmetro e outros valores; uma condição lê valores escritos ou um parâmetro")
+            continue
+
+        reference = references[0]
+        if set(reference) - PARAMETER_VALUE_KEYS or not isinstance(reference.get("parameter"), str):
+            fail(f"{where}: um valor de parâmetro é parameter, e opcionalmente at, of e calendar")
+            continue
+
+        at = reference.get("at")
+        if at is None:
+            if "of" in reference or "calendar" in reference:
+                fail(f"{where}: descreve um período sem dizer a ponta (`at`)")
+            continue
+        if not isinstance(at, str) or at not in edges:
+            fail(f"{where}: at é {at!r}; um período tem start e end")
+        elif condition.get("operator") != edges[at]:
+            fail(f"{where}: compara o {at} do período com {condition.get('operator')!r}; use {edges[at]!r}")
+        if reference.get("of") not in (None, "day", "month", "year"):
+            fail(f"{where}: of é {reference.get('of')!r}; um período é day, month ou year")
+        if reference.get("calendar") not in (None, "business"):
+            fail(f"{where}: calendar é {reference.get('calendar')!r}; o calendário publicado é business")
+
+
+def check_binding_queries(doc_dir: Path, binding: dict) -> None:
+    """Consultas compostas e joins apontam para consultas que existem.
+
+    Um `from` para consulta inexistente, ou um join por nome trocado, não falha na
+    escrita — falha na geração, do jeito silencioso: conjunto vazio, arquivo
+    completo na aparência.
+    """
+    # Forma antes do uso: `queries` que não é lista, ou item que não é mapa, faria
+    # todo `.get` abaixo estourar. A ferramenta é a rede que impede um contrato errado
+    # de entrar; rede que quebra não reprova nada.
+    raw_queries = binding.get("queries") or []
+    if not isinstance(raw_queries, list):
+        fail(f"{doc_dir.relative_to(ROOT)}: `queries` não é uma lista")
+        return
+
+    for index, query in enumerate(raw_queries):
+        if not isinstance(query, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: queries[{index}] não é um mapa")
+            continue
+        if not query.get("name"):
+            fail(f"{doc_dir.relative_to(ROOT)}: consulta #{index + 1} não declara name")
+
+    names = [q["name"] for q in query_list(binding) if q.get("name")]
+
+    for duplicate in {n for n in names if names.count(n) > 1}:
+        fail(f"{doc_dir.relative_to(ROOT)}: consulta '{duplicate}' declarada duas vezes")
+
+    known = set(names)
+
+    # Ciclo em `from`: produced_columns o detecta e responde "não sei", que
+    # esconderia um binding quebrado atrás de uma conferência que se cala. Uma
+    # varredura só, FORA do laço: dentro dele o mapa era reconstruído por consulta e
+    # um ciclo de k consultas saía reportado k vezes, uma por rotação da cadeia.
+    by_name = {q["name"]: q for q in query_list(binding) if q.get("name")}
+    reported: set[frozenset[str]] = set()
+
+    for start in by_name:
+        chain: list[str] = []
+        cursor = start
+
+        while cursor in by_name:
+            if cursor in chain:
+                cycle = frozenset(chain[chain.index(cursor):])
+                if cycle not in reported:
+                    reported.add(cycle)
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `from`: "
+                        f"{' -> '.join([*chain, cursor])}"
+                    )
+                break
+
+            chain.append(cursor)
+            cursor = by_name[cursor].get("from")
+
+    # Este laço lê a lista CRUA de propósito: query_list() já exclui a consulta com
+    # join malformado, e quem tem de DENUNCIAR essa forma não pode recebê-la
+    # filtrada. A porta serve aos consumidores; o guardião olha o que entra.
+    for query in raw_queries:
+        if not isinstance(query, dict):
+            continue
+
+        qname = query.get("name", "<sem nome>")
+
+        base = query.get("from")
+        if base is not None and base not in known:
+            fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' compõe sobre '{base}', que não existe")
+
+        # Toda consulta precisa de ANCORAGEM: ou uma fonte de dados própria, ou outra
+        # consulta sobre a qual compor. Sem nenhuma das duas, ela não extrai de lugar
+        # nenhum e o conjunto que dela depende sai vazio.
+        if base is None and not query.get("dataSource"):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' não tem nem dataSource "
+                f"nem from — não extrai de lugar nenhum"
+            )
+
+        aggregate = query.get("aggregate")
+        if aggregate is not None and not isinstance(aggregate, dict):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: a agregação de '{qname}' não é um mapa: "
+                f"{aggregate!r}"
+            )
+
+        _check_removed_grammar(doc_dir, qname, query)
+        _check_computes(doc_dir, qname, query)
+        _check_parameter_values(doc_dir, qname, query.get("filters"))
+
+        raw_join = query.get("join")
+        if raw_join is not None and not isinstance(raw_join, list):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: o `join` de '{qname}' não é uma lista: "
+                f"{raw_join!r}"
+            )
+            raw_join = []
+
+        for join_index, join in enumerate(raw_join or []):
+            if not isinstance(join, dict):
+                fail(f"{doc_dir.relative_to(ROOT)}: join[{join_index}] de '{qname}' não é um mapa")
+                continue
+
+            target_query = join.get("query")
+            if target_query is not None and target_query not in known:
+                fail(f"{doc_dir.relative_to(ROOT)}: consulta '{qname}' junta com '{target_query}', que não existe")
+
+            if target_query is None and not join.get("table"):
+                fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' não nomeia nem table nem query")
+
+            # O que um join de TABELA traz: só as colunas nomeadas, com o nome que a
+            # consulta lê. Sem `columns` ele não traz nada; num join de consulta as
+            # colunas já são dela. É a mesma recusa do motor (readJoinColumns).
+            columns = join.get("columns")
+            if join.get("table") and (not isinstance(columns, dict) or not columns
+                                      or not all(isinstance(k, str) and isinstance(v, str) and k and v
+                                                 for k, v in columns.items())):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: join de '{qname}' com a tabela "
+                    f"'{join.get('table')}' não diz que colunas traz (`columns`: nome → coluna)"
+                )
+            if target_query is not None and columns is not None:
+                fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' com uma consulta declara `columns`; as colunas já são dela")
+
+            # `match`, não `on`: YAML 1.1 lê `on` como booleano — inclusive como
+            # CHAVE — e a cláusula sumiria no parse sem erro nenhum.
+            if not join.get("match"):
+                fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' sem cláusula match")
+            # YAML 1.1 converte a chave `on` no booleano True, então `"on" in join`
+            # nunca é verdadeiro. Testar a PRESENÇA da chave True e não o valor: um
+            # `on:` sem valor produziria True->None e escaparia de um teste por valor.
+            if True in join or "on" in join:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: join de '{qname}' usa a chave 'on', "
+                    f"que YAML 1.1 lê como booleano — use 'match'"
+                )
+
+
+def check_template_parses(doc_dir: Path) -> None:
+    """Regras do MOTOR de template que uma leitura por regex não pega.
+
+    Existe porque um template pode passar em toda conferência desta ferramenta e
+    ser irreceptível pelo motor. Aconteceu: o pongo2 não aceita salto de linha
+    dentro de `{# ... #}`, e os dois primeiros templates deste repositório foram
+    commitados com cabeçalho multi-linha — ilegíveis pelo renderer, com o CI verde,
+    porque a conferência apenas REMOVIA os comentários por regex sem nunca parsear.
+
+    Não é um parser: é a lista das regras do motor que já nos morderam. Cada nova
+    entra aqui quando morder.
+    """
+    template = doc_dir / "template.tpl"
+    if not template.exists():
+        return
+
+    body = template.read_text(encoding="utf-8")
+
+    for match in re.finditer(r"\{#.*?#\}", body, flags=re.DOTALL):
+        if "\n" in match.group(0):
+            line = body[: match.start()].count("\n") + 1
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: comentário multi-linha na linha {line} — "
+                f"o pongo2 recusa salto de linha dentro de {{# #}} "
+                f'("Newline not permitted in a single-line comment"). '
+                f"Use um comentário por linha."
+            )
+
+    # Um `{#` sem fechamento leva o resto do arquivo embora, silenciosamente.
+    if body.count("{#") != body.count("#}"):
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: comentários desbalanceados "
+            f"({body.count('{#')} aberturas, {body.count('#}')} fechamentos)"
+        )
+
+
+def check_parent_match(doc_dir: Path, contract: dict, binding: dict) -> None:
+    """Todo conjunto childOf declara COM QUE COLUNA se aninha sob o pai.
+
+    Sem isso o motor tem linhas filhas soltas e nenhum critério para colocá-las sob
+    a linha certa do pai: o arquivo sai com a hierarquia embaralhada, cada bloco
+    somando o que não é dele — e a adjacência que o leiaute exige é impossível de
+    produzir. O exemplo original tinha três consultas planas sem chave de ligação,
+    e nenhuma conferência daqui reclamou.
+    """
+    declared, _ = declared_names(contract)
+    bound = binding.get("datasets", {})
+
+    for ds in datasets_of(contract):
+        parent = child_parent(ds)
+        if parent is None:
+            continue
+
+        name = ds["name"]
+        entry = bound.get(name)
+        if entry is None:
+            continue
+
+        parent_match = entry.get("parentMatch")
+        if not parent_match:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {name} é childOf de {parent} e o "
+                f"binding não declara parentMatch — as linhas filhas não têm como "
+                f"ser aninhadas sob a linha certa do pai"
+            )
+            continue
+
+        for parent_field in parent_match:
+            if parent_field not in declared.get(parent, set()):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {name}.parentMatch aninha por "
+                    f"'{parent_field}', que o conjunto pai {parent} não declara"
+                )
+
+
+def _aggregation(query: object) -> dict | None:
+    """A agregação de uma consulta, ou None quando não há uma LEGÍVEL.
+
+    Três leitores precisam dela e o YAML entrega qualquer forma. A RECUSA vive num
+    só lugar — `check_binding_queries`, que tem o nome da consulta para dizer de qual
+    se trata; aqui e nos demais a forma errada vira ausência, e a ferramenta reprova
+    em vez de estourar.
+    """
+    if not isinstance(query, dict):
+        return None
+
+    aggregate = query.get("aggregate")
+
+    return aggregate if isinstance(aggregate, dict) else None
+
+
+def produced_columns(
+    query: dict,
+    queries: dict[str, dict],
+    seen: frozenset[str] = frozenset(),
+) -> set[str] | None:
+    """As colunas que uma consulta ENTREGA a quem se apoia nela.
+
+    Resolve a cadeia de `from` inteira, e não um nível. Uma consulta SEM agregação
+    no meio do caminho repassa a origem: parar nela devolvia None e apagava a
+    conferência de tudo o que viesse depois — uma coluna descartada três consultas
+    atrás passava sem sinal.
+
+    Uma consulta AGREGADA entrega exatamente o groupBy mais as medidas nomeadas
+    mais as derivadas, independentemente do que a base entregue: agregar é projetar,
+    então o conjunto é conhecido mesmo sobre origem desconhecida.
+
+    Responde None — "não sei, não confira" — quando a raiz é uma tabela crua, cujo
+    esquema este repositório não conhece, ou quando um join reintroduz esquema cru.
+    Conservador de propósito: um None a mais deixa passar um erro, um falso positivo
+    reprova um binding correto e ensina a ignorar a ferramenta.
+    """
+    name = query.get("name")
+
+    # Proteção de ciclo: um `from` circular não tem conjunto de colunas.
+    if name and name in seen:
+        return None
+
+    if name:
+        seen = seen | {name}
+
+    derived = {d["as"] for d in query.get("derive") or [] if d.get("as")}
+
+    aggregate = _aggregation(query)
+    if aggregate:
+        columns = set(aggregate.get("groupBy") or [])
+        columns |= {m["as"] for m in aggregate.get("measures") or [] if m.get("as")}
+
+        return columns | derived
+
+    base_name = query.get("from")
+    if base_name is None or base_name not in queries:
+        return None
+
+    base = produced_columns(queries[base_name], queries, seen)
+    if base is None:
+        return None
+
+    # Um join que traz TABELA crua reintroduz esquema desconhecido; um que traz
+    # outra consulta soma o que ela entrega.
+    for join in query.get("join") or []:
+        if join.get("table"):
+            return None
+
+        joined = queries.get(join.get("query"))
+        if joined is None:
+            return None
+
+        joined_columns = produced_columns(joined, queries, seen)
+        if joined_columns is None:
+            return None
+
+        base = base | joined_columns
+
+    return base | derived
+
+
+def condition_fields(node: object) -> tuple[set[str], list[object]]:
+    """Todo `field` de uma árvore de condições, mais o que não é nome de campo.
+
+    Devolve os malformados em vez de estourar: `field: [valor]` fazia `set.add`
+    levantar TypeError e a ferramenta MORRIA no meio da conferência, em vez de
+    reprovar a condição e seguir. Um validador que quebra com entrada malformada é
+    pior que um que reprova — quem escreveu não descobre o que estava errado.
+    """
+    fields: set[str] = set()
+    malformed: list[object] = []
+
+    if isinstance(node, dict):
+        if "field" in node:
+            if isinstance(node["field"], str):
+                fields.add(node["field"])
+            else:
+                malformed.append(node["field"])
+
+        for value in node.values():
+            nested_fields, nested_malformed = condition_fields(value)
+            fields |= nested_fields
+            malformed += nested_malformed
+    elif isinstance(node, list):
+        for value in node:
+            nested_fields, nested_malformed = condition_fields(value)
+            fields |= nested_fields
+            malformed += nested_malformed
+
+    return fields, malformed
+
+
+def check_column_survival(doc_dir: Path, binding: dict) -> None:
+    """Uma coluna referenciada tem de sobreviver até o ponto onde é usada.
+
+    Esta é a conferência que faltava, e a ausência dela custou duas rodadas de
+    revisão na MESMA classe de erro: primeiro o having comparava uma coluna com
+    outro nome, depois comparava o nome certo de uma coluna que duas agregações já
+    haviam descartado. Nos dois casos o modo de falha é o mesmo e é silencioso — sem
+    discriminador, ou a consulta quebra, ou todas as linhas passam e o arquivo sai
+    com recebedor que devia estar fora.
+
+    Uma coluna só sobrevive a um groupBy se entrar nele. A regra estava escrita em
+    comentário no exemplo e violada duas linhas abaixo; agora é executável.
+    """
+    # Mesma guarda de forma de check_binding_queries: esta função lê as MESMAS
+    # estruturas, e blindar um leitor e não o outro é o caminho gêmeo esquecido —
+    # o padrão que mais me pegou neste validador.
+    queries = {q["name"]: q for q in query_list(binding) if q.get("name")}
+
+    for name, query in queries.items():
+        base_name = query.get("from")
+        available = (
+            produced_columns(queries[base_name], queries)
+            if base_name in queries
+            else None
+        )
+
+        if available is not None:
+            aggregate = query.get("aggregate", {}) or {}
+            used = set(aggregate.get("groupBy", []) or [])
+            used |= {m["of"] for m in aggregate.get("measures", []) or [] if m.get("of")}
+
+            for column in sorted(used - available):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: consulta '{name}' usa a coluna "
+                    f"'{column}', que '{base_name}' não entrega — uma coluna só "
+                    f"sobrevive ao groupBy se entrar nele"
+                )
+
+        having_fields, malformed = condition_fields(query.get("having", []))
+
+        for value in malformed:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: o having de '{name}' tem um `field` "
+                f"que não é nome de coluna: {value!r}"
+            )
+
+        own = produced_columns(query, queries)
+        if own is not None:
+            for column in sorted(having_fields - own):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: o having de '{name}' compara "
+                    f"'{column}', que a própria consulta não entrega após agregar"
+                )
+
+    for name, entry in (binding.get("datasets") or {}).items():
+        if not isinstance(entry, dict):
+            continue
+
+        raw_from = entry.get("from")
+        if not isinstance(raw_from, dict):
+            continue
+
+        own = raw_from.get("query")
+        if own not in queries:
+            continue
+
+        # CADA ORIGEM É CONFERIDA CONTRA A CONSULTA QUE ELA LÊ. Uma origem pode
+        # nomear outra consulta (`query:`), e é o que o 4111 faz: a janela pertence à
+        # consulta, e as duas classes de conta acumulam em janelas diferentes.
+        # Conferir tudo contra a consulta do conjunto reprovaria a coluna que a outra
+        # entrega — recusando binding válido, que é pior que não conferir.
+        #
+        # Só as colunas que uma CONSULTA deve entregar entram aqui. Um campo
+        # resolvido por `rowSet` vem do conjunto fechado do catálogo, e conferi-lo
+        # contra a consulta acusaria falso positivo.
+        used: set[tuple[str, str]] = set()
+
+        def _read(spec: dict) -> None:
+            if spec.get("from") != "query" or not spec.get("column"):
+                return
+
+            named = spec.get("query")
+            if named is not None and (not isinstance(named, str) or not named.strip()):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' nomeia uma consulta "
+                    f"que não é um nome: {named!r}"
+                )
+                return
+
+            if named is not None and named not in queries:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' lê a consulta "
+                    f"'{named}', que não está declarada em queries"
+                )
+                return
+
+            used.add((str(spec["column"]), str(named or own)))
+
+        for f in (entry.get("fields") or {}).values():
+            if not isinstance(f, dict):
+                continue
+
+            _read(f)
+
+            for case in f.get("byRowClass") or []:
+                if isinstance(case, dict):
+                    _read(case)
+
+        # parentMatch e a chave da linha são casados contra a consulta do CONJUNTO:
+        # é ela que entrega as linhas a casar.
+        # A chave da linha estava NO COMENTÁRIO e não no código, então
+        # `rowKey: {codigo: colunaInexistente}` passava — e o motor depois não casa
+        # resultado nenhum com as linhas do conjunto fechado.
+        #
+        # As duas são lidas por `_paired`, que recusa a forma errada em vez de
+        # estourar em `.values()`: YAML entrega qualquer forma, e uma ferramenta que
+        # quebra com entrada malformada é pior que uma que reprova.
+        used |= _paired(doc_dir, name, "parentMatch", entry.get("parentMatch"), own)
+        used |= _paired(doc_dir, name, "rowKey", entry.get("rowKey"), own)
+
+        delivered: dict[str, set] = {}
+        for column, by in sorted(used):
+            if by not in delivered:
+                produced = produced_columns(queries[by], queries)
+                delivered[by] = produced if produced is not None else None
+
+            if delivered[by] is None or column in delivered[by]:
+                continue
+
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' mapeia a coluna "
+                f"'{column}', que a consulta '{by}' não entrega"
+            )
+
+
+def _paired(doc_dir: Path, name: str, what: str, value: object, own: str) -> set:
+    """As colunas que um mapa de pareamento casa contra a consulta do conjunto."""
+    if value is None:
+        return set()
+
+    if not isinstance(value, dict):
+        fail(f"{doc_dir.relative_to(ROOT)}: o `{what}` de '{name}' não é um mapa: {value!r}")
+
+        return set()
+
+    return {(str(column), str(own)) for column in value.values()}
 
 
 def check_references(doc_dir: Path, contract: dict) -> None:
     """Todo arquivo que o contrato cita tem de existir."""
-    schema = contract.get("metadata", {}).get("sourceOfTruth", {}).get("schema")
+    schema = source_of_truth(contract, "schema")
     if schema and not (doc_dir / schema).exists():
         fail(f"{doc_dir.relative_to(ROOT)}: contrato cita {schema}, que não existe")
 
-    example = doc_dir / "binding.example.yaml"
-    if example.exists():
-        binding = load(example) or {}
-        for query in binding.get("queries", []):
-            for measure in query.get("aggregate", {}).get("measures", []):
-                lookup = measure.get("statedIn", {}).get("lookup")
-                if lookup and not (doc_dir / lookup).exists():
-                    fail(
-                        f"{doc_dir.relative_to(ROOT)}: consulta '{query.get('name')}' "
-                        f"cita {lookup}, que não existe"
-                    )
+    # O catálogo publica tabela de natureza só quando o CONTRATO a declara em
+    # `tables`: é a natureza do plano do REGULADOR (o elenco COSIF), conferida em
+    # check_tables. Uma tabela solta, que nenhum contrato lê, não é regra de
+    # documento nenhum.
+    declared = {t.get("from") for t in tables_of(contract)
+                if isinstance(t, dict) and isinstance(t.get("from"), str)}
+    for stray in sorted(doc_dir.glob("*natur*.yaml")):
+        if stray.name not in declared:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: {stray.name} é uma tabela de natureza que o "
+                f"contrato não declara em `tables`"
+            )
 
-    # O catálogo publica contrato, template e — quando o documento precisa —
-    # tabela de código do REGULADOR. Não publica tabela sobre o plano de contas
-    # do cliente: a natureza contábil é propriedade do plano de contas dele, e
-    # uma tabela nossa seria uma segunda fonte de verdade que ninguém reconcilia.
-    for stray in doc_dir.glob("*nature*.yaml"):
+
+
+NATURE_SIDES = {"debit", "credit"}
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+# Conteúdo de cada tabela de natureza publicada, por nome de arquivo e documento,
+# para a conferência de que as cópias são a MESMA tabela.
+NATURE_COPIES: dict[str, dict[str, str]] = {}
+
+
+def published_charts() -> dict[str, Path]:
+    """Os elencos de contas do regulador que o catálogo publica, por sha256."""
+    import hashlib
+
+    return {
+        hashlib.sha256(path.read_bytes()).hexdigest(): path
+        for path in sorted(ROOT.glob("*/*/cosif/*.pdf"))
+    }
+
+
+TABLE_KEYS = {"name", "from", "match"}
+TABLE_FILE_KEYS = {"byPrefix", "source", "sha256"}
+
+
+def check_tables(doc_dir: Path, contract: dict) -> None:
+    """As tabelas que o contrato publica existem, são legíveis pelo motor e — a de
+    natureza — vêm do elenco do regulador que o catálogo publica.
+
+    A natureza de cada rubrica decide o SINAL de cada saldo no arquivo. Uma tabela
+    errada sai bem formada e com o sinal trocado — o pior defeito, porque nada a
+    jusante o distingue de um arquivo certo. Por isso ela não é escrita à mão: é
+    gerada do elenco (tools/natureza.py), e o sha256 no cabeçalho amarra cada cópia
+    ao PDF publicado em br/<regulador>/cosif/.
+    """
+    where = doc_dir.relative_to(ROOT)
+    seen: set[str] = set()
+
+    for index, table in enumerate(tables_of(contract)):
+        if mapping_at(f"{where}: tables[{index}]", table, "uma tabela é um mapeamento de name, from e match") is None:
+            continue
+
+        unknown = set(table) - TABLE_KEYS
+        if unknown:
+            fail(f"{where}: tables[{index}] declara {sorted(unknown)}; uma tabela é name, from e match")
+
+        name = table.get("name")
+        if not isinstance(name, str) or not name:
+            fail(f"{where}: tables[{index}] não tem name; uma regra a procura pelo nome")
+            continue
+        if name in seen:
+            fail(f"{where}: a tabela '{name}' é declarada duas vezes")
+        seen.add(name)
+
+        if table.get("match") != "longestPrefix":
+            fail(f"{where}: a tabela '{name}' tem match {table.get('match')!r}; o motor casa por longestPrefix")
+
+        source = table.get("from")
+        if not isinstance(source, str) or not source or "/" in source or "\\" in source or source in {".", ".."}:
+            fail(f"{where}: a tabela '{name}' tem from {source!r}; é um arquivo ao lado do contrato, nomeado sem diretório")
+            continue
+
+        path = doc_dir / source
+        if not path.exists():
+            fail(f"{where}: a tabela '{name}' cita {source}, que não existe")
+            continue
+
+        published = load(path)
+        if not isinstance(published, dict):
+            fail(f"{where}: {source} não é um mapeamento com byPrefix")
+            continue
+
+        extra = set(published) - TABLE_FILE_KEYS
+        if extra:
+            fail(f"{where}: {source} declara {sorted(extra)}; uma tabela é byPrefix, e opcionalmente source e sha256")
+
+        entries = published.get("byPrefix")
+        if not isinstance(entries, dict) or not entries:
+            fail(f"{where}: {source} não declara byPrefix, ou declara vazio; a tabela não responderia nada")
+            continue
+
+        for key, value in entries.items():
+            if not isinstance(key, str) or not key.strip() or not isinstance(value, str) or not value.strip():
+                fail(f"{where}: {source}: a entrada {key!r}: {value!r} não é texto → texto")
+
+        # A tabela de NATUREZA, desta curadoria: gerada do elenco, amarrada ao PDF e
+        # idêntica em todo documento que a leva.
+        if source == "natureza.yaml":
+            _check_nature_table(where, source, path, published)
+
+
+def _check_nature_table(where: Path, source: str, path: Path, table: dict) -> None:
+    NATURE_COPIES.setdefault(source, {})[str(where)] = path.read_text(encoding="utf-8")
+
+    digest = table.get("sha256")
+    if not isinstance(digest, str) or not SHA256.match(digest):
+        fail(f"{where}: {source} não traz o sha256 do elenco de que foi gerada; gere com tools/natureza.py")
+    elif digest not in published_charts():
+        fail(f"{where}: {source} foi gerada de um elenco (sha256 {digest[:12]}…) que o catálogo não publica em */*/cosif/; regere com tools/natureza.py")
+
+    if not isinstance(table.get("source"), str) or not table.get("source"):
+        fail(f"{where}: {source} não diz de onde o elenco foi lido (source)")
+
+    for prefix, side in (table.get("byPrefix") or {}).items():
+        if not isinstance(prefix, str) or not prefix.isdigit():
+            fail(f"{where}: {source}: o prefixo {prefix!r} não é texto de dígitos; o razão carrega o código sem pontuação, e o motor nunca casaria este")
+        if not isinstance(side, str) or side not in NATURE_SIDES:
+            fail(f"{where}: {source}: o prefixo {prefix!r} é {side!r}; a natureza é debit ou credit")
+
+
+def check_nature_copies() -> None:
+    """Toda cópia de uma tabela de natureza é a MESMA tabela.
+
+    Cada documento leva a sua cópia, porque cada um é materializado sozinho; o
+    elenco é um só. Duas cópias diferentes dariam a uma rubrica um sinal no 4010 e
+    outro no 4111, e o 4111 tem de fechar com o 4010 no último dia do mês.
+    """
+    for source, copies in NATURE_COPIES.items():
+        if len(set(copies.values())) > 1:
+            fail(f"{source}: as cópias de {', '.join(sorted(copies))} diferem; regere todas com tools/natureza.py")
+
+
+# O vocabulário que o MOTOR aceita. Cada nome aqui é um nome que
+# pkg/reporter/contract sabe aplicar; um contrato que use outro é aceito por este
+# validador e recusado lá, que é a divergência que estas conferências existem para
+# fechar — ver check_engine_parity abaixo.
+FIELD_TYPES = {"string", "integer", "decimal", "boolean", "date", "month"}
+NORMALIZATIONS = {"digits", "alphanumeric"}
+CHECK_DIGITS = {"cnpj"}
+# O identificador da instituição que o motor confere contra a declarante.
+MAX_SCALE = 34
+MONTHS_OF_YEAR = {f"{m:02d}" for m in range(1, 13)}
+
+# Construções que a biblioteca `re` do Python aceita e a RE2 do Go não tem. Um
+# `pattern` que use qualquer uma delas compila aqui e é recusado pelo motor, então o
+# contrato passa no CI do catálogo e para na primeira geração.
+#
+# É uma lista das construções que faltam na RE2, e não um parser dela: a alternativa
+# seria reimplementar a RE2 em Python para conferir contratos que ninguém escreveu
+# ainda. Estas quatro mais as retrorreferências cobrem tudo que um curador
+# plausivelmente escreveria sem saber.
+RE2_MISSING = (
+    ("(?=", "lookahead"),
+    ("(?!", "lookahead negativo"),
+    ("(?<=", "lookbehind"),
+    ("(?<!", "lookbehind negativo"),
+)
+# Uma barra que NÃO é ela mesma escapada, seguida de dígito: `\1` é
+# retrorreferência e `\\1` é uma barra literal seguida do algarismo um.
+#
+# O `(?:\\\\)*` no meio é o que faz a conta com barras EMPILHADAS. Em `\\\\\\1` são três
+# barras: as duas primeiras são uma barra literal escapada, e a terceira abre a
+# retrorreferência — ela é retrorreferência e a RE2 a recusa. Sem esse trecho, o
+# olhar-para-trás via a barra anterior e desistia, e o padrão passava.
+BACKREFERENCE = re.compile(r"(?<!\\)(?:\\\\)*\\[1-9]")
+
+
+def check_engine_parity(doc_dir: Path, contract: dict) -> None:
+    """O contrato usa apenas o vocabulário que o MOTOR sabe aplicar.
+
+    Por que existe: este validador e o carregador do Reporter
+    (pkg/reporter/contract) leem o mesmo arquivo, e onde um lê menos que o outro
+    nasce a pior categoria de defeito de catálogo — um contrato que passa no CI
+    daqui e é recusado na primeira geração, ou pior, aceito pelos dois e aplicado
+    diferente.
+
+    A mais perigosa das divergências que fecharam aqui era `normalize`: este
+    validador aceitava qualquer string e o motor só sabe aplicar `digits`. Uma
+    normalização desconhecida escreveria o campo SEM normalizar num arquivo dado
+    como concluído.
+    """
+    for ds in datasets_of(contract):
+        name = ds.get("name", "<sem nome>")
+        for field in fields_of(ds):
+            _check_field_shape(doc_dir, name, field)
+        _check_derivations(doc_dir, name, ds)
+
+    # Uma entrega é declarada por uma instituição: dois campos marcados poderiam
+    # ser conferidos e ainda assim nomear duas.
+    marked = [
+        f"{ds.get('name')}.{f.get('name')}"
+        for ds in datasets_of(contract)
+        for f in fields_of(ds)
+        if isinstance(f, dict) and f.get("identifiesInstitution") is not None
+    ]
+    if len(marked) > 1:
+        fail(f"{doc_dir.relative_to(ROOT)}: identifiesInstitution em {', '.join(marked)}; "
+             f"uma entrega é declarada por uma instituição, então um campo carrega a identidade dela")
+
+
+def _check_derivations(doc_dir: Path, dataset: str, ds: dict) -> None:
+    """Um derivado é cortado de um campo de texto do MESMO conjunto, que não é derivado.
+
+    O motor recusa o contrato nos mesmos casos; aqui a recusa chega antes da release.
+    """
+    by_name = {f.get("name"): f for f in fields_of(ds) if isinstance(f, dict)}
+    for name, field in by_name.items():
+        source = field.get("prefixOf")
+        if not isinstance(source, str) or not source:
+            continue
+        where = f"{doc_dir.relative_to(ROOT)}: {dataset}.{name}.prefixOf"
+        if field.get("type") != "string":
+            fail(f"{where} está num campo do tipo {field.get('type')!r}; o corte produz texto, então o derivado é string")
+        elif source == name:
+            fail(f"{where} nomeia o próprio campo")
+        elif source not in by_name:
+            fail(f"{where} nomeia '{source}', que o conjunto não declara")
+        elif by_name[source].get("prefixOf"):
+            fail(f"{where} nomeia '{source}', que também é derivado")
+        elif by_name[source].get("type") != "string":
+            fail(f"{where} nomeia '{source}', do tipo {by_name[source].get('type')!r}; só texto é cortado em posições")
+
+
+def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
+    where = f"{doc_dir.relative_to(ROOT)}: {dataset}.{field.get('name', '<sem nome>')}"
+
+    ftype = required_text(f"{where} type", field.get("type"),
+                          f"o tipo de um campo é uma palavra: {sorted(FIELD_TYPES)}")
+    if ftype is not None and ftype not in FIELD_TYPES:
+        fail(f"{where} tem type {ftype!r}; o motor aplica {sorted(FIELD_TYPES)}")
+
+    if optional_at(where, field, "normalize") is not None:
+        normalize = required_text(f"{where} normalize", field.get("normalize"),
+                                  f"uma normalização é uma palavra: {sorted(NORMALIZATIONS)}")
+        if normalize is not None and normalize not in NORMALIZATIONS:
+            fail(
+                f"{where} tem normalize {normalize!r}, que o motor não sabe aplicar "
+                f"({sorted(NORMALIZATIONS)}) — o campo sairia SEM normalizar num arquivo "
+                f"dado como concluído"
+            )
+
+    length = optional_at(where, field, "length")
+    if length is not None and (not isinstance(length, int) or isinstance(length, bool) or length < 1):
+        fail(f"{where} tem length {length!r}; é o número de posições que o arquivo dá ao campo, então é ao menos 1")
+
+    check_digit = optional_at(where, field, "checkDigit")
+    if check_digit is not None:
+        if not isinstance(check_digit, str) or check_digit not in CHECK_DIGITS:
+            fail(f"{where} tem checkDigit {check_digit!r}; o motor conhece {sorted(CHECK_DIGITS)}")
+        elif ftype != "string":
+            fail(f"{where} declara checkDigit e é do tipo {ftype!r}; um CNPJ é texto")
+
+    identifies = optional_at(where, field, "identifiesInstitution")
+    if identifies is not None:
+        if identifies is not True:
+            fail(f"{where} tem identifiesInstitution {identifies!r}; o campo identifica a instituição (`true`) ou não leva a marca")
+        elif ftype != "string":
+            fail(f"{where} declara identifiesInstitution e é do tipo {ftype!r}; um identificador é texto")
+        elif field.get("prefixOf"):
+            fail(f"{where} declara identifiesInstitution num derivado; marque o campo de onde ele é cortado")
+
+    prefix_of = optional_at(where, field, "prefixOf")
+    if prefix_of is not None:
+        if not isinstance(prefix_of, str) or not prefix_of:
+            fail(f"{where} tem prefixOf {prefix_of!r}; é o nome do campo de onde o valor é cortado")
+        elif length is None:
+            fail(f"{where} declara prefixOf sem length; o derivado são as primeiras `length` posições da origem")
+
+    _check_pattern(f"{where}.pattern", optional_at(where, field, "pattern"))
+
+    fmt = optional_at(where, field, "format")
+    if not isinstance(fmt, dict):
+        return
+
+    scale = optional_at(f"{where}.format", fmt, "scale")
+    if scale is not None and (not isinstance(scale, int) or isinstance(scale, bool) or not 0 <= scale <= MAX_SCALE):
         fail(
-            f"{doc_dir.relative_to(ROOT)}: {stray.name} descreve o plano de contas "
-            f"do cliente, que é dado dele — declare no binding, não no catálogo"
+            f"{where}.format.scale é {scale!r}; uma escala é quantas casas decimais o "
+            f"arquivo carrega, então está entre 0 e {MAX_SCALE} — acima disso é um "
+            f"número que fonte nenhuma responde, e o motor a converte para int32"
         )
+
+    _check_pattern(f"{where}.format.pattern", optional_at(f"{where}.format", fmt, "pattern"))
+
+
+def _check_pattern(where: str, pattern) -> None:
+    """Um pattern compila, e compila também na RE2 que o motor usa."""
+    if pattern is None:
+        return
+
+    if not isinstance(pattern, str):
+        fail(f"{where} é {pattern!r}; um pattern é uma expressão regular escrita como texto")
+        return
+
+    try:
+        re.compile(pattern)
+    except re.error as exc:
+        fail(f"{where} não compila: {exc}")
+        return
+
+    for construct, spelled in RE2_MISSING:
+        if construct in pattern:
+            fail(
+                f"{where} usa {spelled} ({construct}), que a RE2 do Go não tem — "
+                f"compila aqui e é recusado pelo motor"
+            )
+
+    if BACKREFERENCE.search(pattern):
+        fail(f"{where} usa retrorreferência, que a RE2 do Go não tem — compila aqui e é recusado pelo motor")
+
+
+def check_dataset_shapes(doc_dir: Path, contract: dict) -> None:
+    """Cada conjunto tem nome, tem campos, não repete nome de campo e não gira.
+
+    Um conjunto sem nome fazia esta ferramenta ESTOURAR em vez de reprovar, que é o
+    modo de falha que a suíte de mutação existe para não deixar voltar. Um conjunto
+    sem campos é uma seção do arquivo que nada popula. Dois campos de mesmo nome não
+    podem ambos ser alcançados, e uma referência a ele resolve para o que foi lido
+    por último. E um childOf que fecha ciclo trava a montagem do contexto de render.
+    """
+    declared = sequence_at("datasets", contract.get("datasets"),
+                           "datasets é a lista dos conjuntos de que o documento é escrito")
+
+    # O motor recusa isto diretamente, e aqui só era pego de lado — pela conferência
+    # do template, que reclamava de cada leitura solta em vez de dizer a coisa óbvia.
+    if not declared:
+        fail(
+            f"{doc_dir.relative_to(ROOT)}: datasets está vazio; um contrato que não "
+            f"declara conjunto nenhum não declara nada de que o arquivo possa ser escrito"
+        )
+
+    seen_datasets: set[str] = set()
+
+    for ds in declared:
+        if not isinstance(ds, dict):
+            fail(f"{doc_dir.relative_to(ROOT)}: um conjunto é um mapeamento de name, grain e fields")
+            continue
+
+        name = required_text(f"{doc_dir.relative_to(ROOT)}: o name de um conjunto", ds.get("name"),
+                             "um conjunto é nomeado por texto, para que template e binding possam referi-lo")
+        if name is None:
+            continue
+
+        if name in seen_datasets:
+            fail(f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' declarado duas vezes")
+        seen_datasets.add(name)
+
+        fields = ds.get("fields")
+        if not isinstance(fields, list) or not fields:
+            fail(f"{doc_dir.relative_to(ROOT)}: conjunto '{name}' não declara campo nenhum, então nada o popula")
+            continue
+
+        seen_fields: set[str] = set()
+        for field in fields:
+            if mapping_at(f"{doc_dir.relative_to(ROOT)}: um campo de '{name}'", field,
+                          "um campo é um mapeamento de name, type e o que mais o declara") is None:
+                continue
+
+            fname = required_text(f"{doc_dir.relative_to(ROOT)}: o name de um campo de '{name}'",
+                                  field.get("name"), "um campo é nomeado por texto")
+            if fname is None:
+                continue
+
+            if fname in seen_fields:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {name}.{fname} declarado duas "
+                    f"vezes; os dois não podem ser alcançados e uma referência resolve "
+                    f"para o último lido"
+                )
+            seen_fields.add(fname)
+
+        _check_grain(doc_dir, ds, name, seen_fields)
+        _check_childof_shape(doc_dir, ds, name)
+        _check_non_empty(doc_dir, ds, name)
+
+    _check_childof_cycles(doc_dir, contract)
+
+
+def _check_grain(doc_dir: Path, ds: dict, name: str, fields: set[str]) -> None:
+    """As chaves do grão são campos que o conjunto declara.
+
+    Um grão sobre campo inexistente é a exigência de uma linha por combinação que
+    nunca é conferida: o arquivo sai com a mesma rubrica duas vezes e nada acusa.
+    """
+    grain = optional_at(f"{doc_dir.relative_to(ROOT)}: {name}", ds, "grain")
+
+    if grain is None or grain == "singleton":
+        return
+
+    if not isinstance(grain, list):
+        fail(f"{doc_dir.relative_to(ROOT)}: {name}.grain é {grain!r}; é 'singleton' ou uma lista de campos")
+        return
+
+    for key in grain:
+        if not isinstance(key, str) or key not in fields:
+            fail(f"{doc_dir.relative_to(ROOT)}: {name}.grain nomeia {key!r}, campo que o conjunto não declara")
+
+
+def _check_non_empty(doc_dir: Path, ds: dict, name: str) -> None:
+    """`nonEmpty` é booleano e só vale num conjunto aberto e de topo.
+
+    O motor recusa o mesmo: num singleton não diz nada (é sempre uma linha), num
+    conjunto fechado o motor já recusa a leitura que não alcançou linha nenhuma, e
+    num conjunto aninhado "vazio" poderia ser sob um pai ou sob todos.
+    """
+    if "nonEmpty" not in ds:
+        return
+
+    where = f"{doc_dir.relative_to(ROOT)}: {name}.nonEmpty"
+    value = ds.get("nonEmpty")
+
+    if not isinstance(value, bool):
+        fail(f"{where} é {value!r}; é true ou false")
+        return
+
+    if not value:
+        return
+
+    if ds.get("grain") == "singleton":
+        fail(f"{where} declarado num singleton, que é sempre exatamente uma linha")
+    elif "rowSet" in ds:
+        fail(f"{where} declarado num conjunto fechado; a leitura que não alcança linha nenhuma já é recusada")
+    elif "childOf" in ds:
+        fail(f"{where} declarado num conjunto aninhado, onde vazio poderia ser sob um pai ou sob todos")
+
+
+def _check_childof_shape(doc_dir: Path, ds: dict, name: str) -> None:
+    """A declaração de childOf tem a forma que os leitores esperam.
+
+    Denunciado AQUI, no leitor cru, porque `child_parent` responde None para uma
+    declaração malformada — o que os leitores precisam para não estourar, e que
+    sozinho leria como "este conjunto não pende de ninguém". Um curador que escreveu
+    `childOf` e teve a linha ignorada em silêncio é a falha que este arquivo inteiro
+    existe para não ter: a seção sai do arquivo e nada acusa.
+    """
+    if "childOf" not in ds:
+        return
+
+    childof = mapping_at(f"{doc_dir.relative_to(ROOT)}: {name}.childOf", ds.get("childOf"),
+                         "childOf é um mapeamento que nomeia o conjunto de que este pende")
+    if childof is None:
+        return
+
+    required_text(f"{doc_dir.relative_to(ROOT)}: {name}.childOf.dataset", childof.get("dataset"),
+                  "childOf nomeia o conjunto pai por texto")
+
+
+def _check_childof_cycles(doc_dir: Path, contract: dict) -> None:
+    parents = {ds["name"]: child_parent(ds) for ds in datasets_of(contract)}
+
+    for start in parents:
+        seen = {start}
+        current = parents.get(start)
+
+        while current is not None:
+            if current in seen:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: childOf fecha um ciclo em '{current}' — "
+                    f"nenhum desses conjuntos tem raiz, então nenhum é publicado"
+                )
+                break
+
+            seen.add(current)
+            current = parents.get(current)
+
+
+
+FILING_KEYS = {"period", "remittance"}
+REMITTANCE_KEYS = {"parameter", "original", "replacement"}
+
+
+def check_filing(doc_dir: Path, contract: dict) -> None:
+    """O bloco `filing` diz o que faz duas gerações serem a MESMA entrega, nas palavras do contrato.
+
+    O motor é genérico: não sabe o que é data-base nem que, no BCB, "I" é inclusão e
+    "S" é substituição. Ele aplica três regras — uma original aprovada por período,
+    substituição só depois da original aprovada, e a geração mais nova do mesmo
+    período e da mesma remessa substitui a anterior não aprovada — sobre os
+    parâmetros que este bloco nomeia. Um nome errado aqui desliga a regra em
+    silêncio, ou a aplica sobre o parâmetro errado; por isso é conferido.
+    """
+    if "filing" not in contract:
+        return
+
+    where = f"{doc_dir.relative_to(ROOT)}: filing"
+    filing = mapping_at(where, contract.get("filing"),
+                        "filing é um mapeamento de period e remittance")
+    if filing is None:
+        return
+
+    for key in sorted(set(filing) - FILING_KEYS):
+        fail(f"{where} declara {key!r}, que o motor não conhece; filing aceita {sorted(FILING_KEYS)}")
+
+    params = {}
+    for param in parameters_of(contract):
+        if isinstance(param, dict) and isinstance(param.get("name"), str):
+            params[param["name"]] = param
+
+    period: list = []
+    if "period" in filing:
+        raw = filing.get("period")
+        period = sequence_at(f"{where}.period", raw,
+                             "period é a lista dos parâmetros que fazem duas gerações serem a mesma entrega")
+        if raw is None or raw == []:
+            fail(f"{where}.period está vazio; omita-o (todo parâmetro, menos o da remessa) ou nomeie ao menos um")
+        seen: set = set()
+        for name in period:
+            if not isinstance(name, str):
+                fail(f"{where}.period tem {name!r}; cada item é o nome de um parâmetro")
+                continue
+            if name in seen:
+                fail(f"{where}.period nomeia {name!r} duas vezes")
+            seen.add(name)
+            if name not in params:
+                fail(f"{where}.period nomeia {name!r}, que não é parâmetro deste contrato")
+
+    if "remittance" not in filing:
+        return
+
+    rwhere = f"{where}.remittance"
+    remittance = mapping_at(rwhere, filing.get("remittance"),
+                            "remittance é um mapeamento de parameter, original e replacement")
+    if remittance is None:
+        return
+
+    for key in sorted(set(remittance) - REMITTANCE_KEYS):
+        fail(f"{rwhere} declara {key!r}, que o motor não conhece; remittance aceita {sorted(REMITTANCE_KEYS)}")
+
+    name = required_text(f"{rwhere}.parameter", remittance.get("parameter"),
+                         "parameter nomeia o parâmetro que diz se a entrega é original ou substituição")
+    original = required_text(f"{rwhere}.original", remittance.get("original"),
+                             "original é o valor do parâmetro que marca a entrega original do período")
+    replacement = required_text(f"{rwhere}.replacement", remittance.get("replacement"),
+                                "replacement é o valor do parâmetro que marca a substituição")
+
+    if name is not None:
+        if name not in params:
+            fail(f"{rwhere}.parameter nomeia {name!r}, que não é parâmetro deste contrato")
+        elif name in period:
+            fail(f"{rwhere}.parameter {name!r} também está em period; a remessa não é parte do período")
+        else:
+            domain = params[name].get("domain")
+            values = domain if isinstance(domain, list) else []
+            for label, value in (("original", original), ("replacement", replacement)):
+                if value is not None and value not in values:
+                    fail(f"{rwhere}.{label} {value!r} está fora do domain do parâmetro {name!r} ({values})")
+
+    if original is not None and original == replacement:
+        fail(f"{rwhere} usa {original!r} para original e para replacement; as duas remessas precisam ser distintas")
+
+CONSOLIDATION_KEYS = {"key", "whenKeyRepeats", "columns"}
+CONSOLIDATION_MODES = {"combine", "refuse"}
+CONSOLIDATION_RULES = {"sum", "equal", "first"}
+
+
+def check_consolidation(doc_dir: Path, contract: dict) -> None:
+    """A consolidação de um conjunto é decidida e executável como escrita — a mesma regra que o motor confere.
+
+    Os dados de uma mesma instituição podem estar em mais de uma base (vários
+    ledgers, um core em migração, um ERP): um conjunto de várias linhas pode ser
+    lido de cada uma, e as linhas se unificam pela chave que o curador nomeia, cada
+    coluna pela sua regra. Por isso todo conjunto de várias linhas que não pende de
+    outro DECLARA a sua consolidação — a regra é do documento, e só quem cura sabe
+    qual é; um conjunto sem ela não poderia ser lido de outra base por esquecimento.
+
+    O carregador do Reporter (pkg/reporter/contract, readConsolidation) recusa o que
+    não executaria; este validador recusa o mesmo, para que nenhum contrato passe
+    aqui e seja recusado na primeira geração.
+    """
+    for ds in datasets_of(contract):
+        if "consolidation" not in ds:
+            if ds.get("grain") != "singleton" and "childOf" not in ds:
+                fail(f"{doc_dir.relative_to(ROOT)}: {ds.get('name', '<sem nome>')} é um conjunto de várias linhas "
+                     f"sem consolidation; declare por qual chave as linhas de mais de uma base se unificam e o "
+                     f"que acontece com cada campo (CONTRIBUTING.md, Consolidação)")
+            continue
+
+        name = ds.get("name", "<sem nome>")
+        where = f"{doc_dir.relative_to(ROOT)}: {name}.consolidation"
+        block = mapping_at(where, ds.get("consolidation"),
+                           "consolidation é um mapeamento de key, whenKeyRepeats e columns")
+        if block is None:
+            continue
+
+        for key in sorted(set(block) - CONSOLIDATION_KEYS):
+            fail(f"{where} declara {key!r}, que o motor não conhece; consolidation aceita {sorted(CONSOLIDATION_KEYS)}")
+
+        if ds.get("grain") == "singleton":
+            fail(f"{where} está num conjunto de uma linha só, que não tem o que consolidar")
+            continue
+        if "childOf" in ds:
+            fail(f"{where} está num conjunto aninhado; consolidar um conjunto que pende de outro não é executado")
+            continue
+
+        fields = {f.get("name"): f for f in fields_of(ds) if isinstance(f, dict)}
+        key = block.get("key")
+        if not isinstance(key, list) or not key:
+            fail(f"{where}.key não nomeia campo; as linhas se unificam pelos campos que o curador nomeia aqui")
+            key = []
+        elif len(set(map(str, key))) != len(key):
+            fail(f"{where}.key nomeia um campo duas vezes")
+        for item in key:
+            if not isinstance(item, str):
+                fail(f"{where}.key tem {item!r}; cada item é o nome de um campo")
+            elif item not in fields:
+                fail(f"{where}.key nomeia {item!r}, que o conjunto não declara")
+        key = [item for item in key if isinstance(item, str)]
+
+        rowset = ds.get("rowSet")
+        identity = [rowset.get("key")] if isinstance(rowset, dict) else (
+            ds.get("grain") if isinstance(ds.get("grain"), list) else [])
+        if identity and key and sorted(map(str, key)) != sorted(map(str, identity)):
+            fail(f"{where}.key é {key}, e uma linha deste conjunto é identificada por {identity}; "
+                 f"unificadas por outra chave, sairiam duas linhas da mesma identidade")
+
+        mode = block.get("whenKeyRepeats", "combine")
+        if not isinstance(mode, str) or mode not in CONSOLIDATION_MODES:
+            fail(f"{where}.whenKeyRepeats é {mode!r}; é 'combine' ou 'refuse'")
+        elif mode == "refuse" and (isinstance(rowset, dict) or "hierarchy" in ds):
+            fail(f"{where}.whenKeyRepeats é 'refuse' num conjunto em que toda fonte escreve as mesmas "
+                 f"linhas (as do catálogo, ou as contas-mãe dos níveis): uma chave seria sempre achada duas vezes")
+
+        columns = block.get("columns")
+        if columns is None:
+            columns = {}
+        elif not isinstance(columns, dict):
+            fail(f"{where}.columns é um mapeamento de cada campo para sum, equal ou first")
+            columns = {}
+
+        for column, rule in columns.items():
+            field = fields.get(column)
+            if not isinstance(rule, str):
+                fail(f"{where}.columns.{column} é {rule!r}; a regra de uma coluna é sum, equal ou first")
+            elif field is None:
+                fail(f"{where}.columns.{column} nomeia um campo que o conjunto não declara")
+            elif column in key:
+                fail(f"{where}.columns.{column} é chave; a chave unifica as linhas, não é valor a combinar")
+            elif field.get("prefixOf"):
+                fail(f"{where}.columns.{column} é derivado e é recalculado depois de unificar; nunca é combinado")
+            elif rule not in CONSOLIDATION_RULES:
+                fail(f"{where}.columns.{column} é {rule!r}; a regra de uma coluna é sum, equal ou first")
+            elif rule == "sum" and field.get("type") not in ("decimal", "integer"):
+                fail(f"{where}.columns.{column} é 'sum', e só número se soma; este campo é {field.get('type')}")
+
+        for column, field in fields.items():
+            if column in key or field.get("prefixOf") or column in columns:
+                continue
+            fail(f"{where}.columns não diz nada de {column!r}; todo campo que não é chave diz o que "
+                 f"acontece com os seus valores: sum, equal ou first")
+
+
+def check_parameters(doc_dir: Path, contract: dict) -> None:
+    """Os parâmetros de geração são declarações que o motor consegue satisfazer.
+
+    Um parâmetro é respondido pela requisição, então uma declaração impossível — tipo
+    desconhecido, default que o próprio domínio recusa, mês que não existe — só é
+    descoberta quando alguém tenta gerar o documento, na véspera do prazo.
+    """
+    seen: set[str] = set()
+
+    for param in parameters_of(contract):
+        if mapping_at(f"{doc_dir.relative_to(ROOT)}: um parâmetro", param,
+                      "um parâmetro é um mapeamento de name, type e o que mais o declara") is None:
+            continue
+
+        name = required_text(f"{doc_dir.relative_to(ROOT)}: o name de um parâmetro", param.get("name"),
+                             "um parâmetro é nomeado por texto, que é como a requisição o responde")
+        if name is None:
+            continue
+
+        where = f"{doc_dir.relative_to(ROOT)}: parâmetro '{name}'"
+
+        if name in seen:
+            fail(f"{where} declarado duas vezes")
+        seen.add(name)
+
+        ptype = required_text(f"{where} type", param.get("type"),
+                              f"o tipo de um parâmetro é uma palavra: {sorted(FIELD_TYPES)}")
+        if ptype is not None and ptype not in FIELD_TYPES:
+            fail(f"{where} tem type {ptype!r}; o motor aceita {sorted(FIELD_TYPES)}")
+
+        domain = optional_at(where, param, "domain")
+        default = optional_at(where, param, "default")
+
+        if domain is not None and not isinstance(domain, list):
+            fail(f"{where} tem domain {domain!r}; um domínio é a lista fechada de valores aceitos")
+            domain = None
+
+        if default is not None and domain and default not in domain:
+            fail(f"{where} tem default {default!r} fora do próprio domain {domain!r} — nunca poderia ser satisfeito")
+
+        closed = optional_at(where, param, "closed")
+        if closed is not None and not isinstance(closed, bool):
+            fail(f"{where} tem closed {closed!r}; é true ou false")
+        elif closed and ptype not in ("month", "date"):
+            fail(f"{where} declara closed e não é do tipo month nem date, então não nomeia período que feche")
+
+        months = optional_at(where, param, "allowedMonths")
+        if months is None:
+            continue
+
+        if ptype != "month":
+            fail(f"{where} declara allowedMonths e não é do tipo month, então a restrição não se aplica a nada")
+
+        if not isinstance(months, list) or not months:
+            fail(f"{where} tem allowedMonths {months!r}; é a lista dos meses aceitos, como ['06', '12']")
+            continue
+
+        for month in months:
+            if not isinstance(month, str) or month not in MONTHS_OF_YEAR:
+                fail(f"{where} tem allowedMonths com {month!r}; um mês é de '01' a '12', com dois dígitos")
+
+
+RULE_KEYS = {"id", "severity", "appliesTo", "message", "where", "transform", "check"}
+TRANSFORM_KINDS = {"negateWhen"}
+CHECK_KINDS = {"unique", "notStartsWith", "existsIn", "equalsLookup"}
+# Definidos na gramática e ainda não executados pelo motor: um contrato que os use
+# é recusado lá, e aqui também, em vez de carregar uma regra que ninguém roda.
+DEFINED_NOT_IMPLEMENTED = {"requiredWhen", "forbiddenWhen", "refersTo", "equalsSumOf"}
+WHERE_KEYS = {"field", "rowSet", "equals", "in", "notIn"}
 
 
 def check_rules(doc_dir: Path, contract: dict) -> None:
-    """Severidade é obrigatória e o alvo tem de existir.
+    """Toda regra do documento é uma que o motor EXECUTA.
 
-    Uma regra sem severidade não diz se bloqueia a geração ou apenas avisa, e essa
-    é a diferença entre travar a operação do cliente numa véspera de prazo e
-    entregar arquivo errado.
+    Uma regra é uma transformação (`transform`) ou uma conferência (`check`) do
+    vocabulário fechado do motor, sobre um conjunto que o contrato declara, lendo
+    campos dele e tabelas publicadas. Uma regra em texto livre (`assert`) aparece no
+    contrato, é lida em revisão como se protegesse alguma coisa, e não confere nada.
     """
-    datasets, parameters = declared_names(contract)
+    where = doc_dir.relative_to(ROOT)
+    datasets, _ = declared_names(contract)
+    row_sets = {
+        ds.get("name"): ds["rowSet"].get("from")
+        for ds in datasets_of(contract)
+        if isinstance(ds.get("rowSet"), dict) and isinstance(ds.get("name"), str)
+    }
+    tables = {t.get("name") for t in tables_of(contract)
+              if isinstance(t, dict) and isinstance(t.get("name"), str)}
     seen: set[str] = set()
 
-    for rule in contract.get("rules", []):
-        rule_id = rule.get("id", "<sem id>")
+    for rule in rules_of(contract):
+        if mapping_at(f"{where}: uma regra", rule, "uma regra é um mapeamento de id, appliesTo e transform ou check") is None:
+            continue
+
+        rule_id = rule.get("id")
+        if not isinstance(rule_id, str) or not rule_id:
+            fail(f"{where}: há regra sem id, que nada pode citar")
+            rule_id = "<sem id>"
 
         if rule_id in seen:
-            fail(f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' duplicada")
+            fail(f"{where}: regra '{rule_id}' duplicada")
         seen.add(rule_id)
 
-        if rule.get("severity") not in {"error", "warning", "info"}:
-            fail(
-                f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' tem severity "
-                f"{rule.get('severity')!r}; use error, warning ou info"
-            )
+        label = f"{where}: regra '{rule_id}'"
 
-        target = rule.get("appliesTo", "")
-        head = target.split(".", 1)[0]
-        if head and head not in datasets and head != "parameters":
-            fail(
-                f"{doc_dir.relative_to(ROOT)}: regra '{rule_id}' aponta para "
-                f"'{target}', que o contrato não declara"
-            )
+        if "assert" in rule:
+            fail(f"{label} é escrita em texto livre (`assert`), que o motor não executa; use transform ou check")
+            continue
+
+        unknown = set(rule) - RULE_KEYS
+        if unknown:
+            fail(f"{label} declara {sorted(unknown)}; uma regra é {', '.join(sorted(RULE_KEYS))}")
+
+        target = rule.get("appliesTo")
+        if not isinstance(target, str) or target not in datasets:
+            fail(f"{label} aplica-se a {target!r}, que não é um conjunto do contrato")
+            continue
+
+        fields = datasets[target]
+        transform, check = rule.get("transform"), rule.get("check")
+
+        if (transform is None) == (check is None):
+            fail(f"{label} precisa de exatamente um de transform ou check")
+            continue
+
+        severity = rule.get("severity")
+        if transform is not None and severity is not None:
+            fail(f"{label} é uma transformação e declara severity; uma transformação não falha")
+        if check is not None and severity != "error":
+            fail(f"{label} é uma conferência com severity {severity!r}; o motor executa error (warning e info estão definidos e não implementados)")
+
+        block = transform if transform is not None else check
+        allowed = TRANSFORM_KINDS if transform is not None else CHECK_KINDS
+        if not isinstance(block, dict) or len(block) != 1:
+            fail(f"{label} precisa nomear exatamente um tipo: {', '.join(sorted(allowed))}")
+            continue
+
+        kind, spec = next(iter(block.items()))
+        if kind in DEFINED_NOT_IMPLEMENTED:
+            fail(f"{label} é '{kind}', definido e ainda não implementado no motor")
+            continue
+        if kind not in allowed:
+            fail(f"{label} é '{kind}'; use {', '.join(sorted(allowed))}")
+            continue
+
+        named_fields, named_tables = _rule_names(label, kind, spec, row_sets.get(target))
+        where_clause = rule.get("where")
+        if where_clause is not None:
+            named_fields |= _rule_where(label, where_clause, row_sets.get(target))
+
+        for field in sorted(named_fields - fields):
+            fail(f"{label} lê o campo '{field}', que '{target}' não declara")
+        for table in sorted(named_tables - tables):
+            fail(f"{label} consulta a tabela '{table}', que o contrato não publica em `tables`")
+
+
+def _rule_names(label: str, kind: str, spec: object, row_set: str | None) -> tuple[set[str], set[str]]:
+    """Os campos e as tabelas que um tipo de regra lê, conferindo a forma dele."""
+    if kind == "unique":
+        if not isinstance(spec, list) or not spec or not all(isinstance(f, str) for f in spec):
+            fail(f"{label}: unique é uma lista de campos")
+            return set(), set()
+        return set(spec), set()
+
+    if not isinstance(spec, dict):
+        fail(f"{label}: {kind} é um mapeamento")
+        return set(), set()
+
+    required = {
+        "negateWhen": {"field", "table", "key", "equals"},
+        "notStartsWith": {"field", "values"},
+        "existsIn": {"field"},
+        "equalsLookup": {"field", "table", "key"},
+    }[kind]
+    optional = {"existsIn": {"rowSet", "table"}}.get(kind, set())
+
+    missing = required - set(spec)
+    extra = set(spec) - required - optional
+    if missing:
+        fail(f"{label}: {kind} não declara {sorted(missing)}")
+    if extra:
+        fail(f"{label}: {kind} declara {sorted(extra)}, que ele não tem")
+
+    fields = {spec[k] for k in ("field", "key") if isinstance(spec.get(k), str)}
+    tables = {spec["table"]} if isinstance(spec.get("table"), str) else set()
+
+    if kind == "notStartsWith" and (not isinstance(spec.get("values"), list) or not spec["values"]):
+        fail(f"{label}: notStartsWith não lista valores")
+    if kind == "existsIn":
+        if ("rowSet" in spec) == ("table" in spec):
+            fail(f"{label}: existsIn nomeia um rowSet ou uma tabela, exatamente um dos dois")
+        elif "rowSet" in spec and spec["rowSet"] != row_set:
+            fail(f"{label}: existsIn lê o rowSet {spec['rowSet']!r}, e o conjunto publica {row_set!r}")
+
+    return fields, tables
+
+
+def _rule_where(label: str, clause: object, row_set: str | None) -> set[str]:
+    """Os campos que um `where` lê, conferindo a forma dele."""
+    if not isinstance(clause, dict):
+        fail(f"{label}: where é um mapeamento")
+        return set()
+
+    extra = set(clause) - WHERE_KEYS
+    if extra:
+        fail(f"{label}: where declara {sorted(extra)}")
+    if ("field" in clause) == ("rowSet" in clause):
+        fail(f"{label}: where nomeia um campo ou uma coluna publicada, exatamente um dos dois")
+    if sum(1 for k in ("equals", "in", "notIn") if k in clause) != 1:
+        fail(f"{label}: where compara com exatamente um de equals, in ou notIn")
+    if "rowSet" in clause and row_set is None:
+        fail(f"{label}: where lê uma coluna publicada, e o conjunto não publica linhas")
+
+    return {clause["field"]} if isinstance(clause.get("field"), str) else set()
 
 
 def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
@@ -290,10 +2528,21 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
     A duplicação é deliberada — o índice existe para filtrar sem baixar tudo — mas
     divergir significa mostrar ao cliente um documento que não é o que ele recebe.
     """
-    mirrored = ("country", "regulator", "document", "title", "version", "periodicity")
+    mirrored = ("country", "regulator", "document", "title", "version", "periodicity", "family")
 
-    for entry in catalog.get("documents", []):
-        doc_id = entry.get("id")
+    documents = sequence_at("catalog.yaml: documents", catalog.get("documents"),
+                            "documents é a lista dos documentos do catálogo")
+
+    for entry in documents:
+        if mapping_at("catalog.yaml: uma entrada de documents", entry,
+                      "cada entrada é um mapeamento de id, path e o que mais o índice anuncia") is None:
+            continue
+
+        doc_id = required_text("catalog.yaml: o id de uma entrada", entry.get("id"),
+                               "o id de um documento é texto")
+        if doc_id is None:
+            continue
+
         contract = contracts.get(doc_id)
 
         if contract is None:
@@ -311,13 +2560,17 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
         if entry.get("appliesTo") != metadata.get("appliesTo"):
             fail(f"catalog.yaml: '{doc_id}'.appliesTo diverge do contrato")
 
-    indexed = {e.get("id") for e in catalog.get("documents", [])}
+    indexed = {e["id"] for e in documents if isinstance(e, dict) and isinstance(e.get("id"), str)}
     for doc_id in contracts:
         if doc_id not in indexed:
             fail(f"catalog.yaml: contrato '{doc_id}' existe e não está no índice")
 
 
 def main() -> int:
+    FAILURES.clear()
+    WARNINGS.clear()
+    NATURE_COPIES.clear()
+
     catalog = load(ROOT / "catalog.yaml")
     if catalog is None:
         print("\n".join(FAILURES), file=sys.stderr)
@@ -331,20 +2584,33 @@ def main() -> int:
             continue
 
         doc_dir = path.parent
-        doc_id = contract.get("metadata", {}).get("id")
+        metadata = contract.get("metadata")
+        doc_id = metadata.get("id") if isinstance(metadata, dict) else None
 
-        if not doc_id:
-            fail(f"{path.relative_to(ROOT)}: metadata.id ausente")
+        # Texto, e não apenas presente: o id vira CHAVE de dicionário uma linha
+        # abaixo, e uma lista ali levanta unhashable antes de qualquer conferência.
+        if not isinstance(doc_id, str) or not doc_id:
+            fail(f"{path.relative_to(ROOT)}: metadata.id é {doc_id!r}; é o identificador do documento, escrito como texto")
             continue
 
         contracts[doc_id] = contract
+        check_dataset_shapes(doc_dir, contract)
         check_template(doc_dir, contract)
         check_formatting_not_duplicated(doc_dir)
         check_no_extraction_in_contract(doc_dir, contract)
+        check_closed_account_set(doc_dir, contract)
+        check_engine_parity(doc_dir, contract)
+        check_parameters(doc_dir, contract)
+        check_filing(doc_dir, contract)
+        check_consolidation(doc_dir, contract)
+        check_structure(doc_dir, contract)
+        check_template_parses(doc_dir)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
+        check_tables(doc_dir, contract)
         check_rules(doc_dir, contract)
 
+    check_nature_copies()
     check_index(catalog, contracts)
 
     for warning in WARNINGS:

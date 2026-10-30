@@ -1,0 +1,102 @@
+{
+  "_about": "Org F — BLOQUEIO DE SALDO, sintética e declarada como tal. A conta de depósito do Bruno tem um segundo saldo, `bloqueio`, e o bloqueio judicial é a transação BLOCK do Midaz: move o valor do saldo `default` para o `bloqueio` da MESMA conta, sob a MESMA rubrica (a rota não declara `accountingEntries.block`, então vale a rubrica `direct`). O bloqueio limita o que pode ser gasto, não o que é devido: o depósito continua inteiro no 4010 e no 4111. O desbloqueio (UNBLOCK) devolve parte. Contabilidade FICTÍCIA para homologação. Horários em -03:00 (Brasília); REPORT_TIMEZONE=America/Sao_Paulo é precondição.",
+  "organization": {
+    "legalName": "Bloqueio COSIF (sintética, homologação)",
+    "doingBusinessAs": "Bloqueio",
+    "legalDocument": "88990011000107",
+    "address": {
+      "line1": "Av. Paulista 1000",
+      "zipCode": "01310100",
+      "city": "São Paulo",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "ledger": "Razão COSIF",
+  "accountTypes": [
+    {
+      "keyValue": "ativo",
+      "name": "Ativo",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "passivo",
+      "name": "Passivo",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "patrimonio",
+      "name": "Patrimônio líquido",
+      "defaultDirection": "credit"
+    }
+  ],
+  "accounts": [
+    {
+      "alias": "@caixa",
+      "type": "ativo",
+      "code": "1110000009",
+      "name": "Caixa"
+    },
+    {
+      "alias": "@capital",
+      "type": "patrimonio",
+      "code": "6111000003",
+      "name": "Capital de Domiciliados no País"
+    },
+    {
+      "alias": "@bruno",
+      "type": "passivo",
+      "code": "4111000005",
+      "name": "Bruno — Depósitos de Pessoas Naturais",
+      "balances": [
+        "bloqueio"
+      ]
+    }
+  ],
+  "transactions": [
+    {
+      "key": "F01",
+      "date": "2026-09-01T10:00:00-03:00",
+      "amount": "10000.00",
+      "description": "Integralização de capital",
+      "debit": "@caixa",
+      "credit": "@capital"
+    },
+    {
+      "key": "F02",
+      "date": "2026-09-02T10:00:00-03:00",
+      "amount": "2000.00",
+      "description": "Depósito em espécie do Bruno",
+      "debit": "@caixa",
+      "credit": "@bruno"
+    },
+    {
+      "key": "F03",
+      "date": "2026-09-10T10:00:00-03:00",
+      "amount": "800.00",
+      "description": "Bloqueio judicial de 800",
+      "kind": "block",
+      "debit": "@bruno",
+      "credit": "@bruno",
+      "creditBalance": "bloqueio"
+    },
+    {
+      "key": "F04",
+      "date": "2026-09-12T10:00:00-03:00",
+      "amount": "1000.00",
+      "description": "Saque de 1.000 do disponível (1.200)",
+      "debit": "@bruno",
+      "credit": "@caixa"
+    },
+    {
+      "key": "F05",
+      "date": "2026-09-20T10:00:00-03:00",
+      "amount": "300.00",
+      "description": "Desbloqueio de 300",
+      "kind": "unblock",
+      "debit": "@bruno",
+      "debitBalance": "bloqueio",
+      "credit": "@bruno"
+    }
+  ]
+}

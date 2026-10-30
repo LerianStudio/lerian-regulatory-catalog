@@ -1,0 +1,246 @@
+# Contrato do Cadoc 4016 — Balanço Patrimonial Analítico.
+#
+# QUEM CURA: a Lerian, a partir do leiaute oficial 4010/4016 (um documento só,
+# schema/leiaute-4010-4016.pdf) e do COSIF. Referências "L p.N" são desse leiaute.
+#
+# RELAÇÃO COM O 4010: é o MESMO balanço, com duas diferenças que o próprio leiaute
+# enuncia — periodicidade SEMESTRAL (§2.1.4) e a exclusão dos grupos de RESULTADO,
+# porque um Balanço representa a posição contábil DEPOIS de apurado o resultado do
+# exercício. Tudo o mais — grão, natureza do saldo, formato — é idêntico ao 4010.
+#
+# O motor confia neste contrato. Não há conferência contra o XSD do BACEN em tempo
+# de execução: o XSD fica no repositório como fonte de curadoria.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.bcb.cadoc-4016
+  country: BR
+  regulator: BCB
+  document: "4016"
+  family: cadoc          # o agrupamento: os documentos contábeis do BCB
+  title: Balanço Patrimonial Analítico
+  summary: >-
+    Posição patrimonial semestral por rubrica COSIF, sem as contas de resultado (grupos 7 e 8). O balanço do 4010 após a apuração do exercício.
+  version: 1.0.0
+  status: draft
+  output: xml
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  periodicity: semiannual     # §2.1.4 — o 4010 é mensal, o 4016 semestral
+  sourceOfTruth:
+    layoutManual: https://www.bcb.gov.br/content/estabilidadefinanceira/cosif_leiautes/Leiaute_4010_xmlV0.pdf
+    schema: schema/leiaute-4010-4016.pdf   # material de curadoria, não é executado
+    calendar: dias-nao-uteis.yaml          # dias não úteis (curadoria Lerian): cortam cada período
+
+parameters:
+  - name: dataBase
+    type: month              # AAAA-MM
+    required: true
+    # O 4016 é esperado APENAS para junho e dezembro (L §2.1.4). Diferente do
+    # `domain` de um enum fechado, aqui restringimos o MÊS de um valor aberto: só
+    # AAAA-06 e AAAA-12 são aceitos. Sem isto, um 4016 para 2026-01 é gerável e o
+    # BACEN o rejeita.
+    allowedMonths: ["06", "12"]
+    # Só mês já encerrado no fuso do Reporter (REPORT_TIMEZONE): um mês é gerável a
+    # partir do primeiro dia do seguinte. Gerado antes, o arquivo traria parte do
+    # mês como se fosse o mês inteiro, e nada nele diria qual parte falta.
+    closed: true
+    description: Data-base do balanço — apenas junho ou dezembro.
+
+  - name: tipoRemessa
+    type: string
+    required: true
+    default: I
+    domain: [I, S]           # I = inclusão, S = substituição (XSD)
+    description: Natureza da remessa ao BACEN.
+
+# ---------------------------------------------------------------------------
+# A entrega: o que faz duas gerações serem a MESMA entrega, e a remessa.
+#
+# O motor é genérico e não conhece o vocabulário do BCB. Ele aplica três regras
+# sobre os parâmetros que este bloco nomeia: (1) uma entrega ORIGINAL aprovada por
+# período, por assinatura; (2) substituição só depois de aprovada a original do
+# período; (3) a geração mais nova do mesmo período e da mesma remessa substitui a
+# anterior ainda não aprovada.
+#
+# `period` é opcional: ausente, o período é todo parâmetro menos o da remessa.
+# `remittance` é opcional: ausente, o motor não impõe regra de original e
+# substituição. Aqui, I = inclusão (a primeira remessa da data-base) e
+# S = substituição (o reenvio de uma data-base já remetida).
+# ---------------------------------------------------------------------------
+filing:
+  period: [dataBase]
+  remittance:
+    parameter: tipoRemessa
+    original: I
+    replacement: S
+
+datasets:
+  - name: institution
+    description: Identificação da instituição declarante.
+    grain: singleton
+    fields:
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        # O CNPJ da declarante é DADO: vem da base, como qualquer outro valor (no
+        # binding de referência, a organização do Midaz). O contrato só o escreve
+        # como o arquivo pede: letras e dígitos, em maiúsculas. Que o CNPJ seja
+        # válido é do cadastro do cliente, não deste arquivo.
+        normalize: alphanumeric
+        # A declarante é a instituição da entrega: o CNPJ lido da base é conferido
+        # contra o cadastro da instituição, e um diferente recusa a geração
+        # (RPT-0196). O registro e o arquivo não nomeiam instituições diferentes.
+        identifiesInstitution: true
+        description: CNPJ da instituição declarante (quatorze posições).
+      - name: cnpj8
+        type: string
+        length: 8
+        required: true
+        # O arquivo leva a RAIZ: as oito primeiras posições do CNPJ acima, cortadas
+        # pelo motor. Nenhum binding mapeia este campo.
+        prefixOf: cnpj
+        pattern: '^[A-Za-z0-9]{8}$'
+        description: Raiz do CNPJ (oito primeiras posições).
+
+  - name: cosif_balances
+    description: Saldo de fechamento por rubrica COSIF na data-base, SEM as contas de resultado.
+    grain: [cosifCode]
+    # Um balancete lista pelo menos uma conta (o XSD exige `conta` com minOccurs=1).
+    # Sem linha nenhuma a geração é recusada, dizendo o que cada consulta leu e com
+    # quais filtros, em vez de sair um Draft com <contas/> vazio que alguém aprova.
+    nonEmpty: true
+    # TODAS AS CONTAS, inclusive as sintéticas. O leiaute pede "todas as contas
+    # contábeis às quais a entidade deve prestar informação" e o exemplo do BCB
+    # lista Ativo (1000000009) e Disponibilidades (1100000002) ao lado das
+    # analíticas; as instruções do 4111 (§4.2.2.b) exigem que o seu último dia
+    # coincida com este balancete. Ninguém lança numa conta sintética — o Midaz
+    # não tem o conceito —, então as linhas-mãe são DERIVADAS: cada ancestral de
+    # uma rubrica movimentada vira uma linha, somada do que está abaixo dela, em
+    # convenção contábil e reexpressa na natureza da própria conta (uma provisão,
+    # credora dentro do grupo 1, ABATE Operações de Crédito). O motor soma a árvore
+    # pelos níveis declarados aqui e soletra o código de cada ancestral pela regra
+    # do dígito verificador, também declarada aqui: a soma das nove posições com
+    # os pesos 9,3,7,9,3,7,9,3,7, módulo 10, que reproduz todas as rubricas que o
+    # regulador publica.
+    # NATUREZA DE CADA RUBRICA: o lado em que o saldo normalmente fica, lido do
+    # elenco COSIF do BACEN (natureza.yaml, gerado por tools/natureza.py). É dado
+    # do PLANO COSIF, não do cliente: o elenco marca as retificadoras — perda
+    # esperada, provisão, depreciação acumulada —, e quem lança na rubrica certa
+    # fez o que lhe cabe. A regra `saldo-na-natureza` a aplica,
+    # pela tabela `natureza`; o binding só lê.
+    hierarchy:
+      levels: [1, 1, 1, 2, 2, 2]
+      checkDigit: 1
+      checkDigitWeights: [9, 3, 7, 9, 3, 7, 9, 3, 7]
+    means: >-
+      MESMO conjunto do 4010, com uma restrição de conteúdo que o leiaute impõe:
+      não é esperada a presença das contas dos grupos 7 (Receitas) e 8 (Despesas),
+      porque o Balanço representa a posição APÓS a apuração do resultado do
+      exercício (L p.6). Filtrar essas rubricas é regra de EXTRAÇÃO, então vive na
+      consulta do binding; a regra abaixo confere no arquivo pronto.
+    # CONSOLIDAÇÃO DENTRO DA MESMA INSTITUIÇÃO: o documento é individual, mas os
+    # saldos de uma instituição podem estar em mais de uma base (vários ledgers, um
+    # core em migração, um ERP). O conjunto pode ser lido de cada uma (as fontes
+    # adicionais do mapeamento, `also`), e as linhas se unificam pela rubrica, com o
+    # saldo das fontes somado. Cada fonte é montada inteira, com as suas contas-mãe,
+    # antes de unificar. Somar instituições diferentes não é este documento.
+    consolidation:
+      key: [cosifCode]
+      columns: {saldo: sum}
+    fields:
+      - name: cosifCode
+        type: string
+        required: true
+        # Dez dígitos (IN BCB 426-433, desde jan/2025). A hierarquia acima descreve só
+        # essa grafia; a de oito dígitos, anterior a 2025, é recusada — a retificação
+        # de uma data-base anterior a 2025 não é coberta por esta versão.
+        pattern: '^[0-9]{10}$'
+        normalize: digits
+        description: Rubrica patrimonial ou de compensação do elenco COSIF.
+
+      - name: saldo
+        type: decimal
+        required: true
+        format:
+          scale: 2
+          scaleIsExact: true   # o XSD declara fractionDigits como MÁXIMO — 0 passa
+          decimalSeparator: "."
+          groupSeparator: ""
+        means: >-
+          Saldo de fechamento no último dia útil do mês (L p.6), expresso na
+          NATUREZA DA PRÓPRIA CONTA. A convenção crédito-menos-débito do razão não
+          deve vazar para o arquivo. O motor não confere o sinal — quem confere é o
+          cliente no rascunho, antes de aprovar.
+        expects: >-
+          Entregue o saldo de cada rubrica com crédito positivo e débito negativo; o
+          documento depois põe cada saldo na natureza da conta. Entregue ao
+          contrário, todos os sinais saem trocados e nada avisa.
+        description: Saldo da rubrica em reais na data-base.
+
+
+tables:
+  - name: natureza
+    from: natureza.yaml        # prefixo da rubrica → debit | credit, do elenco COSIF
+    match: longestPrefix
+
+rules:
+  # O razão soma em convenção contábil (crédito positivo); uma conta de natureza
+  # devedora sai com o sinal invertido, em cada linha, depois da soma das mães.
+  - id: saldo-na-natureza
+    appliesTo: cosif_balances
+    transform:
+      negateWhen: {field: saldo, table: natureza, key: cosifCode, equals: debit}
+    message: Cada saldo sai na natureza da própria conta.
+
+  - id: no-duplicate-account
+    severity: error
+    appliesTo: cosif_balances
+    check:
+      unique: [cosifCode]
+    message: Uma linha por rubrica; duplicidade indica agrupamento errado no binding.
+
+  # O primeiro dígito da rubrica é o grupo COSIF; 7 e 8 são resultado. O binding de
+  # referência já os deixa de fora; esta regra recusa um binding que esqueceu.
+  - id: sem-contas-de-resultado
+    severity: error
+    appliesTo: cosif_balances
+    check:
+      notStartsWith: {field: cosifCode, values: ["7", "8"]}
+    message: >-
+      O 4016 é a posição após a apuração do resultado, então não admite contas dos
+      grupos 7 (Receitas) nem 8 (Despesas) (L p.6). A presença de uma indica que o
+      filtro do binding não excluiu o resultado.
+
+  # Rubrica com saldo zero pode ser omitida (L p.6); emitir ou não é decisão do
+  # cliente. É informação, não regra: está no manual.md.
+
+knownGaps:
+  - id: natureza-lida-do-elenco
+    description: >-
+      A natureza de cada rubrica vem do elenco COSIF do BACEN (natureza.yaml,
+      gerada por tools/natureza.py): a seção dá o lado, "(-)" marca a
+      retificadora, "(+/-)" herda a mãe. O que fica com o cliente é LANÇAR NA
+      RUBRICA CERTA — o COSIF referenciado nas rotas contábeis do Midaz
+      (`operation.route_code`). Dois limites, declarados: (1) uma rubrica que o
+      elenco não tem, mas que cai num grupo que existe, recebe a natureza do grupo
+      em silêncio (uma "provisão" inventada em 1.6.9 sai devedora); só uma rubrica
+      fora de todo grupo do elenco, como o grupo 5 a partir de 2025, recusa a
+      geração. (2) No grupo 8 o elenco escreve "(-)" em quase toda despesa, então o
+      grupo é tratado como devedor inteiro; as poucas contas sem a marca ficam
+      listadas no cabeçalho de natureza.yaml para revisão.
+  - id: elenco-cosif-ausente
+    description: >-
+      Como no 4010, não há regra conferindo que a rubrica existe no elenco COSIF
+      vigente — isso é obrigação da fonte. O pattern confere forma, não existência.
+
+  - id: ordem-sequencial-de-data-base
+    description: >-
+      O leiaute exige critério SEQUENCIAL: o BACEN só recepciona a data-base N se a
+      N-1 (junho antes de dezembro, dezembro antes do junho seguinte) já foi aceita
+      (§2.1.4). Isso é regra de protocolo de remessa, não da forma do arquivo; entra
+      quando a etapa de remessa existir. A restrição de meses (allowedMonths) fica no
+      parâmetro porque essa SIM é conferível na geração.

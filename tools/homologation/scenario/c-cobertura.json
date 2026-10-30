@@ -1,0 +1,400 @@
+{
+  "_about": "Org C — COBERTURA SINTÉTICA, declarada como tal: não é o perfil de nenhuma instituição real. Existe para que cada linha do conjunto do 4111 que A e B não alcançam receba um valor distinguível, e para exercitar o que o motor faz e o template não mostra: lançamento na própria linha-mãe e em subcontas do cliente abaixo de uma linha publicada (roll-up), janela do fluxo que reinicia no mês (agosto não conta), corte diário (dataBase 2026-09-15 x 2026-09-30) e lançamento depois da data-base (outubro, fora). O grupo 2 do 4010 também entra aqui, e uma retificadora do patrimônio líquido: (-) Capital a Realizar (6.1.1.50.00.00-9), devedora dentro de um grupo credor, que abate o Capital na conta-mãe. Todas as rubricas são do elenco COSIF vigente. A contrapartida de toda 3.0.9.70.XX é o título único 9.0.9.70.00.00-7 (IN BCB 538), num ledger próprio (Razão COSIF 4, o do campo ledger): os ledgers anteriores registraram subcontas 9.0.9.70.XX que o COSIF não tem, ou datas de reversão em UTC. Horários em -03:00 (Brasília): o dia regulatório é o dia civil brasileiro, e REPORT_TIMEZONE=America/Sao_Paulo é precondição; uma reversão às 00:05Z cairia às 21:05 do dia anterior.",
+  "organization": {
+    "legalName": "Cobertura COSIF (sintética, homologação, COSIF vigente)",
+    "doingBusinessAs": "Cobertura",
+    "legalDocument": "55667788000186",
+    "address": {
+      "line1": "Rua Sintética 1",
+      "zipCode": "01001000",
+      "city": "São Paulo",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "ledger": "Razão COSIF 4",
+  "accountTypes": [
+    {
+      "keyValue": "ativo",
+      "name": "Ativo",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "passivo",
+      "name": "Passivo",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "patrimonio",
+      "name": "Patrimônio líquido",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "compensacao_devedora",
+      "name": "Compensação devedora",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "compensacao_credora",
+      "name": "Compensação credora",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "patrimonio_retificadora",
+      "name": "Retificadora do patrimônio líquido",
+      "defaultDirection": "debit"
+    }
+  ],
+  "accounts": [
+    {
+      "alias": "@caixa",
+      "type": "ativo",
+      "code": "1110000009",
+      "name": "Caixa"
+    },
+    {
+      "alias": "@caixa_sub",
+      "type": "ativo",
+      "code": "1111000008",
+      "name": "Caixa — subconta do cliente (1.1.1.10)"
+    },
+    {
+      "alias": "@outros_creditos_neg",
+      "type": "ativo",
+      "code": "1849000002",
+      "name": "Outros Créditos por Negociação e Intermediação de Valores"
+    },
+    {
+      "alias": "@permanente",
+      "type": "ativo",
+      "code": "2111000007",
+      "name": "Dependências no Exterior (grupo 2)"
+    },
+    {
+      "alias": "@dep_vista",
+      "type": "passivo",
+      "code": "4110000006",
+      "name": "Depósitos à Vista (lançamento na linha-mãe)"
+    },
+    {
+      "alias": "@dep_ligadas",
+      "type": "passivo",
+      "code": "4110500001",
+      "name": "Depósitos à Vista de Ligadas"
+    },
+    {
+      "alias": "@dep_pn",
+      "type": "passivo",
+      "code": "4111000005",
+      "name": "Depósitos de Pessoas Naturais"
+    },
+    {
+      "alias": "@dep_pj",
+      "type": "passivo",
+      "code": "4112000004",
+      "name": "Depósitos de Pessoas Jurídicas"
+    },
+    {
+      "alias": "@dep_if",
+      "type": "passivo",
+      "code": "4113000003",
+      "name": "Depósitos de Instituições do Sistema Financeiro"
+    },
+    {
+      "alias": "@dep_gov",
+      "type": "passivo",
+      "code": "4114000002",
+      "name": "Depósitos de Governos"
+    },
+    {
+      "alias": "@dep_exterior",
+      "type": "passivo",
+      "code": "4116000000",
+      "name": "Depósitos de Domiciliados no Exterior"
+    },
+    {
+      "alias": "@contas_encerradas",
+      "type": "passivo",
+      "code": "4119800001",
+      "name": "Contas Encerradas"
+    },
+    {
+      "alias": "@dep_prazo",
+      "type": "passivo",
+      "code": "4151000003",
+      "name": "Depósitos a Prazo"
+    },
+    {
+      "alias": "@dep_judiciais",
+      "type": "passivo",
+      "code": "4155000009",
+      "name": "Depósitos Judiciais e Administrativos Mantidos na Instituição"
+    },
+    {
+      "alias": "@cx_reg_liq",
+      "type": "passivo",
+      "code": "4951000007",
+      "name": "Caixas de Registro e Liquidação"
+    },
+    {
+      "alias": "@outras_obrig_neg",
+      "type": "passivo",
+      "code": "4959000009",
+      "name": "Outras Obrigações por Negociação e Intermediação de Valores"
+    },
+    {
+      "alias": "@capital_a_realizar",
+      "type": "patrimonio_retificadora",
+      "code": "6115000009",
+      "name": "(-) Capital a Realizar"
+    },
+    {
+      "alias": "@capital",
+      "type": "patrimonio",
+      "code": "6111000003",
+      "name": "Capital de Domiciliados no País"
+    },
+    {
+      "alias": "@fluxo_pos",
+      "type": "compensacao_devedora",
+      "code": "3097010000",
+      "name": "Transações no mês - Emissor Pós-pago"
+    },
+    {
+      "alias": "@fluxo_subcred",
+      "type": "compensacao_devedora",
+      "code": "3097035009",
+      "name": "Transações no mês - Subcredenciador"
+    },
+    {
+      "alias": "@fluxo_itp",
+      "type": "compensacao_devedora",
+      "code": "3097040001",
+      "name": "Transações no mês - Iniciador (ITP)"
+    },
+    {
+      "alias": "@controle_transacoes",
+      "type": "compensacao_credora",
+      "code": "9097000007",
+      "name": "Transações de Pagamento Realizadas no Mês - Controle"
+    }
+  ],
+  "transactions": [
+    {
+      "key": "C01",
+      "date": "2026-08-01T10:00:00Z",
+      "amount": "1000000.00",
+      "description": "Integralização de capital",
+      "debit": "@caixa",
+      "credit": "@capital"
+    },
+    {
+      "key": "C02",
+      "date": "2026-08-02T10:00:00Z",
+      "amount": "5000.00",
+      "description": "Capital em subconta de Caixa",
+      "debit": "@caixa_sub",
+      "credit": "@capital"
+    },
+    {
+      "key": "C03",
+      "date": "2026-08-20T10:00:00Z",
+      "amount": "5000.00",
+      "description": "Fluxo pós-pago de AGOSTO (fora da janela do mês)",
+      "debit": "@fluxo_pos",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "C04",
+      "date": "2026-09-02T10:00:00Z",
+      "amount": "1000.00",
+      "description": "Depósito na própria linha-mãe Depósitos à Vista",
+      "debit": "@caixa",
+      "credit": "@dep_vista"
+    },
+    {
+      "key": "C05",
+      "date": "2026-09-03T10:00:00Z",
+      "amount": "2000.00",
+      "description": "Depósito de ligada",
+      "debit": "@caixa",
+      "credit": "@dep_ligadas"
+    },
+    {
+      "key": "C06",
+      "date": "2026-09-04T10:00:00Z",
+      "amount": "3000.00",
+      "description": "Depósito de pessoa natural",
+      "debit": "@caixa",
+      "credit": "@dep_pn"
+    },
+    {
+      "key": "C07",
+      "date": "2026-09-04T10:01:00Z",
+      "amount": "400.00",
+      "description": "Depósito de pessoa natural",
+      "debit": "@caixa",
+      "credit": "@dep_pn"
+    },
+    {
+      "key": "C08",
+      "date": "2026-09-05T10:00:00Z",
+      "amount": "5000.00",
+      "description": "Depósito de pessoa jurídica",
+      "debit": "@caixa",
+      "credit": "@dep_pj"
+    },
+    {
+      "key": "C09",
+      "date": "2026-09-05T10:01:00Z",
+      "amount": "700.00",
+      "description": "Fluxo pós-pago de setembro",
+      "debit": "@fluxo_pos",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "C10",
+      "date": "2026-09-08T10:00:00Z",
+      "amount": "6000.00",
+      "description": "Depósito de instituição financeira",
+      "debit": "@caixa",
+      "credit": "@dep_if"
+    },
+    {
+      "key": "C11",
+      "date": "2026-09-08T10:01:00Z",
+      "amount": "7000.00",
+      "description": "Depósito de governo",
+      "debit": "@caixa",
+      "credit": "@dep_gov"
+    },
+    {
+      "key": "C12",
+      "date": "2026-09-09T10:00:00Z",
+      "amount": "8000.00",
+      "description": "Depósito de domiciliado no exterior",
+      "debit": "@caixa",
+      "credit": "@dep_exterior"
+    },
+    {
+      "key": "C13",
+      "date": "2026-09-09T10:01:00Z",
+      "amount": "90.00",
+      "description": "Saldo de conta encerrada",
+      "debit": "@caixa",
+      "credit": "@contas_encerradas"
+    },
+    {
+      "key": "C14",
+      "date": "2026-09-10T10:00:00Z",
+      "amount": "1200.00",
+      "description": "Outros créditos por negociação",
+      "debit": "@outros_creditos_neg",
+      "credit": "@caixa"
+    },
+    {
+      "key": "C15",
+      "date": "2026-09-10T10:01:00Z",
+      "amount": "1300.00",
+      "description": "Caixa de registro e liquidação (passivo)",
+      "debit": "@caixa",
+      "credit": "@cx_reg_liq"
+    },
+    {
+      "key": "C16",
+      "date": "2026-09-11T10:00:00Z",
+      "amount": "1400.00",
+      "description": "Outras obrigações por negociação",
+      "debit": "@caixa",
+      "credit": "@outras_obrig_neg"
+    },
+    {
+      "key": "C17",
+      "date": "2026-09-11T10:01:00Z",
+      "amount": "20000.00",
+      "description": "Aquisição de permanente",
+      "debit": "@permanente",
+      "credit": "@caixa"
+    },
+    {
+      "key": "C18",
+      "date": "2026-09-14T10:00:00Z",
+      "amount": "1500.00",
+      "description": "Capital subscrito a integralizar",
+      "debit": "@capital_a_realizar",
+      "credit": "@capital"
+    },
+    {
+      "key": "C19",
+      "date": "2026-09-18T10:00:00Z",
+      "amount": "10000.00",
+      "description": "Depósito a prazo (depois do dia 15)",
+      "debit": "@caixa",
+      "credit": "@dep_prazo"
+    },
+    {
+      "key": "C20",
+      "date": "2026-09-18T10:01:00Z",
+      "amount": "800.00",
+      "description": "Fluxo de subcredenciador (depois do dia 15)",
+      "debit": "@fluxo_subcred",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "C21",
+      "date": "2026-09-22T10:00:00Z",
+      "amount": "11000.00",
+      "description": "Depósito judicial (depois do dia 15)",
+      "debit": "@caixa",
+      "credit": "@dep_judiciais"
+    },
+    {
+      "key": "C22",
+      "date": "2026-09-25T10:00:00Z",
+      "amount": "900.00",
+      "description": "Fluxo de iniciador (depois do dia 15)",
+      "debit": "@fluxo_itp",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "C23",
+      "date": "2026-10-01T10:00:00Z",
+      "amount": "999.99",
+      "description": "Depósito de pessoa natural em OUTUBRO (depois da data-base)",
+      "debit": "@caixa",
+      "credit": "@dep_pn"
+    },
+    {
+      "key": "C24",
+      "date": "2026-09-01T00:05:00-03:00",
+      "amount": "5000.00",
+      "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): pós-pago de agosto",
+      "debit": "@controle_transacoes",
+      "credit": "@fluxo_pos"
+    },
+    {
+      "key": "C25",
+      "date": "2026-10-01T00:05:00-03:00",
+      "amount": "700.00",
+      "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): pós-pago de setembro",
+      "debit": "@controle_transacoes",
+      "credit": "@fluxo_pos"
+    },
+    {
+      "key": "C26",
+      "date": "2026-10-01T00:06:00-03:00",
+      "amount": "800.00",
+      "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): subcredenciador de setembro",
+      "debit": "@controle_transacoes",
+      "credit": "@fluxo_subcred"
+    },
+    {
+      "key": "C27",
+      "date": "2026-10-01T00:07:00-03:00",
+      "amount": "900.00",
+      "description": "Reversão mensal do fluxo (zera a 3.0.9.70 na virada do mês): iniciador de setembro",
+      "debit": "@controle_transacoes",
+      "credit": "@fluxo_itp"
+    }
+  ]
+}

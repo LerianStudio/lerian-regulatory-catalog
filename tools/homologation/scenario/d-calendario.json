@@ -1,0 +1,150 @@
+{
+  "_about": "Org D — CALENDÁRIO, sintética e declarada como tal. Fevereiro de 2026 termina num sábado (28): o último dia útil é sexta, 27, e o primeiro de março é segunda, 02. Prova os três cortes que o calendário de dias úteis decide: o balancete fecha no último dia útil (a carga de sábado fica fora do 4010 de fevereiro), o volume do 4111 de sábado e domingo vai para o primeiro dia útil seguinte (o 4111 de 02/03 soma 70 + 20 + 10 = 100, e não 30), e o 4111 de sábado é recusado. A conta de fluxo é zerada na virada, logo depois do último dia útil (28/02 00:05). O lançamento D09, às 23:30 de sexta em Brasília, prova o fuso: em UTC ele cai no sábado e some do mês. Horários em -03:00 (Brasília): o dia regulatório é o dia civil brasileiro, e REPORT_TIMEZONE=America/Sao_Paulo é precondição; uma reversão às 00:05Z cairia às 21:05 do dia anterior.",
+  "organization": {
+    "legalName": "Calendário COSIF (sintética, homologação)",
+    "doingBusinessAs": "Calendário",
+    "legalDocument": "66778899000186",
+    "address": {
+      "line1": "Rua Sintética 2",
+      "zipCode": "01001000",
+      "city": "São Paulo",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "ledger": "Razão COSIF 3",
+  "accountTypes": [
+    {
+      "keyValue": "ativo",
+      "name": "Ativo",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "patrimonio",
+      "name": "Patrimônio líquido",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "compensacao_devedora",
+      "name": "Compensação devedora",
+      "defaultDirection": "debit"
+    },
+    {
+      "keyValue": "compensacao_credora",
+      "name": "Compensação credora",
+      "defaultDirection": "credit"
+    },
+    {
+      "keyValue": "conta_pre_paga",
+      "name": "Conta de pagamento pré-paga",
+      "defaultDirection": "credit"
+    }
+  ],
+  "accounts": [
+    {
+      "alias": "@dep_bancarios",
+      "type": "ativo",
+      "code": "1120000006",
+      "name": "Depósitos Bancários"
+    },
+    {
+      "alias": "@capital",
+      "type": "patrimonio",
+      "code": "6111000003",
+      "name": "Capital de Domiciliados no País"
+    },
+    {
+      "alias": "@fluxo_emissor",
+      "type": "compensacao_devedora",
+      "code": "3097020007",
+      "name": "Transações no mês - Emissor Pré-pago"
+    },
+    {
+      "alias": "@controle_transacoes",
+      "type": "compensacao_credora",
+      "code": "9097000007",
+      "name": "Transações de Pagamento Realizadas no Mês - Controle"
+    },
+    {
+      "alias": "@ana",
+      "type": "conta_pre_paga",
+      "code": "4193000009",
+      "routeByType": true,
+      "name": "Ana — conta pré-paga"
+    }
+  ],
+  "transactions": [
+    {
+      "key": "D01",
+      "date": "2026-02-02T10:00:00Z",
+      "amount": "10000.00",
+      "description": "Integralização de capital",
+      "debit": "@dep_bancarios",
+      "credit": "@capital"
+    },
+    {
+      "key": "D02",
+      "date": "2026-02-26T10:00:00Z",
+      "amount": "500.00",
+      "description": "Carga pré-paga de Ana (quinta)",
+      "debit": "@dep_bancarios",
+      "credit": "@ana"
+    },
+    {
+      "key": "D03",
+      "date": "2026-02-27T10:00:00Z",
+      "amount": "100.00",
+      "description": "Volume de pagamentos de sexta, 27/02",
+      "debit": "@fluxo_emissor",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "D04",
+      "date": "2026-02-28T00:05:00-03:00",
+      "amount": "100.00",
+      "description": "Reversão mensal do fluxo, logo depois do último dia útil de fevereiro",
+      "debit": "@controle_transacoes",
+      "credit": "@fluxo_emissor"
+    },
+    {
+      "key": "D05",
+      "date": "2026-02-28T11:00:00Z",
+      "amount": "70.00",
+      "description": "Volume de pagamentos de SÁBADO, 28/02",
+      "debit": "@fluxo_emissor",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "D06",
+      "date": "2026-02-28T11:01:00Z",
+      "amount": "30.00",
+      "description": "Carga pré-paga de Ana no SÁBADO (Pix)",
+      "debit": "@dep_bancarios",
+      "credit": "@ana"
+    },
+    {
+      "key": "D07",
+      "date": "2026-03-01T11:00:00Z",
+      "amount": "20.00",
+      "description": "Volume de pagamentos de DOMINGO, 01/03",
+      "debit": "@fluxo_emissor",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "D08",
+      "date": "2026-03-02T11:00:00Z",
+      "amount": "10.00",
+      "description": "Volume de pagamentos de segunda, 02/03",
+      "debit": "@fluxo_emissor",
+      "credit": "@controle_transacoes"
+    },
+    {
+      "key": "D09",
+      "date": "2026-02-27T23:30:00-03:00",
+      "amount": "5.00",
+      "description": "Pix às 23:30 de SEXTA no horário de Brasília (02:30Z de sábado): pertence a fevereiro e ao 4111 de 27/02",
+      "debit": "@dep_bancarios",
+      "credit": "@ana"
+    }
+  ]
+}

@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+dist/
+
+# Estado local da homologação: ids do ambiente onde o cenário foi montado
+tools/homologation/scenario/*.state.json

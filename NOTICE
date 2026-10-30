@@ -1,0 +1,24 @@
+Catálogo regulatório da Lerian
+Copyright (c) 2026 Lerian Studio Ltd.
+
+Este repositório é distribuído sob a Elastic License 2.0 (ver LICENSE), com a
+exceção abaixo.
+
+MATERIAL DE TERCEIROS — NÃO COBERTO PELA ELASTIC LICENSE 2.0
+
+Os arquivos a seguir são documentos públicos publicados pelo Banco Central do
+Brasil. Estão aqui como fonte para escrever e revisar os contratos, não são obra
+da Lerian, e o uso deles segue as condições do próprio Banco Central do Brasil:
+
+  br/bcb/cadoc-4010/schema/XSD_4010_v0.xsd     esquema do documento 4010
+  br/bcb/cadoc-4016/schema/leiaute-4010-4016.pdf  leiaute dos documentos 4010/4016
+  br/bcb/cadoc-4111/schema/4111-instrucoes.pdf  instruções do documento 4111
+  br/bcb/cadoc-4111/schema/XSD_4111.xsd         esquema do documento 4111
+  br/bcb/cosif/elenco-contas.pdf                elenco de contas do COSIF
+
+Estes arquivos não vão no pacote de uma release, que leva só o que é da Lerian
+(contratos, templates, mapeamentos de referência, manuais e tabelas).
+
+Tabelas derivadas do elenco COSIF (natureza.yaml, contas.yaml) são curadoria da
+Lerian sobre um documento público e seguem a Elastic License 2.0; a fonte de cada
+uma é citada no próprio arquivo.

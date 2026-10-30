@@ -1,0 +1,107 @@
+# Binding do Cadoc 4016 — QUEM PREENCHE É O CLIENTE.
+# Exemplo contra o Midaz. É o binding do 4010 com UM acréscimo: o filtro que
+# exclui as contas de resultado (grupos 7 e 8), que o Balanço não admite.
+#
+# É também a primeira evidência concreta do reuso entre documentos: esta consulta
+# saldos_cosif é a mesma do 4010, e a de identificação da instituição é idêntica em
+# todos os balancetes. Quando o mecanismo de consulta compartilhada existir, elas
+# saem para um arquivo comum sem reescrever nada — por isso já nascem nomeadas.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.cadoc-4016
+contractVersion: 1.0.0
+
+queries:
+  - name: declarante
+    description: A organização do Midaz, que é a instituição declarante — o CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    # Qual organização: o escopo da instituição, que filtra organization.id pela
+    # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
+    # uma linha só recusa a geração em vez de escolher uma.
+    filters:
+      # Uma organização apagada não declara nada.
+      - field: deleted_at
+        operator: isNull
+
+  - name: saldos_cosif
+    description: Lançamentos do razão agregados em saldo por rubrica, SEM resultado.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      # SÓ O QUE MOVEU SALDO, SÓ EM REAIS. Uma transação NOTED (anotação) grava
+      # operações com a rubrica da rota, valor ZERO e `balance_affected = false`:
+      # não altera saldo, mas faria a rubrica aparecer como linha de 0,00 sem nunca
+      # ter sido lançada. E um ledger do Midaz pode ter outros ativos além do BRL,
+      # que não são lançamento em reais. Nenhum dos dois é lançamento deste
+      # documento.
+      - field: balance_affected
+        operator: eq
+        values: ["true"]
+      - field: asset_code
+        operator: eq
+        values: ["BRL"]
+      # Só o que o Midaz não apagou: as leituras do próprio Midaz filtram
+      # deleted_at IS NULL, e o documento lê o mesmo razão que ele.
+      - field: deleted_at
+        operator: isNull
+      # A exclusão dos grupos 7 e 8: o primeiro caractere da rota contábil é o grupo
+      # COSIF. É filtro de EXTRAÇÃO — o 4016 não admite resultado — então vive aqui,
+      # não no contrato. A regra sem-contas-de-resultado do contrato confere o
+      # arquivo pronto; este filtro é o que faz o arquivo já sair certo.
+      # PREFIXO, não o código inteiro: `nin ["7","8"]` compararia a rubrica de dez
+      # dígitos com "7" e "8" e não excluiria nada. Uma versão anterior escreveu
+      # `match: firstChar`, que nada lia — o arquivo saía com as contas de resultado.
+      - field: route_code
+        operator: notStartsWith
+        values: ["7", "8"]
+      # ATÉ O FIM DA DATA-BASE, pelo calendário de dias úteis do contrato, e sem
+      # limite inferior: o saldo de fechamento carrega tudo que já foi lançado.
+      - field: created_at
+        operator: lt
+        values: [{parameter: dataBase, at: end, calendar: business}]
+
+    # O VALOR DE CADA LANÇAMENTO NO RAZÃO: `direction` diz o lado, e um débito entra
+    # negativo. A chave é o VALOR QUE A COLUNA CARREGA ('debit' ou 'credit'); um lado
+    # que nenhum caso lista recusa a geração inteira.
+    compute:
+      - as: valor_no_razao
+        case:
+          column: direction
+          when:
+            credit: {column: amount}
+            debit: {negate: amount}
+          otherwise: refuse
+
+    aggregate:
+      groupBy: [route_code]
+      measures:
+        - as: saldo
+          fn: sum
+          of: valor_no_razao
+
+datasets:
+  institution:
+    # O CNPJ vem da organização do Midaz (legal_document); a raiz que o arquivo
+    # leva é derivada pelo contrato (cnpj8: prefixOf cnpj).
+    from:
+      query: declarante
+    fields:
+      cnpj:
+        from: query
+        column: legal_document
+
+  cosif_balances:
+    from:
+      query: saldos_cosif
+    fields:
+      cosifCode:
+        from: query
+        column: route_code
+      saldo:
+        from: query
+        column: saldo
+
+manualOverrides: []

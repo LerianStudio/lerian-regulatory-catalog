@@ -1,0 +1,53 @@
+{
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/g-livros-multiplos.json. A instituição é a organização: os dois livros somados. Setembro: só o capital da Tesouraria. Outubro: caixa 10000 + 1000 - 300 = 10700; depósito da Ana 1000 - 300 = 700; ponte 1.5.1 em Contas +700 (débito: 1000 chegou, 300 saiu) e na Tesouraria -700 — somada nos livros, 0.00. Ativo 10700 = depósitos 700 + capital 10000. Os documentos do cross-ledger são datados por {crossDay} e {crossMonth}, que a ferramenta preenche com o dia em que o setup lançou (a v2 não retrodata).",
+  "documents": [
+    {
+      "document": "4010",
+      "dataBase": "2026-09",
+      "complete": true,
+      "_note": "Antes de qualquer cross-ledger: só a Tesouraria tem saldo; o escopo pela organização a lê.",
+      "lines": {
+        "1000000009": "10000.00",
+        "1100000002": "10000.00",
+        "1110000009": "10000.00",
+        "6000000004": "10000.00",
+        "6100000007": "10000.00",
+        "6110000004": "10000.00",
+        "6111000003": "10000.00"
+      }
+    },
+    {
+      "document": "4111",
+      "dataBase": "{crossDay}",
+      "complete": false,
+      "_note": "Dia dos lançamentos cross-ledger ({crossDay}, a data em que o setup rodou): caixa 10700, depósito 700. Gerável a partir do dia seguinte.",
+      "lines": {
+        "1100000002": "10700.00",
+        "1110000009": "10700.00",
+        "4110000006": "700.00",
+        "4111000005": "700.00"
+      }
+    },
+    {
+      "document": "4010",
+      "dataBase": "{crossMonth}",
+      "complete": true,
+      "_note": "Mês dos lançamentos cross-ledger: a ponte 1.5.1 aparece com 0.00, os dois lados se anulam na instituição. Gerável a partir do primeiro dia do mês seguinte.",
+      "lines": {
+        "1000000009": "10700.00",
+        "1100000002": "10700.00",
+        "1110000009": "10700.00",
+        "1500000004": "0.00",
+        "1510000001": "0.00",
+        "4000000006": "700.00",
+        "4100000009": "700.00",
+        "4110000006": "700.00",
+        "4111000005": "700.00",
+        "6000000004": "10000.00",
+        "6100000007": "10000.00",
+        "6110000004": "10000.00",
+        "6111000003": "10000.00"
+      }
+    }
+  ]
+}
