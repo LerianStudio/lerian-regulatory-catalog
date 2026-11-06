@@ -178,6 +178,11 @@ FECHADO_CONTRACT = {
          "childOf": {"dataset": "institution"},
          "fields": [{"name": "tipo", "type": "string", "required": True, "domain": ["1", "2", "3"],
                      "description": "Tipo."}]},
+        # Um conjunto opcional que o binding declara vazio (emptyReason): o arquivo sai
+        # sem nenhuma linha dele, e nada fica pendente.
+        {"name": "nifs", "description": "Identificação no exterior.", "grain": ["numero"],
+         "childOf": {"dataset": "institution"},
+         "fields": [{"name": "numero", "type": "string", "required": True, "description": "Número."}]},
         {"name": "linhas", "description": "Uma linha por conta do conjunto fechado.",
          "rowSet": {"from": "contas.yaml", "key": "codigo"},
          "consolidation": {"key": ["codigo"], "columns": {"valor": "sum"}},
@@ -244,6 +249,7 @@ FECHADO_BINDING = {
         "institution": {"fields": {"cnpj8": {"from": "constant", "value": "12345678"}}},
         "tipos": {"fields": {"tipo": {"from": "manual", "values": ["1", "3"],
                                       "pendingReason": "todo tipo que a entidade é"}}},
+        "nifs": {"emptyReason": "a entidade não tem identificação no exterior"},
         "linhas": {
             "from": {"query": "estoque"},
             "rowKey": {"codigo": "rota"},

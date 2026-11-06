@@ -642,6 +642,14 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             fail(f"{doc_dir.relative_to(ROOT)}: binding.example não resolve o conjunto '{dataset}'")
             continue
 
+        # `emptyReason`: o conjunto não tem linha, de propósito, e o texto diz por
+        # quê — o NIF no exterior de uma declarante que não o tem. Só num conjunto
+        # que pode ficar vazio, e sozinho: com uma origem ao lado, nada diria qual vale.
+        if isinstance(entry, dict) and "emptyReason" in entry:
+            _check_empty_set(doc_dir, dataset, entry, by_name.get(dataset, {}))
+            _check_children_of_empty_set(doc_dir, dataset, bound, by_name)
+            continue
+
         raw_from = entry.get("from")
         if raw_from is not None and not isinstance(raw_from, dict):
             fail(
@@ -761,22 +769,25 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
 
             if "values" in spec:
                 # Uma LISTA: uma linha por valor, num conjunto pendurado num singleton.
-                # Pendente, ela deixa o CONJUNTO vazio: bloqueia só se ele não puder
-                # ser entregue vazio (nonEmpty).
+                # Pendente, ela é do cliente preencher UMA vez no mapeamento (o
+                # rascunho sai com a pendência até lá) — ver o campo manual abaixo.
                 lists.setdefault(dataset, []).append(field)
-                if _check_list(doc_dir, contract, dataset, field, spec, entry) and \
-                        by_name.get(dataset, {}).get("nonEmpty") is True:
-                    pending.add(f"{dataset}.{field}")
+                _check_list(doc_dir, contract, dataset, field, spec, entry)
                 continue
 
+            # Um campo `manual` sem valor e com `pendingReason` é o que o CLIENTE
+            # preenche uma vez no mapeamento — o que a fonte não tem (o ambiente de
+            # destino, a situação no CRS). Não bloqueia: o motor gera o rascunho com a
+            # pendência, e uma pendência obrigatória impede aprovar e baixar até o
+            # cliente preencher. O que bloqueia é o `manual` dentro de `byRowClass`
+            # (acima): ele não é um valor que o cliente digita uma vez, e o motor nem o
+            # leva ao recomeçar da referência.
             if how == "manual" and spec.get("value") is None:
                 if not spec.get("pendingReason"):
                     fail(
                         f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} é manual sem "
                         f"valor e sem `pendingReason`"
                     )
-                if field in required_by_dataset.get(dataset, set()):
-                    pending.add(f"{dataset}.{field}")
 
     for dataset, names in sorted(lists.items()):
         if len(names) > 1:
@@ -786,10 +797,56 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
     _verdict_on_pending(doc_dir, generatable, declared_incomplete, overrides, pending)
 
 
+def _check_empty_set(doc_dir: Path, dataset: str, entry: dict, declared: dict) -> None:
+    """Um conjunto que o mapeamento declara vazio: `emptyReason`, e nada mais.
+
+    O motor não lê nem cria pendência para ele, e o arquivo sai sem nenhuma linha
+    do conjunto. Recusado onde o arquivo exige linha — `nonEmpty`, um singleton,
+    linhas do catálogo — e ao lado de qualquer outra chave do conjunto.
+    """
+    where = doc_dir.relative_to(ROOT)
+    reason = entry.get("emptyReason")
+    if not isinstance(reason, str) or not reason.strip():
+        fail(f"{where}: o conjunto '{dataset}' declara emptyReason vazio; diga por que ele não tem linha")
+
+    others = sorted(str(key) for key in entry if key != "emptyReason")
+    if others:
+        fail(f"{where}: o conjunto '{dataset}' declara emptyReason junto com {others}; "
+             f"um conjunto vazio não tem origem nem campos")
+
+    if declared.get("nonEmpty") is True:
+        fail(f"{where}: o conjunto '{dataset}' é nonEmpty e o binding o declara vazio (emptyReason)")
+    if declared.get("grain") == "singleton":
+        fail(f"{where}: o conjunto '{dataset}' é de uma linha (singleton) e o binding o declara vazio (emptyReason)")
+    if declared.get("rowSet"):
+        fail(f"{where}: as linhas do conjunto '{dataset}' são do catálogo (rowSet) e o binding o declara vazio (emptyReason)")
+
+
+def _check_children_of_empty_set(doc_dir: Path, dataset: str, bound: dict, by_name: dict) -> None:
+    """Um conjunto pendurado (a qualquer profundidade) num conjunto declarado vazio
+    também é declarado vazio: sem linha no pai, não há onde pendurar as dele, e um
+    filho não mapeado deixaria pendências que bloqueiam a aprovação."""
+    for name, declared in by_name.items():
+        parent, seen = name, set()
+        while True:
+            child_of = (by_name.get(parent) or {}).get("childOf")
+            parent = child_of.get("dataset") if isinstance(child_of, dict) else None
+            if not isinstance(parent, str) or parent in seen:
+                break
+            seen.add(parent)
+            if parent == dataset:
+                entry = bound.get(name)
+                if not (isinstance(entry, dict) and "emptyReason" in entry):
+                    fail(f"{doc_dir.relative_to(ROOT)}: o conjunto '{dataset}' é declarado vazio e "
+                         f"'{name}' pendura nele sem ser declarado vazio também")
+                break
+
+
 def _check_list(doc_dir: Path, contract: dict, dataset: str, field: str, spec: dict, entry: dict) -> bool:
     """Uma lista (`values`) que o motor consegue transformar em linhas.
 
-    Responde se a lista está PENDENTE (manual, vazia), para quem conta pendências.
+    Responde se a lista está PENDENTE (manual, vazia); hoje ninguém precisa da
+    resposta, porque a lista pendente é do cliente preencher e não bloqueia.
     O motor recusa os mesmos casos ao salvar o mapeamento.
     """
     where = f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.values"
@@ -995,7 +1052,8 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
 
 
 def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrides, pending) -> None:
-    """O veredito de gerabilidade: campo obrigatório manual sem valor bloqueia.
+    """O veredito de gerabilidade: campo obrigatório `manual` sem valor dentro de
+    `byRowClass` bloqueia (o `manual` simples e a lista são do cliente preencher).
 
     É a regra que a prosa do binding descrevia e nada impunha.
     """
@@ -1011,7 +1069,7 @@ def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrid
         for field in sorted(declared_incomplete - blocking):
             fail(
                 f"{doc_dir.relative_to(ROOT)}: `incompleteFields` lista {field}, que não "
-                f"é campo obrigatório pendente — lista desatualizada"
+                f"é campo obrigatório que bloqueia (manual sem valor em byRowClass) — lista desatualizada"
             )
         return
 
@@ -1868,6 +1926,8 @@ def check_tables(doc_dir: Path, contract: dict) -> None:
         # idêntica em todo documento que a leva.
         if source == "natureza.yaml":
             _check_nature_table(where, source, path, published)
+        if source == "municipios.yaml":
+            _check_municipality_table(where, source, path)
 
 
 def _check_nature_table(where: Path, source: str, path: Path, table: dict) -> None:
@@ -1887,6 +1947,26 @@ def _check_nature_table(where: Path, source: str, path: Path, table: dict) -> No
             fail(f"{where}: {source}: o prefixo {prefix!r} não é texto de dígitos; o razão carrega o código sem pontuação, e o motor nunca casaria este")
         if not isinstance(side, str) or side not in NATURE_SIDES:
             fail(f"{where}: {source}: o prefixo {prefix!r} é {side!r}; a natureza é debit ou credit")
+
+
+def _check_municipality_table(where: Path, source: str, path: Path) -> None:
+    """A tabela de municípios é EXATAMENTE a que tools/tabelas_receita.py gera da tabela
+    que a Receita publica em br/rfb/e-financeira/tabelas/ — byte a byte, e portanto
+    com o sha256 dela no cabeçalho e uma cópia igual em todo documento que a leva.
+
+    Um código a mais deixaria passar um município que a Receita recusa; um a menos, ou
+    a UF errada, recusaria um endereço certo.
+    """
+    import tabelas_receita
+
+    try:
+        expected = tabelas_receita.render_municipalities(tabelas_receita.AS_OF)
+    except (OSError, tabelas_receita.TableError) as problem:
+        fail(f"{where}: {source} não pôde ser conferida contra a tabela da Receita: {problem}")
+        return
+
+    if path.read_text(encoding="utf-8") != expected:
+        fail(f"{where}: {source} não é a que tools/tabelas_receita.py gera da tabela publicada; regere")
 
 
 def check_nature_copies() -> None:

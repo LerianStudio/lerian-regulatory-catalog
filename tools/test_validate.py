@@ -592,6 +592,52 @@ MUTATIONS: list[Mutation] = [
         "não declara rowSet no conjunto",
     ),
 
+    # ------------------------------- conjunto declarado vazio (emptyReason)
+    Mutation(
+        "vazio-em-conjunto-nonempty",
+        "um conjunto que o arquivo exige com linha não pode ser declarado vazio",
+        lambda b: b[FECHADO]["binding"]["datasets"].update({"tipos": {"emptyReason": "nenhum"}}),
+        "é nonEmpty",
+    ),
+    Mutation(
+        "vazio-em-singleton",
+        "o conjunto de uma linha não pode sair sem a linha",
+        lambda b: b[FECHADO]["binding"]["datasets"].update({"institution": {"emptyReason": "nenhum"}}),
+        "singleton",
+    ),
+    Mutation(
+        "vazio-em-conjunto-do-catalogo",
+        "as linhas de um conjunto fechado são do catálogo, não do mapeamento",
+        lambda b: b[FECHADO]["binding"]["datasets"].update({"linhas": {"emptyReason": "nenhum"}}),
+        "são do catálogo",
+    ),
+    Mutation(
+        "vazio-com-campos",
+        "vazio e com origem ao mesmo tempo: nada diz qual vale",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"].update({"emptyReason": "nenhum"}),
+        "junto com",
+    ),
+    Mutation(
+        "vazio-sem-motivo",
+        "declarar vazio sem dizer por quê é omissão",
+        lambda b: (next(d for d in b[FECHADO]["contract"]["datasets"] if d["name"] == "tipos").pop("nonEmpty"),
+                   b[FECHADO]["contract"].update({"rules": [r for r in b[FECHADO]["contract"]["rules"]
+                                                            if r["id"] != "tipo-principal"]}),
+                   b[FECHADO]["binding"]["datasets"].update({"tipos": {"emptyReason": "  "}})),
+        "emptyReason vazio",
+    ),
+
+    Mutation(
+        "filho-de-conjunto-vazio-mapeado",
+        "o filho de um conjunto sem linha não tem onde pendurar as suas",
+        lambda b: (b[FECHADO]["contract"]["datasets"].append(
+                       {"name": "notas", "description": "Notas do NIF.", "grain": ["nota"],
+                        "childOf": {"dataset": "nifs"},
+                        "fields": [{"name": "nota", "type": "string", "required": False, "description": "Nota."}]}),
+                   b[FECHADO]["binding"]["datasets"].update(
+                       {"notas": {"fields": {"nota": {"from": "manual", "pendingReason": "a nota"}}}})),
+        "pendura nele sem ser declarado vazio",
+    ),
     # ------------------------------- pendência manual: o bloqueio executável
     Mutation(
         "manual-pendente-sem-declarar-incompletude",
@@ -610,7 +656,7 @@ MUTATIONS: list[Mutation] = [
         "lista de pendências que não corresponde às reais engana quem lê",
         lambda b: b[FECHADO]["binding"].update(
             {"incompleteFields": ["linhas.campoQueNaoEstaPendente"]}),
-        "não é campo obrigatório pendente",
+        "não é campo obrigatório que bloqueia",
     ),
     Mutation(
         "incompletefields-forma-invalida",
@@ -1844,7 +1890,7 @@ MUTATIONS: list[Mutation] = [
 _NOT_CONTRACT_KEYS = {
     # binding.example.yaml
     "queries", "query", "join", "match", "from", "having", "derive", "parentMatch",
-    "byRowClass", "generatable", "incompleteReason", "incompleteFields",
+    "byRowClass", "generatable", "incompleteReason", "incompleteFields", "emptyReason",
     "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
     "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
     "accumulate", "rowKey", "compute", "case", "otherwise", "at", "calendar", "operator",
@@ -2050,6 +2096,46 @@ class ValidatorSuite(unittest.TestCase):
         with_reference(data[PLANO]["contract"])
         code, out = _run(self._write(data))
         self.assertEqual(code, 0, f"replacement em lista com reference deveria validar:\n{out}")
+
+    def test_a_value_the_client_fills_once_in_the_mapping_is_valid(self) -> None:
+        """Um campo obrigatório `manual` sem valor e com `pendingReason`, e uma lista pendente.
+
+        É o que a referência entrega para o que a fonte não tem: o cliente preenche
+        uma vez no mapeamento, e até lá o rascunho sai com a pendência, que impede
+        aprovar e baixar. Não é um arquivo saindo sem o dado obrigatório.
+        """
+        data = fixtures.bundle()
+        fields = data[FECHADO]["binding"]["datasets"]
+        fields["institution"]["fields"]["cnpj8"] = {"from": "manual", "pendingReason": "a raiz do CNPJ"}
+        fields["tipos"]["fields"]["tipo"] = {"from": "manual", "values": [], "pendingReason": "todo tipo"}
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"manual a preencher pelo cliente deveria validar:\n{out}")
+
+    def test_a_set_the_mapping_declares_empty_is_valid(self) -> None:
+        """`emptyReason` num conjunto que pode ficar vazio: sem linha, de propósito.
+
+        É o NIF no exterior de uma declarante que não o tem: o arquivo sai sem o
+        grupo, e nada fica pendente.
+        """
+        data = fixtures.bundle()
+        contract = data[FECHADO]["contract"]
+        tipos = next(d for d in contract["datasets"] if d["name"] == "tipos")
+        tipos.pop("nonEmpty")
+        contract["rules"] = [r for r in contract["rules"] if r["id"] != "tipo-principal"]
+        data[FECHADO]["binding"]["datasets"]["tipos"] = {"emptyReason": "a entidade não informa tipo"}
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"conjunto declarado vazio deveria validar:\n{out}")
+
+    def test_a_municipality_table_edited_by_hand_is_refused(self) -> None:
+        """A tabela de municípios é a que tools/tabelas_receita.py gera da tabela da
+        Receita: um código a mais deixaria passar um município que a Receita recusa."""
+        root = Path(tempfile.mkdtemp(dir=self._tmp)) / "catalog"
+        shutil.copytree(TOOLS.parent, root, ignore=shutil.ignore_patterns(".git", "*.pdf"))
+        table = root / "br" / "rfb" / "efinanceira-cad-declarante" / "municipios.yaml"
+        table.write_text(table.read_text(encoding="utf-8") + '  "9999998": SP  # inventado\n', encoding="utf-8")
+        code, out = _run(root)
+        self.assertNotEqual(code, 0, f"a tabela editada à mão deveria reprovar:\n{out}")
+        self.assertIn("não é a que tools/tabelas_receita.py gera", out)
 
     def test_real_catalog_is_valid(self) -> None:
         """E o catálogo de verdade também: a suíte não substitui a conferência dele."""

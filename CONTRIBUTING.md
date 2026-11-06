@@ -110,6 +110,29 @@ conjunto e bloqueia o download só se o contrato declarar o conjunto `nonEmpty`,
 num conjunto pendurado num singleton de topo. Uma regra que lê um campo ainda pendente
 não roda até ele ser preenchido.
 
+Um campo obrigatório `manual` sem valor, ou uma lista pendente, é o que o cliente
+preenche; a conferência o aceita na referência, porque o motor gera o rascunho com a
+pendência e uma pendência obrigatória impede aprovar e baixar até ele preencher. O que a
+conferência continua barrando é o `manual` dentro de `byRowClass`: não é um valor que o
+cliente digita uma vez, e o motor nem o leva ao recomeçar da referência — esse exige
+`generatable: false` com `incompleteReason` e `incompleteFields`.
+
+## Conjunto que o mapeamento declara vazio (`emptyReason`)
+
+Um conjunto opcional que a fonte não tem — a identificação fiscal no exterior de uma
+declarante que não a tem — é declarado vazio no binding, com o motivo:
+
+```yaml
+nifs:
+  emptyReason: "a instituição não tem identificação fiscal no exterior"
+```
+
+O motor não lê nada para ele, não cria pendência, e o arquivo sai sem nenhuma linha do
+conjunto. `emptyReason` vem sozinho (sem `from`, `fields`, `also`, `rowKey`) e não vale
+num conjunto `nonEmpty`, num `singleton` nem num de linhas do catálogo (`rowSet`). Um
+conjunto pendurado num conjunto declarado vazio também é declarado vazio. Quem tem o
+dado troca a declaração pela origem dele.
+
 ## Campo gerado pelo motor (`generate`)
 
 Um campo que o documento exige único e que nenhuma fonte tem (o identificador do
