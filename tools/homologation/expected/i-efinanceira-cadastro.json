@@ -1,0 +1,181 @@
+{
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/i-efinanceira-cadastro.json — a organização do Midaz e os fills do cliente. Cada elemento é conferido pelo caminho debaixo de evtCadDeclarante: texto para um elemento, null para ausente, {\"unordered\": [...]} para uma lista em qualquer ordem; um elemento que o gabarito não nomeia é 'a mais'. O id (ID + 18 dígitos) é conferido pela forma e crescente ao longo da execução, nunca pelo valor. enderecoLivre é line1/CEP/cidade/UF — o line2 ('Bloco B') não entra, e o CEP sai sem o traço. A ordem das entradas importa: o original é aprovado antes da segunda original (409) e dos casos de regra, que por isso são retificações.",
+  "documents": [
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "original",
+      "parameters": {
+        "indRetificacao": "1"
+      },
+      "approve": true,
+      "_note": "Gerado, sem pendência obrigatória (os fills chegaram ao binding), aprovado, baixado e julgado. Numa execução seguinte o original já aprovado é o que se julga: um segundo não se gera.",
+      "elements": {
+        "ideEvento/indRetificacao": "1",
+        "ideEvento/nrRecibo": null,
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "12034056000146",
+        "infoCadastro/inDeclaranteCRS": "1",
+        "infoCadastro/inDeclaranteFATCA": "1",
+        "infoCadastro/tpEntidade": {
+          "unordered": [
+            "1",
+            "6"
+          ]
+        },
+        "infoCadastro/GIIN": null,
+        "infoCadastro/CategoriaDeclarante": "FATCA602",
+        "infoCadastro/NIF": null,
+        "infoCadastro/nome": "Declarante e-Financeira S.A. (sintética, homologação)",
+        "infoCadastro/tpNome": null,
+        "infoCadastro/enderecoLivre": "Av. Paulista 1578 conj 41/01310200/São Paulo/SP",
+        "infoCadastro/tpEndereco": null,
+        "infoCadastro/municipio": "3550308",
+        "infoCadastro/UF": "SP",
+        "infoCadastro/CEP": "01310200",
+        "infoCadastro/Pais": "BR",
+        "infoCadastro/paisResid/Pais": {
+          "unordered": [
+            "BR"
+          ]
+        }
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "retificacao",
+      "parameters": {
+        "indRetificacao": "2",
+        "nrRecibo": "100200300-01-001-2026-123456789"
+      },
+      "_note": "Retificação espontânea com o recibo do original. Um evento NOVO: id novo, maior que o do original; nrRecibo presente. Fica em rascunho.",
+      "elements": {
+        "ideEvento/indRetificacao": "2",
+        "ideEvento/nrRecibo": "100200300-01-001-2026-123456789",
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "12034056000146",
+        "infoCadastro/inDeclaranteCRS": "1",
+        "infoCadastro/inDeclaranteFATCA": "1",
+        "infoCadastro/tpEntidade": {
+          "unordered": [
+            "1",
+            "6"
+          ]
+        },
+        "infoCadastro/GIIN": null,
+        "infoCadastro/CategoriaDeclarante": "FATCA602",
+        "infoCadastro/NIF": null,
+        "infoCadastro/nome": "Declarante e-Financeira S.A. (sintética, homologação)",
+        "infoCadastro/tpNome": null,
+        "infoCadastro/enderecoLivre": "Av. Paulista 1578 conj 41/01310200/São Paulo/SP",
+        "infoCadastro/tpEndereco": null,
+        "infoCadastro/municipio": "3550308",
+        "infoCadastro/UF": "SP",
+        "infoCadastro/CEP": "01310200",
+        "infoCadastro/Pais": "BR",
+        "infoCadastro/paisResid/Pais": {
+          "unordered": [
+            "BR"
+          ]
+        }
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "recibo-na-original",
+      "parameters": {
+        "indRetificacao": "1",
+        "nrRecibo": "100200300-01-001-2026-123456789"
+      },
+      "refused": {
+        "status": 400,
+        "code": "RPT-0140",
+        "detailContains": [
+          "nrRecibo"
+        ]
+      },
+      "_note": "Um original não substitui nada: o recibo é recusado na hora (ValidateReference, antes da conferência do original aprovado)."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "retificacao-sem-recibo",
+      "parameters": {
+        "indRetificacao": "2"
+      },
+      "refused": {
+        "status": 400,
+        "code": "RPT-0140",
+        "detailContains": [
+          "nrRecibo"
+        ]
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "recibo-fora-do-formato",
+      "parameters": {
+        "indRetificacao": "3",
+        "nrRecibo": "100200300-1-001-2026"
+      },
+      "refused": {
+        "status": 400,
+        "code": "RPT-0140",
+        "detailContains": [
+          "nrRecibo"
+        ]
+      },
+      "_note": "Fora do padrão [0-9]{1,18}-[0-9]{2}-[0-9]{3}-[0-9]{4}-[0-9]{1,18}: o segundo grupo tem um dígito e falta o último."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "segunda-original",
+      "parameters": {
+        "indRetificacao": "1"
+      },
+      "refused": {
+        "status": 409,
+        "code": "RPT-0197"
+      },
+      "_note": "O original do declarante já foi aprovado acima: outro original é recusado na hora."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "municipio-de-outra-uf",
+      "parameters": {
+        "indRetificacao": "2",
+        "nrRecibo": "100200300-01-001-2026-123456789"
+      },
+      "fills": {
+        "declarante.municipio": "3304557"
+      },
+      "errored": true,
+      "errorContains": [
+        "RPT-0138",
+        "municipio-da-uf"
+      ],
+      "_note": "Rio de Janeiro (RJ) num endereço de SP. A regra do contrato roda no worker, ao escrever os valores (o manager não a confere no pedido nem no binding): a geração é aceita e termina em Error, com o id da regra na recusa gravada no relatório (metadata) ou no log do worker. Retificação, porque o original já está aprovado."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "sem-residencia-no-brasil",
+      "parameters": {
+        "indRetificacao": "2",
+        "nrRecibo": "100200300-01-001-2026-123456789"
+      },
+      "fills": {
+        "residenciasFiscais.pais": [
+          "PT"
+        ]
+      },
+      "errored": true,
+      "errorContains": [
+        "RPT-0138",
+        "residencia-no-brasil"
+      ],
+      "_note": "A lista de residências fiscais sem BR. Como o caso acima: Error no worker, nomeando a regra. A entrada seguinte de uma nova execução volta o binding aos fills do cenário."
+    }
+  ]
+}
