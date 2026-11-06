@@ -155,13 +155,29 @@ FECHADO_CONTRACT = {
                       sourceOfTruth={"accountSet": "contas.yaml"}),
     "parameters": [
         {"name": "dataBase", "type": "date", "required": True, "description": "Dia."},
-        {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S"],
+        {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S", "R"],
          "description": "Remessa."},
+        # O recibo da entrega substituída: exigido na substituição, recusado na
+        # original, com o formato fixo que o regulador devolve.
+        {"name": "recibo", "type": "string", "required": False, "pattern": "[0-9]{3}-[0-9]{2}",
+         "description": "Recibo da entrega substituída."},
     ],
+    # Duas substituições e a referência do que a substituição substitui.
+    "filing": {"period": ["dataBase"],
+               "remittance": {"parameter": "tipoRemessa", "original": "I", "replacement": ["S", "R"],
+                              "reference": "recibo"}},
     "datasets": [
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
          "fields": [{"name": "cnpj8", "type": "string", "length": 8, "required": True,
-                     "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."}]},
+                     "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."},
+                    # Gerado pelo motor a cada geração: nenhum binding o mapeia.
+                    {"name": "eventoId", "type": "string", "length": 18, "required": True,
+                     "generate": "timeOrderedId", "description": "Número da entrega."}]},
+        # Uma lista pendurada no singleton: uma linha por valor que o cliente digita.
+        {"name": "tipos", "description": "Tipos da entidade.", "grain": ["tipo"], "nonEmpty": True,
+         "childOf": {"dataset": "institution"},
+         "fields": [{"name": "tipo", "type": "string", "required": True, "domain": ["1", "2", "3"],
+                     "description": "Tipo."}]},
         {"name": "linhas", "description": "Uma linha por conta do conjunto fechado.",
          "rowSet": {"from": "contas.yaml", "key": "codigo"},
          "consolidation": {"key": ["codigo"], "columns": {"valor": "sum"}},
@@ -177,6 +193,10 @@ FECHADO_CONTRACT = {
         {"id": "conta-do-conjunto", "severity": "error", "appliesTo": "linhas",
          "check": {"existsIn": {"field": "codigo", "rowSet": "contas.yaml"}},
          "message": "Só contas do conjunto fechado."},
+        # Ao menos uma linha da lista traz um dos valores.
+        {"id": "tipo-principal", "severity": "error", "appliesTo": "tipos",
+         "check": {"contains": {"field": "tipo", "values": ["1"]}},
+         "message": "A entidade é ao menos do tipo 1."},
     ],
 }
 
@@ -194,7 +214,10 @@ FECHADO_CONTAS = {
 
 FECHADO_TEMPLATE = """{# Fixture FECHADO — conjunto fechado de linhas. #}
 <?xml version="1.0" encoding="UTF-8"?>
-<documento codigoDocumento="FECHADO" cnpj="{{ institution.cnpj8 }}" dataBase="{{ system.dataBase }}" tipoRemessa="{{ system.tipoRemessa }}">
+<documento codigoDocumento="FECHADO" id="ID{{ institution.eventoId }}" cnpj="{{ institution.cnpj8 }}" dataBase="{{ system.dataBase }}" tipoRemessa="{{ system.tipoRemessa }}">
+{%- for t in institution.tipos %}
+  <tipo>{{ t.tipo }}</tipo>
+{%- endfor %}
   <contas>
 {%- for c in linhas %}
     <conta codigoConta="{{ c.codigo }}" saldoDia="{{ c.valor }}" />
@@ -219,6 +242,8 @@ FECHADO_BINDING = {
     ],
     "datasets": {
         "institution": {"fields": {"cnpj8": {"from": "constant", "value": "12345678"}}},
+        "tipos": {"fields": {"tipo": {"from": "manual", "values": ["1", "3"],
+                                      "pendingReason": "todo tipo que a entidade é"}}},
         "linhas": {
             "from": {"query": "estoque"},
             "rowKey": {"codigo": "rota"},

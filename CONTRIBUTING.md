@@ -46,12 +46,90 @@ filing:
 ```
 
 Declarado, o motor aplica três regras: uma entrega **original** aprovada por período,
-por assinatura; **substituição** só depois de aprovada a original do período; e a
+por declarante (o documento e o CNPJ da instituição, qualquer que seja a assinatura
+que gerou); **substituição** só depois de aprovada a original do período; e a
 geração mais nova do mesmo período e da mesma remessa substitui a anterior ainda não
-aprovada. `period` é opcional (ausente: todo parâmetro menos o da remessa) e
-`remittance` também (ausente: nenhuma regra de original e substituição). A
-ferramenta de conferência recusa um parâmetro que o contrato não declara, a remessa
-dentro do período e valores fora do `domain` do parâmetro.
+aprovada. `period` é opcional (ausente: todo parâmetro menos o da remessa e o da
+referência); `period: []` escrito declara um documento sem período (um cadastro, que
+se envia uma vez e depois só se retifica). `remittance` também é opcional (ausente:
+nenhuma regra de original e substituição). A ferramenta de conferência recusa um
+parâmetro que o contrato não declara, a remessa dentro do período e valores fora do
+`domain` do parâmetro.
+
+Quando o regulador tem mais de um tipo de substituição, `replacement` é uma lista, e
+quando a substituição nomeia o que substitui (o recibo que o regulador devolveu),
+`reference` diz em qual parâmetro:
+
+```yaml
+parameters:
+  - name: nrRecibo
+    type: string
+    required: false                         # exigido só na substituição, pela remessa
+    pattern: "[0-9]{1,18}-[0-9]{2}-[0-9]{3}-[0-9]{4}-[0-9]{1,18}"
+filing:
+  period: []
+  remittance:
+    parameter: indRetificacao
+    original: "1"
+    replacement: ["2", "3"]
+    reference: nrRecibo
+```
+
+Com `reference`, a substituição exige o parâmetro e a original o recusa, e uma
+substituição que o carrega não precisa de original aprovada no Reporter: a original
+pode ter sido enviada por outra ferramenta, e quem confere o recibo é o regulador. Pelo
+mesmo motivo, depois de uma substituição aprovada o período não aceita outra original
+(RPT-0202): a substituição mostra que a original já foi enviada. O parâmetro da
+referência não pode ser obrigatório, ter default, ser a remessa nem fazer parte do
+período, e declara `pattern`: a referência faz as vezes da original, e o mínimo é ter
+o formato do que o regulador devolve. `pattern` vale para qualquer parâmetro texto: o valor inteiro tem de
+casar com a expressão (RE2), e um default ou valor do `domain` que ela recusa é
+reprovado.
+
+## O que o cliente preenche no mapeamento de referência (`manual`)
+
+O que a fonte de referência (o Midaz) não tem vai no binding de referência como
+`from: manual` com um `pendingReason`, sem valor. O cliente preenche uma vez no
+mapeamento, e preencher não é customizar: o mapeamento continua sendo a referência, e
+recomeçar a partir de uma referência nova leva o que foi digitado para os campos que
+ela ainda deixa ao cliente.
+
+Uma lista (um conjunto com uma linha por valor) é escrita com `values`:
+
+```yaml
+entityTypes:
+  fields:
+    tpEntidade: {from: manual, values: [], pendingReason: "todo tipo de entidade do declarante"}
+```
+
+`values` vale em `constant` ou `manual`, uma vez por conjunto, num conjunto pendurado
+(`childOf`) num `singleton` de topo e que não lê consulta. Cada valor é conferido pelo
+campo do contrato (`domain`, `pattern`, `length`) quando o mapeamento é salvo; vazio,
+repetido ou ao lado de `value` é reprovado. Uma lista manual vazia é pendência do
+conjunto e bloqueia o download só se o contrato declarar o conjunto `nonEmpty`, que vale
+num conjunto pendurado num singleton de topo. Uma regra que lê um campo ainda pendente
+não roda até ele ser preenchido.
+
+## Campo gerado pelo motor (`generate`)
+
+Um campo que o documento exige único e que nenhuma fonte tem (o identificador do
+evento, por exemplo) é gerado pelo motor a cada geração:
+
+```yaml
+- name: eventId
+  type: string
+  length: 18
+  required: true
+  generate: timeOrderedId
+```
+
+`timeOrderedId` é um número ordenado no tempo e único entre os relatórios do tenant,
+escrito em exatamente `length` dígitos com zeros à esquerda; `length` vai de 18 a 64. O
+campo é texto, mora num conjunto `singleton` (um valor por entrega) e não declara
+`prefixOf`, `identifiesInstitution`, `expects`, `normalize`, `checkDigit`, `domain` nem
+`pattern`: só o motor o escreve. O binding não o mapeia, ele nunca é pendência, uma
+correção não o altera (RPT-0149) e cada nova geração tira um valor novo. O template o
+posiciona como qualquer outro campo (`ID{{ header.eventId }}`).
 
 ## Consolidação (`consolidation`)
 
@@ -90,6 +168,12 @@ Toda regra declara `severity`. Escolha pensando em quem recebe o resultado:
 Errar para o lado de `error` trava a operação do cliente numa véspera de prazo.
 Errar para o lado de `warning` entrega arquivo errado. Nenhum dos dois é o padrão
 seguro — decida caso a caso e escreva o porquê na mensagem.
+
+`contains: {field, values}` confere o CONJUNTO: ao menos uma linha traz um dos valores
+(por exemplo, um país de residência `BR`). O conjunto tem de declarar `nonEmpty`, porque
+um conjunto que precisa conter um valor não pode ser entregue vazio. Enquanto a lista
+estiver pendente, a conferência espera: a pendência bloqueia o rascunho, e a regra roda
+quando a lista for preenchida.
 
 ## Revisão
 
