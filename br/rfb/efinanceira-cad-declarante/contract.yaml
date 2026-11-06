@@ -1,0 +1,459 @@
+# Contrato do evtCadDeclarante — Evento de Informações da Entidade Declarante, da
+# e-Financeira (Receita Federal).
+#
+# QUEM CURA: a Lerian, a partir do Anexo II do manual da e-Financeira, leiaute
+# "Cadastro de Declarante" v1.5.0 (ADE Cofis 10/2026; schema/anexo-ii-leiautes-gerais-v1-5-0.pdf,
+# "A II p.N" abaixo), do XSD oficial (schema/evtCadDeclarante-v1_5_0.xsd, em produção
+# desde 01/09/2026) e das tabelas de códigos da Receita
+# (br/rfb/e-financeira/tabelas/, as vigentes na data em que foram baixadas).
+#
+# O QUE É: o cadastro da instituição na e-Financeira — CNPJ, nome, endereço,
+# situação no CRS e no FATCA, tipos de entidade e residências fiscais. Nenhum
+# cliente, nenhuma movimentação. É o primeiro evento: a Receita recusa a abertura
+# da e-Financeira sem um cadastro ativo. Enviado UMA vez por CNPJ (a chave do evento
+# é o cnpjDeclarante) e reenviado como retificação sempre que o cadastro muda.
+#
+# O ARQUIVO SAI SEM ASSINATURA. O XSD oficial exige `ds:Signature`; assinar com o
+# e-CNPJ ICP-Brasil do declarante, montar o lote, cifrá-lo e transmiti-lo são da
+# borda que envia o arquivo à Receita, não do Reporter (ver knownGaps e o manual).
+#
+# O motor confia neste contrato; não há validação XSD em runtime. A homologação do
+# catálogo (tools/homologation) é onde o arquivo gerado é validado contra o XSD.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.rfb.efinanceira-cad-declarante
+  country: BR
+  regulator: RFB
+  document: evtCadDeclarante
+  family: e-financeira   # o agrupamento: os eventos da e-Financeira
+  title: e-Financeira — Cadastro do Declarante
+  summary: >-
+    Cadastro da instituição declarante na e-Financeira: identificação, endereço, situação no CRS e no FATCA, tipos de entidade e residências fiscais. Primeiro evento da e-Financeira; reenviado como retificação quando o cadastro muda.
+  version: 1.0.0
+  status: draft
+  output: xml
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  # Não há período: o evento é enviado quando a instituição se cadastra e quando o
+  # cadastro muda.
+  periodicity: eventual
+  layout:
+    version: "1.5.0"
+    mandatoryFrom: "2026-09-01"
+  sourceOfTruth:
+    layoutManual: http://sped.rfb.gov.br/arquivo/download/8231   # Anexo II — Leiautes Gerais (ADE Cofis 10/2026)
+    schema: schema/evtCadDeclarante-v1_5_0.xsd
+
+parameters:
+  # Original ou retificação (A II p.4-5: 1 original, 2 retificação espontânea, 3
+  # retificação a pedido). Um valor por arquivo.
+  - name: indRetificacao
+    type: string
+    required: true
+    default: "1"
+    domain: ["1", "2", "3"]
+    description: 1 para o arquivo original, 2 para retificação espontânea, 3 para retificação a pedido.
+
+  # O recibo do evento que a retificação substitui (A II p.5). Quem transmite é a
+  # borda que envia o arquivo, então o Reporter nunca vê a resposta da Receita: a
+  # pessoa digita o recibo ao gerar a retificação. O formato é o do XSD.
+  - name: nrRecibo
+    type: string
+    required: false
+    pattern: '[0-9]{1,18}-[0-9]{2}-[0-9]{3}-[0-9]{4}-[0-9]{1,18}'
+    description: Recibo de entrega do evento que esta retificação substitui.
+
+# ---------------------------------------------------------------------------
+# A entrega e a remessa.
+#
+# `period: []` — o documento não tem período: toda geração para a mesma
+# instituição é a MESMA entrega. Uma original; depois, retificações. Uma segunda
+# original é a recusa da Receita (o cnpjDeclarante é a chave do evento), e aqui
+# também é recusada.
+#
+# A retificação nomeia o que retifica (`reference: nrRecibo`): exigida na
+# retificação, recusada na original. Com a referência, a retificação não precisa
+# de uma original aprovada no Reporter — a original pode ter sido enviada por outra
+# ferramenta; é a Receita, que tem o recibo, quem o confere.
+# ---------------------------------------------------------------------------
+filing:
+  period: []
+  remittance:
+    parameter: indRetificacao
+    original: "1"
+    replacement: ["2", "3"]
+    reference: nrRecibo
+
+datasets:
+  - name: declarante
+    description: A entidade declarante — uma linha.
+    grain: singleton
+    fields:
+      # O id do evento (A II p.4): "ID" + 18 dígitos, gerado pela declarante, único
+      # por instituição e tipo de evento. O motor gera os 18 dígitos a cada geração,
+      # crescentes no tempo e únicos entre os relatórios do tenant; o template
+      # escreve o "ID" na frente. Nenhum binding o mapeia, e não se corrige: uma
+      # retificação é um evento NOVO, com id novo — o vínculo é o recibo.
+      - name: eventId
+        type: string
+        length: 18
+        required: true
+        generate: timeOrderedId
+        description: Número do evento (o arquivo leva ID + este número).
+
+      # Ambiente para onde o arquivo vai (A II p.5): 1 produção, 2 produção
+      # restrita (homologação). Depende de para onde o cliente envia.
+      - name: tpAmb
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: Ambiente de destino — 1 produção, 2 produção restrita.
+
+      # Quem emitiu o arquivo (A II p.5-6): 1 aplicativo da empresa, 2 outros.
+      - name: aplicEmi
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: Emissor do aplicativo — 1 aplicativo da empresa, 2 outros.
+
+      # Versão do aplicativo que gerou o arquivo, 1 a 20 posições (A II p.6).
+      - name: verAplic
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,20}$'
+        description: Versão do aplicativo de emissão.
+
+      # O CNPJ da declarante, 14 posições, letras e dígitos (o XSD aceita o CNPJ
+      # alfanumérico). É DADO: vem da base, e a instituição da entrega é conferida
+      # contra ele (RPT-0196). Que o CNPJ seja válido é do cadastro do cliente.
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        normalize: alphanumeric
+        identifiesInstitution: true
+        pattern: '^[0-9A-Z]{14}$'
+        description: CNPJ da entidade declarante (quatorze posições).
+
+      # Situação no CRS, IN RFB 1.680/2016 (A II p.6-7).
+      - name: inDeclaranteCRS
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4"]
+        description: >-
+          1 declarante do CRS; 2, 3 e 4 não declarante, pelos itens B.1.a, B.1.b e B.1.c da Seção VII do Anexo Único da IN RFB 1.680.
+
+      # Situação no FATCA, Decreto 8.506/2015 (A II p.7).
+      - name: inDeclaranteFATCA
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5"]
+        description: >-
+          1 declarante do FATCA; 2 a 5 não declarante, pelos incisos I a IV do anexo II do Decreto 8.506/2015.
+
+      # GIIN (A II p.8). Opcional no leiaute; quando é obrigatório depende do
+      # histórico na Receita (ver knownGaps). A máscara é a da REGRA_VALIDA_FORMATO_MASCARA_GIIN
+      # (A II p.15-16, MS1125): 6 e 5 posições alfanuméricas maiúsculas sem a letra
+      # "O", 2 letras de LE, SL, ME, BR, SF, SD, SS, SB ou SP, e 3 dígitos — 19 posições.
+      - name: giin
+        type: string
+        required: false
+        pattern: '^[0-9A-NP-Z]{6}\.[0-9A-NP-Z]{5}\.(LE|SL|ME|BR|SF|SD|SS|SB|SP)\.[0-9]{3}$'
+        description: GIIN da entidade declarante (XXXXXX.XXXXX.XX.XXX).
+
+      # Categoria de declarante, da tabela "Categorias de Declarante" da Receita
+      # (A II p.9). Instituição financeira brasileira informante é FATCA602.
+      - name: categoriaDeclarante
+        type: string
+        required: false
+        domain: ["FATCA601", "FATCA602", "FATCA603", "FATCA604", "FATCA605", "FATCA606",
+                 "FATCA610", "FATCA611"]
+        description: Categoria de declarante (tabela Categorias de Declarante; FATCA602 para instituição brasileira informante).
+
+      # Razão social, idêntica à do Cadastro CNPJ, até 100 posições, sem os
+      # caracteres que a Receita proíbe (manual §2.3: aspas, apóstrofo, cerquilha).
+      - name: nome
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,100}$'
+        description: Razão social da entidade declarante.
+
+      # Tipo do nome (A II p.10): só para dizer que é o nome legal, OECD207.
+      - name: tpNome
+        type: string
+        required: false
+        domain: ["OECD202", "OECD203", "OECD204", "OECD205", "OECD206", "OECD207",
+                 "OECD208"]
+        description: Tipo do nome (tabela Tipos de Nome; OECD207 para o nome legal).
+
+      # O endereço principal vai no arquivo em formato livre, até 200 posições, e o
+      # Anexo II pede o formato "endereço/cep/cidade/UF" (A II p.10). O template o
+      # monta com o logradouro e a cidade daqui e o CEP e a UF abaixo. Os limites
+      # dos dois garantem os 200: 146 + 40 + 8 + 2 + três barras = 199. O maior nome
+      # de município do país tem 32 posições.
+      - name: logradouro
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,146}$'
+        description: Logradouro, número e complemento do endereço principal.
+      - name: cidade
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,40}$'
+        description: Nome da cidade do endereço principal.
+
+      # Tipo do endereço (A II p.11), da tabela Tipos de Endereço.
+      - name: tpEndereco
+        type: string
+        required: false
+        domain: ["OECD301", "OECD302", "OECD303", "OECD304", "OECD305"]
+        description: Tipo do endereço (tabela Tipos de Endereço).
+
+      # Código do município, 7 dígitos, da tabela de Municípios da Receita (A II
+      # p.11). Que exista e seja da UF do endereço é a regra municipio-da-uf.
+      - name: municipio
+        type: string
+        length: 7
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{7}$'
+        description: Código do município (tabela de Municípios da Receita, 7 dígitos).
+
+      # Sigla da UF do endereço (A II p.11), uma das 27.
+      - name: uf
+        type: string
+        length: 2
+        required: true
+        domain: ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS",
+                 "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC",
+                 "SE", "SP", "TO"]
+        description: Sigla da UF do endereço principal.
+
+      # CEP, oito algarismos sem o traço (A II p.11).
+      - name: cep
+        type: string
+        length: 8
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{8}$'
+        description: CEP do endereço principal, oito algarismos.
+
+      # País do endereço (A II p.12), da tabela de Países da Receita (ISO 3166-1
+      # alfa-2).
+      - name: pais
+        type: string
+        length: 2
+        required: true
+        domain: ["AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT",
+                 "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI",
+                 "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY",
+                 "BZ", "CA", "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN",
+                 "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM",
+                 "DO", "DZ", "EC", "EE", "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK",
+                 "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF", "GG", "GH", "GI", "GL",
+                 "GM", "GN", "GP", "GQ", "GR", "GS", "GT", "GU", "GW", "GY", "HK", "HM",
+                 "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM", "IN", "IO", "IQ", "IR",
+                 "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN",
+                 "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI", "LK", "LR", "LS",
+                 "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK",
+                 "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV", "MW",
+                 "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP",
+                 "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM",
+                 "PN", "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW",
+                 "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM",
+                 "SN", "SO", "SR", "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF",
+                 "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW",
+                 "TZ", "UA", "UG", "UM", "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI",
+                 "VN", "VU", "WF", "WS", "YE", "YT", "ZA", "ZM", "ZW"]
+        description: País do endereço (tabela de Países da Receita).
+
+  # Tipos de entidade financeira (A II p.7-8): de 1 a 5. A instituição
+  # pode ser mais de um tipo; 6 é credenciadora ou subcredenciadora de meios de
+  # pagamento. O cliente preenche a lista no mapeamento.
+  - name: tiposEntidade
+    description: Tipos de entidade financeira da declarante — um por linha.
+    grain: [tpEntidade]
+    childOf: {dataset: declarante}
+    nonEmpty: true
+    fields:
+      - name: tpEntidade
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "6"]
+        description: >-
+          1 Depository Institution, 2 Custodial Institution, 3 Investment Entity, 4 Specified Insurance Company, 6 credenciadora ou subcredenciadora de meios de pagamento.
+
+  # Números de identificação fiscal no exterior (A II p.9-10): opcionais, um por
+  # país de emissão.
+  - name: nifs
+    description: Identificação fiscal da declarante no exterior — uma linha por NIF.
+    grain: [numeroNIF, paisEmissao]
+    childOf: {dataset: declarante}
+    fields:
+      - name: numeroNIF
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,25}$'
+        description: Número de identificação fiscal no exterior.
+      - name: paisEmissao
+        type: string
+        length: 2
+        required: true
+        domain: ["AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT",
+                 "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI",
+                 "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY",
+                 "BZ", "CA", "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN",
+                 "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM",
+                 "DO", "DZ", "EC", "EE", "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK",
+                 "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF", "GG", "GH", "GI", "GL",
+                 "GM", "GN", "GP", "GQ", "GR", "GS", "GT", "GU", "GW", "GY", "HK", "HM",
+                 "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM", "IN", "IO", "IQ", "IR",
+                 "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN",
+                 "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI", "LK", "LR", "LS",
+                 "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK",
+                 "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV", "MW",
+                 "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP",
+                 "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM",
+                 "PN", "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW",
+                 "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM",
+                 "SN", "SO", "SR", "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF",
+                 "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW",
+                 "TZ", "UA", "UG", "UM", "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI",
+                 "VN", "VU", "WF", "WS", "YE", "YT", "ZA", "ZM", "ZW"]
+        description: País de emissão do NIF (tabela de Países da Receita).
+      - name: tpNIF
+        type: string
+        required: false
+        pattern: '^[^"''#]{1,30}$'
+        description: Sigla do tipo de NIF no país receptor, ou TIN — texto livre.
+
+  # Países de residência fiscal (A II p.12): um por linha, sem repetir, e o Brasil
+  # entre eles (regra residencia-no-brasil). O cliente preenche a lista no
+  # mapeamento.
+  - name: residenciasFiscais
+    description: Países de residência fiscal da declarante — um por linha.
+    grain: [pais]
+    childOf: {dataset: declarante}
+    nonEmpty: true
+    fields:
+      - name: pais
+        type: string
+        length: 2
+        required: true
+        domain: ["AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT",
+                 "AU", "AW", "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI",
+                 "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY",
+                 "BZ", "CA", "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN",
+                 "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ", "DE", "DJ", "DK", "DM",
+                 "DO", "DZ", "EC", "EE", "EG", "EH", "ER", "ES", "ET", "FI", "FJ", "FK",
+                 "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF", "GG", "GH", "GI", "GL",
+                 "GM", "GN", "GP", "GQ", "GR", "GS", "GT", "GU", "GW", "GY", "HK", "HM",
+                 "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM", "IN", "IO", "IQ", "IR",
+                 "IS", "IT", "JE", "JM", "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN",
+                 "KP", "KR", "KW", "KY", "KZ", "LA", "LB", "LC", "LI", "LK", "LR", "LS",
+                 "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK",
+                 "ML", "MM", "MN", "MO", "MP", "MQ", "MR", "MS", "MT", "MU", "MV", "MW",
+                 "MX", "MY", "MZ", "NA", "NC", "NE", "NF", "NG", "NI", "NL", "NO", "NP",
+                 "NR", "NU", "NZ", "OM", "PA", "PE", "PF", "PG", "PH", "PK", "PL", "PM",
+                 "PN", "PR", "PS", "PT", "PW", "PY", "QA", "RE", "RO", "RS", "RU", "RW",
+                 "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI", "SJ", "SK", "SL", "SM",
+                 "SN", "SO", "SR", "SS", "ST", "SV", "SX", "SY", "SZ", "TC", "TD", "TF",
+                 "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO", "TR", "TT", "TV", "TW",
+                 "TZ", "UA", "UG", "UM", "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI",
+                 "VN", "VU", "WF", "WS", "YE", "YT", "ZA", "ZM", "ZW"]
+        description: País de residência fiscal (tabela de Países da Receita).
+
+# ---------------------------------------------------------------------------
+# Tabelas publicadas com o contrato
+# ---------------------------------------------------------------------------
+tables:
+  - name: municipios
+    from: municipios.yaml      # código do município → UF, gerada da tabela da Receita
+    match: longestPrefix       # com o campo de 7 dígitos, é o código exato
+
+rules:
+  # O município existe e é da UF do endereço (A II p.11: REGRA_EXISTE_COD_MUNICIPIO,
+  # REGRA_VALIDA_MUNICIPIO_UF).
+  - id: municipio-da-uf
+    severity: error
+    appliesTo: declarante
+    check:
+      equalsLookup: {field: uf, table: municipios, key: municipio}
+    message: >-
+      O município informado não existe na tabela da Receita ou não é da UF do endereço.
+
+  # Um dos países de residência fiscal é o Brasil (A II p.6: REGRA_VALIDA_PAIS_BR).
+  - id: residencia-no-brasil
+    severity: error
+    appliesTo: residenciasFiscais
+    check:
+      contains: {field: pais, values: ["BR"]}
+    message: >-
+      Um dos países de residência fiscal precisa ser BR.
+
+  # Sem repetir o tipo de entidade: o leiaute não declara chave para ele (A II p.3), e o
+  # XSD aceitaria a repetição — é conferência da Lerian, porque um tipo repetido não
+  # diz nada e ocuparia uma das cinco posições.
+  - id: tipo-de-entidade-sem-repetir
+    severity: error
+    appliesTo: tiposEntidade
+    check:
+      unique: [tpEntidade]
+    message: Um tipo de entidade aparece mais de uma vez.
+
+  # NIF e país de residência são chaves do evento (A II p.3): a Receita recusa a
+  # chave repetida (REGRA_VALIDA_CHAVE, MS1102).
+  - id: nif-sem-repetir
+    severity: error
+    appliesTo: nifs
+    check:
+      unique: [numeroNIF, paisEmissao]
+    message: Um NIF aparece mais de uma vez para o mesmo país.
+
+  - id: residencia-sem-repetir
+    severity: error
+    appliesTo: residenciasFiscais
+    check:
+      unique: [pais]
+    message: Um país de residência fiscal aparece mais de uma vez.
+
+  # O NIF não pode ser "not required" nem as variantes, nem começar por nove
+  # números em sequência crescente ou decrescente (REGRA_VALIDA_NIF, A II p.16-17,
+  # MS1233). O caractere repetido fica em knownGaps.
+  - id: nif-informado
+    severity: error
+    appliesTo: nifs
+    check:
+      notStartsWith:
+        field: numeroNIF
+        values: ["not required", "notrequired", "not-required", "not_required",
+                 "NOT REQUIRED", "NOTREQUIRED", "NOT-REQUIRED", "NOT_REQUIRED",
+                 "012345678", "123456789", "987654321", "876543210"]
+    message: >-
+      O NIF não pode ser "not required" nem começar por uma sequência de nove números.
+
+# ---------------------------------------------------------------------------
+# O que este contrato NÃO confere, e por quê.
+# ---------------------------------------------------------------------------
+knownGaps:
+  - id: assinatura-e-transmissao
+    description: >-
+      O arquivo sai sem `ds:Signature`, que o XSD oficial exige. Assinar com o e-CNPJ ICP-Brasil do declarante, montar o lote, cifrá-lo e transmiti-lo à Receita são da borda que envia o arquivo: cada regulador pede o seu certificado, e o Reporter não o guarda. Pela mesma razão o Reporter não vê o recibo que a Receita devolve — a pessoa o digita ao gerar uma retificação.
+  - id: giin-obrigatorio-pelo-historico
+    description: >-
+      O GIIN passa a ser obrigatório quando a declarante já enviou movimentação reportável aos EUA (REGRA_OBRIGATORIO_GIIN). Isso depende do histórico na Receita, que o Reporter não vê; o contrato confere só o formato quando o GIIN vem.
+  - id: hifen-duplo
+    description: >-
+      O manual (§2.3) proíbe também "--" no conteúdo. O contrato recusa aspas, apóstrofo e cerquilha nos campos de texto livre, mas não o hífen duplo: a forma de expressão do motor (uma expressão regular sem lookahead) não junta essa recusa ao limite de tamanho do campo. Um "--" num nome ou endereço passa daqui e é recusado pela Receita (MS1124).
+  - id: nif-caractere-repetido
+    description: >-
+      O NIF formado por um só caractere repetido (AAAAAAAAA, 222222222) é recusado pela Receita (REGRA_VALIDA_NIF, MS1233). O contrato recusa "not required" e as sequências de nove números, mas não o caractere repetido: a expressão regular do motor não tem referência para trás. A referência declara o NIF vazio; quem o mapeia confere isso na fonte.
+  - id: nome-igual-ao-cadastro-cnpj
+    description: >-
+      A razão social deve ser idêntica à do Cadastro CNPJ (A II p.10). O Reporter não consulta o Cadastro CNPJ: o nome vem da base do cliente, e conferir que ele bate é da fonte.
+  - id: retificacao-do-ultimo-recibo
+    description: >-
+      A retificação deve citar o recibo do ÚLTIMO evento aceito (REGRA_OBRIGATORIO_NR_ULTIMO_RECIBO). O contrato confere só o formato do recibo digitado; qual é o último é a Receita quem sabe.
