@@ -1,0 +1,9 @@
+versão=1 COD_TIPO, NOM_TIPO, DT_INI, DT_FIM
+FATCA601|Instituição Financeira Estrangeira (IFE) Participante (outra além de uma IFE Informante Modelo 2 e incluindo uma filial dos EUA de uma IFE Participante não tratada como uma Pessoa Jurídica dos EUA)|01012018|
+FATCA602|IFE Considerada Adimplente Registrada (incluindo uma IFE Informante Modelo 1) Nota: Se uma Autoridade Tributária de uma Jurisdição em um IGA Modelo 1 estiver enviando a informação sobre as contas mantidas por uma IFE Informante Modelo 1, utilize a categoria de declarante FACTA602 (RDC FFI)|01012018|
+FATCA603|Filiais limitadas ou IFE limitadas|01012018|
+FATCA604|IFE Informante Modelo 2|01012018|
+FATCA605|Intermediário Qualificado (QI), Sociedade Estrangeira Responsável pela Retenção (WP), ou Fideicomisso ("Trust") Estrangeiro Responsável pela Retenção (WT)|01012018|
+FATCA606|Entidade Não Norte-Americana que não seja uma IFE (NFFE) Diretamente Informante|01012018|
+FATCA610|Agente Responsável pela Retenção (incluindo uma filial dos EUA de uma IFE Participante, IFE Informante Modelo 1, IFE Informante Modelo 2, ou IFE Considerada Adimplente Registrada tratada como uma Pessoa Jurídica dos EUA, e uma filial dos EUA de uma IFE Informante Modelo 1 (incluindo qualquer outra IFE considerada adimplente registrada) ou IFE limitada que não é tratada como uma Pessoa Jurídica dos EUA)|01012018|
+FATCA611|Instituição Financeira organizada no território dos EUA tratada como uma Pessoa Jurídica dos EUA|01012018|
