@@ -220,7 +220,13 @@ def documents_declaring(file_name: str) -> list[Path]:
 
     found = []
     for contract_path in sorted(ROOT.glob("*/*/*/contract.yaml")):
-        contract = yaml.safe_load(contract_path.read_text(encoding="utf-8")) or {}
+        try:
+            contract = yaml.safe_load(contract_path.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError as err:
+            raise TableError(f"{contract_path.relative_to(ROOT)} não é YAML válido: {err}") from err
+        # A contract that is not a mapping is refused here, not with a traceback.
+        if not isinstance(contract, dict):
+            raise TableError(f"{contract_path.relative_to(ROOT)} não é um mapeamento")
         for table in contract.get("tables") or []:
             if isinstance(table, dict) and table.get("from") == file_name:
                 found.append(contract_path.parent)
@@ -232,11 +238,11 @@ def main() -> int:
     today = AS_OF
     try:
         body = render_municipalities(today)
+        targets = documents_declaring(MUNICIPALITY_TABLE_FILE)
     except TableError as refusal:
         print(f"tabela recusada: {refusal}", file=sys.stderr)
         return 1
 
-    targets = documents_declaring(MUNICIPALITY_TABLE_FILE)
     if not targets:
         print(f"nenhum contrato declara uma tabela from: {MUNICIPALITY_TABLE_FILE}; nada a escrever", file=sys.stderr)
         return 1

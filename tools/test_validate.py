@@ -1345,6 +1345,12 @@ MUTATIONS: list[Mutation] = [
         "pattern do campo recusa",
     ),
     Mutation(
+        "lista-com-pattern-que-nao-compila",
+        "a list under a pattern that does not compile is refused, not a traceback",
+        lambda b: (field(b[FECHADO]["contract"], "tipos", "tipo").update({"pattern": "([12]"}), b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"values": ["1", "2"]})),
+        "não compila",
+    ),
+    Mutation(
         "lista-nao-texto",
         "uma lista de valores é uma lista de textos",
         lambda b: b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"values": [1, 3]}),

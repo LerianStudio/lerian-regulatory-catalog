@@ -886,6 +886,14 @@ def _check_list(doc_dir: Path, contract: dict, dataset: str, field: str, spec: d
     # aqui, o domain, o length e o pattern ficam para o motor nesses campos.
     if declared.get("normalize") is not None or declared.get("format") is not None:
         declared = {}
+    # The engine checks the value against the GROUPED pattern. One that does not
+    # compile is reported by _check_field_shape; the values are not judged by it.
+    pattern = None
+    if isinstance(declared.get("pattern"), str):
+        try:
+            pattern = re.compile(f"(?:{declared['pattern']})")
+        except re.error:
+            pattern = None
     seen: set[str] = set()
     for value in values:
         if value.strip() == "":
@@ -896,7 +904,7 @@ def _check_list(doc_dir: Path, contract: dict, dataset: str, field: str, spec: d
             fail(f"{where} lista '{value}', que o domain do campo recusa")
         elif isinstance(declared.get("length"), int) and len(value) != declared["length"]:
             fail(f"{where} lista '{value}', e o campo tem {declared['length']} posições")
-        elif isinstance(declared.get("pattern"), str) and not re.fullmatch(f"(?:{declared['pattern']})", value):
+        elif pattern is not None and not pattern.fullmatch(value):
             fail(f"{where} lista '{value}', que o pattern do campo recusa")
         seen.add(value)
 

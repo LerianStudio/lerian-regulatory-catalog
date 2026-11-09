@@ -132,6 +132,49 @@ class PublishedTables(unittest.TestCase):
                                  "regere com python3 tools/tabelas_receita.py")
 
 
+class DocumentsDeclaring(unittest.TestCase):
+    """A malformed contract is refused as a TableError, which main reports."""
+
+    def _with_contract(self, text: str):
+        import tempfile
+        from unittest import mock
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        doc = root / "br" / "rfb" / "doc"
+        doc.mkdir(parents=True)
+        (doc / "contract.yaml").write_text(text, encoding="utf-8")
+        patcher = mock.patch.object(tr, "ROOT", root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return doc
+
+    def test_a_contract_that_is_not_a_mapping_is_refused(self):
+        self._with_contract("- tables\n- datasets\n")
+        with self.assertRaisesRegex(tr.TableError, "não é um mapeamento"):
+            tr.documents_declaring(tr.MUNICIPALITY_TABLE_FILE)
+
+    def test_a_contract_that_is_not_yaml_is_refused(self):
+        self._with_contract("tables: [\n")
+        with self.assertRaisesRegex(tr.TableError, "não é YAML válido"):
+            tr.documents_declaring(tr.MUNICIPALITY_TABLE_FILE)
+
+    def test_main_reports_a_malformed_contract_instead_of_crashing(self):
+        import contextlib
+        import io
+
+        self._with_contract("- tables\n")
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            self.assertEqual(tr.main(), 1)
+        self.assertIn("não é um mapeamento", err.getvalue())
+
+    def test_a_contract_declaring_the_table_is_found(self):
+        doc = self._with_contract(f"tables:\n  - from: {tr.MUNICIPALITY_TABLE_FILE}\n")
+        self.assertEqual(tr.documents_declaring(tr.MUNICIPALITY_TABLE_FILE), [doc])
+
+
 class ContractDomains(unittest.TestCase):
     """Cada domínio que o contrato do evtCadDeclarante declara a partir de uma tabela
     da Receita é EXATAMENTE o conjunto vigente dela — nem um código a mais, nem a menos."""

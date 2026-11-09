@@ -890,7 +890,10 @@ def run_reports(lg, args):
     print("\ninstituição  %s" % institution)
     failures = 0
     generated = {}
-    events = {"subscriptions": {}, "ids": []}
+    events = {"subscriptions": {}, "ids": [], "bases": {}}
+    # The bindings an entry replaced go back when the run ends, however it ends
+    # (fail() exits): the next run starts from the binding this one found.
+    atexit.register(restore_bindings, rep, events["bases"])
 
     for doc in expected["documents"]:
         if doc.get("documentId") in EVENT_DOCUMENTS:
@@ -1233,23 +1236,34 @@ def replace_binding_fields(text, fields):
     return "\n".join(lines) + "\n"
 
 
-def apply_filled_binding(rep, subscription, base_path, fills, replaced=None):
+def apply_filled_binding(rep, subscription, base_path, fills, replaced=None, bases=None):
     """Puts the binding with the scenario's fills on the subscription, when it differs.
 
     The base is the checkout's binding.example.yaml (`--bindings`) or, without
-    it, the binding the subscription already has. `replaced` (an entry's
-    `binding`) swaps whole field mappings after the fills.
+    it, the binding the subscription had when the run first touched it: `bases`
+    (subscription -> binding text) keeps that one for the whole run, so an
+    entry's replacement never becomes the base of the entries after it.
+    `replaced` (an entry's `binding`) swaps whole field mappings after the fills.
     """
     if base_path:
         with open(base_path, encoding="utf-8") as fh:
             base = fh.read()
+    elif bases is not None and subscription in bases:
+        base = bases[subscription]
     else:
         _, _, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
         base = current.decode("utf-8")
+        if bases is not None:
+            bases[subscription] = base
     wanted = fill_binding(base, fills)
     if replaced:
         wanted = replace_binding_fields(wanted, replaced)
-    wanted = wanted.encode("utf-8")
+    return put_binding(rep, subscription, wanted)
+
+
+def put_binding(rep, subscription, text):
+    """Puts `text` as the subscription's binding, when it differs from the current one."""
+    wanted = text.encode("utf-8")
     _, headers, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
     if current == wanted:
         return "inalterado"
@@ -1257,6 +1271,19 @@ def apply_filled_binding(rep, subscription, base_path, fills, replaced=None):
     rep.raw("PUT", "/v1/regulatory/subscriptions/%s/binding" % subscription, wanted,
             {"Content-Type": "application/yaml", "If-Match": etag})
     return "preenchido"
+
+
+def restore_bindings(rep, bases):
+    """Puts back on each subscription the binding the run found on it (`bases`)."""
+    for subscription, text in sorted(bases.items()):
+        try:
+            how = put_binding(rep, subscription, text)
+        except (Exception, SystemExit) as err:  # noqa: BLE001 - rep.raw fail()s; at exit, report and carry on
+            print("AVISO: o binding da assinatura %s não voltou ao original: %s" % (subscription, err),
+                  file=sys.stderr)
+            continue
+        if how != "inalterado":
+            print("binding da assinatura %s restaurado" % subscription)
 
 
 def approved_event_original(rep, document_id, cnpj):
@@ -1364,7 +1391,8 @@ def run_event(rep, lg, args, doc, institution, run):
     fills = dict((lg.sc.get("fills") or {}).get(document_id) or {})
     fills.update(doc.get("fills") or {})
     base = os.path.join(args.bindings, document_dir(document_id), "binding.example.yaml") if args.bindings else None
-    how = apply_filled_binding(rep, subscription, base, fills, doc.get("binding"))
+    how = apply_filled_binding(rep, subscription, base, fills, doc.get("binding"),
+                               run.setdefault("bases", {}))
 
     if doc.get("refused"):
         return expect_generation_refusal(rep, subscription, doc)
