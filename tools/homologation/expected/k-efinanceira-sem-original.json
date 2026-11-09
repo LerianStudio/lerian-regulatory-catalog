@@ -35,7 +35,7 @@
       "documentId": "br.rfb.efinanceira-cad-declarante",
       "label": "original-depois-da-retificacao",
       "parameters": {"indRetificacao": "1"},
-      "refused": {"status": 409, "code": "RPT-0202"},
+      "refused": {"status": 409, "code": "RPT-0203"},
       "_note": "A retificação aprovada acima mostra que o original já foi entregue (por outra ferramenta): um original agora é recusado na hora (refuseOriginalAfterReplacement), não o RPT-0197 — não há original aprovado no Reporter."
     }
   ]

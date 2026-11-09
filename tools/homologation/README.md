@@ -25,7 +25,7 @@ Três peças, e a separação entre elas é o que dá valor ao resultado:
 | `h-cnpj-alfanumerico` | **Sintético, declarado como tal** | organização com CNPJ no formato alfanumérico da Receita (`LR4ZAB12000138`): o Midaz o aceita no `legalDocument`, o Reporter o normaliza e confere os dígitos verificadores, e a raiz do cabeçalho sai com letras (`cnpj="LR4ZAB12"`) no 4010 e no 4111 |
 | `i-efinanceira-cadastro` | **Sintético, declarado como tal** | o evtCadDeclarante da e-Financeira (`br.rfb.efinanceira-cad-declarante`): só uma organização, criada com o endereço, sem ledger nem lançamento; o original aprovado e baixado, uma retificação com recibo, as recusas do pedido (recibo na original, retificação sem recibo, recibo fora do formato, segunda original) e as duas regras do contrato que recusam a geração (município de outra UF, residências sem `BR`) |
 | `j-efinanceira-completo` | **Sintético, declarado como tal** | o evtCadDeclarante com TODO opcional preenchido (GIIN, categoria, tpNome, tpEndereco), três tipos de entidade e duas residências, numa organização nova de CNPJ alfanumérico (`EF9J2K7A000114`) e `line1` com vírgula e pontos (`Av. Brasil, 1.500 sala 10.0`, escrito como veio); o original julgado e só então aprovado; uma retificação a pedido (3); uma retificação corrigida no rascunho (`municipio`) com o mesmo id antes e depois; e as recusas de pattern na geração (apóstrofo no nome, GIIN com a letra O, logradouro de 147), com o logradouro de 146 e a cidade de 40 gerando um `enderecoLivre` de 199 que o XSD aceita |
-| `k-efinanceira-sem-original` | **Sintético, declarado como tal** | o declarante cujo original foi enviado por outra ferramenta: a primeira geração no Reporter é uma retificação com recibo, aceita sem original (`filing.remittance.reference`), julgada e aprovada; depois dela, um original é recusado com `409 RPT-0202` |
+| `k-efinanceira-sem-original` | **Sintético, declarado como tal** | o declarante cujo original foi enviado por outra ferramenta: a primeira geração no Reporter é uma retificação com recibo, aceita sem original (`filing.remittance.reference`), julgada e aprovada; depois dela, um original é recusado com `409 RPT-0203` |
 
 Os cenários A a H tocam juntos as 30 linhas do conjunto do 4111 e os nove grupos do 4010. A
 contabilidade é fictícia: as rubricas fora do conjunto do 4111 têm nome plausível
@@ -172,7 +172,7 @@ organização no Midaz. A entrada seguinte volta ao binding do cenário.
 - **`refused`** — recusa na hora: `{"status": 400, "code": "RPT-0140",
   "detailContains": [...]}` para o recibo na original, a retificação sem recibo e o
   recibo fora do formato; `{"status": 409, "code": "RPT-0197"}` para a segunda
-  original depois da aprovada; `{"status": 409, "code": "RPT-0202"}` para o
+  original depois da aprovada; `{"status": 409, "code": "RPT-0203"}` para o
   original depois de uma retificação aprovada sem original no Reporter (cenário K).
 - **`errored`** — as regras do contrato (`municipio-da-uf`,
   `residencia-no-brasil`) rodam no worker, quando os valores são escritos: o pedido
