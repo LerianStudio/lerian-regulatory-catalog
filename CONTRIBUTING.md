@@ -79,7 +79,7 @@ Com `reference`, a substituição exige o parâmetro e a original o recusa, e um
 substituição que o carrega não precisa de original aprovada no Reporter: a original
 pode ter sido enviada por outra ferramenta, e quem confere o recibo é o regulador. Pelo
 mesmo motivo, depois de uma substituição aprovada o período não aceita outra original
-(RPT-0202): a substituição mostra que a original já foi enviada. O parâmetro da
+(RPT-0203): a substituição mostra que a original já foi enviada. O parâmetro da
 referência não pode ser obrigatório, ter default, ser a remessa nem fazer parte do
 período, e declara `pattern`: a referência faz as vezes da original, e o mínimo é ter
 o formato do que o regulador devolve. `pattern` vale para qualquer parâmetro texto: o valor inteiro tem de
