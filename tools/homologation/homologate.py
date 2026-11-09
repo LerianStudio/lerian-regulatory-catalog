@@ -974,6 +974,8 @@ EVENT_DOCUMENTS = {
         "schema": "schema/evtCadDeclarante-v1_5_0.xsd",
         "namespace": "http://www.eFinanceira.gov.br/schemas/evtCadDeclarante/v1_5_0",
         "event": "evtCadDeclarante",
+        # O parâmetro da remessa e o valor do original (filing.remittance do contrato).
+        "original": ("indRetificacao", "1"),
     },
 }
 
@@ -1202,11 +1204,41 @@ def yaml_block(lines, steps):
     return start, end
 
 
-def apply_filled_binding(rep, subscription, base_path, fills):
+def replace_binding_fields(text, fields):
+    """The binding with whole field mappings replaced, for one gabarito entry.
+
+    `fields` maps "dataset.field" to the mapping that takes the field's place
+    (`{"from": "constant", "value": "..."}`): every key the binding had under the
+    field goes, these are written in their place. It is how an entry proves a
+    pattern of the contract on a field the Midaz fills (the name, the address)
+    without registering another organization: the value comes from the binding
+    as a constant. A field the binding does not declare stops the run.
+    """
+    lines = text.splitlines()
+    for key, mapping in sorted(fields.items()):
+        dataset, _, field = key.partition(".")
+        span = yaml_block(lines, [(0, "datasets"), (2, dataset), (4, "fields"), (6, field)])
+        if span is None:
+            fail("o binding não declara o campo %s em datasets, e a entrada o substitui" % key)
+        if not isinstance(mapping, dict) or "from" not in mapping:
+            fail("a substituição de %s não é um mapeamento com `from`" % key)
+        start, end = span
+        written = []
+        for k, v in mapping.items():
+            if isinstance(v, list):
+                written.append("        %s: [%s]" % (k, ", ".join(json.dumps(str(i), ensure_ascii=False) for i in v)))
+            else:
+                written.append("        %s: %s" % (k, json.dumps(str(v), ensure_ascii=False)))
+        lines[start + 1:end] = written
+    return "\n".join(lines) + "\n"
+
+
+def apply_filled_binding(rep, subscription, base_path, fills, replaced=None):
     """Puts the binding with the scenario's fills on the subscription, when it differs.
 
     The base is the checkout's binding.example.yaml (`--bindings`) or, without
-    it, the binding the subscription already has.
+    it, the binding the subscription already has. `replaced` (an entry's
+    `binding`) swaps whole field mappings after the fills.
     """
     if base_path:
         with open(base_path, encoding="utf-8") as fh:
@@ -1214,7 +1246,10 @@ def apply_filled_binding(rep, subscription, base_path, fills):
     else:
         _, _, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
         base = current.decode("utf-8")
-    wanted = fill_binding(base, fills).encode("utf-8")
+    wanted = fill_binding(base, fills)
+    if replaced:
+        wanted = replace_binding_fields(wanted, replaced)
+    wanted = wanted.encode("utf-8")
     _, headers, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
     if current == wanted:
         return "inalterado"
@@ -1268,6 +1303,46 @@ def expect_generation_refusal(rep, subscription, doc):
     return 0 if ok else 1
 
 
+def correct_event(rep, report, document_id, doc, args, number, cnpj, name, label):
+    """Corrects a judged draft and judges the file it becomes. Answers the problems.
+
+    `correct` carries the `overrides` sent to POST /v1/regulatory/reports/{id}/overrides
+    (with If-Match on the draft version read) and the `elements` of the corrected
+    file, written by hand like any other. A correction re-renders the SAME frozen
+    rows, so the event id must not move: the corrected file carries the number the
+    generation drew (and the report's generatedIds still name it).
+    """
+    spec = doc["correct"]
+    _, got = rep.get("/v1/reports/" + report)
+    before = got.get("draftVersion")
+    status, answer = rep.call("POST", "/v1/regulatory/reports/%s/overrides" % report,
+                              {"overrides": spec["overrides"]},
+                              headers={"If-Match": '"%s"' % before}, ok=(200, 400, 409, 422))
+    if status != 200:
+        return ["a correção respondeu %d %s" % (status, json.dumps(answer, ensure_ascii=False)[:300])]
+    _, got = rep.get("/v1/reports/" + report)
+    problems = []
+    if got.get("status") != "Draft":
+        problems.append("corrigido, o relatório ficou em %s" % got.get("status"))
+    if str(got.get("draftVersion")) == str(before):
+        problems.append("a correção não mudou a versão do rascunho (%s)" % before)
+    _, _, artifact = rep.raw("GET", "/v1/reports/%s/download" % report)
+    with open(os.path.join(args.out, "%s-%s-%s-corrigido.xml" % (cnpj, name, label)), "wb") as fh:
+        fh.write(artifact)
+    judged, after = judge_event(document_id, artifact, spec, args.catalog, None)
+    problems += ["corrigido: " + p for p in judged]
+    if after != number:
+        problems.append("a correção mudou o id do evento: ID%018d antes, %s depois"
+                        % (number, "ID%018d" % after if after is not None else "ilegível"))
+    drawn = [g.get("value") for g in (got.get("generatedIds") or []) if g.get("field", "").endswith(".eventId")]
+    if number is not None and drawn != ["%018d" % number]:
+        problems.append("generatedIds do relatório %s não é o id do arquivo ID%018d" % (drawn, number))
+    print("         corrigido: rascunho %s -> %s, id antes ID%s, depois ID%s" % (
+        before, got.get("draftVersion"), "%018d" % number if number is not None else "?",
+        "%018d" % after if after is not None else "?"))
+    return problems
+
+
 def run_event(rep, lg, args, doc, institution, run):
     """One gabarito entry of an e-Financeira event: generated, refused or errored, and judged.
 
@@ -1289,15 +1364,18 @@ def run_event(rep, lg, args, doc, institution, run):
     fills = dict((lg.sc.get("fills") or {}).get(document_id) or {})
     fills.update(doc.get("fills") or {})
     base = os.path.join(args.bindings, document_dir(document_id), "binding.example.yaml") if args.bindings else None
-    how = apply_filled_binding(rep, subscription, base, fills)
+    how = apply_filled_binding(rep, subscription, base, fills, doc.get("binding"))
 
     if doc.get("refused"):
         return expect_generation_refusal(rep, subscription, doc)
 
     started = datetime.datetime.now(datetime.timezone.utc)
     # UM ORIGINAL POR DECLARANTE: aprovado, não se gera outro (RPT-0197). Numa
-    # execução seguinte, o original que uma anterior aprovou é o que se julga.
-    final = approved_event_original(rep, document_id, cnpj) if doc.get("approve") else None
+    # execução seguinte, o original que uma anterior aprovou é o que se julga. Só
+    # o original: uma retificação aprovada se gera de novo a cada execução.
+    parameter, original = EVENT_DOCUMENTS[document_id]["original"]
+    is_original = doc["parameters"].get(parameter) == original
+    final = approved_event_original(rep, document_id, cnpj) if doc.get("approve") and is_original else None
     if final:
         report, got = final["id"], final
     else:
@@ -1329,6 +1407,11 @@ def run_event(rep, lg, args, doc, institution, run):
         out = os.path.join(args.out, "%s-%s-%s.xml" % (cnpj, name, label))
         with open(out, "wb") as fh:
             fh.write(artifact)
+        if not problems and doc.get("correct"):
+            if status != "Draft":
+                problems.append("a correção pede um rascunho, e o relatório está em %s" % status)
+            else:
+                problems += correct_event(rep, report, document_id, doc, args, number, cnpj, name, label)
         if not problems and status == "Draft" and doc.get("approve"):
             status = approve(rep, report)
             if status != "Final":
