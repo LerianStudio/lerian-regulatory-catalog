@@ -162,12 +162,11 @@ datasets:
       - name: IniRelactCli
         type: date
         required: true
-        # Decisão do Fred (10/11): o menor entre a criação do titular no CRM e a primeira DtContr dele.
         notAfter: FirstContractDate
         description: Início do relacionamento com o cliente (L Doc3040 l.22). O menor entre o dia civil da criação do titular no CRM e a menor DtContr das operações dele.
       - name: FirstContractDate
         type: date
-        required: false
+        required: true
         description: Menor DtContr das operações do titular que o Lender publica na data-base (uma operação já fora do livro não a puxa para trás). Limita IniRelactCli; não vai ao arquivo.
       - name: FatAnual
         type: decimal
