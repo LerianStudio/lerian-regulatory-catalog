@@ -208,11 +208,6 @@ datasets:
         required: true
         domain: [fixed, floating]
         description: Modo da taxa da versão do produto. Decide Indx e PercIndx no template.
-      - name: PercIndx
-        type: decimal
-        required: false
-        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Percentual do indexador. Zero na taxa prefixada (I p.50); o template só o escreve nela.
       - name: CEP
         type: string
         required: true
@@ -364,7 +359,7 @@ datasets:
         normalize: alphanumeric
         description: CPF ou CNPJ do garantidor, lido do CRM. Alimenta Ident da garantia fidejussória (I p.84, tipo 09).
 
-  # ─── Inf: informações adicionais produzidas (I p.86-; L Anexo 26 l.65 e l.85) ────────────
+  # ─── Inf: informações adicionais produzidas (I p.86-, p.101; L Anexo 26 l.65 e l.85) ────────────
   - name: Inf1002
     description: Inf 1002, adquirida de pessoa não integrante do SFN. Hoje só a recompra de consignado.
     childOf: {dataset: Op}
@@ -392,7 +387,7 @@ datasets:
         type: decimal
         required: true
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Valor da negociação.
+        description: Valor da negociação (I p.101, natureza 03). L Anexo 26 l.65 pede valor de face (knownGaps inf1002-valor).
 
   - name: Inf1701
     description: Inf 1701, reestruturação de instrumento financeiro.
@@ -474,17 +469,22 @@ knownGaps:
     description: >-
       Venc v310 a v330 carregam o carrying_amount da baixa, bruto das recuperações posteriores (credit_loss_recoveries). Se o valor
       informado é líquido ou bruto delas está pendente.
-  - id: vcod-sem-dado
+  - id: venc-60-80-creditos-a-liberar
     description: >-
-      Cada código do Anexo 1 que a tabela de faixas do Lender deixa de fora por falta de dado no Lender fica sem valor, um por código; a lista
-      mora no Lender (scr_vcod_bands.go), com arquivo e linha de SCR3040_Leiaute.xls em cada faixa.
+      Venc v60 e v80 (créditos a liberar) não saem: o Lender não guarda a data de liberação, que I p.75 (c) usa para contar os dias.
+      VlrContr leva o contratado inteiro (I p.53), mas o a liberar não aparece em Venc. Quem responde: Fred. v20 e v40 (limites, só
+      modalidades 19xx, I p.74 b) e v199 não têm produto no Lender, e por isso não são lacunas.
+  - id: inf1002-valor
+    description: >-
+      Inf 1002 Valor sai como o valor negociado (o preço pago ao fundo), como pede I p.101 (tabela e natureza 03). L Anexo 26 l.65
+      (modificada em 2026-10-18) pede o valor de face. Os dois arquivos oficiais divergem; a consulta ao BACEN (decisão 28) decide. Quem responde: Fred.
   - id: caracespecial-nao-produzidas
     description: CaracEspecial 02, 09, 17, 20 e 22 não são produzidas pelo dataset (sem fonte viva no Lender).
   - id: indx-pos-fixado
     description: >-
       Op.Indx e Op.PercIndx só saem para origin fixa (Indx 11 e PercIndx 0, I p.50). Para taxa flutuante o Lender publica o código do
       índice da tabela de taxas dele, sem mapa para o Anexo 5, e o percentual do indexador espera a lane F6: Indx e PercIndx ficam
-      de fora, e o arquivo sai sem eles.
+      de fora, e o arquivo sai sem eles. O XSD oficial exige Indx em todo Op (schema/scr3040.202607.xsd, tipoOperacao): a remessa com flutuante não valida.
 
   # ── Campos sem fonte viva, marcados como pendência no binding ──
   - id: cli-sem-fonte
@@ -496,10 +496,6 @@ knownGaps:
     description: >-
       Doc3040.NomeResp, EmailResp, TelResp, MetodApPE e MetodDifTJE, Op.OrigemRec e Op.CEP vêm do perfil de reporte da instituição
       (fonte planejada institution.reporting_profile, ainda sem dado). Ficam como pendência no binding até a instituição informar.
-  - id: cosif-descontinuado
-    description: >-
-      Op.Cosif não é declarado: o leiaute o marca descontinuado a partir da data-base janeiro/2025 (L Doc3040 l.44). O catálogo do Lender
-      ainda o lista como lacuna (midaz.ledger_account); essa lacuna deixou de existir para este documento.
   - id: cli-por-holder
     description: >-
       O Cli é agrupado por holder, não pela raiz do CNPJ: dois holders da mesma PJ (matriz e filial) saem como dois Cli com o mesmo Cd, e
@@ -520,26 +516,9 @@ knownGaps:
     description: Agreg, Sicor, ConIpocs, ContInstFin, ContInstFinRes4966, Estagio, Perda e os Inf fora 1002 e 1701 não são produzidos.
 
   # ── Limites desta curadoria ──
-  - id: sem-xsd-aninhamento
-    description: >-
-      Não há XSD. O aninhamento Doc3040 > Cli > Op > (Venc, Gar, Inf) segue a sequência "Para cada cliente / Para cada operação" do leiaute
-      (L Doc3040 l.11, 36, 67, 72, 88) e Venc "debaixo de" Agreg (l.184). Nenhum arquivo oficial local o prova; confirmar no validador oficial
-      (SCR3040_Validador.zip, não copiado) antes de enviar.
-  - id: separador-decimal
-    description: >-
-      O separador decimal do XML não está fixado nos arquivos oficiais locais: as instruções falam em vírgula (I p.52-53) e o leiaute
-      escreve "0.00" e "0,01" (L Doc3040 l.25 e l.60). O contrato escreve ponto. Confirmar no validador oficial.
   - id: tel-resp-celular
     description: >-
       TelResp é DDTTTTTTTT (I p.8): oito dígitos depois do DDD. Um celular de nove dígitos é recusado pelo padrão do contrato.
-  - id: tipos-de-instituicao
-    description: >-
-      metadata.appliesTo lista os tipos de instituição que o Lender atende; quem está obrigado ao 3040 é a lista da Carta-Circular 3.869
-      (I p.3), que este diretório não traz.
-  - id: arrays-do-banco
-    description: >-
-      special_characteristics é text[] na visão. O Reporter lê o array do Postgres como o texto "{01,25}", e o template troca as chaves e
-      a vírgula. Que o motor entregue essa forma é a prova da Task 4.3.2.
   - id: arredondamento-taxeft
     description: >-
       I p.53 pede a regra da ABNT (meio para o par). O motor escreve sete casas com arredondamento meio para longe do zero, sobre as oito

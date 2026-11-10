@@ -228,8 +228,6 @@ datasets:
       Contrt: {from: query, column: contract_code}
       Mod: {from: query, column: scr_modality}
       rate_mode: {from: query, column: rate_mode}
-      # Prefixada: o percentual do indexador é zero (I p.50). O template o escreve só nela.
-      PercIndx: {from: constant, value: "0"}
       TaxEft: {from: query, column: annual_effective_rate_percent}
       DtContr: {from: query, column: contract_date}
       VlrContr: {from: query, column: contracted_amount}

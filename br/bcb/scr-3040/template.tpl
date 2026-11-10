@@ -1,18 +1,18 @@
 {# SCR Documento 3040 - Dados Individualizados de Risco de Crédito. #}
 {# Define a forma de saída. Formato, domínio e grão vivem no contrato; de onde vem cada valor vive no binding. #}
-{# Aninhamento Doc3040 > Cli > Op > Venc, Gar, Inf: ver knownGaps sem-xsd-aninhamento no contrato. #}
+{# Aninhamento Doc3040 > Cli > Op > Venc, Gar, Inf: conferido em schema/scr3040.202607.xsd (tipoOperacao). Decimais com ponto (xs:decimal). #}
 {# Parte=1 e TpArq=F: o documento não é particionado (I p.8). TotalCli conta os Cli do arquivo: ver cli-por-holder. #}
 {# Cd e IPOC: o cliente PJ leva a raiz do CNPJ e o PF leva o CPF inteiro (I p.17-18). DetCli é o CNPJ inteiro, só do PJ. #}
 {# NatuOp: 01 para a operação concedida, 03 para a recompra de consignado; a adquirida fica sem (q4-natuop-ccb-comprada). #}
 {# Indx 11 e PercIndx 0 só na taxa prefixada (I p.50); na flutuante os dois ficam de fora (indx-pos-fixado). #}
 {# TpVlrGar 01 escreve VlrOrig e 02 escreve PercGar (I p.79). Ident é o CPF ou CNPJ do garantidor, senão a identificação da garantia real. #}
-{# CaracEspecial chega como o texto do array do Postgres, {01,25}: sai 01;25. #}
+{# CaracEspecial chega como o texto do array do Postgres (text[]), {01,25}: sai 01;25. #}
 <?xml version="1.0" encoding="UTF-8"?>
 <Doc3040 DtBase="{{ system.dataBase }}" CNPJ="{{ Doc3040.cnpj8 }}" Remessa="{{ system.remessa }}" Parte="1" TpArq="F" NomeResp="{{ Doc3040.NomeResp }}" EmailResp="{{ Doc3040.EmailResp }}" TelResp="{{ Doc3040.TelResp }}" TotalCli="{{ Cli|length }}" MetodApPE="{{ Doc3040.MetodApPE }}" MetodDifTJE="{{ Doc3040.MetodDifTJE }}">
 {%- for cli in Cli %}
   <Cli Cd="{% if cli.Tp == "2" %}{{ cli.cnpjRoot }}{% else %}{{ cli.document }}{% endif %}" Tp="{{ cli.Tp }}" Autorzc="{{ cli.Autorzc }}" PorteCli="{{ cli.PorteCli }}"{% if cli.TpCtrl %} TpCtrl="{{ cli.TpCtrl }}"{% endif %} IniRelactCli="{{ cli.IniRelactCli }}" FatAnual="{{ cli.FatAnual }}"{% if cli.CongEcon %} CongEcon="{{ cli.CongEcon }}"{% endif %}>
 {%- for op in cli.Op %}
-    <Op{% if cli.Tp == "2" %} DetCli="{{ cli.document }}"{% endif %} IPOC="{{ Doc3040.cnpj8 }}{{ op.Mod }}{{ cli.Tp }}{% if cli.Tp == "2" %}{{ cli.cnpjRoot }}{% else %}{{ cli.document }}{% endif %}{{ op.Contrt }}" Contrt="{{ op.Contrt }}" Mod="{{ op.Mod }}" OrigemRec="{{ op.OrigemRec }}"{% if op.rate_mode == "fixed" %} Indx="11" PercIndx="{{ op.PercIndx }}"{% endif %} VarCamb="790" CEP="{{ op.CEP }}" TaxEft="{{ op.TaxEft }}" DtContr="{{ op.DtContr }}" VlrContr="{{ op.VlrContr }}"{% if op.origin == "granted" %} NatuOp="01"{% elif op.origin == "consignado_repurchase" %} NatuOp="03"{% endif %}{% if op.DtVencOp %} DtVencOp="{{ op.DtVencOp }}"{% endif %} ProvConsttd="{{ op.ProvConsttd }}"{% if op.DiaAtraso != "0" %} DiaAtraso="{{ op.DiaAtraso }}"{% endif %}{% if op.CaracEspecial != "{}" %} CaracEspecial="{{ op.CaracEspecial|replace:"{:"|replace:"}:"|replace:",:;" }}"{% endif %}{% if op.DtaProxParcela %} DtaProxParcela="{{ op.DtaProxParcela }}"{% endif %}{% if op.VlrProxParcela %} VlrProxParcela="{{ op.VlrProxParcela }}"{% endif %} QtdParcelas="{{ op.QtdParcelas }}">
+    <Op{% if cli.Tp == "2" %} DetCli="{{ cli.document }}"{% endif %} IPOC="{{ Doc3040.cnpj8 }}{{ op.Mod }}{{ cli.Tp }}{% if cli.Tp == "2" %}{{ cli.cnpjRoot }}{% else %}{{ cli.document }}{% endif %}{{ op.Contrt }}" Contrt="{{ op.Contrt }}" Mod="{{ op.Mod }}" OrigemRec="{{ op.OrigemRec }}"{% if op.rate_mode == "fixed" %} Indx="11" PercIndx="0.00"{% endif %} VarCamb="790" CEP="{{ op.CEP }}" TaxEft="{{ op.TaxEft }}" DtContr="{{ op.DtContr }}" VlrContr="{{ op.VlrContr }}"{% if op.origin == "granted" %} NatuOp="01"{% elif op.origin == "consignado_repurchase" %} NatuOp="03"{% endif %}{% if op.DtVencOp %} DtVencOp="{{ op.DtVencOp }}"{% endif %} ProvConsttd="{{ op.ProvConsttd }}"{% if op.DiaAtraso != "0" %} DiaAtraso="{{ op.DiaAtraso }}"{% endif %}{% if op.CaracEspecial != "{}" %} CaracEspecial="{{ op.CaracEspecial|replace:"{:"|replace:"}:"|replace:",:;" }}"{% endif %}{% if op.DtaProxParcela %} DtaProxParcela="{{ op.DtaProxParcela }}"{% endif %}{% if op.VlrProxParcela %} VlrProxParcela="{{ op.VlrProxParcela }}"{% endif %} QtdParcelas="{{ op.QtdParcelas }}">
 {%- if op.Venc %}
       <Venc{% for v in op.Venc %} v{{ v.vcod }}="{{ v.amount }}"{% endfor %}/>
 {%- endif %}

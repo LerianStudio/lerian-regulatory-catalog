@@ -11,10 +11,9 @@ data-base (`AAAA-MM`): cada cliente, as operações de crédito dele, os vencime
 garantias e as informações adicionais. Fontes oficiais fixadas em `schema/` (origem, data e
 SHA-256 em `schema/README.md`).
 
-**Não há XSD.** A página do BACEN não publica esquema; o leiaute é a planilha. Este
-documento foi escrito contra a planilha e as instruções, e nada o confere contra um esquema
-oficial. O validador oficial do BACEN (Java) não está neste repositório: **rode-o sobre o
-arquivo gerado antes de enviar.**
+A página do BACEN não publica XSD; o esquema oficial vem dentro do validador
+(`SCR3040_Validador.zip`) e está fixado em `schema/scr3040.202607.xsd` (ver `schema/README.md`).
+O validador oficial (Java) não está neste repositório: **rode-o sobre o arquivo gerado antes de enviar.**
 
 ## O que esta versão cobre
 
@@ -99,5 +98,5 @@ pesam para a remessa:
 2. **A operação que saiu do livro no mês** não aparece no mês da saída, nem com `Inf` de saída.
 3. **Garantia de contrato carregado** só a partir da data-base que contém o dia da carga.
 4. **`Venc` 205 a 290** sem a dedução da renda não recebida em stop accrual.
-5. **Aninhamento e separador decimal** sem prova oficial local (`sem-xsd-aninhamento`,
-   `separador-decimal`): o validador oficial decide.
+5. **Indx na taxa flutuante**: o XSD exige `Indx` em todo `Op`; a taxa flutuante sai sem ele
+   (`indx-pos-fixado`) e não valida até a lane F6.
