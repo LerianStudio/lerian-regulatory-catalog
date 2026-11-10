@@ -119,6 +119,9 @@ datasets:
     description: Um cliente, o titular de ao menos uma operação do dataset.
     # O grão é o holder, não a raiz do CNPJ: ver knownGaps (matriz e filial).
     grain: [holder_id]
+    # Sem cliente nenhum a geração é recusada em vez de sair um Doc3040 com TotalCli="0" que alguém aprova.
+    nonEmpty: true
+    # O validador do catálogo exige o bloco em todo conjunto de várias linhas; com uma só fonte o Reporter não o aplica.
     consolidation:
       key: [holder_id]
       whenKeyRepeats: combine
@@ -217,8 +220,8 @@ datasets:
       - name: TaxEft
         type: decimal
         required: true
-        # I p.53: duas a sete casas decimais, arredondada pela regra da ABNT. O dataset publica
-        # oito casas; o contrato escreve sete, sempre as sete (sem exatidão o motor tira os zeros
+        # I p.53: duas a sete casas decimais, arredondada pela regra da ABNT (ver knownGaps, arredondamento-taxeft).
+        # O dataset publica oito casas; o contrato escreve sete, sempre as sete (sem exatidão o motor tira os zeros
         # e 36.00000000 sairia 36, uma casa a menos que as duas que o leiaute pede).
         format: {scale: 7, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
         description: Taxa efetiva anual prefixada, em percentual (L Doc3040 l.52).
@@ -537,3 +540,7 @@ knownGaps:
     description: >-
       special_characteristics é text[] na visão. O Reporter lê o array do Postgres como o texto "{01,25}", e o template troca as chaves e
       a vírgula. Que o motor entregue essa forma é a prova da Task 4.3.2.
+  - id: arredondamento-taxeft
+    description: >-
+      I p.53 pede a regra da ABNT (meio para o par). O motor escreve sete casas com arredondamento meio para longe do zero, sobre as oito
+      casas que o Lender já arredondou. Um valor com 5 na oitava casa e sétima par sai 1e-7 ponto percentual acima. O contrato não aplica a regra da ABNT.
