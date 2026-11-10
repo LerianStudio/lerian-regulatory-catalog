@@ -38,6 +38,8 @@ metadata:
   appliesTo:
     institutionTypes: [SCD, SCFI]
   periodicity: monthly
+  # O dia civil de um instante que alimenta um campo date: o fuso das datas brasileiras.
+  timezone: America/Sao_Paulo
   sourceOfTruth:
     layoutManual: https://www.bcb.gov.br/estabilidadefinanceira/scrdoc3040
     schema: schema/SCR3040_Leiaute.xls     # material de curadoria, não é executado; as instruções (PDF) moram ao lado
