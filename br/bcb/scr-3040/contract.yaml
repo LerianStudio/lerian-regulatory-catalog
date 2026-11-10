@@ -163,11 +163,11 @@ datasets:
         type: date
         required: true
         notAfter: FirstContractDate
-        description: Início do relacionamento com o cliente (L Doc3040 l.22). O menor entre o dia civil da criação do titular no CRM e a menor DtContr das operações dele.
+        description: Início do relacionamento com o cliente (L Doc3040 l.22). O menor entre o dia civil da criação do titular no CRM (America/Sao_Paulo) e o contrato mais antigo dele no Lender, em qualquer estado.
       - name: FirstContractDate
         type: date
         required: true
-        description: Menor DtContr das operações do titular que o Lender publica na data-base (uma operação já fora do livro não a puxa para trás). Limita IniRelactCli; não vai ao arquivo.
+        description: Data do contrato mais antigo do titular no Lender, em qualquer estado (o carregado pela data da CCB original). Limita IniRelactCli; não vai ao arquivo.
       - name: FatAnual
         type: decimal
         required: true

@@ -79,7 +79,7 @@ queries:
         operator: eq
         values: [{parameter: dataBase}]
     aggregate:
-      # A menor DtContr do titular é a mesma em todas as linhas dele: não abre grupo novo.
+      # O contrato mais antigo do titular é o mesmo em todas as linhas dele: não abre grupo novo.
       groupBy: [holder_id, midaz_organization_id, holder_first_contract_date]
       # O agrupamento exige uma medida; o documento não a lê.
       measures:
