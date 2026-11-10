@@ -502,7 +502,6 @@ knownGaps:
     description: >-
       Cli.Autorzc, Cli.TpCtrl, Cli.FatAnual, Cli.PorteCli e Cli.CongEcon não têm fonte viva (fontes planejadas no catálogo do Lender).
       PorteCli é derivado pelo Reporter na data-base (DEC-LMS-90), que ainda não o executa.
-      Responde: Fred.
   - id: gar-sem-valor-original
     description: >-
       A remessa exige VlrOrig quando TpVlrGar é 01, e o XSD recusa vazio. O E6 aceita ativo sem originalValue e aval com valueType 1, e o
