@@ -2173,6 +2173,20 @@ class ValidatorSuite(unittest.TestCase):
         code, out = _run(self._write(data))
         self.assertEqual(code, 0, f"manual a preencher pelo cliente deveria validar:\n{out}")
 
+    def test_a_binding_not_generatable_may_list_what_the_client_fills(self) -> None:
+        """`generatable: false` pode enumerar um `manual` simples obrigatório sem valor.
+
+        O campo não obriga o binding a se declarar incompleto, mas listá-lo não deixa
+        a lista desatualizada: é o que a referência ainda não tem. Um documento escrito
+        quando esse `manual` bloqueava (o SCR 3040) continua válido.
+        """
+        data = fixtures.bundle()
+        binding = data[FECHADO]["binding"]
+        binding["datasets"]["institution"]["fields"]["cnpj8"] = {"from": "manual", "pendingReason": "a raiz do CNPJ"}
+        binding["incompleteFields"] = list(binding.get("incompleteFields") or []) + ["institution.cnpj8"]
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"o manual do cliente listado como incompleto deveria validar:\n{out}")
+
     def test_a_set_the_mapping_declares_empty_is_valid(self) -> None:
         """`emptyReason` num conjunto que pode ficar vazio: sem linha, de propósito.
 

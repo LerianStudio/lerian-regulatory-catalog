@@ -627,6 +627,7 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             declared_incomplete.add(item)
 
     pending: set[str] = set()
+    client_fills: set[str] = set()
     lists: dict[str, list[str]] = {}
     by_name = {d["name"]: d for d in datasets_of(contract) if isinstance(d, dict) and isinstance(d.get("name"), str)}
 
@@ -788,13 +789,15 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                         f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} é manual sem "
                         f"valor e sem `pendingReason`"
                     )
+                if field in required_by_dataset.get(dataset, set()):
+                    client_fills.add(f"{dataset}.{field}")
 
     for dataset, names in sorted(lists.items()):
         if len(names) > 1:
             fail(f"{doc_dir.relative_to(ROOT)}: {dataset} tem duas listas ({', '.join(sorted(names))}); "
                  f"nada diz qual valor de uma vai com qual da outra")
 
-    _verdict_on_pending(doc_dir, generatable, declared_incomplete, overrides, pending)
+    _verdict_on_pending(doc_dir, generatable, declared_incomplete, overrides, pending, client_fills)
 
 
 def _check_empty_set(doc_dir: Path, dataset: str, entry: dict, declared: dict) -> None:
@@ -1059,13 +1062,20 @@ def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
 
 
 
-def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrides, pending) -> None:
+def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrides, pending,
+                        client_fills=frozenset()) -> None:
     """O veredito de gerabilidade: campo obrigatório `manual` sem valor dentro de
     `byRowClass` bloqueia (o `manual` simples e a lista são do cliente preencher).
 
     É a regra que a prosa do binding descrevia e nada impunha.
+
+    Um binding que se declara `generatable: false` pode ainda ENUMERAR, entre os
+    incompletos, campos obrigatórios `manual` simples sem valor (`client_fills`): eles
+    não o obrigam a se declarar incompleto, mas também não tornam a lista
+    desatualizada — é o que a referência ainda não tem e o cliente preenche.
     """
     blocking = {f for f in pending if f not in overrides}
+    may_list = blocking | {f for f in client_fills if f not in overrides}
 
     if generatable is False:
         for field in sorted(blocking - declared_incomplete):
@@ -1074,7 +1084,7 @@ def _verdict_on_pending(doc_dir: Path, generatable, declared_incomplete, overrid
                 f"valor, mas não consta em `incompleteFields` — a incompletude precisa "
                 f"ser enumerada, não vaga"
             )
-        for field in sorted(declared_incomplete - blocking):
+        for field in sorted(declared_incomplete - may_list):
             fail(
                 f"{doc_dir.relative_to(ROOT)}: `incompleteFields` lista {field}, que não "
                 f"é campo obrigatório que bloqueia (manual sem valor em byRowClass) — lista desatualizada"
