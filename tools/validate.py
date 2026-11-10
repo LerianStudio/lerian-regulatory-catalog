@@ -1439,6 +1439,19 @@ def produced_columns(
         columns = set(aggregate.get("groupBy") or [])
         columns |= {m["as"] for m in aggregate.get("measures") or [] if m.get("as")}
 
+        # Um junte de CONSULTA depois da agregação soma o que a parceira entrega (o Reporter o
+        # executa sobre as linhas agrupadas). Parceira de esquema cru não tem conjunto conhecido.
+        for join in query.get("join") or []:
+            if not join.get("query"):
+                continue
+
+            partner = queries.get(join["query"])
+            joined_columns = produced_columns(partner, queries, seen) if partner else None
+            if joined_columns is None:
+                return None
+
+            columns |= joined_columns
+
         return columns | derived
 
     base_name = query.get("from")

@@ -1645,6 +1645,24 @@ class ValidatorSuite(unittest.TestCase):
         fixtures.write(root, data)
         return root
 
+    def test_an_aggregate_that_joins_a_query_delivers_the_partner_columns(self) -> None:
+        """O junte de consulta depois da agregação soma as colunas da parceira.
+
+        Sem isso, mapear a coluna que a parceira traz reprovava um binding que o Reporter executa.
+        Parceira de esquema cru (tabela, sem agregação) não tem conjunto conhecido: não se confere.
+        """
+        agregada = {"name": "a", "aggregate": {"groupBy": ["k"], "measures": [{"as": "m", "fn": "sum", "of": "x"}]}}
+        parceira = {"name": "p", "aggregate": {"groupBy": ["j"], "measures": [{"as": "n", "fn": "sum", "of": "y"}]}}
+        crua = {"name": "c", "dataSource": "d", "table": "t"}
+
+        com_parceira = {**agregada, "join": [{"query": "p", "match": {"k": "j"}}]}
+        self.assertEqual(
+            {"k", "m", "j", "n"},
+            validate.produced_columns(com_parceira, {"a": com_parceira, "p": parceira}))
+
+        com_crua = {**agregada, "join": [{"query": "c", "match": {"k": "_id"}}]}
+        self.assertIsNone(validate.produced_columns(com_crua, {"a": com_crua, "c": crua}))
+
     def test_fixtures_are_valid(self) -> None:
         """A base é válida — sem isso, toda mutação passaria por acidente."""
         code, out = _run(self._write(fixtures.bundle()))
