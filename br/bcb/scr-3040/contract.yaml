@@ -1,0 +1,542 @@
+# Contrato do SCR Documento 3040 - Dados Individualizados de Risco de Crédito.
+#
+# QUEM CURA: a Lerian, a partir dos arquivos oficiais fixados em schema/ (README.md
+# de lá tem origem, data e SHA-256). Citação: "I p.N" = SCR_InstrucoesDePreenchimento_Doc3040.pdf,
+# página N; "L Doc3040 l.N" = SCR3040_Leiaute.xls, planilha Doc3040, linha N.
+#
+# XSD OFICIAL: schema/scr3040.202607.xsd (origem em schema/README.md). O motor não confere o arquivo contra ele em tempo de execução.
+#
+# ESCOPO (decisão 25 do programa Lender x BFC): cabeçalho, Cli, Op, Venc, Gar e dois
+# Inf (1002 e 1701). Ficam fora Agreg, Sicor, ConIpocs, ContInstFinRes4966,
+# Estagio, Perda e os demais Inf; cada um está declarado em knownGaps.
+#
+# DE ONDE VÊM AS LINHAS: Op, Venc e Gar são as três visões *_current que o Lender publica
+# (docs/contracts/lender-reporting-dataset.md do Lender). O Lender nunca publica CPF,
+# CNPJ ou nome: o documento do cliente e o do garantidor chegam do CRM do Midaz pelo
+# junte de consultas do binding. Os nomes dos campos-chave (holder_id, contract_id,
+# guarantee_source, guarantee_id) são os das colunas das visões, porque é por coluna que
+# o binding amarra filho e pai.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.bcb.scr-3040
+  country: BR
+  regulator: BCB
+  document: "3040"
+  family: scr
+  title: SCR Documento 3040 - Dados Individualizados de Risco de Crédito
+  summary: >-
+    Remessa mensal ao SCR com cada cliente, as operações dele, os vencimentos, as garantias e as
+    informações adicionais de aquisição e reestruturação, a partir do dataset que o Lender publica.
+  version: 1.0.0
+  status: draft
+  output: xml
+  # O filtro do catálogo, não uma regra do BACEN: são os tipos de instituição que o Lender atende.
+  # Quem está obrigado ao 3040 é a lista da Carta-Circular 3.869 (I p.3); ver knownGaps.
+  appliesTo:
+    institutionTypes: [SCD, SCFI]
+  periodicity: monthly
+  # O dia civil de um instante que alimenta um campo date: o fuso das datas brasileiras.
+  timezone: America/Sao_Paulo
+  sourceOfTruth:
+    layoutManual: https://www.bcb.gov.br/estabilidadefinanceira/scrdoc3040
+    schema: schema/SCR3040_Leiaute.xls     # material de curadoria, não é executado; as instruções (PDF) moram ao lado
+
+parameters:
+  - name: dataBase
+    type: month              # AAAA-MM (I p.7, DtBase)
+    required: true
+    # Só mês encerrado: o 3040 de um mês lê a última versão publicada da competência, e antes
+    # do mês fechar o dataset descreve só parte dele.
+    closed: true
+    description: Data-base da remessa, no formato AAAA-MM.
+  - name: remessa
+    type: string
+    required: true
+    default: "1"
+    pattern: '^[1-9][0-9]*$'
+    # I p.7-8: sequencial dentro da data-base; qualquer reenvio é uma remessa nova (+1).
+    # O motor não conta remessas: quem gera informa o número.
+    description: Número da remessa dentro da data-base; um reenvio soma uma unidade.
+
+# A entrega: duas gerações da mesma data-base são a mesma entrega. A regra de original e
+# substituição do `filing.remittance` não se aplica: o 3040 numera a remessa, não a classifica.
+filing:
+  period: [dataBase]
+
+datasets:
+  # ─── Cabeçalho: Doc3040 (I p.7-9; L Doc3040 l.7-9) ───────────────────────────────────────
+  - name: Doc3040
+    description: Cabeçalho do documento. TotalCli, Parte e TpArq não são campos; ver template.tpl.
+    grain: singleton
+    fields:
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        normalize: alphanumeric
+        # O CNPJ da declarante é dado, lido da organização do Midaz, e conferido contra o
+        # cadastro da instituição da entrega (RPT-0196).
+        identifiesInstitution: true
+        description: CNPJ da instituição declarante, as quatorze posições.
+      - name: cnpj8
+        type: string
+        length: 8
+        required: true
+        prefixOf: cnpj           # I p.7: o atributo CNPJ leva as 8 posições da raiz
+        pattern: '^[A-Za-z0-9]{8}$'
+        description: Raiz do CNPJ (atributo CNPJ do Doc3040).
+      - name: NomeResp
+        type: string
+        required: true
+        description: Nome completo do responsável pelo envio (I p.8).
+      - name: EmailResp
+        type: string
+        required: true
+        # tipoEmailResp (schema/scr3040.202607.xsd:876-884): a forma no pattern, as 100 posições no format.pattern.
+        pattern: "^[A-Za-z0-9_]+([-+.'][A-Za-z0-9_]+)*@[A-Za-z0-9_]+([-.][A-Za-z0-9_]+)*\\.[A-Za-z0-9_]+([-.][A-Za-z0-9_]+)*$"
+        format: {pattern: '.{1,100}'}
+        description: E-mail corporativo do responsável pelo envio (I p.8).
+      - name: TelResp
+        type: string
+        required: true
+        pattern: '^[^\r\n|"]{1,14}$'   # tipoTelResp (schema/scr3040.202607.xsd:886-893)
+        description: Telefone corporativo do responsável (I p.8 pede DDTTTTTTTT).
+      - name: MetodApPE
+        type: string
+        required: true
+        domain: [C, S]           # I p.9: C completa, S simplificada
+        description: Metodologia de apuração da provisão para perdas esperadas.
+      - name: MetodDifTJE
+        type: string
+        required: true
+        domain: [S, N]           # I p.9
+        description: Se a instituição usa a metodologia diferenciada de taxa de juros efetiva (art. 75 da Res. BCB 352).
+
+  # ─── Cli: um por cliente (I p.10-16; L Doc3040 l.13-34) ──────────────────────────────────
+  - name: Cli
+    description: Um cliente, o titular de ao menos uma operação do dataset.
+    # O grão é o holder, não a raiz do CNPJ: ver knownGaps (matriz e filial).
+    grain: [holder_id]
+    # Sem cliente nenhum a geração é recusada em vez de sair um Doc3040 com TotalCli="0" que alguém aprova.
+    nonEmpty: true
+    # O validador do catálogo exige o bloco em todo conjunto de várias linhas; com uma só fonte o Reporter não o aplica.
+    consolidation:
+      key: [holder_id]
+      whenKeyRepeats: combine
+      columns: {document: first, Tp: first, Autorzc: first, PorteCli: first, TpCtrl: first,
+                IniRelactCli: first, FirstContractDate: first, FatAnual: first, CongEcon: first}
+    fields:
+      - name: holder_id
+        type: string
+        required: true
+        description: Titular no CRM do Midaz. Amarra as operações ao cliente; não vai ao arquivo.
+      - name: document
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([A-Z0-9]{11}|[A-Z0-9]{14})$'
+        description: CPF (11) ou CNPJ (14) lido do CRM. Origem de Cli.Cd e de Op.DetCli; não vai ao arquivo como está.
+      - name: cnpjRoot
+        type: string
+        length: 8
+        required: true
+        prefixOf: document
+        description: Raiz do CNPJ do cliente PJ (I p.10, Cd). Só PJ a usa; ver template.tpl.
+      - name: Tp
+        type: string
+        required: true
+        domain: ["1", "2"]       # Anexo 11 (L Anexo l.309-316); o 3 ao 6 não são produzidos
+        description: Tipo do cliente, 1 pessoa física com CPF ou 2 pessoa jurídica com CNPJ.
+      - name: Autorzc
+        type: string
+        required: true
+        domain: [S, N]           # Anexo 20 (L Anexo l.465-468)
+        description: Autorização para consultar o cliente no SCR.
+      - name: PorteCli
+        type: string
+        required: true
+        pattern: '^[0-8]$'       # tipoPorteCliente (schema/scr3040.202607.xsd:515-520)
+        description: Porte do cliente (Anexo 24 PJ, Anexo 25 PF).
+      - name: TpCtrl
+        type: string
+        required: false          # obrigatório só para PJ (L Doc3040 l.21)
+        pattern: '^0?[1-4]$'     # tipoControle (schema/scr3040.202607.xsd:460-465)
+        description: Tipo de controle do cliente PJ (Anexo 10).
+      - name: IniRelactCli
+        type: date
+        required: true
+        notAfter: FirstContractDate
+        description: Início do relacionamento com o cliente (L Doc3040 l.22). O menor entre o dia civil da criação do titular no CRM (America/Sao_Paulo) e o contrato mais antigo dele no Lender, em qualquer estado.
+      - name: FirstContractDate
+        type: date
+        required: true
+        description: Data do contrato mais antigo do titular no Lender, em qualquer estado (o carregado pela data da CCB original). Limita IniRelactCli; não vai ao arquivo.
+      - name: FatAnual
+        type: decimal
+        required: true
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Faturamento anual do PJ ou renda mensal do PF, em reais (L Doc3040 l.24).
+      - name: CongEcon
+        type: string
+        required: false
+        description: Código interno do conglomerado econômico; ausente diz que o cliente não pertence a nenhum (L Doc3040 l.27).
+
+  # ─── Op: uma por operação do cliente (I p.17-72; L Doc3040 l.39-65) ──────────────────────
+  - name: Op
+    description: Uma operação do cliente, uma linha de scr_operation_current.
+    childOf: {dataset: Cli}
+    grain: [contract_id]
+    fields:
+      - name: holder_id
+        type: string
+        required: true
+        description: Titular da operação; amarra a operação ao Cli. Não vai ao arquivo.
+      - name: contract_id
+        type: string
+        required: true
+        description: Conta de empréstimo do Lender. Amarra Venc, Gar e Inf à operação. Não vai ao arquivo.
+      - name: Contrt
+        type: string
+        required: true
+        pattern: '^[^\r\n|"]{1,40}$'   # tipoCodContrato (schema/scr3040.202607.xsd:563-569); entra também no IPOC
+        description: Código do contrato, até 40 posições (I p.17-18). O número do cliente, senão o id da conta.
+      - name: Mod
+        type: string
+        required: true
+        pattern: '^[0-9]{4}$'
+        description: Modalidade e submodalidade (Anexo 3). Vem da versão do produto.
+      - name: OrigemRec
+        type: string
+        required: true
+        pattern: '^(0?10[1-2]|0?199|0?20[1-9]|0?21[0-3]|0?299)$'   # tipoOrigemRec (schema/scr3040.202607.xsd:374-380)
+        description: Origem dos recursos (Anexo 4, I p.48-49).
+      - name: currency
+        type: string
+        required: true
+        domain: [BRL]
+        description: Moeda da operação. O documento escreve VarCamb 790 (real, I p.50); outra moeda é recusada, não omitida. Não vai ao arquivo.
+      - name: rate_mode
+        type: string
+        required: true
+        domain: [fixed, floating]
+        description: Modo da taxa da versão do produto. Decide Indx e PercIndx no template.
+      - name: CEP
+        type: string
+        required: true
+        pattern: '^[0-9]{8}$'    # tipoCEP (schema/scr3040.202607.xsd:836-841)
+        description: CEP da dependência de concessão (L Doc3040 l.51).
+      - name: TaxEft
+        type: decimal
+        required: true
+        # I p.53: duas a sete casas decimais, arredondada pela regra da ABNT (ver knownGaps, arredondamento-taxeft).
+        # O dataset publica oito casas; o contrato escreve sete, sempre as sete (sem exatidão o motor tira os zeros
+        # e 36.00000000 sairia 36, uma casa a menos que as duas que o leiaute pede).
+        format: {scale: 7, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Taxa efetiva anual prefixada, em percentual (L Doc3040 l.52).
+      - name: DtContr
+        type: date
+        required: true
+        description: Data de contratação da operação (L Doc3040 l.53).
+      - name: VlrContr
+        type: decimal
+        required: true
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Valor contratado (L Doc3040 l.54).
+      - name: origin
+        type: string
+        required: true
+        domain: [granted, consignado_repurchase, acquisition]
+        description: Origem da operação no Lender. Decide NatuOp no template.
+      - name: DtVencOp
+        type: date
+        required: false          # ausente indica vencimento indeterminado (L Doc3040 l.57)
+        description: Data de pagamento da última parcela.
+      - name: ProvConsttd
+        type: decimal
+        required: true
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Provisão constituída, zero incluído (L Doc3040 l.60).
+      - name: DiaAtraso
+        type: integer
+        required: true
+        description: Dias de atraso da parcela mais atrasada. O template só o escreve quando maior que zero.
+      - name: CaracEspecial
+        type: string
+        required: false
+        description: Características especiais (Anexo 8), como o banco devolve a lista; o template separa com ponto e vírgula.
+      - name: DtaProxParcela
+        type: date
+        required: false
+        description: Data da próxima prestação a vencer (L Doc3040 l.63).
+      - name: VlrProxParcela
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Soma dos pagamentos do mês da próxima prestação (L Doc3040 l.64).
+      - name: QtdParcelas
+        type: integer
+        required: true
+        description: Quantidade de prestações previstas no contrato (L Doc3040 l.65).
+
+  # ─── Venc: vencimentos da operação (I p.73-77; L Doc3040 l.69-70) ────────────────────────
+  - name: Venc
+    description: Um valor de vencimento da operação, um atributo vCOD do elemento Venc.
+    childOf: {dataset: Op}
+    grain: [contract_id, vcod]
+    fields:
+      - name: contract_id
+        type: string
+        required: true
+        description: Operação a que o vencimento pertence.
+      - name: vcod
+        type: string
+        required: true
+        pattern: '^[0-9]{3}$'    # Anexo 1 (L Anexo l.1-35)
+        description: Código do vencimento, o COD de vCOD.
+      - name: amount
+        type: decimal
+        required: true
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Valor do fluxo de vencimento. Código ausente vale zero (L Doc3040 l.69).
+
+  # ─── Gar: garantias da operação (I p.78-85; L Doc3040 l.74-85) ───────────────────────────
+  - name: Gar
+    description: Uma garantia da operação.
+    childOf: {dataset: Op}
+    grain: [contract_id, guarantee_source, guarantee_id]
+    fields:
+      - name: contract_id
+        type: string
+        required: true
+        description: Operação garantida.
+      - name: guarantee_source
+        type: string
+        required: true
+        domain: [fgts_available_balance, fgts_termination_penalty, registered]
+        description: De onde o Lender leu a garantia. Chave; não vai ao arquivo.
+      - name: guarantee_id
+        type: string
+        required: false          # vazio nas duas garantias do FGTS
+        description: Id da garantia cadastrada. Chave; não vai ao arquivo.
+      - name: SitGar
+        type: string
+        required: true
+        domain: ["01", "02", "03", "04", "05", "06"]   # Anexo 47 (L Anexo l.921-928)
+        description: Situação da garantia.
+      - name: Tp
+        type: string
+        required: true
+        pattern: '^[0-9]{4}$'    # tipo e subtipo concatenados, Anexo 12 (I p.80-85)
+        description: Tipo e subtipo da garantia.
+      - name: TpVlrGar
+        type: string
+        required: true
+        domain: ["01", "02"]     # Anexo 48; 01 pede VlrOrig e 02 pede PercGar (I p.79)
+        description: Tipo de valor da garantia.
+      - name: PercGar
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Percentual de cobertura, quando TpVlrGar é 02.
+      - name: VlrOrig
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Valor original, quando TpVlrGar é 01.
+      - name: VlrData
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Valor na data da reavaliação.
+      - name: PercData
+        type: decimal
+        required: false
+        pattern: '0\.(0[1-9]|[1-9][0-9])|[1-9][0-9]{0,2}\.[0-9]{2}'   # tipoPorcentagem (XSD): maior que 0 e menor que 1000
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Percentual na data da reavaliação.
+      - name: DtReav
+        type: date
+        required: false
+        description: Data da reavaliação.
+      - name: Compart
+        type: string
+        required: false
+        domain: ["01", "02", "03"]   # Anexo 49 (L Anexo l.935-939)
+        description: Compartilhamento da garantia. O critério que leva a contagem do Lender a um código está pendente.
+      - name: identification
+        type: string
+        required: false
+        normalize: alphanumeric
+        pattern: '[0-9A-Za-z]{1,21}'   # tipoIdentGar (XSD)
+        description: Identificação de garantia real (chassi, matrícula), como o cliente a registrou. Alimenta Ident.
+      - name: guarantorDocument
+        type: string
+        required: false
+        normalize: alphanumeric
+        description: CPF ou CNPJ do garantidor, lido do CRM. Alimenta Ident da garantia fidejussória (I p.84, tipo 09).
+
+  # ─── Inf: informações adicionais produzidas (I p.86-, p.101; L Anexo 26 l.65 e l.85) ────────────
+  - name: Inf1002
+    description: Inf 1002, adquirida de pessoa não integrante do SFN. Hoje só a recompra de consignado.
+    childOf: {dataset: Op}
+    grain: [contract_id]
+    fields:
+      - name: contract_id
+        type: string
+        required: true
+        description: Operação adquirida.
+      - name: Tp
+        type: string
+        required: true
+        domain: ["1002"]
+        description: Tipo e subtipo da informação adicional (Anexo 26).
+      - name: Cd
+        type: date
+        required: true
+        description: Data da aquisição.
+      - name: Ident
+        type: string
+        required: true
+        pattern: '^[0-9]{8}$'
+        description: Raiz do CNPJ do cedente, oito dígitos.
+      - name: Valor
+        type: decimal
+        required: true
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Valor da negociação (I p.101, natureza 03). L Anexo 26 l.65 pede valor de face (knownGaps inf1002-valor).
+
+  - name: Inf1701
+    description: Inf 1701, reestruturação de instrumento financeiro.
+    childOf: {dataset: Op}
+    grain: [contract_id]
+    fields:
+      - name: contract_id
+        type: string
+        required: true
+        description: Operação reestruturada.
+      - name: Tp
+        type: string
+        required: true
+        domain: ["1701"]
+        description: Tipo e subtipo da informação adicional (Anexo 26).
+      - name: Cd
+        type: date
+        required: true
+        description: Data da reestruturação mais recente.
+
+# Nada de regra: cada invariante do documento vive no campo (domínio, padrão, formato) ou no
+# dataset do Lender, que a impõe uma vez, onde nasce. O motor confere o grão de cada conjunto.
+
+knownGaps:
+  # ── As sete perguntas regulatórias abertas (consulta externa, decisão 28) ──
+  - id: q1-ipoc
+    description: >-
+      Op.IPOC é composto no template (CNPJ raiz da instituição, modalidade, tipo do cliente, código do
+      cliente, código do contrato; I p.17-18) e nunca conferido contra o SCR. Se a regra de unicidade e de
+      mudança de IPOC vale para a operação carregada pela E8 espera a consulta ao BACEN. Responde: Fred, com o BACEN.
+  - id: q2-contrt-unico
+    description: >-
+      Se Op.Contrt precisa ser único por instituição, e não só o IPOC, espera a consulta ao BACEN. O Lender grava o número
+      do cliente ou, sem ele, o id da conta. Responde: Fred, com o BACEN.
+  - id: q3-gar-anexos
+    description: >-
+      O bloco Gar e os Anexos 12, 47, 48 e 49 entram na data-base maio/2026 (README.md de schema/). Quais tipos de garantia o
+      Lender pode declarar fora o FGTS (0889), e como o critério de compartilhamento vira o código do Anexo 49, espera a consulta.
+      Gar.Compart não é preenchido. Responde: Fred, com o BACEN.
+  - id: q4-natuop-ccb-comprada
+    description: >-
+      Op.NatuOp e Inf 1002 de uma CCB comprada. O template escreve NatuOp 01 para origin granted e 03 para consignado_repurchase
+      (I p.54; a natureza 03 da recompra é a leitura do catálogo do Lender) e NÃO escreve NatuOp para origin acquisition, nem Inf 1002 dela. A operação adquirida sai sem natureza até
+      a consulta responder. Responde: Fred, com o BACEN.
+  - id: q5-conversao
+    description: >-
+      Op.CaracEspecial 01 e Inf 1701 de um contrato carregado pela E8 depois da conversão: o Lender só valida o formato do que
+      o cliente carrega (confirmações 1 e 5 da E8). Responde: Fred, com o BACEN.
+  - id: q6-anexo-42
+    description: >-
+      Estagio e o Anexo 42 (motivos de alocação) não são produzidos; fora do escopo da decisão 25. Responde: Fred.
+  - id: q7-primeira-data-base
+    description: >-
+      Qual é a primeira data-base que o Lender entrega depois do corte de um contrato carregado espera a consulta. Responde: Fred.
+
+  # ── Campos do dataset pendentes de confirmação ──
+  - id: dtcontr-data-de-liberacao
+    description: >-
+      Op.DtContr do contrato carregado é a data de liberação original (E8, confirmação 1). Do contrato que o Lender origina, é o dia
+      civil da primeira liberação: a emissão e a assinatura da CCB são datas candidatas, e só a liberação existe em todo contrato.
+      Responde: Fred, na consulta externa.
+  - id: sitgar-03-vlrdata-dtreav-inf0317
+    description: >-
+      Gar.SitGar 03 (honrada) quando há recebimento de execução em vigor, Gar.VlrData e Gar.DtReav da execução e Inf 0317 estão pendentes de
+      confirmação (decisão 28). Se o antecipado (prepaid_amount) conta em VlrData também. O binding não escreve recovered_amount nem
+      recovered_on: as colunas estão na visão e nenhum campo as lê. Responde: Fred.
+  - id: compart-codigo
+    description: >-
+      Gar.Compart: a visão traz linked_book_contracts (uma contagem), e o critério que a leva a 01, 02 ou 03 (I p.79) está pendente.
+  - id: gar-carregado-na-data-base-do-corte
+    description: >-
+      A garantia de um contrato carregado só aparece a partir da data-base que contém o dia da carga: vínculo e situação levam o relógio de
+      parede (E6 §1 e §2.10). Na data-base do corte o contrato sai sem Gar. Responde: Fred (E6, E8).
+  - id: venc-205-290-stop-accrual
+    description: >-
+      Venc 205 a 290 saem sem a dedução da renda não recebida do ativo problemático em stop accrual. O Lender não guarda esse saldo em D
+      pronto para ler. A dedução espera uma lane própria.
+  - id: venc-310-330-liquido-ou-bruto
+    description: >-
+      Venc v310 a v330 carregam o carrying_amount da baixa, bruto das recuperações posteriores (credit_loss_recoveries). Se o valor
+      informado é líquido ou bruto delas está pendente.
+  - id: venc-60-80-creditos-a-liberar
+    description: >-
+      Venc v60 e v80 (créditos a liberar) não saem: o Lender não guarda a data de liberação, que I p.75 (c) usa para contar os dias.
+      VlrContr leva o contratado inteiro (I p.53), mas o a liberar não aparece em Venc. Quem responde: Fred. v20 e v40 (limites, só
+      modalidades 19xx, I p.74 b) e v199 não têm produto no Lender, e por isso não são lacunas.
+  - id: inf1002-valor
+    description: >-
+      Inf 1002 Valor sai como o valor negociado (o preço pago ao fundo), como pede I p.101 (tabela e natureza 03). L Anexo 26 l.65
+      (modificada em 2026-10-18) pede o valor de face. Os dois arquivos oficiais divergem; a consulta ao BACEN (decisão 28) decide. Quem responde: Fred.
+  - id: caracespecial-nao-produzidas
+    description: CaracEspecial 02, 09, 17, 20 e 22 não são produzidas pelo dataset (sem fonte viva no Lender).
+  - id: indx-pos-fixado
+    description: >-
+      Op.Indx e Op.PercIndx só saem para origin fixa (Indx 11 e PercIndx 0, I p.50). Para taxa flutuante o Lender publica o código do
+      índice da tabela de taxas dele, sem mapa para o Anexo 5, e o percentual do indexador espera a lane F6: Indx e PercIndx ficam
+      de fora, e o arquivo sai sem eles. O XSD oficial exige Indx em todo Op (schema/scr3040.202607.xsd, tipoOperacao): a remessa com flutuante não valida.
+
+  # ── Campos sem fonte viva, marcados como pendência no binding ──
+  - id: cli-sem-fonte
+    description: >-
+      Cli.Autorzc, Cli.TpCtrl, Cli.FatAnual, Cli.PorteCli e Cli.CongEcon não têm fonte viva (fontes planejadas no catálogo do Lender).
+      PorteCli é derivado pelo Reporter na data-base (DEC-LMS-90), que ainda não o executa.
+  - id: gar-sem-valor-original
+    description: >-
+      A remessa exige VlrOrig quando TpVlrGar é 01, e o XSD recusa vazio. O E6 aceita ativo sem originalValue e aval com valueType 1, e o
+      template escreve VlrOrig="" nesses casos; o contrato não tem requiredWhen executável (pkg/reporter/contract/rules.go). O Lender deve
+      recusar valueType 1 sem originalValue e valueType 1 em garantidor. Responde: Fred.
+  - id: perfil-da-instituicao
+    description: >-
+      Doc3040.NomeResp, EmailResp, TelResp, MetodApPE e MetodDifTJE, Op.OrigemRec e Op.CEP vêm do perfil de reporte da instituição
+      (fonte planejada institution.reporting_profile, ainda sem dado). Ficam como pendência no binding até a instituição informar.
+  - id: cli-por-holder
+    description: >-
+      O Cli é agrupado por holder, não pela raiz do CNPJ: dois holders da mesma PJ (matriz e filial) saem como dois Cli com o mesmo Cd, e
+      Doc3040.TotalCli, que conta os Cli do arquivo, os conta duas vezes (I p.9 manda contar a raiz uma vez). O Reporter ainda não executa derive.
+      TotalCli também não confere se a responsabilidade total do cliente é maior que zero.
+  - id: saida-do-mes
+    description: >-
+      A operação que saiu do livro durante o mês (quitada, cedida, portada, renegociada pelo art. 22 ou estornada) não é informada no mês da
+      saída, e os Inf de saída (0301, 0302, 0303/0304, 0310, 0311, 0316, 0317) esperam uma lane posterior.
+  - id: verba-rescisoria
+    description: >-
+      A fração de verbas rescisórias da garantia do consignado não tem subtipo no Anexo 12: nenhuma linha Gar sai para ela, e a leitura é do
+      compliance do cliente.
+  - id: fora-da-decisao-25
+    description: Agreg, Sicor, ConIpocs, ContInstFinRes4966, Perda e os Inf fora 1002 e 1701 não são produzidos.
+
+  # ── Limites desta curadoria ──
+  - id: arredondamento-taxeft
+    description: >-
+      I p.53 pede a regra da ABNT (meio para o par). O motor escreve sete casas com arredondamento meio para longe do zero, sobre as oito
+      casas que o Lender já arredondou. Um valor com 5 na oitava casa e sétima par sai 1e-7 ponto percentual acima. O contrato não aplica a regra da ABNT.

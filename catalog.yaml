@@ -77,3 +77,19 @@ documents:
       Cadastro da instituição declarante na e-Financeira: identificação, endereço,
       situação no CRS e no FATCA, tipos de entidade e residências fiscais. Primeiro
       evento da e-Financeira; reenviado como retificação quando o cadastro muda.
+
+  - id: br.bcb.scr-3040
+    path: br/bcb/scr-3040
+    country: BR
+    regulator: BCB
+    document: "3040"
+    family: scr
+    title: SCR Documento 3040 - Dados Individualizados de Risco de Crédito
+    version: 1.0.0
+    status: draft
+    periodicity: monthly
+    appliesTo:
+      institutionTypes: [SCD, SCFI]
+    summary: >-
+      Remessa mensal ao SCR com cada cliente, as operações dele, os vencimentos, as garantias e as
+      informações adicionais de aquisição e reestruturação, a partir do dataset que o Lender publica.

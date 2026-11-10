@@ -1,0 +1,288 @@
+# Binding do SCR 3040 - QUEM PREENCHE É O CLIENTE.
+# Exemplo contra o Lender (as três visões *_current do dataset de reporte), a organização do
+# Midaz e o CRM do Midaz.
+#
+# O QUE É DESTE EXEMPLO e não do documento: o nome das fontes (lender, midaz_onboarding,
+# plugin_crm), o schema das visões e os valores que as colunas carregam.
+#
+# O ESCOPO DA FONTE `lender` É ESCRITO À MÃO. A proposta automática de instituições só cobre
+# a tabela de organização do Midaz e tabela com coluna `organization_id`, e as visões têm
+# `midaz_organization_id`. No escopo da instituição, a fonte `lender` lista as TRÊS visões
+# (public__scr_operation_current, public__scr_maturity_current, public__scr_guarantee_current),
+# cada uma com a condição `midaz_organization_id = <organização da instituição>`. Sem isso o
+# Reporter recusa a leitura de tabela que o escopo não cobre.
+#
+# SEM DADO PESSOAL NO LENDER. O Lender publica o titular por holder_id e midaz_organization_id.
+# O documento do cliente e o do garantidor chegam pelo junte da consulta `holders` (o CRM),
+# que o Reporter executa em memória depois das leituras. O CRM tem uma coleção por organização,
+# e a leitura traz a organização de cada linha em `organization_id`.
+#
+# O QUE O BINDING NÃO FAZ: os campos sem fonte viva estão como `manual` com o motivo, e o
+# arquivo sai como rascunho até alguém os preencher. A lista está em knownGaps do contrato.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.scr-3040
+contractVersion: 1.0.0
+
+# Os campos abaixo não têm fonte viva e o leiaute os obriga: a remessa sai como rascunho, e
+# a instituição os informa (manualOverrides) ou liga a fonte antes de enviar.
+generatable: false
+incompleteReason: >-
+  O perfil de reporte da instituição (responsável, metodologias, origem dos recursos, CEP) e o
+  cadastro de risco do cliente (autorização, porte, faturamento) não têm fonte viva no Lender.
+incompleteFields:
+  - Doc3040.NomeResp
+  - Doc3040.EmailResp
+  - Doc3040.TelResp
+  - Doc3040.MetodApPE
+  - Doc3040.MetodDifTJE
+  - Cli.Autorzc
+  - Cli.PorteCli
+  - Cli.FatAnual
+  - Op.OrigemRec
+  - Op.CEP
+
+queries:
+  - name: declarante
+    description: A organização do Midaz, que é a instituição declarante - o CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    filters:
+      - field: deleted_at
+        operator: isNull
+
+  - name: holders
+    description: Os titulares do CRM do Midaz. Alimenta o documento e o tipo do cliente e do garantidor.
+    dataSource: plugin_crm
+    table: holders
+    # O tipo no CRM é NATURAL_PERSON ou LEGAL_PERSON; o Anexo 11 do 3040 pede 1 ou 2. Outro
+    # tipo (pessoa no exterior, sem CPF) recusa a geração: este documento não os produz.
+    compute:
+      - as: tp_cli
+        case:
+          column: type
+          when:
+            NATURAL_PERSON: {constant: "1"}
+            LEGAL_PERSON: {constant: "2"}
+          otherwise: refuse
+    select: [_id, organization_id, document, created_at, tp_cli]
+
+  - name: clientes
+    description: Um cliente por titular com operação na data-base, com o documento, o tipo e a criação lidos do CRM.
+    dataSource: lender
+    table: public__scr_operation_current
+    filters:
+      # A versão corrente da competência. O dataset do Lender é por data-base.
+      - field: competencia
+        operator: eq
+        values: [{parameter: dataBase}]
+    aggregate:
+      # O contrato mais antigo do titular é o mesmo em todas as linhas dele: não abre grupo novo.
+      groupBy: [holder_id, midaz_organization_id, holder_first_contract_date]
+      # O agrupamento exige uma medida; o documento não a lê.
+      measures:
+        - as: valor_contratado
+          fn: sum
+          of: contracted_amount
+    # O junte casa pelas colunas agrupadas, depois da leitura.
+    join:
+      - query: holders
+        match: {holder_id: _id, midaz_organization_id: organization_id}
+
+  - name: operacoes
+    description: As operações do dataset na data-base.
+    dataSource: lender
+    table: public__scr_operation_current
+    filters:
+      - field: competencia
+        operator: eq
+        values: [{parameter: dataBase}]
+
+  - name: vencimentos
+    description: Os valores de vencimento (Venc), uma linha por código.
+    dataSource: lender
+    table: public__scr_maturity_current
+    filters:
+      - field: competencia
+        operator: eq
+        values: [{parameter: dataBase}]
+
+  - name: garantias
+    description: As garantias das operações, com o documento do garantidor lido do CRM.
+    dataSource: lender
+    table: public__scr_guarantee_current
+    filters:
+      - field: competencia
+        operator: eq
+        values: [{parameter: dataBase}]
+    # Um junte de consulta pede a lista do que a consulta devolve (o Reporter não adivinha).
+    select: [contract_id, guarantee_source, guarantee_id, midaz_organization_id, guarantor_holder_id,
+             situation, scr_type, value_type, covered_percent, original_value, reassessed_value,
+             reassessed_percent, reassessed_on, identification]
+    join:
+      - query: holders
+        match: {guarantor_holder_id: _id, midaz_organization_id: organization_id}
+
+  - name: aquisicoes
+    description: As operações adquiridas por recompra, para o Inf 1002.
+    dataSource: lender
+    table: public__scr_operation_current
+    filters:
+      - field: competencia
+        operator: eq
+        values: [{parameter: dataBase}]
+      - field: origin
+        operator: eq
+        values: ["consignado_repurchase"]
+      - field: acquired_on
+        operator: notNull
+
+  - name: reestruturacoes
+    description: As operações com reestruturação até a data-base, para o Inf 1701.
+    dataSource: lender
+    table: public__scr_operation_current
+    filters:
+      - field: competencia
+        operator: eq
+        values: [{parameter: dataBase}]
+      - field: restructured_on
+        operator: notNull
+
+datasets:
+  Doc3040:
+    from:
+      query: declarante
+    fields:
+      cnpj:
+        from: query
+        column: legal_document
+      NomeResp:
+        from: manual
+        pendingReason: Perfil de reporte da instituição ainda sem dado (institution.reporting_profile).
+      EmailResp:
+        from: manual
+        pendingReason: Perfil de reporte da instituição ainda sem dado (institution.reporting_profile).
+      TelResp:
+        from: manual
+        pendingReason: Perfil de reporte da instituição ainda sem dado (institution.reporting_profile).
+      MetodApPE:
+        from: manual
+        pendingReason: Perfil de reporte da instituição ainda sem dado (institution.reporting_profile).
+      MetodDifTJE:
+        from: manual
+        pendingReason: Perfil de reporte da instituição ainda sem dado (institution.reporting_profile).
+
+  Cli:
+    from:
+      query: clientes
+    fields:
+      holder_id: {from: query, column: holder_id}
+      document: {from: query, column: document}
+      Tp: {from: query, column: tp_cli}
+      IniRelactCli: {from: query, column: created_at}
+      FirstContractDate: {from: query, column: holder_first_contract_date}
+      Autorzc:
+        from: manual
+        pendingReason: Sem fonte viva; ausente significa N para o SCR, mas o campo é obrigatório no leiaute.
+      PorteCli:
+        from: manual
+        pendingReason: O Reporter deriva o porte na data-base (DEC-LMS-90) e ainda não o executa.
+      TpCtrl:
+        from: manual
+        pendingReason: Sem fonte viva (obrigatório só para PJ).
+      FatAnual:
+        from: manual
+        pendingReason: Sem fonte viva; o CRM guarda o faturamento e a renda, e o Reporter ainda não os lê aqui.
+      CongEcon:
+        from: manual
+        pendingReason: Sem fonte viva; ausente diz que o cliente não pertence a conglomerado.
+
+  Op:
+    from:
+      query: operacoes
+    # A coluna de cada linha que carrega a chave do pai (holder_id do Cli).
+    parentMatch:
+      holder_id: holder_id
+    fields:
+      holder_id: {from: query, column: holder_id}
+      contract_id: {from: query, column: contract_id}
+      Contrt: {from: query, column: contract_code}
+      Mod: {from: query, column: scr_modality}
+      currency: {from: query, column: currency}
+      rate_mode: {from: query, column: rate_mode}
+      TaxEft: {from: query, column: annual_effective_rate_percent}
+      DtContr: {from: query, column: contract_date}
+      VlrContr: {from: query, column: contracted_amount}
+      origin: {from: query, column: origin}
+      DtVencOp: {from: query, column: last_due_date}
+      ProvConsttd: {from: query, column: provision_constituted}
+      DiaAtraso: {from: query, column: days_overdue}
+      CaracEspecial: {from: query, column: special_characteristics}
+      DtaProxParcela: {from: query, column: next_due_date}
+      VlrProxParcela: {from: query, column: next_due_amount}
+      QtdParcelas: {from: query, column: installment_count}
+      OrigemRec:
+        from: manual
+        pendingReason: Perfil de reporte da instituição ainda sem dado (institution.reporting_profile).
+      CEP:
+        from: manual
+        pendingReason: Perfil de reporte da instituição ainda sem dado (institution.reporting_profile).
+
+  Venc:
+    from:
+      query: vencimentos
+    parentMatch:
+      contract_id: contract_id
+    fields:
+      contract_id: {from: query, column: contract_id}
+      vcod: {from: query, column: vcod}
+      amount: {from: query, column: amount}
+
+  Gar:
+    from:
+      query: garantias
+    parentMatch:
+      contract_id: contract_id
+    fields:
+      contract_id: {from: query, column: contract_id}
+      guarantee_source: {from: query, column: guarantee_source}
+      guarantee_id: {from: query, column: guarantee_id}
+      SitGar: {from: query, column: situation}
+      Tp: {from: query, column: scr_type}
+      TpVlrGar: {from: query, column: value_type}
+      PercGar: {from: query, column: covered_percent}
+      VlrOrig: {from: query, column: original_value}
+      VlrData: {from: query, column: reassessed_value}
+      PercData: {from: query, column: reassessed_percent}
+      DtReav: {from: query, column: reassessed_on}
+      identification: {from: query, column: identification}
+      guarantorDocument: {from: query, column: document}
+      Compart:
+        from: manual
+        pendingReason: O critério que leva linked_book_contracts ao código do Anexo 49 está pendente de confirmação (decisão 28).
+
+  Inf1002:
+    from:
+      query: aquisicoes
+    parentMatch:
+      contract_id: contract_id
+    fields:
+      contract_id: {from: query, column: contract_id}
+      Tp: {from: constant, value: "1002"}
+      Cd: {from: query, column: acquired_on}
+      Ident: {from: query, column: assignor_tax_id}
+      Valor: {from: query, column: acquisition_value}
+
+  Inf1701:
+    from:
+      query: reestruturacoes
+    parentMatch:
+      contract_id: contract_id
+    fields:
+      contract_id: {from: query, column: contract_id}
+      Tp: {from: constant, value: "1701"}
+      Cd: {from: query, column: restructured_on}
+
+manualOverrides: []

@@ -325,6 +325,20 @@ MUTATIONS: list[Mutation] = [
         "ciclo por `from`",
     ),
 
+    Mutation(
+        "ciclo-em-join-de-consulta",
+        "junte que volta à consulta por outro junte não tem conjunto de colunas",
+        lambda b: query(b[HIER]["binding"], "base_titulares")["join"].append(
+            {"query": "movimento", "match": {"conta": "conta"}}),
+        "ciclo por `join`",
+    ),
+    Mutation(
+        "auto-junte-de-consulta",
+        "consulta que junta com ela mesma não tem conjunto de colunas",
+        lambda b: query(b[HIER]["binding"], "movimento").update(
+            {"join": [{"query": "movimento", "match": {"k": "k"}}]}),
+        "ciclo por `join`",
+    ),
     # ----------------------------------------------------- binding: hierarquia
     Mutation(
         "childof-sem-parentmatch",
@@ -1148,6 +1162,30 @@ MUTATIONS: list[Mutation] = [
         "prefixOf apontando para campo que o conjunto não declara não tem de onde cortar",
         lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"prefixOf": "cnpj14"}),
         "que o conjunto não declara",
+    ),
+    Mutation(
+        "not-after-de-campo-inexistente",
+        "notAfter apontando para campo que o conjunto não declara não tem com que comparar",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"notAfter": "nope"}),
+        "que o conjunto não declara",
+    ),
+    Mutation(
+        "not-after-nao-texto",
+        "notAfter que não é nome de campo não compara nada",
+        lambda b: field(b[PLANO]["contract"], "institution", "abertura").update({"notAfter": 3}),
+        "é o nome de um campo do conjunto",
+    ),
+    Mutation(
+        "not-after-no-proprio-campo",
+        "uma data não pode ser anterior a ela mesma",
+        lambda b: field(b[PLANO]["contract"], "institution", "abertura").update({"notAfter": "abertura"}),
+        "nomeia o próprio campo",
+    ),
+    Mutation(
+        "not-after-entre-nao-datas",
+        "notAfter compara datas; texto contra data não tem ordem",
+        lambda b: field(b[PLANO]["contract"], "institution", "primeiraConta").update({"type": "string"}),
+        "os dois são datas",
     ),
     Mutation(
         "derivado-sem-length",
@@ -2073,6 +2111,24 @@ class ValidatorSuite(unittest.TestCase):
         root.mkdir()
         fixtures.write(root, data)
         return root
+
+    def test_an_aggregate_that_joins_a_query_delivers_the_partner_columns(self) -> None:
+        """O junte de consulta depois da agregação soma as colunas da parceira.
+
+        Sem isso, mapear a coluna que a parceira traz reprovava um binding que o Reporter executa.
+        Parceira de esquema cru (tabela, sem agregação) não tem conjunto conhecido: não se confere.
+        """
+        agregada = {"name": "a", "aggregate": {"groupBy": ["k"], "measures": [{"as": "m", "fn": "sum", "of": "x"}]}}
+        parceira = {"name": "p", "aggregate": {"groupBy": ["j"], "measures": [{"as": "n", "fn": "sum", "of": "y"}]}}
+        crua = {"name": "c", "dataSource": "d", "table": "t"}
+
+        com_parceira = {**agregada, "join": [{"query": "p", "match": {"k": "j"}}]}
+        self.assertEqual(
+            {"k", "m", "j", "n"},
+            validate.produced_columns(com_parceira, {"a": com_parceira, "p": parceira}))
+
+        com_crua = {**agregada, "join": [{"query": "c", "match": {"k": "_id"}}]}
+        self.assertIsNone(validate.produced_columns(com_crua, {"a": com_crua, "c": crua}))
 
     def test_fixtures_are_valid(self) -> None:
         """A base é válida — sem isso, toda mutação passaria por acidente."""
