@@ -4,12 +4,10 @@
 # de lá tem origem, data e SHA-256). Citação: "I p.N" = SCR_InstrucoesDePreenchimento_Doc3040.pdf,
 # página N; "L Doc3040 l.N" = SCR3040_Leiaute.xls, planilha Doc3040, linha N.
 #
-# SEM XSD. A página do Documento 3040 não publica XSD (schema/README.md): o leiaute é a
-# planilha. O motor confia neste contrato; nada confere o arquivo contra um esquema do
-# BACEN em tempo de execução, e o validador oficial (Java) não foi copiado.
+# XSD OFICIAL: schema/scr3040.202607.xsd (origem em schema/README.md). O motor não confere o arquivo contra ele em tempo de execução.
 #
 # ESCOPO (decisão 25 do programa Lender x BFC): cabeçalho, Cli, Op, Venc, Gar e dois
-# Inf (1002 e 1701). Ficam fora Agreg, Sicor, ConIpocs, ContInstFin, ContInstFinRes4966,
+# Inf (1002 e 1701). Ficam fora Agreg, Sicor, ConIpocs, ContInstFinRes4966,
 # Estagio, Perda e os demais Inf; cada um está declarado em knownGaps.
 #
 # DE ONDE VÊM AS LINHAS: Op, Venc e Gar são as três visões *_current que o Lender publica
@@ -99,10 +97,7 @@ datasets:
       - name: TelResp
         type: string
         required: true
-        # I p.8: "DDTTTTTTTT", DD com 2 dígitos e TTTTTTTT com 8. Um celular de 9 dígitos não cabe
-        # na forma escrita; ver knownGaps.
-        pattern: '^[0-9]{10}$'
-        description: Telefone corporativo do responsável, DDTTTTTTTT.
+        description: Telefone corporativo do responsável (I p.8 pede DDTTTTTTTT; o XSD aceita até 14 caracteres sem quebra de linha, barra vertical ou aspas).
       - name: MetodApPE
         type: string
         required: true
@@ -203,6 +198,11 @@ datasets:
         type: string
         required: true
         description: Origem dos recursos (Anexo 4, I p.48-49).
+      - name: currency
+        type: string
+        required: true
+        domain: [BRL]
+        description: Moeda da operação. O documento escreve VarCamb 790 (real, I p.50); outra moeda é recusada, não omitida. Não vai ao arquivo.
       - name: rate_mode
         type: string
         required: true
@@ -338,6 +338,7 @@ datasets:
       - name: PercData
         type: decimal
         required: false
+        pattern: '0\.(0[1-9]|[1-9][0-9])|[1-9][0-9]{0,2}\.[0-9]{2}'   # tipoPorcentagem (XSD): maior que 0 e menor que 1000
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
         description: Percentual na data da reavaliação.
       - name: DtReav
@@ -352,6 +353,8 @@ datasets:
       - name: identification
         type: string
         required: false
+        normalize: alphanumeric
+        pattern: '[0-9A-Za-z]{1,21}'   # tipoIdentGar (XSD)
         description: Identificação de garantia real (chassi, matrícula), como o cliente a registrou. Alimenta Ident.
       - name: guarantorDocument
         type: string
@@ -491,7 +494,15 @@ knownGaps:
     description: >-
       Cli.Autorzc, Cli.TpCtrl, Cli.FatAnual, Cli.PorteCli e Cli.CongEcon não têm fonte viva (fontes planejadas no catálogo do Lender).
       PorteCli é derivado pelo Reporter na data-base (DEC-LMS-90), que ainda não o executa. A metade "primeiro contrato" de Cli.IniRelactCli
-      não existe: sai só a criação do titular no CRM.
+      não existe: sai só a criação do titular no CRM. Isso INVERTE a data: o titular de um contrato carregado pela E8 é criado no CRM na
+      migração, então IniRelactCli sai em nov/dez de 2026, depois do DtContr da operação dele, em 100% dos clientes migrados. O arquivo
+      valida no XSD e o valor está errado. Qual data entra no lugar (criação no CRM, primeiro contrato lido pelo Lender ou data
+      informada pelo cliente) é decisão de produto. Responde: Fred.
+  - id: gar-sem-valor-original
+    description: >-
+      A remessa exige VlrOrig quando TpVlrGar é 01, e o XSD recusa vazio. O E6 aceita ativo sem originalValue e aval com valueType 1, e o
+      template escreve VlrOrig="" nesses casos; o contrato não tem requiredWhen executável (pkg/reporter/contract/rules.go). O Lender deve
+      recusar valueType 1 sem originalValue e valueType 1 em garantidor. Responde: Fred.
   - id: perfil-da-instituicao
     description: >-
       Doc3040.NomeResp, EmailResp, TelResp, MetodApPE e MetodDifTJE, Op.OrigemRec e Op.CEP vêm do perfil de reporte da instituição
@@ -509,16 +520,10 @@ knownGaps:
     description: >-
       A fração de verbas rescisórias da garantia do consignado não tem subtipo no Anexo 12: nenhuma linha Gar sai para ela, e a leitura é do
       compliance do cliente.
-  - id: moeda
-    description: >-
-      O binding de referência só lê operações em BRL e escreve VarCamb 790 (I p.50): uma operação em outra moeda fica de fora do arquivo.
   - id: fora-da-decisao-25
-    description: Agreg, Sicor, ConIpocs, ContInstFin, ContInstFinRes4966, Estagio, Perda e os Inf fora 1002 e 1701 não são produzidos.
+    description: Agreg, Sicor, ConIpocs, ContInstFinRes4966, Perda e os Inf fora 1002 e 1701 não são produzidos.
 
   # ── Limites desta curadoria ──
-  - id: tel-resp-celular
-    description: >-
-      TelResp é DDTTTTTTTT (I p.8): oito dígitos depois do DDD. Um celular de nove dígitos é recusado pelo padrão do contrato.
   - id: arredondamento-taxeft
     description: >-
       I p.53 pede a regra da ABNT (meio para o par). O motor escreve sete casas com arredondamento meio para longe do zero, sobre as oito

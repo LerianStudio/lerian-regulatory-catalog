@@ -78,10 +78,6 @@ queries:
       - field: competencia
         operator: eq
         values: [{parameter: dataBase}]
-      # O documento escreve VarCamb 790 (real); ver knownGaps moeda.
-      - field: currency
-        operator: eq
-        values: ["BRL"]
     aggregate:
       groupBy: [holder_id, midaz_organization_id]
       # O agrupamento exige uma medida; o documento não a lê.
@@ -102,9 +98,6 @@ queries:
       - field: competencia
         operator: eq
         values: [{parameter: dataBase}]
-      - field: currency
-        operator: eq
-        values: ["BRL"]
 
   - name: vencimentos
     description: Os valores de vencimento (Venc), uma linha por código.
@@ -114,9 +107,6 @@ queries:
       - field: competencia
         operator: eq
         values: [{parameter: dataBase}]
-      - field: currency
-        operator: eq
-        values: ["BRL"]
 
   - name: garantias
     description: As garantias das operações, com o documento do garantidor lido do CRM.
@@ -126,9 +116,6 @@ queries:
       - field: competencia
         operator: eq
         values: [{parameter: dataBase}]
-      - field: currency
-        operator: eq
-        values: ["BRL"]
     # Um junte de consulta pede a lista do que a consulta devolve (o Reporter não adivinha).
     select: [contract_id, guarantee_source, guarantee_id, midaz_organization_id, guarantor_holder_id,
              situation, scr_type, value_type, covered_percent, original_value, reassessed_value,
@@ -145,9 +132,6 @@ queries:
       - field: competencia
         operator: eq
         values: [{parameter: dataBase}]
-      - field: currency
-        operator: eq
-        values: ["BRL"]
       - field: origin
         operator: eq
         values: ["consignado_repurchase"]
@@ -162,9 +146,6 @@ queries:
       - field: competencia
         operator: eq
         values: [{parameter: dataBase}]
-      - field: currency
-        operator: eq
-        values: ["BRL"]
       - field: restructured_on
         operator: notNull
 
@@ -227,6 +208,7 @@ datasets:
       contract_id: {from: query, column: contract_id}
       Contrt: {from: query, column: contract_code}
       Mod: {from: query, column: scr_modality}
+      currency: {from: query, column: currency}
       rate_mode: {from: query, column: rate_mode}
       TaxEft: {from: query, column: annual_effective_rate_percent}
       DtContr: {from: query, column: contract_date}

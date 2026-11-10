@@ -11,7 +11,7 @@ data-base (`AAAA-MM`): cada cliente, as operações de crédito dele, os vencime
 garantias e as informações adicionais. Fontes oficiais fixadas em `schema/` (origem, data e
 SHA-256 em `schema/README.md`).
 
-A página do BACEN não publica XSD; o esquema oficial vem dentro do validador
+O esquema oficial vem dentro do validador
 (`SCR3040_Validador.zip`) e está fixado em `schema/scr3040.202607.xsd` (ver `schema/README.md`).
 O validador oficial (Java) não está neste repositório: **rode-o sobre o arquivo gerado antes de enviar.**
 
@@ -19,7 +19,7 @@ O validador oficial (Java) não está neste repositório: **rode-o sobre o arqui
 
 Cabeçalho (`Doc3040`), `Cli`, `Op`, `Venc`, `Gar` e dois `Inf`: 1002 (adquirida de pessoa não
 integrante do SFN, hoje só a recompra de consignado) e 1701 (reestruturação). Ficam fora
-`Agreg`, `Sicor`, `ConIpocs`, `ContInstFin`, `ContInstFinRes4966`, `Estagio`, `Perda` e os
+`Agreg`, `Sicor`, `ConIpocs`, `ContInstFinRes4966`, `Estagio`, `Perda` e os
 demais `Inf`, entre eles toda a saída do mês (0301 a 0317).
 
 O arquivo **não é particionado**: `Parte="1"` e `TpArq="F"` (Instruções p.8). `TotalCli` é a
@@ -72,19 +72,10 @@ estes campos em branco, porque o leiaute os obriga e nenhuma fonte viva os tem:
 Informe-os em `manualOverrides` do binding da instituição ou ligue uma fonte. Passam a ser
 campos comuns do arquivo.
 
-## O que o documento escolhe por você, e onde está escrito
+## O que o documento escolhe por você
 
-- **`NatuOp`**: 01 para a operação concedida, 03 para a recompra de consignado. A operação
-  adquirida (`origin = acquisition`) sai **sem** natureza e sem `Inf 1002`: a regra espera a
-  consulta ao BACEN (`q4-natuop-ccb-comprada`).
-- **`Indx` e `PercIndx`**: 11 e 0 só na taxa prefixada. Na taxa flutuante saem de fora
-  (`indx-pos-fixado`).
-- **`Cd` e `IPOC`**: o cliente PJ leva a raiz do CNPJ e o PF leva o CPF inteiro; `DetCli` é o
-  CNPJ inteiro, só do PJ (Instruções p.17-18).
-- **`PercGar` ou `VlrOrig`**: `TpVlrGar` 02 escreve `PercGar`, 01 escreve `VlrOrig` (Instruções p.79).
-- **Só reais.** O binding lê operações em BRL e escreve `VarCamb="790"`.
-- **Fonte de verdade da data-base:** `competencia` da visão é a competência do dataset
-  (`dataBase`), e a visão corrente é a maior `version` dela.
+Cada escolha (`NatuOp`, `Indx` e `PercIndx`, `Cd` e `IPOC`, `PercGar` ou `VlrOrig`, só reais, data-base)
+está comentada em `template.tpl` e nas lacunas de `contract.yaml` (`q4-natuop-ccb-comprada`, `indx-pos-fixado`).
 
 ## O que este documento ainda não entrega
 
@@ -97,6 +88,8 @@ pesam para a remessa:
    até a consulta ao BACEN responder.
 2. **A operação que saiu do livro no mês** não aparece no mês da saída, nem com `Inf` de saída.
 3. **Garantia de contrato carregado** só a partir da data-base que contém o dia da carga.
-4. **`Venc` 205 a 290** sem a dedução da renda não recebida em stop accrual.
-5. **Indx na taxa flutuante**: o XSD exige `Indx` em todo `Op`; a taxa flutuante sai sem ele
+4. **`Cli.IniRelactCli` invertida** (`cli-sem-fonte`): em contrato carregado pela E8 sai a criação do
+   titular no CRM, depois do `DtContr`. Qual data entra no lugar é decisão de produto.
+5. **`Venc` 205 a 290** sem a dedução da renda não recebida em stop accrual.
+6. **Indx na taxa flutuante**: o XSD exige `Indx` em todo `Op`; a taxa flutuante sai sem ele
    (`indx-pos-fixado`) e não valida até a lane F6.
