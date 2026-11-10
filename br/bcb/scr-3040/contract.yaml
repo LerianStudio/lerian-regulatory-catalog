@@ -95,10 +95,13 @@ datasets:
       - name: EmailResp
         type: string
         required: true
+        # tipoEmailResp (schema/scr3040.202607.xsd:876-884); o limite de 100 posições não cabe numa RE2 sem lookahead.
+        pattern: "^[A-Za-z0-9_]+([-+.'][A-Za-z0-9_]+)*@[A-Za-z0-9_]+([-.][A-Za-z0-9_]+)*\\.[A-Za-z0-9_]+([-.][A-Za-z0-9_]+)*$"
         description: E-mail corporativo do responsável pelo envio (I p.8).
       - name: TelResp
         type: string
         required: true
+        pattern: '^[^\r\n|"]{1,14}$'   # tipoTelResp (schema/scr3040.202607.xsd:886-893)
         description: Telefone corporativo do responsável (I p.8 pede DDTTTTTTTT; o XSD aceita até 14 caracteres sem quebra de linha, barra vertical ou aspas).
       - name: MetodApPE
         type: string
@@ -154,10 +157,12 @@ datasets:
       - name: PorteCli
         type: string
         required: true
+        pattern: '^[0-8]$'       # tipoPorteCliente (schema/scr3040.202607.xsd:515-520)
         description: Porte do cliente (Anexo 24 PJ, Anexo 25 PF).
       - name: TpCtrl
         type: string
         required: false          # obrigatório só para PJ (L Doc3040 l.21)
+        pattern: '^0?[1-4]$'     # tipoControle (schema/scr3040.202607.xsd:460-465)
         description: Tipo de controle do cliente PJ (Anexo 10).
       - name: IniRelactCli
         type: date
@@ -195,6 +200,7 @@ datasets:
       - name: Contrt
         type: string
         required: true
+        pattern: '^[^\r\n|"]{1,40}$'   # tipoCodContrato (schema/scr3040.202607.xsd:563-569); entra também no IPOC
         description: Código do contrato, até 40 posições (I p.17-18). O número do cliente, senão o id da conta.
       - name: Mod
         type: string
@@ -204,6 +210,7 @@ datasets:
       - name: OrigemRec
         type: string
         required: true
+        pattern: '^(0?10[1-2]|0?199|0?20[1-9]|0?21[0-3]|0?299)$'   # tipoOrigemRec (schema/scr3040.202607.xsd:374-380)
         description: Origem dos recursos (Anexo 4, I p.48-49).
       - name: currency
         type: string
@@ -218,6 +225,7 @@ datasets:
       - name: CEP
         type: string
         required: true
+        pattern: '^[0-9]{8}$'    # tipoCEP (schema/scr3040.202607.xsd:836-841)
         description: CEP da dependência de concessão (L Doc3040 l.51).
       - name: TaxEft
         type: decimal

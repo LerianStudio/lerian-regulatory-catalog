@@ -315,6 +315,20 @@ MUTATIONS: list[Mutation] = [
         "ciclo por `from`",
     ),
 
+    Mutation(
+        "ciclo-em-join-de-consulta",
+        "junte que volta à consulta por outro junte não tem conjunto de colunas",
+        lambda b: query(b[HIER]["binding"], "movimento").update(
+            {"join": [{"query": "por_titular", "match": {"k": "k"}}]}),
+        "ciclo por `join`",
+    ),
+    Mutation(
+        "auto-junte-de-consulta",
+        "consulta que junta com ela mesma não tem conjunto de colunas",
+        lambda b: query(b[HIER]["binding"], "movimento").update(
+            {"join": [{"query": "movimento", "match": {"k": "k"}}]}),
+        "ciclo por `join`",
+    ),
     # ----------------------------------------------------- binding: hierarquia
     Mutation(
         "childof-sem-parentmatch",
@@ -980,6 +994,24 @@ MUTATIONS: list[Mutation] = [
         "notAfter apontando para campo que o conjunto não declara não tem com que comparar",
         lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"notAfter": "nope"}),
         "que o conjunto não declara",
+    ),
+    Mutation(
+        "not-after-nao-texto",
+        "notAfter que não é nome de campo não compara nada",
+        lambda b: field(b[PLANO]["contract"], "institution", "abertura").update({"notAfter": 3}),
+        "é o nome de um campo do conjunto",
+    ),
+    Mutation(
+        "not-after-no-proprio-campo",
+        "uma data não pode ser anterior a ela mesma",
+        lambda b: field(b[PLANO]["contract"], "institution", "abertura").update({"notAfter": "abertura"}),
+        "nomeia o próprio campo",
+    ),
+    Mutation(
+        "not-after-entre-nao-datas",
+        "notAfter compara datas; texto contra data não tem ordem",
+        lambda b: field(b[PLANO]["contract"], "institution", "primeiraConta").update({"type": "string"}),
+        "os dois são datas",
     ),
     Mutation(
         "derivado-sem-length",

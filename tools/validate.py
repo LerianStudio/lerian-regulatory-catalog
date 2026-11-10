@@ -1283,6 +1283,14 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
             if target_query is None and not join.get("table"):
                 fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' não nomeia nem table nem query")
 
+            # Junte que volta a si por `from` ou por outro junte (o auto-junte incluso) não
+            # tem conjunto de colunas: produced_columns responde "não sei" e a conferência se cala.
+            if target_query in by_name and _reaches(by_name, target_query, qname):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `join`: '{qname}' junta com "
+                    f"'{target_query}', que depende dela de volta"
+                )
+
             # O que um join de TABELA traz: só as colunas nomeadas, com o nome que a
             # consulta lê. Sem `columns` ele não traz nada; num join de consulta as
             # colunas já são dela. É a mesma recusa do motor (readJoinColumns).
@@ -1309,6 +1317,27 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
                     f"{doc_dir.relative_to(ROOT)}: join de '{qname}' usa a chave 'on', "
                     f"que YAML 1.1 lê como booleano — use 'match'"
                 )
+
+
+def _reaches(by_name: dict[str, dict], start: str, goal: str) -> bool:
+    """`goal` é `start` ou algo de que `start` depende, por `from` ou por junte de consulta."""
+    pending, visited = [start], set()
+
+    while pending:
+        current = pending.pop()
+        if current == goal:
+            return True
+        if current in visited or current not in by_name:
+            continue
+
+        visited.add(current)
+        query = by_name[current]
+        joins = query.get("join")
+        pending.append(query.get("from"))
+        if isinstance(joins, list):
+            pending.extend(j.get("query") for j in joins if isinstance(j, dict))
+
+    return False
 
 
 def check_template_parses(doc_dir: Path) -> None:
