@@ -60,3 +60,19 @@ documents:
       Saldos diários de um conjunto fechado de contas COSIF — estoque no sinal da
       natureza e volume de pagamentos acumulado no mês. Conjunto de linhas definido
       pelo catálogo, não pelo cliente.
+
+  - id: br.bcb.scr-3040
+    path: br/bcb/scr-3040
+    country: BR
+    regulator: BCB
+    document: "3040"
+    family: scr
+    title: SCR Documento 3040 - Dados Individualizados de Risco de Crédito
+    version: 1.0.0
+    status: draft
+    periodicity: monthly
+    appliesTo:
+      institutionTypes: [SCD, SCFI]
+    summary: >-
+      Remessa mensal ao SCR com cada cliente, as operações dele, os vencimentos, as garantias e as
+      informações adicionais de aquisição e reestruturação, a partir do dataset que o Lender publica.

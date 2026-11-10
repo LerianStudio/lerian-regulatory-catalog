@@ -1283,6 +1283,14 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
             if target_query is None and not join.get("table"):
                 fail(f"{doc_dir.relative_to(ROOT)}: join de '{qname}' não nomeia nem table nem query")
 
+            # Junte que volta a si por `from` ou por outro junte (o auto-junte incluso) não
+            # tem conjunto de colunas: produced_columns responde "não sei" e a conferência se cala.
+            if target_query in by_name and _reaches(by_name, target_query, qname):
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `join`: '{qname}' junta com "
+                    f"'{target_query}', que depende dela de volta"
+                )
+
             # O que um join de TABELA traz: só as colunas nomeadas, com o nome que a
             # consulta lê. Sem `columns` ele não traz nada; num join de consulta as
             # colunas já são dela. É a mesma recusa do motor (readJoinColumns).
@@ -1309,6 +1317,27 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
                     f"{doc_dir.relative_to(ROOT)}: join de '{qname}' usa a chave 'on', "
                     f"que YAML 1.1 lê como booleano — use 'match'"
                 )
+
+
+def _reaches(by_name: dict[str, dict], start: str, goal: str) -> bool:
+    """`goal` é `start` ou algo de que `start` depende, por `from` ou por junte de consulta."""
+    pending, visited = [start], set()
+
+    while pending:
+        current = pending.pop()
+        if current == goal:
+            return True
+        if current in visited or current not in by_name:
+            continue
+
+        visited.add(current)
+        query = by_name[current]
+        joins = query.get("join")
+        pending.append(query.get("from"))
+        if isinstance(joins, list):
+            pending.extend(j.get("query") for j in joins if isinstance(j, dict))
+
+    return False
 
 
 def check_template_parses(doc_dir: Path) -> None:
@@ -1438,6 +1467,19 @@ def produced_columns(
     if aggregate:
         columns = set(aggregate.get("groupBy") or [])
         columns |= {m["as"] for m in aggregate.get("measures") or [] if m.get("as")}
+
+        # Um junte de CONSULTA depois da agregação soma o que a parceira entrega (o Reporter o
+        # executa sobre as linhas agrupadas). Parceira de esquema cru não tem conjunto conhecido.
+        for join in query.get("join") or []:
+            if not join.get("query"):
+                continue
+
+            partner = queries.get(join["query"])
+            joined_columns = produced_columns(partner, queries, seen) if partner else None
+            if joined_columns is None:
+                return None
+
+            columns |= joined_columns
 
         return columns | derived
 
@@ -1841,6 +1883,7 @@ def check_engine_parity(doc_dir: Path, contract: dict) -> None:
         for field in fields_of(ds):
             _check_field_shape(doc_dir, name, field)
         _check_derivations(doc_dir, name, ds)
+        _check_not_after(doc_dir, name, ds)
 
     # Uma entrega é declarada por uma instituição: dois campos marcados poderiam
     # ser conferidos e ainda assim nomear duas.
@@ -1876,6 +1919,24 @@ def _check_derivations(doc_dir: Path, dataset: str, ds: dict) -> None:
             fail(f"{where} nomeia '{source}', que também é derivado")
         elif by_name[source].get("type") != "string":
             fail(f"{where} nomeia '{source}', do tipo {by_name[source].get('type')!r}; só texto é cortado em posições")
+
+
+def _check_not_after(doc_dir: Path, dataset: str, ds: dict) -> None:
+    """notAfter compara duas datas do MESMO conjunto; o motor recusa o contrato nos mesmos casos."""
+    by_name = {f.get("name"): f for f in fields_of(ds) if isinstance(f, dict)}
+    for name, field in by_name.items():
+        other = field.get("notAfter")
+        if other is None:
+            continue
+        where = f"{doc_dir.relative_to(ROOT)}: {dataset}.{name}.notAfter"
+        if not isinstance(other, str):
+            fail(f"{where} é o nome de um campo do conjunto, não {type(other).__name__}")
+        elif other not in by_name:
+            fail(f"{where} nomeia '{other}', que o conjunto não declara")
+        elif other == name:
+            fail(f"{where} nomeia o próprio campo")
+        elif field.get("type") != "date" or by_name[other].get("type") != "date":
+            fail(f"{where} compara '{name}' com '{other}'; os dois são datas")
 
 
 def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
