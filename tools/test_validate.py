@@ -318,8 +318,8 @@ MUTATIONS: list[Mutation] = [
     Mutation(
         "ciclo-em-join-de-consulta",
         "junte que volta à consulta por outro junte não tem conjunto de colunas",
-        lambda b: query(b[HIER]["binding"], "movimento").update(
-            {"join": [{"query": "por_titular", "match": {"k": "k"}}]}),
+        lambda b: query(b[HIER]["binding"], "base_titulares")["join"].append(
+            {"query": "movimento", "match": {"conta": "conta"}}),
         "ciclo por `join`",
     ),
     Mutation(

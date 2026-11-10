@@ -95,14 +95,15 @@ datasets:
       - name: EmailResp
         type: string
         required: true
-        # tipoEmailResp (schema/scr3040.202607.xsd:876-884); o limite de 100 posições não cabe numa RE2 sem lookahead.
+        # tipoEmailResp (schema/scr3040.202607.xsd:876-884): a forma no pattern, as 100 posições no format.pattern.
         pattern: "^[A-Za-z0-9_]+([-+.'][A-Za-z0-9_]+)*@[A-Za-z0-9_]+([-.][A-Za-z0-9_]+)*\\.[A-Za-z0-9_]+([-.][A-Za-z0-9_]+)*$"
+        format: {pattern: '.{1,100}'}
         description: E-mail corporativo do responsável pelo envio (I p.8).
       - name: TelResp
         type: string
         required: true
         pattern: '^[^\r\n|"]{1,14}$'   # tipoTelResp (schema/scr3040.202607.xsd:886-893)
-        description: Telefone corporativo do responsável (I p.8 pede DDTTTTTTTT; o XSD aceita até 14 caracteres sem quebra de linha, barra vertical ou aspas).
+        description: Telefone corporativo do responsável (I p.8 pede DDTTTTTTTT).
       - name: MetodApPE
         type: string
         required: true
