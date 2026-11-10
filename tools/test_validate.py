@@ -976,6 +976,12 @@ MUTATIONS: list[Mutation] = [
         "que o conjunto não declara",
     ),
     Mutation(
+        "not-after-de-campo-inexistente",
+        "notAfter apontando para campo que o conjunto não declara não tem com que comparar",
+        lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"notAfter": "nope"}),
+        "que o conjunto não declara",
+    ),
+    Mutation(
         "derivado-sem-length",
         "prefixOf sem length não diz quantas posições cortar",
         lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").pop("length"),

@@ -88,8 +88,10 @@ pesam para a remessa:
    até a consulta ao BACEN responder.
 2. **A operação que saiu do livro no mês** não aparece no mês da saída, nem com `Inf` de saída.
 3. **Garantia de contrato carregado** só a partir da data-base que contém o dia da carga.
-4. **`Cli.IniRelactCli` invertida** (`cli-sem-fonte`): em contrato carregado pela E8 sai a criação do
-   titular no CRM, depois do `DtContr`. Qual data entra no lugar é decisão de produto.
+4. **`Cli.IniRelactCli`** (decisão do Fred, 10/11): sai o menor entre o dia civil da criação do titular no
+   CRM (America/Sao_Paulo) e a menor `DtContr` das operações dele que o Lender publica na data-base;
+   nunca depois de uma `DtContr` do mesmo cliente. Uma operação já fora do livro não puxa a data
+   para trás.
 5. **`Venc` 205 a 290** sem a dedução da renda não recebida em stop accrual.
 6. **Indx na taxa flutuante**: o XSD exige `Indx` em todo `Op`; a taxa flutuante sai sem ele
    (`indx-pos-fixado`) e não valida até a lane F6.

@@ -79,7 +79,8 @@ queries:
         operator: eq
         values: [{parameter: dataBase}]
     aggregate:
-      groupBy: [holder_id, midaz_organization_id]
+      # A menor DtContr do titular é a mesma em todas as linhas dele: não abre grupo novo.
+      groupBy: [holder_id, midaz_organization_id, holder_first_contract_date]
       # O agrupamento exige uma medida; o documento não a lê.
       measures:
         - as: valor_contratado
@@ -181,6 +182,7 @@ datasets:
       document: {from: query, column: document}
       Tp: {from: query, column: tp_cli}
       IniRelactCli: {from: query, column: created_at}
+      FirstContractDate: {from: query, column: holder_first_contract_date}
       Autorzc:
         from: manual
         pendingReason: Sem fonte viva; ausente significa N para o SCR, mas o campo é obrigatório no leiaute.

@@ -123,7 +123,7 @@ datasets:
       key: [holder_id]
       whenKeyRepeats: combine
       columns: {document: first, Tp: first, Autorzc: first, PorteCli: first, TpCtrl: first,
-                IniRelactCli: first, FatAnual: first, CongEcon: first}
+                IniRelactCli: first, FirstContractDate: first, FatAnual: first, CongEcon: first}
     fields:
       - name: holder_id
         type: string
@@ -162,7 +162,13 @@ datasets:
       - name: IniRelactCli
         type: date
         required: true
-        description: Início do relacionamento com o cliente (L Doc3040 l.22).
+        # Decisão do Fred (10/11): o menor entre a criação do titular no CRM e a primeira DtContr dele.
+        notAfter: FirstContractDate
+        description: Início do relacionamento com o cliente (L Doc3040 l.22). O menor entre o dia civil da criação do titular no CRM e a menor DtContr das operações dele.
+      - name: FirstContractDate
+        type: date
+        required: false
+        description: Menor DtContr das operações do titular que o Lender publica na data-base (uma operação já fora do livro não a puxa para trás). Limita IniRelactCli; não vai ao arquivo.
       - name: FatAnual
         type: decimal
         required: true
@@ -495,11 +501,8 @@ knownGaps:
   - id: cli-sem-fonte
     description: >-
       Cli.Autorzc, Cli.TpCtrl, Cli.FatAnual, Cli.PorteCli e Cli.CongEcon não têm fonte viva (fontes planejadas no catálogo do Lender).
-      PorteCli é derivado pelo Reporter na data-base (DEC-LMS-90), que ainda não o executa. A metade "primeiro contrato" de Cli.IniRelactCli
-      não existe: sai só a criação do titular no CRM. Isso INVERTE a data: o titular de um contrato carregado pela E8 é criado no CRM na
-      migração, então IniRelactCli sai em nov/dez de 2026, depois do DtContr da operação dele, em 100% dos clientes migrados. O arquivo
-      valida no XSD e o valor está errado. Qual data entra no lugar (criação no CRM, primeiro contrato lido pelo Lender ou data
-      informada pelo cliente) é decisão de produto. Responde: Fred.
+      PorteCli é derivado pelo Reporter na data-base (DEC-LMS-90), que ainda não o executa.
+      Responde: Fred.
   - id: gar-sem-valor-original
     description: >-
       A remessa exige VlrOrig quando TpVlrGar é 01, e o XSD recusa vazio. O E6 aceita ativo sem originalValue e aval com valueType 1, e o

@@ -1854,6 +1854,7 @@ def check_engine_parity(doc_dir: Path, contract: dict) -> None:
         for field in fields_of(ds):
             _check_field_shape(doc_dir, name, field)
         _check_derivations(doc_dir, name, ds)
+        _check_not_after(doc_dir, name, ds)
 
     # Uma entrega é declarada por uma instituição: dois campos marcados poderiam
     # ser conferidos e ainda assim nomear duas.
@@ -1889,6 +1890,24 @@ def _check_derivations(doc_dir: Path, dataset: str, ds: dict) -> None:
             fail(f"{where} nomeia '{source}', que também é derivado")
         elif by_name[source].get("type") != "string":
             fail(f"{where} nomeia '{source}', do tipo {by_name[source].get('type')!r}; só texto é cortado em posições")
+
+
+def _check_not_after(doc_dir: Path, dataset: str, ds: dict) -> None:
+    """notAfter compara duas datas do MESMO conjunto; o motor recusa o contrato nos mesmos casos."""
+    by_name = {f.get("name"): f for f in fields_of(ds) if isinstance(f, dict)}
+    for name, field in by_name.items():
+        other = field.get("notAfter")
+        if other is None:
+            continue
+        where = f"{doc_dir.relative_to(ROOT)}: {dataset}.{name}.notAfter"
+        if not isinstance(other, str):
+            fail(f"{where} é o nome de um campo do conjunto, não {type(other).__name__}")
+        elif other not in by_name:
+            fail(f"{where} nomeia '{other}', que o conjunto não declara")
+        elif other == name:
+            fail(f"{where} nomeia o próprio campo")
+        elif field.get("type") != "date" or by_name[other].get("type") != "date":
+            fail(f"{where} compara '{name}' com '{other}'; os dois são datas")
 
 
 def _check_field_shape(doc_dir: Path, dataset: str, field: dict) -> None:
