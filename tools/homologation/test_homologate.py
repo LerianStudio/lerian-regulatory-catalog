@@ -85,7 +85,16 @@ class EntryBinding(unittest.TestCase):
         bases = {}
         homologate.apply_filled_binding(rep, SUBSCRIPTION, path, FILLS, None, bases)
         self.assertEqual(rep.binding(), homologate.fill_binding(REFERENCE, FILLS))
-        self.assertEqual(bases, {}, "with --bindings nothing is restored")
+
+    def test_with_bindings_the_run_also_puts_back_the_binding_it_found(self):
+        rep = FakeReporter({SUBSCRIPTION: "before the run\n"})
+        path = str(ROOT / "br" / "rfb" / "efinanceira-cad-declarante" / "binding.example.yaml")
+        bases = {}
+        homologate.apply_filled_binding(rep, SUBSCRIPTION, path, FILLS, APOSTROPHE, bases)
+        self.assertIn("D'Oeste", rep.binding())
+        with contextlib.redirect_stdout(io.StringIO()):
+            homologate.restore_bindings(rep, bases)
+        self.assertEqual(rep.binding(), "before the run\n", "the last entry's replacement stayed on the subscription")
 
 
 if __name__ == "__main__":

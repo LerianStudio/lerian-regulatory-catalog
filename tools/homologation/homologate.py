@@ -1239,22 +1239,25 @@ def replace_binding_fields(text, fields):
 def apply_filled_binding(rep, subscription, base_path, fills, replaced=None, bases=None):
     """Puts the binding with the scenario's fills on the subscription, when it differs.
 
-    The base is the checkout's binding.example.yaml (`--bindings`) or, without
-    it, the binding the subscription had when the run first touched it: `bases`
-    (subscription -> binding text) keeps that one for the whole run, so an
-    entry's replacement never becomes the base of the entries after it.
-    `replaced` (an entry's `binding`) swaps whole field mappings after the fills.
+    `bases` (subscription -> binding text) keeps the binding the subscription had
+    when the run first touched it, with or without `--bindings`: restore_bindings
+    puts it back at exit, so a run leaves no entry's replacement behind. The base
+    is the checkout's binding.example.yaml (`--bindings`) or, without it, that
+    first-read binding, so an entry's replacement never becomes the base of the
+    entries after it. `replaced` (an entry's `binding`) swaps whole field
+    mappings after the fills.
     """
+    if bases is not None and subscription not in bases:
+        _, _, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
+        bases[subscription] = current.decode("utf-8")
     if base_path:
         with open(base_path, encoding="utf-8") as fh:
             base = fh.read()
-    elif bases is not None and subscription in bases:
+    elif bases is not None:
         base = bases[subscription]
     else:
         _, _, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
         base = current.decode("utf-8")
-        if bases is not None:
-            bases[subscription] = base
     wanted = fill_binding(base, fills)
     if replaced:
         wanted = replace_binding_fields(wanted, replaced)

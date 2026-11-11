@@ -150,7 +150,8 @@ Um campo que o Midaz preenche (o nome, o endereço) não é `manual`, então `fi
 não o alcança. Uma entrada prova o pattern dele com `binding`: `{"dataset.campo":
 {"from": "constant", "value": "..."}}` troca o mapeamento inteiro do campo (tudo o
 que ele tinha sai, isto entra) só naquela entrada — sem registrar outra
-organização no Midaz. A entrada seguinte volta ao binding do cenário.
+organização no Midaz. A entrada seguinte volta ao binding do cenário, e ao fim da
+execução, com ou sem `--bindings`, cada assinatura volta ao binding que tinha antes dela.
 
 **Os desfechos de cada entrada:**
 
