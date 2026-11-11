@@ -222,6 +222,8 @@ def documents_declaring(file_name: str) -> list[Path]:
     for contract_path in sorted(ROOT.glob("*/*/*/contract.yaml")):
         try:
             contract = yaml.safe_load(contract_path.read_text(encoding="utf-8")) or {}
+        except (OSError, UnicodeDecodeError) as err:
+            raise TableError(f"{contract_path.relative_to(ROOT)} não pôde ser lido: {err}") from err
         except yaml.YAMLError as err:
             raise TableError(f"{contract_path.relative_to(ROOT)} não é YAML válido: {err}") from err
         # A contract that is not a mapping is refused here, not with a traceback.
@@ -239,7 +241,7 @@ def main() -> int:
     try:
         body = render_municipalities(today)
         targets = documents_declaring(MUNICIPALITY_TABLE_FILE)
-    except TableError as refusal:
+    except (OSError, TableError) as refusal:
         print(f"tabela recusada: {refusal}", file=sys.stderr)
         return 1
 

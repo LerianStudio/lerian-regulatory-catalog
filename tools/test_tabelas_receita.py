@@ -160,6 +160,25 @@ class DocumentsDeclaring(unittest.TestCase):
         with self.assertRaisesRegex(tr.TableError, "não é YAML válido"):
             tr.documents_declaring(tr.MUNICIPALITY_TABLE_FILE)
 
+    def test_a_contract_that_is_not_utf8_is_refused(self):
+        doc = self._with_contract("")
+        (doc / "contract.yaml").write_bytes(b"tables: [\xff\xfe]\n")
+        with self.assertRaisesRegex(tr.TableError, "não pôde ser lido"):
+            tr.documents_declaring(tr.MUNICIPALITY_TABLE_FILE)
+
+    def test_main_reports_a_missing_table_file_instead_of_crashing(self):
+        import contextlib
+        import io
+        from unittest import mock
+
+        def missing(_today):
+            raise FileNotFoundError("municipios.txt")
+
+        err = io.StringIO()
+        with mock.patch.object(tr, "render_municipalities", missing), contextlib.redirect_stderr(err):
+            self.assertEqual(tr.main(), 1)
+        self.assertIn("tabela recusada", err.getvalue())
+
     def test_main_reports_a_malformed_contract_instead_of_crashing(self):
         import contextlib
         import io
