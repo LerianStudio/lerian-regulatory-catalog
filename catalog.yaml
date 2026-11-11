@@ -61,6 +61,23 @@ documents:
       natureza e volume de pagamentos acumulado no mês. Conjunto de linhas definido
       pelo catálogo, não pelo cliente.
 
+  - id: br.rfb.efinanceira-cad-declarante
+    path: br/rfb/efinanceira-cad-declarante
+    country: BR
+    regulator: RFB
+    document: evtCadDeclarante
+    family: e-financeira
+    title: e-Financeira — Cadastro do Declarante
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Cadastro da instituição declarante na e-Financeira: identificação, endereço,
+      situação no CRS e no FATCA, tipos de entidade e residências fiscais. Primeiro
+      evento da e-Financeira; reenviado como retificação quando o cadastro muda.
+
   - id: br.bcb.scr-3040
     path: br/bcb/scr-3040
     country: BR

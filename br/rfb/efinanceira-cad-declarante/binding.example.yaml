@@ -1,0 +1,117 @@
+# Binding do evtCadDeclarante — QUEM PREENCHE É O CLIENTE.
+#
+# Exemplo preenchido contra o Midaz. O que o Midaz guarda da organização — CNPJ,
+# razão social e endereço — vem por consulta; o que ele não guarda (ambiente de
+# destino, situação no CRS e no FATCA, tipos de entidade, residências fiscais,
+# código do município) fica `manual`, sem valor e com o motivo: o cliente preenche
+# UMA vez aqui no mapeamento, e preencher não tira o mapeamento da referência.
+# Enquanto um campo obrigatório está pendente, o rascunho sai com a pendência, e
+# não pode ser aprovado nem baixado.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.rfb.efinanceira-cad-declarante
+contractVersion: 1.0.0
+
+queries:
+  - name: declarante
+    description: A organização do Midaz, que é a entidade declarante — o CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    # Qual organização: o escopo da instituição, que filtra organization.id pela
+    # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
+    # uma linha só recusa a geração em vez de escolher uma.
+    filters:
+      # Uma organização apagada não declara nada.
+      - field: deleted_at
+        operator: isNull
+
+datasets:
+  declarante:
+    from:
+      query: declarante
+    fields:
+      # Para onde o cliente envia: 2 enquanto testa na produção restrita, 1 em produção.
+      tpAmb:
+        from: manual
+        pendingReason: "o ambiente de destino: 1 produção, 2 produção restrita (testes)"
+      # O leiaute separa o aplicativo da própria declarante (1) dos geradores de
+      # terceiros usados em contingência (2). O Reporter é o gerador que a
+      # instituição opera no dia a dia, então a referência diz 1; quem entender que
+      # é 2 troca aqui. Nenhuma regra da Receita confere este campo.
+      aplicEmi:
+        from: constant
+        value: "1"
+      # O leiaute pede a versão do aplicativo, até 20 posições, para controle da
+      # própria declarante; o motor não expõe a versão dele ao mapeamento. Ajuste se
+      # quiser registrar a versão em uso.
+      verAplic:
+        from: constant
+        value: Lerian Reporter
+      cnpj:
+        from: query
+        column: legal_document
+      inDeclaranteCRS:
+        from: manual
+        pendingReason: "a situação no CRS: 1 declarante, ou 2 a 4 pelo item da IN RFB 1.680 que enquadra a instituição como não declarante"
+      inDeclaranteFATCA:
+        from: manual
+        pendingReason: "a situação no FATCA: 1 declarante, ou 2 a 5 pelo inciso do Decreto 8.506/2015 que enquadra a instituição como não declarante"
+      giin:
+        from: manual
+        pendingReason: "o GIIN, quando a instituição tem um"
+      categoriaDeclarante:
+        from: manual
+        pendingReason: "a categoria de declarante; instituição financeira brasileira informante é FATCA602"
+      nome:
+        from: query
+        column: legal_name
+      tpNome:
+        from: manual
+        pendingReason: "OECD207 para dizer que o nome é o nome legal, quando a instituição quiser informar"
+      # O endereço no Midaz é um objeto (organization.address). O arquivo leva
+      # "endereço/cep/cidade/UF", que o template monta destes campos. O
+      # `address.line2` NÃO entra: ponha número e complemento no line1.
+      logradouro:
+        from: query
+        column: address.line1
+      cidade:
+        from: query
+        column: address.city
+      tpEndereco:
+        from: manual
+        pendingReason: "o tipo do endereço, quando a instituição quiser informar (tabela Tipos de Endereço)"
+      # O Midaz guarda o nome da cidade; o arquivo pede o código da Receita.
+      municipio:
+        from: manual
+        pendingReason: "o código do município do endereço, sete dígitos da tabela de Municípios da Receita"
+      uf:
+        from: query
+        column: address.state
+      cep:
+        from: query
+        column: address.zipCode
+      pais:
+        from: query
+        column: address.country
+
+  tiposEntidade:
+    fields:
+      tpEntidade:
+        from: manual
+        values: []
+        pendingReason: "todo tipo de entidade que a instituição é: 1, 2, 3, 4 ou 6 (credenciadora ou subcredenciadora)"
+
+  residenciasFiscais:
+    fields:
+      pais:
+        from: manual
+        values: []
+        pendingReason: "todo país de residência fiscal da instituição, o Brasil (BR) entre eles"
+
+  # O Midaz não guarda identificação fiscal no exterior, e uma instituição
+  # brasileira raramente a tem: o arquivo sai sem <NIF>. Quem tem mapeia o
+  # conjunto a partir da própria base, no lugar desta declaração.
+  nifs:
+    emptyReason: "a instituição não tem identificação fiscal no exterior"

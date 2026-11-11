@@ -1,0 +1,218 @@
+{
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/j-efinanceira-completo.json. Como no cenário I: caminho debaixo de evtCadDeclarante, texto, null para ausente, {\"unordered\": [...]}; o id pela forma e crescente. Aqui TODO opcional vem preenchido, então GIIN, CategoriaDeclarante, tpNome e tpEndereco estão presentes; só o NIF (conjunto declarado vazio) e o nrRecibo do original faltam. enderecoLivre = line1/CEP/cidade/UF: 'Av. Brasil, 1.500 sala 10.0' como escrito, o CEP sem o traço, o line2 ('Torre Norte') fora. A ordem importa: o original é julgado e SÓ ENTÃO aprovado; as entradas seguintes são retificações (o original aprovado recusaria outro).",
+  "documents": [
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "original",
+      "parameters": {"indRetificacao": "1"},
+      "approve": true,
+      "_note": "Organização nova: o original é gerado, julgado elemento a elemento (opcionais incluídos) e só depois aprovado — o caminho julgar-antes-de-aprovar. Numa execução seguinte, o aprovado é o julgado.",
+      "elements": {
+        "ideEvento/indRetificacao": "1",
+        "ideEvento/nrRecibo": null,
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoCadastro/inDeclaranteCRS": "1",
+        "infoCadastro/inDeclaranteFATCA": "1",
+        "infoCadastro/tpEntidade": {"unordered": ["1", "2", "6"]},
+        "infoCadastro/GIIN": "98Q96B.00000.LE.250",
+        "infoCadastro/CategoriaDeclarante": "FATCA602",
+        "infoCadastro/NIF": null,
+        "infoCadastro/nome": "Declarante Completa e-Financeira S.A. (sintética, homologação)",
+        "infoCadastro/tpNome": "OECD207",
+        "infoCadastro/enderecoLivre": "Av. Brasil, 1.500 sala 10.0/13015904/Campinas/SP",
+        "infoCadastro/tpEndereco": "OECD304",
+        "infoCadastro/municipio": "3509502",
+        "infoCadastro/UF": "SP",
+        "infoCadastro/CEP": "13015904",
+        "infoCadastro/Pais": "BR",
+        "infoCadastro/paisResid/Pais": {"unordered": ["BR", "US"]}
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "retificacao-a-pedido",
+      "parameters": {"indRetificacao": "3", "nrRecibo": "987654321-02-345-2026-1"},
+      "_note": "Retificação a pedido da Receita (3), com recibo: grupos de 9, 2, 3, 4 e 1 dígitos, dentro do padrão. Evento novo, id maior que o do original. Fica em rascunho.",
+      "elements": {
+        "ideEvento/indRetificacao": "3",
+        "ideEvento/nrRecibo": "987654321-02-345-2026-1",
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoCadastro/inDeclaranteCRS": "1",
+        "infoCadastro/inDeclaranteFATCA": "1",
+        "infoCadastro/tpEntidade": {"unordered": ["1", "2", "6"]},
+        "infoCadastro/GIIN": "98Q96B.00000.LE.250",
+        "infoCadastro/CategoriaDeclarante": "FATCA602",
+        "infoCadastro/NIF": null,
+        "infoCadastro/nome": "Declarante Completa e-Financeira S.A. (sintética, homologação)",
+        "infoCadastro/tpNome": "OECD207",
+        "infoCadastro/enderecoLivre": "Av. Brasil, 1.500 sala 10.0/13015904/Campinas/SP",
+        "infoCadastro/tpEndereco": "OECD304",
+        "infoCadastro/municipio": "3509502",
+        "infoCadastro/UF": "SP",
+        "infoCadastro/CEP": "13015904",
+        "infoCadastro/Pais": "BR",
+        "infoCadastro/paisResid/Pais": {"unordered": ["BR", "US"]}
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "retificacao-corrigida",
+      "parameters": {"indRetificacao": "2", "nrRecibo": "987654321-02-345-2026-2"},
+      "_note": "Retificação espontânea gerada com Campinas (3509502) e CORRIGIDA no rascunho para São Bernardo do Campo (3548708, também SP, então a regra municipio-da-uf aceita): o arquivo corrigido muda só o <municipio> — o enderecoLivre continua com 'Campinas', porque a correção é de um campo, não do endereço — e o id do evento é o mesmo antes e depois (a correção re-renderiza as mesmas linhas). A entrada seguinte gerada tem id maior.",
+      "elements": {
+        "ideEvento/indRetificacao": "2",
+        "ideEvento/nrRecibo": "987654321-02-345-2026-2",
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoCadastro/inDeclaranteCRS": "1",
+        "infoCadastro/inDeclaranteFATCA": "1",
+        "infoCadastro/tpEntidade": {"unordered": ["1", "2", "6"]},
+        "infoCadastro/GIIN": "98Q96B.00000.LE.250",
+        "infoCadastro/CategoriaDeclarante": "FATCA602",
+        "infoCadastro/NIF": null,
+        "infoCadastro/nome": "Declarante Completa e-Financeira S.A. (sintética, homologação)",
+        "infoCadastro/tpNome": "OECD207",
+        "infoCadastro/enderecoLivre": "Av. Brasil, 1.500 sala 10.0/13015904/Campinas/SP",
+        "infoCadastro/tpEndereco": "OECD304",
+        "infoCadastro/municipio": "3509502",
+        "infoCadastro/UF": "SP",
+        "infoCadastro/CEP": "13015904",
+        "infoCadastro/Pais": "BR",
+        "infoCadastro/paisResid/Pais": {"unordered": ["BR", "US"]}
+      },
+      "correct": {
+        "overrides": [
+          {"dataset": "declarante", "field": "municipio", "value": "3548708",
+           "reason": "Homologação: o município do cadastro é São Bernardo do Campo (SP)."}
+        ],
+        "elements": {
+          "ideEvento/indRetificacao": "2",
+          "ideEvento/nrRecibo": "987654321-02-345-2026-2",
+          "ideEvento/tpAmb": "2",
+          "ideEvento/aplicEmi": "1",
+          "ideEvento/verAplic": "Lerian Reporter",
+          "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+          "infoCadastro/inDeclaranteCRS": "1",
+          "infoCadastro/inDeclaranteFATCA": "1",
+          "infoCadastro/tpEntidade": {"unordered": ["1", "2", "6"]},
+          "infoCadastro/GIIN": "98Q96B.00000.LE.250",
+          "infoCadastro/CategoriaDeclarante": "FATCA602",
+          "infoCadastro/NIF": null,
+          "infoCadastro/nome": "Declarante Completa e-Financeira S.A. (sintética, homologação)",
+          "infoCadastro/tpNome": "OECD207",
+          "infoCadastro/enderecoLivre": "Av. Brasil, 1.500 sala 10.0/13015904/Campinas/SP",
+          "infoCadastro/tpEndereco": "OECD304",
+          "infoCadastro/municipio": "3548708",
+          "infoCadastro/UF": "SP",
+          "infoCadastro/CEP": "13015904",
+          "infoCadastro/Pais": "BR",
+          "infoCadastro/paisResid/Pais": {"unordered": ["BR", "US"]}
+        }
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "nome-com-apostrofo",
+      "parameters": {"indRetificacao": "2", "nrRecibo": "987654321-02-345-2026-3"},
+      "binding": {
+        "declarante.nome": {"from": "constant", "value": "Declarante D'Oeste e-Financeira S.A."}
+      },
+      "errored": true,
+      "errorContains": ["RPT-0138", "Field 'nome'"],
+      "_note": "O manual (§2.3) proíbe o apóstrofo; o pattern do nome (^[^\"'#]{1,100}$) o recusa quando o campo é escrito, no worker. O nome vem por constante no binding desta entrada, para não registrar outra organização no Midaz."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "giin-com-letra-O",
+      "parameters": {"indRetificacao": "2", "nrRecibo": "987654321-02-345-2026-3"},
+      "fills": {"declarante.giin": "98Q96B.0000O.LE.250"},
+      "errored": true,
+      "errorContains": ["RPT-0138", "Field 'giin'"],
+      "_note": "A máscara do GIIN exclui a letra O (MS1125). '0000O' tem um O no fim do segundo grupo: 19 posições, o XSD (maxLength 19) aceitaria — só o contrato recusa."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "logradouro-147",
+      "parameters": {"indRetificacao": "2", "nrRecibo": "987654321-02-345-2026-3"},
+      "binding": {
+        "declarante.logradouro": {"from": "constant", "value": "Rodovia Dom Pedro I km 136 Condominio Empresarial Techno Park Bloco C Torre Sul Andar 12 Conjunto 1201 Acesso pela Portaria 3 Lado Leste Ref A00012"}
+      },
+      "errored": true,
+      "errorContains": ["RPT-0138", "Field 'logradouro'"],
+      "_note": "147 posições: uma acima do limite do contrato (146), que é o que garante o enderecoLivre ≤ 200. Recusado ao escrever o campo."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "logradouro-146-cidade-40",
+      "parameters": {"indRetificacao": "2", "nrRecibo": "987654321-02-345-2026-3"},
+      "binding": {
+        "declarante.logradouro": {"from": "constant", "value": "Rodovia Dom Pedro I km 136 Condominio Empresarial Techno Park Bloco C Torre Sul Andar 12 Conjunto 1201 Acesso pela Portaria 3 Lado Leste Ref A0001"},
+        "declarante.cidade": {"from": "constant", "value": "Municipio de Teste Com Nome Bem Comprido"}
+      },
+      "_note": "Os dois no limite do contrato: logradouro de 146 e cidade de 40. O enderecoLivre composto tem 146 + 1 + 8 + 1 + 40 + 1 + 2 = 199 posições, dentro dos 200 do XSD, que valida o arquivo. Gerado DEPOIS da correção acima: id maior que o dela.",
+      "elements": {
+        "ideEvento/indRetificacao": "2",
+        "ideEvento/nrRecibo": "987654321-02-345-2026-3",
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoCadastro/inDeclaranteCRS": "1",
+        "infoCadastro/inDeclaranteFATCA": "1",
+        "infoCadastro/tpEntidade": {"unordered": ["1", "2", "6"]},
+        "infoCadastro/GIIN": "98Q96B.00000.LE.250",
+        "infoCadastro/CategoriaDeclarante": "FATCA602",
+        "infoCadastro/NIF": null,
+        "infoCadastro/nome": "Declarante Completa e-Financeira S.A. (sintética, homologação)",
+        "infoCadastro/tpNome": "OECD207",
+        "infoCadastro/enderecoLivre": "Rodovia Dom Pedro I km 136 Condominio Empresarial Techno Park Bloco C Torre Sul Andar 12 Conjunto 1201 Acesso pela Portaria 3 Lado Leste Ref A0001/13015904/Municipio de Teste Com Nome Bem Comprido/SP",
+        "infoCadastro/tpEndereco": "OECD304",
+        "infoCadastro/municipio": "3509502",
+        "infoCadastro/UF": "SP",
+        "infoCadastro/CEP": "13015904",
+        "infoCadastro/Pais": "BR",
+        "infoCadastro/paisResid/Pais": {"unordered": ["BR", "US"]}
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "nome-com-e-comercial",
+      "parameters": {"indRetificacao": "2", "nrRecibo": "987654321-02-345-2026-3"},
+      "binding": {
+        "declarante.nome": {"from": "constant", "value": "Silva & Filhos e-Financeira S.A. (sintética, homologação)"}
+      },
+      "_note": "O & é permitido no nome e sai escapado (&amp;) pelo autoescape do renderizador: o arquivo segue XML bem formado, o XSD o valida e o <nome> lido de volta é o escrito. Gerado DEPOIS da entrada acima: id maior que o dela.",
+      "elements": {
+        "ideEvento/indRetificacao": "2",
+        "ideEvento/nrRecibo": "987654321-02-345-2026-3",
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoCadastro/inDeclaranteCRS": "1",
+        "infoCadastro/inDeclaranteFATCA": "1",
+        "infoCadastro/tpEntidade": {"unordered": ["1", "2", "6"]},
+        "infoCadastro/GIIN": "98Q96B.00000.LE.250",
+        "infoCadastro/CategoriaDeclarante": "FATCA602",
+        "infoCadastro/NIF": null,
+        "infoCadastro/nome": "Silva & Filhos e-Financeira S.A. (sintética, homologação)",
+        "infoCadastro/tpNome": "OECD207",
+        "infoCadastro/enderecoLivre": "Av. Brasil, 1.500 sala 10.0/13015904/Campinas/SP",
+        "infoCadastro/tpEndereco": "OECD304",
+        "infoCadastro/municipio": "3509502",
+        "infoCadastro/UF": "SP",
+        "infoCadastro/CEP": "13015904",
+        "infoCadastro/Pais": "BR",
+        "infoCadastro/paisResid/Pais": {"unordered": ["BR", "US"]}
+      }
+    }
+  ]
+}

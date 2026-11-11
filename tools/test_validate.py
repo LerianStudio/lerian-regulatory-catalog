@@ -89,6 +89,16 @@ def parameter(contract: dict, name: str) -> dict:
     return next(p for p in contract["parameters"] if p["name"] == name)
 
 
+def with_reference(contract: dict) -> dict:
+    """O contrato com duas substituições (S e R) e o recibo do que a substituição substitui."""
+    parameter(contract, "tipoRemessa")["domain"] = ["I", "S", "R"]
+    contract["parameters"].append(
+        {"name": "recibo", "type": "string", "required": False, "pattern": "[0-9]{3}",
+         "description": "Recibo da entrega substituída."})
+    contract["filing"]["remittance"].update({"replacement": ["S", "R"], "reference": "recibo"})
+    return contract
+
+
 def rule(contract: dict, rule_id: str) -> dict:
     return next(r for r in contract["rules"] if r["id"] == rule_id)
 
@@ -596,6 +606,52 @@ MUTATIONS: list[Mutation] = [
         "não declara rowSet no conjunto",
     ),
 
+    # ------------------------------- conjunto declarado vazio (emptyReason)
+    Mutation(
+        "vazio-em-conjunto-nonempty",
+        "um conjunto que o arquivo exige com linha não pode ser declarado vazio",
+        lambda b: b[FECHADO]["binding"]["datasets"].update({"tipos": {"emptyReason": "nenhum"}}),
+        "é nonEmpty",
+    ),
+    Mutation(
+        "vazio-em-singleton",
+        "o conjunto de uma linha não pode sair sem a linha",
+        lambda b: b[FECHADO]["binding"]["datasets"].update({"institution": {"emptyReason": "nenhum"}}),
+        "singleton",
+    ),
+    Mutation(
+        "vazio-em-conjunto-do-catalogo",
+        "as linhas de um conjunto fechado são do catálogo, não do mapeamento",
+        lambda b: b[FECHADO]["binding"]["datasets"].update({"linhas": {"emptyReason": "nenhum"}}),
+        "são do catálogo",
+    ),
+    Mutation(
+        "vazio-com-campos",
+        "vazio e com origem ao mesmo tempo: nada diz qual vale",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"].update({"emptyReason": "nenhum"}),
+        "junto com",
+    ),
+    Mutation(
+        "vazio-sem-motivo",
+        "declarar vazio sem dizer por quê é omissão",
+        lambda b: (next(d for d in b[FECHADO]["contract"]["datasets"] if d["name"] == "tipos").pop("nonEmpty"),
+                   b[FECHADO]["contract"].update({"rules": [r for r in b[FECHADO]["contract"]["rules"]
+                                                            if r["id"] != "tipo-principal"]}),
+                   b[FECHADO]["binding"]["datasets"].update({"tipos": {"emptyReason": "  "}})),
+        "emptyReason vazio",
+    ),
+
+    Mutation(
+        "filho-de-conjunto-vazio-mapeado",
+        "o filho de um conjunto sem linha não tem onde pendurar as suas",
+        lambda b: (b[FECHADO]["contract"]["datasets"].append(
+                       {"name": "notas", "description": "Notas do NIF.", "grain": ["nota"],
+                        "childOf": {"dataset": "nifs"},
+                        "fields": [{"name": "nota", "type": "string", "required": False, "description": "Nota."}]}),
+                   b[FECHADO]["binding"]["datasets"].update(
+                       {"notas": {"fields": {"nota": {"from": "manual", "pendingReason": "a nota"}}}})),
+        "pendura nele sem ser declarado vazio",
+    ),
     # ------------------------------- pendência manual: o bloqueio executável
     Mutation(
         "manual-pendente-sem-declarar-incompletude",
@@ -614,7 +670,7 @@ MUTATIONS: list[Mutation] = [
         "lista de pendências que não corresponde às reais engana quem lê",
         lambda b: b[FECHADO]["binding"].update(
             {"incompleteFields": ["linhas.campoQueNaoEstaPendente"]}),
-        "não é campo obrigatório pendente",
+        "não é campo obrigatório que bloqueia",
     ),
     Mutation(
         "incompletefields-forma-invalida",
@@ -907,9 +963,16 @@ MUTATIONS: list[Mutation] = [
     ),
     Mutation(
         "filing-period-vazio",
-        "período vazio faria toda geração ser a mesma entrega",
-        lambda b: b[PLANO]["contract"]["filing"].update({"period": []}),
+        "period sem lista não diz se o documento tem período ou não",
+        lambda b: b[PLANO]["contract"]["filing"].update({"period": None}),
         "period está vazio",
+    ),
+    Mutation(
+        "filing-remessa-sobre-periodo-de-nada",
+        "sem period e com a remessa como único parâmetro, as regras de original e substituição não valeriam",
+        lambda b: (b[PLANO]["contract"]["filing"].pop("period"),
+                   b[PLANO]["contract"].update({"parameters": [parameter(b[PLANO]["contract"], "tipoRemessa")]})),
+        "escreva period: []",
     ),
     Mutation(
         "filing-period-parametro-inexistente",
@@ -946,6 +1009,117 @@ MUTATIONS: list[Mutation] = [
         "original e substituição com o mesmo valor não se distinguem",
         lambda b: b[PLANO]["contract"]["filing"]["remittance"].update({"replacement": "I"}),
         "precisam ser distintas",
+    ),
+    Mutation(
+        "filing-substituicao-lista-vazia",
+        "lista de substituição vazia não marca entrega nenhuma como substituição",
+        lambda b: b[PLANO]["contract"]["filing"]["remittance"].update({"replacement": []}),
+        "lista vazia",
+    ),
+    Mutation(
+        "filing-substituicao-repetida",
+        "o mesmo valor duas vezes na lista é erro de digitação",
+        lambda b: b[PLANO]["contract"]["filing"]["remittance"].update({"replacement": ["S", "S"]}),
+        "duas vezes",
+    ),
+    Mutation(
+        "filing-substituicao-lista-com-original",
+        "a original na lista de substituições faz as duas remessas se confundirem",
+        lambda b: b[PLANO]["contract"]["filing"]["remittance"].update({"replacement": ["S", "I"]}),
+        "precisam ser distintas",
+    ),
+    Mutation(
+        "filing-substituicao-lista-fora-do-dominio",
+        "um valor da lista que o parâmetro não aceita nunca marca uma entrega",
+        lambda b: b[PLANO]["contract"]["filing"]["remittance"].update({"replacement": ["S", "X"]}),
+        "fora do domain",
+    ),
+    Mutation(
+        "filing-referencia-inexistente",
+        "referência por parâmetro inexistente nunca seria exigida na substituição",
+        lambda b: with_reference(b[PLANO]["contract"])["filing"]["remittance"].update({"reference": "protocolo"}),
+        "que não é parâmetro deste contrato",
+    ),
+    Mutation(
+        "filing-referencia-e-a-remessa",
+        "a remessa não carrega o que a substituição substitui",
+        lambda b: with_reference(b[PLANO]["contract"])["filing"]["remittance"].update({"reference": "tipoRemessa"}),
+        "o próprio parâmetro da remessa",
+    ),
+    Mutation(
+        "filing-referencia-no-periodo",
+        "o recibo no período faria da substituição uma entrega à parte",
+        lambda b: with_reference(b[PLANO]["contract"])["filing"].update({"period": ["dataBase", "recibo"]}),
+        "não faz o período",
+    ),
+    Mutation(
+        "filing-referencia-obrigatoria",
+        "referência obrigatória exigiria recibo de toda original, que não substitui nada",
+        lambda b: parameter(with_reference(b[PLANO]["contract"]), "recibo").update({"required": True}),
+        "que é obrigatório",
+    ),
+    Mutation(
+        "filing-referencia-sem-pattern",
+        "a referência dispensa original aprovada, então um recibo sem formato valeria qualquer texto",
+        lambda b: parameter(with_reference(b[PLANO]["contract"]), "recibo").pop("pattern"),
+        "não declara pattern",
+    ),
+    Mutation(
+        "filing-substituicao-lista-com-vazio",
+        "um valor vazio na lista não é valor que o parâmetro aceite",
+        lambda b: b[PLANO]["contract"]["filing"]["remittance"].update({"replacement": ["S", ""]}),
+        "replacement lista ''",
+    ),
+    Mutation(
+        "parametro-required-nao-booleano",
+        "required escrito como texto seria lido pelo motor com outra regra",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"required": "sim"}),
+        "tem required 'sim'",
+    ),
+    Mutation(
+        "parametro-pattern-alternancia-inteira",
+        "uma alternância vale para o valor inteiro: 'I|S' recusa 'IS'",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"pattern": "I|S", "domain": ["I", "S", "IS"]}),
+        "tem domain com 'IS'",
+    ),
+    Mutation(
+        "filing-referencia-com-default",
+        "referência com default poria um recibo em toda original",
+        lambda b: parameter(with_reference(b[PLANO]["contract"]), "recibo").update({"default": "123"}),
+        "que tem default",
+    ),
+    Mutation(
+        "filing-remessa-e-referencia-sobre-periodo-de-nada",
+        "sem period e só com remessa e referência, as regras de original e substituição não valeriam",
+        lambda b: (with_reference(b[PLANO]["contract"])["filing"].pop("period"),
+                   b[PLANO]["contract"].update({"parameters": [parameter(b[PLANO]["contract"], "tipoRemessa"),
+                                                               parameter(b[PLANO]["contract"], "recibo")]})),
+        "escreva period: []",
+    ),
+    Mutation(
+        "parametro-pattern-nao-compila",
+        "pattern que não compila recusaria todo valor na requisição",
+        lambda b: parameter(with_reference(b[PLANO]["contract"]), "recibo").update({"pattern": "[0-9"}),
+        "parâmetro 'recibo' pattern não compila",
+    ),
+    Mutation(
+        "parametro-pattern-em-tipo-errado",
+        "pattern num parâmetro que não é texto não confere nada que o tipo já não confira",
+        lambda b: parameter(b[PLANO]["contract"], "dataBase").update({"pattern": "[0-9]{4}-[0-9]{2}"}),
+        "não é do tipo string",
+    ),
+    Mutation(
+        "parametro-pattern-recusa-o-default",
+        "default que o próprio pattern recusa é declaração impossível",
+        lambda b: (parameter(b[PLANO]["contract"], "tipoRemessa").update({"pattern": "[IS]", "default": "X"}),
+                   parameter(b[PLANO]["contract"], "tipoRemessa").pop("domain")),
+        "tem default 'X' que o próprio pattern",
+    ),
+    Mutation(
+        "parametro-pattern-recusa-o-dominio",
+        "valor do domain que o próprio pattern recusa nunca poderia ser enviado",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"pattern": "[I]"}),
+        "tem domain com 'S', que o próprio pattern",
     ),
     Mutation(
         "parametro-default-fora-do-dominio",
@@ -1037,6 +1211,261 @@ MUTATIONS: list[Mutation] = [
         "o corte produz texto; um derivado declarado como número não pode ser satisfeito",
         lambda b: field(b[PLANO]["contract"], "institution", "cnpj8").update({"type": "integer"}),
         "o derivado é string",
+    ),
+    Mutation(
+        "gerado-desconhecido",
+        "um gerador que o motor não conhece não escreve nada",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"generate": "uuid"}),
+        "o motor gera",
+    ),
+    Mutation(
+        "gerado-nao-texto",
+        "o número gerado é escrito como texto com zeros à esquerda",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"type": "integer"}),
+        "escrito como texto",
+    ),
+    Mutation(
+        "gerado-sem-length",
+        "sem length o motor não sabe em quantas posições escrever o número",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").pop("length"),
+        "exige length de 18",
+    ),
+    Mutation(
+        "gerado-length-curto",
+        "17 posições não cabem o maior número que o gerador emite",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"length": 17}),
+        "exige length de 18",
+    ),
+    Mutation(
+        "gerado-length-longo",
+        "o preenchimento é escrito a cada geração; nenhum arquivo precisa de mais de 64 posições",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"length": 65}),
+        "exige length de 18",
+    ),
+    Mutation(
+        "gerado-com-pattern",
+        "o motor decide sozinho a forma do campo gerado",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"pattern": "[0-9]{18}"}),
+        "com `pattern`",
+    ),
+    Mutation(
+        "gerado-com-dominio",
+        "um conjunto fechado de valores não comporta um número gerado",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"domain": ["1"]}),
+        "com `domain`",
+    ),
+    Mutation(
+        "gerado-derivado",
+        "um campo não pode ser gerado e cortado de outro ao mesmo tempo",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"prefixOf": "cnpj8"}),
+        "com `prefixOf`",
+    ),
+    Mutation(
+        "gerado-fora-de-singleton",
+        "o motor gera um valor por entrega, então o campo gerado mora num conjunto de uma linha",
+        lambda b: dataset(b[FECHADO]["contract"], "linhas")["fields"].append(
+            {"name": "eventoId", "type": "string", "length": 18, "required": True,
+             "generate": "timeOrderedId", "description": "Número."}),
+        "não é singleton",
+    ),
+    Mutation(
+        "gerado-em-singleton-filho",
+        "um singleton aninhado é uma linha por linha do pai, não uma por entrega",
+        lambda b: b[FECHADO]["contract"]["datasets"].append(
+            {"name": "detalhe", "description": "Detalhe.", "grain": "singleton",
+             "childOf": {"dataset": "linhas"},
+             "fields": [{"name": "eventoId", "type": "string", "length": 18, "required": True,
+                         "generate": "timeOrderedId", "description": "Número."}]}),
+        "não é singleton",
+    ),
+    Mutation(
+        "gerado-lido-por-transformacao",
+        "a transformação roda antes de o motor gerar o valor, e leria nada",
+        lambda b: b[FECHADO]["contract"]["rules"].append(
+            {"id": "por-evento", "appliesTo": "institution",
+             "transform": {"negateWhen": {"field": "eventoId", "table": "t", "key": "eventoId", "equals": "d"}}}),
+        "que o motor gera depois das transformações",
+    ),
+    Mutation(
+        "gerado-com-instituicao",
+        "só o motor escreve um campo gerado",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"identifiesInstitution": True}),
+        "com `identifiesInstitution`",
+    ),
+    Mutation(
+        "gerado-com-expects",
+        "só o motor escreve um campo gerado",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"expects": "dígitos"}),
+        "com `expects`",
+    ),
+    Mutation(
+        "gerado-com-normalize",
+        "só o motor escreve um campo gerado",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"normalize": "digits"}),
+        "com `normalize`",
+    ),
+    Mutation(
+        "gerado-com-digito",
+        "só o motor escreve um campo gerado",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"checkDigit": "cnpj"}),
+        "com `checkDigit`",
+    ),
+    Mutation(
+        "contem-sem-valores",
+        "uma conferência de que o conjunto contém um valor precisa dizer qual",
+        lambda b: rule(b[FECHADO]["contract"], "tipo-principal")["check"]["contains"].update({"values": []}),
+        "contains não lista valores",
+    ),
+    Mutation(
+        "contem-em-conjunto-que-pode-ser-vazio",
+        "um conjunto que tem de conter um valor não pode ser entregue vazio",
+        lambda b: dataset(b[FECHADO]["contract"], "tipos").pop("nonEmpty"),
+        "declare `nonEmpty`",
+    ),
+    Mutation(
+        "contem-valor-vazio",
+        "um valor vazio é satisfeito por qualquer linha em branco",
+        lambda b: rule(b[FECHADO]["contract"], "tipo-principal")["check"]["contains"].update({"values": ["1", ""]}),
+        "valor vazio",
+    ),
+    Mutation(
+        "contem-valor-fora-do-dominio",
+        "um valor que o campo nunca carrega é uma conferência que nenhum arquivo passa",
+        lambda b: rule(b[FECHADO]["contract"], "tipo-principal")["check"]["contains"].update({"values": ["9"]}),
+        "domain",
+    ),
+    Mutation(
+        "contem-valor-nao-texto",
+        "um valor da conferência é texto, como o arquivo o escreve",
+        lambda b: rule(b[FECHADO]["contract"], "tipo-principal")["check"]["contains"].update({"values": [1]}),
+        "não é texto",
+    ),
+    Mutation(
+        "contem-chave-desconhecida",
+        "uma chave que a conferência não tem é uma promessa que ninguém cumpre",
+        lambda b: rule(b[FECHADO]["contract"], "tipo-principal")["check"]["contains"].update({"qualquer": True}),
+        "que ele não tem",
+    ),
+    Mutation(
+        "contem-campo-inexistente",
+        "a conferência lê um campo que o conjunto não declara",
+        lambda b: rule(b[FECHADO]["contract"], "tipo-principal")["check"]["contains"].update({"field": "nada"}),
+        "nada",
+    ),
+    Mutation(
+        "lista-em-classe",
+        "um caso de classe responde uma linha de conjunto fechado, nunca uma lista",
+        lambda b: b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][0].update({"values": ["1"]}),
+        "escreve `values`",
+    ),
+    Mutation(
+        "lista-duas-no-conjunto",
+        "nada diz qual valor de uma lista vai com qual da outra",
+        lambda b: (dataset(b[FECHADO]["contract"], "tipos")["fields"].append({"name": "extra", "type": "string", "required": False, "description": "Extra."}), b[FECHADO]["binding"]["datasets"]["tipos"]["fields"].update({"extra": {"from": "constant", "values": ["a"]}})),
+        "duas listas",
+    ),
+    Mutation(
+        "lista-com-valor-de-tamanho-errado",
+        "o arquivo dá ao campo um número fixo de posições",
+        lambda b: (field(b[FECHADO]["contract"], "tipos", "tipo").update({"length": 1, "domain": ["1", "22"]}), b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"values": ["1", "22"]})),
+        "posições",
+    ),
+    Mutation(
+        "lista-com-valor-vazio",
+        "um valor vazio escreveria uma linha sem nada",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"values": ["1", " "]}),
+        "valor vazio",
+    ),
+    Mutation(
+        "lista-fora-do-pattern",
+        "o pattern do campo recusaria o valor na geração",
+        lambda b: (field(b[FECHADO]["contract"], "tipos", "tipo").update({"pattern": "[12]"}), b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"values": ["1", "3"]})),
+        "pattern do campo recusa",
+    ),
+    Mutation(
+        "lista-com-pattern-que-nao-compila",
+        "a list under a pattern that does not compile is refused, not a traceback",
+        lambda b: (field(b[FECHADO]["contract"], "tipos", "tipo").update({"pattern": "([12]"}), b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"values": ["1", "2"]})),
+        "não compila",
+    ),
+    Mutation(
+        "lista-nao-texto",
+        "uma lista de valores é uma lista de textos",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"values": [1, 3]}),
+        "lista de textos",
+    ),
+    Mutation(
+        "lista-sob-singleton-aninhado",
+        "só sob um singleton de topo cada valor é uma linha da entrega",
+        lambda b: (b[FECHADO]["contract"]["datasets"].insert(1, {"name": "interno", "description": "Interno.", "grain": "singleton", "childOf": {"dataset": "institution"}, "fields": [{"name": "x", "type": "string", "required": False, "description": "X."}]}), dataset(b[FECHADO]["contract"], "tipos").update({"childOf": {"dataset": "interno"}, "nonEmpty": False}), b[FECHADO]["binding"]["datasets"].update({"interno": {"fields": {"x": {"from": "constant", "value": "a"}}}})),
+        "singleton de topo",
+    ),
+    Mutation(
+        "lista-com-valor-fora-do-dominio",
+        "um valor que o domain recusa seria recusado na geração",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"values": ["1", "9"]}),
+        "que o domain do campo recusa",
+    ),
+    Mutation(
+        "lista-repetida",
+        "o mesmo valor duas vezes é a mesma linha duas vezes",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"values": ["1", "1"]}),
+        "duas vezes",
+    ),
+    Mutation(
+        "lista-em-singleton",
+        "um singleton é uma linha; uma lista dá várias",
+        lambda b: b[FECHADO]["binding"]["datasets"]["institution"]["fields"].update({"cnpj8": {"from": "constant", "values": ["12345678"]}}),
+        "não é um conjunto pendurado num singleton",
+    ),
+    Mutation(
+        "lista-em-consulta",
+        "um conjunto que lê consulta tem as linhas dela",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"].update({"from": {"query": "estoque"}}),
+        "lê a consulta",
+    ),
+    Mutation(
+        "lista-constante-vazia",
+        "uma constante vazia não escreve linha nenhuma",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"]["fields"].update({"tipo": {"from": "constant", "values": []}}),
+        "lista vazia numa constante",
+    ),
+    Mutation(
+        "lista-manual-vazia-sem-motivo",
+        "quem completa o mapeamento não vê o que fazer",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"]["fields"].update({"tipo": {"from": "manual", "values": []}}),
+        "sem `pendingReason`",
+    ),
+    Mutation(
+        "lista-de-consulta",
+        "só constante ou manual escreve uma lista",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"]["fields"].update({"tipo": {"from": "query", "column": "x", "values": ["1"]}}),
+        "constante ou manual",
+    ),
+    Mutation(
+        "lista-ao-lado-de-valor",
+        "um campo é um valor ou uma lista",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"]["fields"]["tipo"].update({"value": "1"}),
+        "ao lado de `value`",
+    ),
+    Mutation(
+        "nao-vazio-sob-pai-de-varias-linhas",
+        "sob um pai de várias linhas, vazio poderia ser sob um ou sob todos",
+        lambda b: dataset(b[HIER]["contract"], "detalhes").update({"nonEmpty": True}),
+        "não é singleton de topo",
+    ),
+    Mutation(
+        "gerado-mapeado-no-binding",
+        "o motor recusaria um binding que mapeia o campo que ele gera",
+        lambda b: b[FECHADO]["binding"]["datasets"]["institution"]["fields"].update(
+            {"eventoId": {"from": "constant", "value": "000000000000000001"}}),
+        "motor gera (generate)",
+    ),
+    Mutation(
+        "gerado-escrito-vazio",
+        "`generate:` sem valor é um contrato começado e não terminado",
+        lambda b: field(b[FECHADO]["contract"], "institution", "eventoId").update({"generate": None}),
+        "generate",
     ),
     Mutation(
         "digito-verificador-desconhecido",
@@ -1505,7 +1934,7 @@ MUTATIONS: list[Mutation] = [
 _NOT_CONTRACT_KEYS = {
     # binding.example.yaml
     "queries", "query", "join", "match", "from", "having", "derive", "parentMatch",
-    "byRowClass", "generatable", "incompleteReason", "incompleteFields",
+    "byRowClass", "generatable", "incompleteReason", "incompleteFields", "emptyReason",
     "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
     "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
     "accumulate", "rowKey", "compute", "case", "otherwise", "at", "calendar", "operator",
@@ -1705,6 +2134,84 @@ class ValidatorSuite(unittest.TestCase):
         """A base é válida — sem isso, toda mutação passaria por acidente."""
         code, out = _run(self._write(fixtures.bundle()))
         self.assertEqual(code, 0, f"as fixtures deveriam validar:\n{out}")
+
+    def test_a_filing_with_no_period_is_valid(self) -> None:
+        """`period: []` é o documento sem período: uma entrega por declarante.
+
+        É declaração, não esquecimento — o motor a lê como o período do documento
+        inteiro. Reprovar aqui impediria curar um cadastro, que se envia uma vez e
+        depois só se retifica.
+        """
+        data = fixtures.bundle()
+        data[PLANO]["contract"]["filing"]["period"] = []
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"period: [] deveria validar:\n{out}")
+
+    def test_a_list_of_replacements_with_a_reference_is_valid(self) -> None:
+        """`replacement` em lista e `reference` com `pattern`: a retificação que nomeia o recibo.
+
+        É o que o cadastro da e-Financeira declara — duas retificações (a comum e a
+        "a pedido") e o recibo da entrega retificada, com o formato fixo dele. O
+        motor aceita; o validador também.
+        """
+        data = fixtures.bundle()
+        with_reference(data[PLANO]["contract"])
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"replacement em lista com reference deveria validar:\n{out}")
+
+    def test_a_value_the_client_fills_once_in_the_mapping_is_valid(self) -> None:
+        """Um campo obrigatório `manual` sem valor e com `pendingReason`, e uma lista pendente.
+
+        É o que a referência entrega para o que a fonte não tem: o cliente preenche
+        uma vez no mapeamento, e até lá o rascunho sai com a pendência, que impede
+        aprovar e baixar. Não é um arquivo saindo sem o dado obrigatório.
+        """
+        data = fixtures.bundle()
+        fields = data[FECHADO]["binding"]["datasets"]
+        fields["institution"]["fields"]["cnpj8"] = {"from": "manual", "pendingReason": "a raiz do CNPJ"}
+        fields["tipos"]["fields"]["tipo"] = {"from": "manual", "values": [], "pendingReason": "todo tipo"}
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"manual a preencher pelo cliente deveria validar:\n{out}")
+
+    def test_a_binding_not_generatable_may_list_what_the_client_fills(self) -> None:
+        """`generatable: false` pode enumerar um `manual` simples obrigatório sem valor.
+
+        O campo não obriga o binding a se declarar incompleto, mas listá-lo não deixa
+        a lista desatualizada: é o que a referência ainda não tem. Um documento escrito
+        quando esse `manual` bloqueava (o SCR 3040) continua válido.
+        """
+        data = fixtures.bundle()
+        binding = data[FECHADO]["binding"]
+        binding["datasets"]["institution"]["fields"]["cnpj8"] = {"from": "manual", "pendingReason": "a raiz do CNPJ"}
+        binding["incompleteFields"] = list(binding.get("incompleteFields") or []) + ["institution.cnpj8"]
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"o manual do cliente listado como incompleto deveria validar:\n{out}")
+
+    def test_a_set_the_mapping_declares_empty_is_valid(self) -> None:
+        """`emptyReason` num conjunto que pode ficar vazio: sem linha, de propósito.
+
+        É o NIF no exterior de uma declarante que não o tem: o arquivo sai sem o
+        grupo, e nada fica pendente.
+        """
+        data = fixtures.bundle()
+        contract = data[FECHADO]["contract"]
+        tipos = next(d for d in contract["datasets"] if d["name"] == "tipos")
+        tipos.pop("nonEmpty")
+        contract["rules"] = [r for r in contract["rules"] if r["id"] != "tipo-principal"]
+        data[FECHADO]["binding"]["datasets"]["tipos"] = {"emptyReason": "a entidade não informa tipo"}
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"conjunto declarado vazio deveria validar:\n{out}")
+
+    def test_a_municipality_table_edited_by_hand_is_refused(self) -> None:
+        """A tabela de municípios é a que tools/tabelas_receita.py gera da tabela da
+        Receita: um código a mais deixaria passar um município que a Receita recusa."""
+        root = Path(tempfile.mkdtemp(dir=self._tmp)) / "catalog"
+        shutil.copytree(TOOLS.parent, root, ignore=shutil.ignore_patterns(".git", "*.pdf"))
+        table = root / "br" / "rfb" / "efinanceira-cad-declarante" / "municipios.yaml"
+        table.write_text(table.read_text(encoding="utf-8") + '  "9999998": SP  # inventado\n', encoding="utf-8")
+        code, out = _run(root)
+        self.assertNotEqual(code, 0, f"a tabela editada à mão deveria reprovar:\n{out}")
+        self.assertIn("não é a que tools/tabelas_receita.py gera", out)
 
     def test_real_catalog_is_valid(self) -> None:
         """E o catálogo de verdade também: a suíte não substitui a conferência dele."""
