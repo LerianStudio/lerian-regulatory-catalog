@@ -7,7 +7,8 @@
 # XSD OFICIAL: schema/scr3040.202607.xsd (origem em schema/README.md). O motor não confere o arquivo contra ele em tempo de execução.
 #
 # ESCOPO (decisão 25 do programa Lender x BFC): cabeçalho, Cli, Op, Venc, Gar e dois
-# Inf (1002 e 1701). Ficam fora Agreg, Sicor, ConIpocs, ContInstFinRes4966,
+# Inf (1002 e 1701) e o Inf de saída da operação que deixou a instituição no mês (0301, 0302, 0304,
+# 0310, 0311, 0316, 0317). Ficam fora Agreg, Sicor, ConIpocs, ContInstFinRes4966,
 # Estagio, Perda e os demais Inf; cada um está declarado em knownGaps.
 #
 # DE ONDE VÊM AS LINHAS: Op, Venc e Gar são as três visões *_current que o Lender publica
@@ -256,9 +257,9 @@ datasets:
         description: Data de pagamento da última parcela.
       - name: ProvConsttd
         type: decimal
-        required: true
+        required: false          # ausente na operação que saiu no mês: informação proibida (I p.89)
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Provisão constituída, zero incluído (L Doc3040 l.60).
+        description: Provisão constituída, zero incluído (L Doc3040 l.60). A operação com exitType não a leva (I p.89, "Informações proibidas").
       - name: DiaAtraso
         type: integer
         required: true
@@ -280,6 +281,26 @@ datasets:
         type: integer
         required: true
         description: Quantidade de prestações previstas no contrato (L Doc3040 l.65).
+      - name: exitType
+        type: string
+        required: false          # vazio no contrato vivo
+        domain: ["0301", "0302", "0304", "0310", "0311", "0316", "0317"]
+        description: Tipo do Inf de saída da operação que deixou a instituição no mês (Anexo 26; I p.88-95). Vazio no contrato vivo.
+      - name: exitCd
+        type: string
+        required: false
+        pattern: '^[^\r\n|"]{1,67}$'   # tipoCodCdInfoAdiconal (schema/scr3040.202607.xsd:571-577)
+        description: Cd do Inf de saída. 0304, dia da cessão; 0311, código de portabilidade da CIP; 0316, código do contrato sucessor (I p.88).
+      - name: exitIdent
+        type: string
+        required: false
+        pattern: '^[0-9A-Za-z-]{1,14}$'  # tipoIdentInf (schema/scr3040.202607.xsd:811-818)
+        description: Ident do Inf de saída. 0304, raiz do CNPJ do fundo; 0316, modalidade de 4 dígitos do sucessor, que compõe o IPOC novo.
+      - name: exitValue
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Valor do Inf de saída. 0304, valor negociado; 0316, valor renegociado (I p.88, p.95).
 
   # ─── Venc: vencimentos da operação (I p.73-77; L Doc3040 l.69-70) ────────────────────────
   - name: Venc
@@ -526,14 +547,17 @@ knownGaps:
       TotalCli também não confere se a responsabilidade total do cliente é maior que zero.
   - id: saida-do-mes
     description: >-
-      A operação que saiu do livro durante o mês (quitada, cedida, portada, renegociada pelo art. 22 ou estornada) não é informada no mês da
-      saída, e os Inf de saída (0301, 0302, 0303/0304, 0310, 0311, 0316, 0317) esperam uma lane posterior.
+      A operação que saiu do livro durante o mês (quitada, cedida, portada, renegociada ou estornada) sai uma vez, no mês da saída, com um Inf
+      de saída (I p.88-95) e sem ProvConsttd nem Venc (I p.89). O que o Lender não entrega fica declarado e a remessa mantém a lacuna, sem
+      recusar o contrato: 0311 Ident (o Lender guarda o código COMPE do destino, não a raiz do CNPJ) e 0311 Cd até a efetivada chegar; 0316
+      Valor da renegociação do art. 22 (candidatos: principal baixado, saldo contábil ou principal mais juros baixados; I p.95 diz só
+      "valor renegociado", decisão 28) e, sem contrato ou modalidade do sucessor, 0316 Cd; 0304 Ident quando o fundo não tem CNPJ. Responde: Fred, com o BACEN.
   - id: verba-rescisoria
     description: >-
       A fração de verbas rescisórias da garantia do consignado não tem subtipo no Anexo 12: nenhuma linha Gar sai para ela, e a leitura é do
       compliance do cliente.
   - id: fora-da-decisao-25
-    description: Agreg, Sicor, ConIpocs, ContInstFinRes4966, Perda e os Inf fora 1002 e 1701 não são produzidos.
+    description: Agreg, Sicor, ConIpocs, ContInstFinRes4966, Perda e os Inf fora 1002, 1701 e os de saída listados acima não são produzidos.
 
   # ── Limites desta curadoria ──
   - id: arredondamento-taxeft
