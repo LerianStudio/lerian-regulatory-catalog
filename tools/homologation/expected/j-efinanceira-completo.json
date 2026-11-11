@@ -181,6 +181,38 @@
         "infoCadastro/Pais": "BR",
         "infoCadastro/paisResid/Pais": {"unordered": ["BR", "US"]}
       }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "nome-com-e-comercial",
+      "parameters": {"indRetificacao": "2", "nrRecibo": "987654321-02-345-2026-3"},
+      "binding": {
+        "declarante.nome": {"from": "constant", "value": "Silva & Filhos e-Financeira S.A. (sintética, homologação)"}
+      },
+      "_note": "O & é permitido no nome e sai escapado (&amp;) pelo autoescape do renderizador: o arquivo segue XML bem formado, o XSD o valida e o <nome> lido de volta é o escrito. Gerado DEPOIS da entrada acima: id maior que o dela.",
+      "elements": {
+        "ideEvento/indRetificacao": "2",
+        "ideEvento/nrRecibo": "987654321-02-345-2026-3",
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoCadastro/inDeclaranteCRS": "1",
+        "infoCadastro/inDeclaranteFATCA": "1",
+        "infoCadastro/tpEntidade": {"unordered": ["1", "2", "6"]},
+        "infoCadastro/GIIN": "98Q96B.00000.LE.250",
+        "infoCadastro/CategoriaDeclarante": "FATCA602",
+        "infoCadastro/NIF": null,
+        "infoCadastro/nome": "Silva & Filhos e-Financeira S.A. (sintética, homologação)",
+        "infoCadastro/tpNome": "OECD207",
+        "infoCadastro/enderecoLivre": "Av. Brasil, 1.500 sala 10.0/13015904/Campinas/SP",
+        "infoCadastro/tpEndereco": "OECD304",
+        "infoCadastro/municipio": "3509502",
+        "infoCadastro/UF": "SP",
+        "infoCadastro/CEP": "13015904",
+        "infoCadastro/Pais": "BR",
+        "infoCadastro/paisResid/Pais": {"unordered": ["BR", "US"]}
+      }
     }
   ]
 }
