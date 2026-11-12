@@ -76,7 +76,7 @@ pasta `schema/` explica como validar antes e depois da assinatura.
 | `id` | Gerado pelo motor a cada geração. |
 | `tpAmb` | Você preenche uma vez no mapeamento: `1` produção, `2` produção restrita (testes). |
 | `aplicEmi`, `verAplic` | Constantes: `1` (aplicativo da empresa) e `Lerian Reporter`. |
-| `cnpjDeclarante` | `organization.legal_document` do Midaz, conferido contra o cadastro da instituição e pelos dígitos verificadores. |
+| `cnpjDeclarante` | `organization.legal_document` do Midaz, conferido contra o cadastro da instituição. |
 | `nrReciboEvento` | Parâmetro da geração. |
 
 Enquanto o ambiente de destino estiver pendente, o rascunho sai com a pendência e não pode
@@ -85,13 +85,15 @@ ser aprovado nem baixado.
 ## O que o Reporter confere
 
 - O formato do recibo, ao gerar.
-- O CNPJ: 14 posições, letras e dígitos, com os dígitos verificadores válidos (a Receita
-  recusa um CNPJ inválido, MS1002), e o da instituição da entrega.
+- O CNPJ: 14 posições, letras e dígitos, e o da instituição da entrega.
 - O domínio do ambiente e do emissor, e o tamanho da versão do aplicativo, sem aspas
   (`"`), apóstrofo (`'`) nem cerquilha (`#`), que a Receita proíbe no conteúdo.
 
 ## O que o Reporter não confere
 
+- **Dígitos verificadores do CNPJ** (MS1002): o Reporter confia na origem do dado, o
+  Midaz ou quem digita o valor; quem preenche responde por ele, e a Receita recusa um
+  dígito errado.
 - **Se o recibo é de uma abertura sem fechamento** (A II p.60-61, campos 9 e 10) **e
   ativa desta instituição** (REGRA_VALIDA_NR_RECIBO_EVENTO_ABERTURA, MS1117): só o
   formato é conferido.
@@ -101,7 +103,8 @@ ser aprovado nem baixado.
   é recusado pela Receita (MS1163).
 - **Id único na base nacional** (REGRA_VALIDA_CHAVE_ACESSO): o Reporter não repete um id
   entre as gerações dele; um id já enviado por outra ferramenta, só a Receita vê (MS1001).
-- **Hífen duplo** (`--`) na versão do aplicativo: a Receita recusa (MS1124).
+- **Hífen duplo** (`--`) na versão do aplicativo: a Receita recusa (MS1124, "caracteres especiais restritos", do Manual de
+  Orientação do Usuário da e-Financeira v1.2, §6.2).
 - **Duas exclusões aprovadas do mesmo recibo**: o Reporter não sabe qual foi transmitida.
 - **Assinatura e transmissão**: da etapa que envia o arquivo.
 - **Saber da exclusão**: o Reporter não liga o recibo a um relatório; você marca os

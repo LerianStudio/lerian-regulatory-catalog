@@ -111,7 +111,7 @@ datasets:
         description: Emissor do aplicativo — 1 aplicativo da empresa, 2 outros.
 
       # Versão do aplicativo que gerou o arquivo, 1 a 20 posições (A II p.57, campo 6),
-      # sem os caracteres que a Receita proíbe (manual §2.3: aspas, apóstrofo,
+      # sem os caracteres que a Receita proíbe (caracteres especiais restritos, MS1124, sem lista oficial: aspas, apóstrofo,
       # cerquilha; o hífen duplo, ver knownGaps).
       - name: verAplic
         type: string
@@ -121,15 +121,14 @@ datasets:
 
       # O CNPJ da declarante, 14 posições, letras e dígitos (o XSD aceita o CNPJ
       # alfanumérico). É DADO: vem da base, e a instituição da entrega é conferida
-      # contra ele (RPT-0196). Os dígitos verificadores são conferidos aqui
-      # (REGRA_VALIDA_CNPJ, A II p.62-63, MS1002): um CNPJ inválido seria recusado
-      # pela Receita.
+      # contra ele (RPT-0196). O contrato confere só o formato; os dígitos
+      # verificadores, a Receita (REGRA_VALIDA_CNPJ, A II p.62-63, MS1002): o
+      # Reporter confia na origem do valor (ver knownGaps, digitos-verificadores).
       - name: cnpj
         type: string
         length: 14
         required: true
         normalize: alphanumeric
-        checkDigit: cnpj
         identifiesInstitution: true
         pattern: '^[0-9A-Z]{14}$'
         description: CNPJ da entidade declarante (quatorze posições).
@@ -153,6 +152,9 @@ knownGaps:
   - id: exclusao-aprovada-duas-vezes
     description: >-
       Duas gerações para o mesmo recibo são a mesma entrega, e a mais nova é a que vale enquanto as duas são rascunho. O Reporter não impede aprovar as duas: sem remessa não há regra de original, e ele não sabe qual exclusão foi transmitida. Uma segunda exclusão do mesmo recibo, se transmitida depois da primeira aceita, é recusada pela Receita (o recibo já não está ativo).
+  - id: digitos-verificadores
+    description: >-
+      Os dígitos verificadores do CNPJ da declarante são conferidos pela Receita (REGRA_VALIDA_CNPJ, A II p.62-63, MS1002). O Reporter não os confere, por princípio: ele confia na origem do dado, a fonte (o Midaz) ou quem digita o valor no mapeamento ou corrige o rascunho, e o contrato confere só o formato que o arquivo exige (quatorze posições, letras e dígitos). Um dígito errado passa daqui como foi informado e é recusado pela Receita.
   - id: ambiente-de-destino
     description: >-
       Só dados reais (tpAmb 1) vão ao ambiente de produção da e-Financeira, que recusa um arquivo com tpAmb 2 (REGRA_VALIDA_TIPO_AMBIENTE, A II p.14, MS1163). O tpAmb é preenchido pelo cliente no mapeamento; o contrato confere só o domínio (1 ou 2), não que ele bate com o ambiente para onde a borda transmite.
@@ -161,4 +163,4 @@ knownGaps:
       O id tem de ser único na base do Ambiente Nacional para eventos da mesma instituição e do mesmo tipo (REGRA_VALIDA_CHAVE_ACESSO, A II p.13, MS1001). O motor garante que o número não se repete entre as gerações do próprio Reporter, no tenant; um id que outra ferramenta já tenha enviado pela mesma instituição só a Receita vê.
   - id: hifen-duplo
     description: >-
-      O manual (§2.3) proíbe também "--" no conteúdo. O contrato recusa aspas, apóstrofo e cerquilha no texto livre (o verAplic), mas não o hífen duplo: a forma de expressão do motor (uma expressão regular sem lookahead) não junta essa recusa ao limite de tamanho do campo. Um "--" na versão do aplicativo passa daqui e é recusado pela Receita (MS1124).
+      A Receita recusa caracteres especiais restritos no conteúdo (MS1124) sem listá-los; o "--" é tratado aqui como um deles. O contrato recusa aspas, apóstrofo e cerquilha no texto livre (o verAplic), mas não o hífen duplo: a forma de expressão do motor (uma expressão regular sem lookahead) não junta essa recusa ao limite de tamanho do campo. Um "--" na versão do aplicativo passa daqui e é recusado pela Receita (MS1124, "caracteres especiais restritos", que está no Manual de Orientação do Usuário da e-Financeira v1.2, ADE Cofis 12/2025, §6.2, e não no Anexo II).

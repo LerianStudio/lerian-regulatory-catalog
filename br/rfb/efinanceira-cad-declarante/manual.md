@@ -105,7 +105,8 @@ correção; o hífen duplo o Reporter não confere (ver abaixo).
 - **Assinatura e transmissão**: da etapa que envia o arquivo.
 - **GIIN obrigatório pelo histórico**: o GIIN passa a ser obrigatório quando a instituição
   já enviou movimentação reportável aos EUA; isso depende do histórico na Receita.
-- **Hífen duplo** (`--`) num campo de texto: a Receita recusa (MS1124).
+- **Hífen duplo** (`--`) num campo de texto: a Receita recusa (MS1124, "caracteres especiais restritos", do Manual de
+  Orientação do Usuário da e-Financeira v1.2, §6.2).
 - **NIF de um só caractere repetido** (`AAAAAAAAA`): a Receita recusa (MS1233).
 - **Razão social igual à do Cadastro CNPJ**: o nome vem da sua base.
 - **Recibo do último evento**: só o formato é conferido.
