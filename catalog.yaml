@@ -78,6 +78,42 @@ documents:
       situação no CRS e no FATCA, tipos de entidade e residências fiscais. Primeiro
       evento da e-Financeira; reenviado como retificação quando o cadastro muda.
 
+  - id: br.rfb.efinanceira-exclusao
+    path: br/rfb/efinanceira-exclusao
+    country: BR
+    regulator: RFB
+    document: evtExclusao
+    family: e-financeira
+    title: e-Financeira — Exclusão de Evento
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Exclusão de um evento da e-Financeira enviado indevidamente, pelo recibo de
+      entrega dele. O arquivo leva só o CNPJ da declarante e o recibo. O Anexo II só
+      nomeia a regra do recibo; pelo campo 10 e pela REGRA_VALIDA_NR_RECIBO (A II
+      p.14), ele tem de ser de um evento recebido, ativo e da mesma declarante, e a
+      Receita confere.
+
+  - id: br.rfb.efinanceira-exclusao-efinanceira
+    path: br/rfb/efinanceira-exclusao-efinanceira
+    country: BR
+    regulator: RFB
+    document: evtExclusaoeFinanceira
+    family: e-financeira
+    title: e-Financeira — Exclusão da e-Financeira
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Exclusão de uma abertura ainda sem fechamento, da e-Financeira ou de Repasse, e
+      de todo evento de movimento ou de repasse enviado depois dela, pelo recibo de
+      entrega da abertura. A Receita confere que a abertura existe e está ativa.
+
   - id: br.bcb.scr-3040
     path: br/bcb/scr-3040
     country: BR

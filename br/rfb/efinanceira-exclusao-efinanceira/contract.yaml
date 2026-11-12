@@ -1,0 +1,169 @@
+# Contrato do evtExclusaoeFinanceira — Evento de Exclusão da e-Financeira (Receita
+# Federal).
+#
+# QUEM CURA: a Lerian, a partir do Anexo II do manual da e-Financeira, leiaute
+# "Exclusão da e-Financeira" v1.5.0 (ADE Cofis 10/2026; o PDF está em
+# br/rfb/efinanceira-cad-declarante/schema/anexo-ii-leiautes-gerais-v1-5-0.pdf, "A II p.N"
+# abaixo) e do XSD oficial (schema/evtExclusaoeFinanceira-v1_5_0.xsd, em produção desde
+# 01/09/2026).
+#
+# O QUE É: a exclusão de um evento de ABERTURA ainda em andamento — sem o
+# fechamento enviado —, da e-Financeira ou de Repasse (A II p.61, campo 10), e de
+# todos os eventos de movimento ou de repasse enviados depois dele. O arquivo leva
+# só o CNPJ da declarante e o recibo de entrega da abertura. A Receita confere que
+# existe uma abertura ativa com aquele recibo, da mesma declarante
+# (REGRA_VALIDA_NR_RECIBO_EVENTO_ABERTURA, MS1117). O Reporter não vê os recibos que
+# a Receita devolve nem fica sabendo da exclusão: aceita a exclusão, a pessoa marca
+# o relatório da abertura excluída como "excluída na Receita".
+#
+# Mesma forma do evtExclusao (br.rfb.efinanceira-exclusao), com outra raiz, outro
+# namespace e outro grupo do recibo. São dois documentos: um documento curado é um
+# evento, e o catálogo não tem herança.
+#
+# O ARQUIVO SAI SEM ASSINATURA. O XSD oficial exige `ds:Signature`; assinar com o
+# e-CNPJ ICP-Brasil do declarante, montar o lote, cifrá-lo e transmiti-lo são da
+# borda que envia o arquivo à Receita, não do Reporter (ver knownGaps e o manual).
+#
+# O motor confia neste contrato; não há validação XSD em runtime. A homologação do
+# catálogo (tools/homologation) é onde o arquivo gerado é validado contra o XSD.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.rfb.efinanceira-exclusao-efinanceira
+  country: BR
+  regulator: RFB
+  document: evtExclusaoeFinanceira
+  family: e-financeira   # o agrupamento: os eventos da e-Financeira
+  title: e-Financeira — Exclusão da e-Financeira
+  summary: >-
+    Exclusão de uma abertura ainda sem fechamento, da e-Financeira ou de Repasse, e de todo evento de movimento ou de repasse enviado depois dela, pelo recibo de entrega da abertura. A Receita confere que a abertura existe e está ativa.
+  version: 1.0.0
+  status: draft
+  output: xml
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  # Não há período: o evento é enviado quando a instituição precisa desfazer uma
+  # abertura em andamento.
+  periodicity: eventual
+  layout:
+    version: "1.5.0"
+    mandatoryFrom: "2026-09-01"
+  sourceOfTruth:
+    layoutManual: http://sped.rfb.gov.br/arquivo/download/8231   # Anexo II — Leiautes Gerais (ADE Cofis 10/2026)
+    schema: schema/evtExclusaoeFinanceira-v1_5_0.xsd
+
+parameters:
+  # O recibo de entrega da abertura a excluir, da e-Financeira ou de Repasse (A II
+  # p.61, campo 10). Quem transmite é a borda que envia o arquivo, então o Reporter
+  # nunca vê a resposta da Receita: a pessoa digita o recibo ao gerar. O formato é o do XSD (15 a 49
+  # posições, que o próprio padrão garante); que seja de uma abertura ativa desta
+  # declarante, só a Receita confere.
+  - name: nrReciboEvento
+    type: string
+    required: true
+    pattern: '[0-9]{1,18}-[0-9]{2}-[0-9]{3}-[0-9]{4}-[0-9]{1,18}'
+    description: Recibo de entrega da abertura da e-Financeira a excluir.
+
+# ---------------------------------------------------------------------------
+# A entrega.
+#
+# `period: [nrReciboEvento]` — cada recibo de abertura excluído é a sua própria
+# entrega: duas gerações para o mesmo recibo são a mesma entrega. Enquanto as duas
+# são rascunho, a mais nova é a que vale (a anterior aparece como substituída). Sem
+# `remittance`: uma exclusão não se retifica (o leiaute não tem indRetificacao nem
+# nrRecibo), então não há regra de original e substituição — e nada impede aprovar
+# duas exclusões do mesmo recibo: o Reporter não sabe qual foi transmitida (ver
+# knownGaps, exclusao-aprovada-duas-vezes).
+# ---------------------------------------------------------------------------
+filing:
+  period: [nrReciboEvento]
+
+datasets:
+  - name: declarante
+    description: A entidade declarante — uma linha.
+    grain: singleton
+    fields:
+      # O id do evento (A II p.59, campo 2): "ID" + 18 dígitos, gerado pela
+      # declarante, único por instituição e tipo de evento (REGRA_VALIDA_CHAVE_ACESSO,
+      # REGRA_VALIDA_FORMACAO_ID). O motor tira os 18 dígitos a cada geração, um
+      # número ordenado pelo instante da geração, e o guarda no relatório sob um
+      # índice único: não se repete entre os relatórios do tenant. O rascunho o
+      # congela (a correção não o muda); o template escreve o "ID" na frente.
+      # Nenhum binding o mapeia.
+      - name: eventId
+        type: string
+        length: 18
+        required: true
+        generate: timeOrderedId
+        description: Número do evento (o arquivo leva ID + este número).
+
+      # Ambiente para onde o arquivo vai (A II p.59-60, campo 4): 1 produção, 2
+      # homologação (produção restrita). Depende de para onde o cliente envia, e o
+      # cliente o preenche no mapeamento (ver knownGaps, ambiente-de-destino).
+      - name: tpAmb
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: Ambiente de destino — 1 produção, 2 produção restrita.
+
+      # Quem emitiu o arquivo (A II p.60, campo 5): 1 aplicativo da empresa, 2 outros.
+      - name: aplicEmi
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: Emissor do aplicativo — 1 aplicativo da empresa, 2 outros.
+
+      # Versão do aplicativo que gerou o arquivo, 1 a 20 posições (A II p.60, campo 6),
+      # sem os caracteres que a Receita proíbe (manual §2.3: aspas, apóstrofo,
+      # cerquilha; o hífen duplo, ver knownGaps).
+      - name: verAplic
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,20}$'
+        description: Versão do aplicativo de emissão.
+
+      # O CNPJ da declarante, 14 posições, letras e dígitos (o XSD aceita o CNPJ
+      # alfanumérico). É DADO: vem da base, e a instituição da entrega é conferida
+      # contra ele (RPT-0196). Os dígitos verificadores são conferidos aqui
+      # (REGRA_VALIDA_CNPJ, A II p.62-63, MS1002): um CNPJ inválido seria recusado
+      # pela Receita.
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        normalize: alphanumeric
+        checkDigit: cnpj
+        identifiesInstitution: true
+        pattern: '^[0-9A-Z]{14}$'
+        description: CNPJ da entidade declarante (quatorze posições).
+
+# ---------------------------------------------------------------------------
+# O que este contrato NÃO confere, e por quê.
+# ---------------------------------------------------------------------------
+knownGaps:
+  - id: assinatura-e-transmissao
+    description: >-
+      O arquivo sai sem `ds:Signature`, que o XSD oficial exige. Assinar com o e-CNPJ ICP-Brasil do declarante, montar o lote, cifrá-lo e transmiti-lo à Receita são da borda que envia o arquivo: cada regulador pede o seu certificado, e o Reporter não o guarda. Pela mesma razão o Reporter não vê o recibo que a Receita devolve — a pessoa digita o recibo da abertura a excluir ao gerar.
+  - id: abertura-ativa-sem-fechamento
+    description: >-
+      O recibo tem de ser de um evento de abertura ativo, da e-Financeira ou de Repasse, ainda sem o fechamento, da mesma declarante (REGRA_VALIDA_NR_RECIBO_EVENTO_ABERTURA, A II p.61 e p.63, MS1117). O contrato confere só o formato do recibo digitado; que ele seja de uma abertura em andamento, só a Receita sabe.
+  - id: eventos-depois-da-abertura
+    description: >-
+      A Receita exclui, junto com a abertura, todo evento de movimento (operações financeiras, previdência privada) ou de repasse enviado depois dela (A II p.60-61). O Reporter não sabe quais foram: os relatórios desses eventos continuam como estavam até a pessoa marcar cada um como "excluída na Receita".
+  - id: relatorio-excluido-nao-marcado
+    description: >-
+      O Reporter não fica sabendo da exclusão: ele não liga o recibo digitado a um relatório seu (o recibo é da Receita, e a abertura pode ter sido enviada por outra ferramenta). Depois que a Receita aceita a exclusão, é a pessoa quem marca como "excluída na Receita" o relatório Final da abertura excluída e cada retificação aprovada dela, escolhendo os relatórios. Só os relatórios marcados saem da regra de um original, e uma abertura nova do mesmo período volta a ser aceita; o que não for marcado continua como estava. Uma retificação aprovada que fique sem marca faz a abertura nova ser recusada (RPT-0203): o Reporter não aceita um original depois de uma retificação aprovada que nomeou o recibo que ela substituiu. A marcação exige a versão do Reporter que a traz.
+  - id: exclusao-aprovada-duas-vezes
+    description: >-
+      Duas gerações para o mesmo recibo são a mesma entrega, e a mais nova é a que vale enquanto as duas são rascunho. O Reporter não impede aprovar as duas: sem remessa não há regra de original, e ele não sabe qual exclusão foi transmitida. Uma segunda exclusão da mesma abertura, se transmitida depois da primeira aceita, é recusada pela Receita (a abertura já não está ativa, MS1117).
+  - id: ambiente-de-destino
+    description: >-
+      Só dados reais (tpAmb 1) vão ao ambiente de produção da e-Financeira, que recusa um arquivo com tpAmb 2 (REGRA_VALIDA_TIPO_AMBIENTE, A II p.14, MS1163). O tpAmb é preenchido pelo cliente no mapeamento; o contrato confere só o domínio (1 ou 2), não que ele bate com o ambiente para onde a borda transmite.
+  - id: id-unico-na-base-nacional
+    description: >-
+      O id tem de ser único na base do Ambiente Nacional para eventos da mesma instituição e do mesmo tipo (REGRA_VALIDA_CHAVE_ACESSO, A II p.13, MS1001). O motor garante que o número não se repete entre as gerações do próprio Reporter, no tenant; um id que outra ferramenta já tenha enviado pela mesma instituição só a Receita vê.
+  - id: hifen-duplo
+    description: >-
+      O manual (§2.3) proíbe também "--" no conteúdo. O contrato recusa aspas, apóstrofo e cerquilha no texto livre (o verAplic), mas não o hífen duplo: a forma de expressão do motor (uma expressão regular sem lookahead) não junta essa recusa ao limite de tamanho do campo. Um "--" na versão do aplicativo passa daqui e é recusado pela Receita (MS1124).
