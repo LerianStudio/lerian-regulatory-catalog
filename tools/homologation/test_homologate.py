@@ -126,6 +126,139 @@ class EventDocuments(unittest.TestCase):
         self.assertFalse(homologate.is_event_original(DOCUMENT, {"indRetificacao": "2", "nrRecibo": "1-01-001-2026-1"}))
 
 
+ABERTURA = "br.rfb.efinanceira-abertura"
+FECHAMENTO = "br.rfb.efinanceira-fechamento"
+ABERTURA_REFERENCE = (ROOT / "br" / "rfb" / "efinanceira-abertura" / "binding.example.yaml").read_text(encoding="utf-8")
+CONTACTS = [
+    {"cpf": "52998224725", "nome": "Ana", "uf": "SP", "email": "ana@x.com.br"},
+    {"cpf": "16899535009", "nome": "Bruno D'Ávila", "uf": "RJ", "email": "bruno@x.com.br"},
+]
+
+
+class RowsFill(unittest.TestCase):
+    """A fill keyed by a set's name writes the rows the client types in the mapping."""
+
+    def test_the_rows_replace_the_pending_set_in_order(self):
+        import yaml
+
+        text = homologate.fill_binding(ABERTURA_REFERENCE, {"respeFin": CONTACTS, "declarante.tpAmb": "2"})
+        loaded = yaml.safe_load(text)
+        respefin = loaded["datasets"]["respeFin"]
+        self.assertEqual(respefin, {"rows": CONTACTS}, "the pendingReason must go: the engine refuses it beside rows")
+        self.assertEqual(loaded["datasets"]["declarante"]["fields"]["tpAmb"]["value"], "2")
+        # The other sets are untouched.
+        self.assertEqual(loaded["datasets"]["represLegal"], yaml.safe_load(ABERTURA_REFERENCE)["datasets"]["represLegal"])
+
+    def test_writing_the_rows_twice_gives_the_same_binding(self):
+        once = homologate.fill_binding(ABERTURA_REFERENCE, {"respeFin": CONTACTS})
+        self.assertEqual(homologate.fill_binding(once, {"respeFin": CONTACTS}), once)
+
+    def test_block_rows_with_a_comment_inside_are_replaced_whole(self):
+        import yaml
+
+        block = (
+            "  respeFin:\n"
+            "    rows:\n"
+            "      - cpf: \"11144477735\"\n"
+            "        nome: Antigo\n"
+            "    # a segunda pessoa, escrita depois\n"
+            "      - cpf: \"39053344705\"\n"
+            "        nome: Outro\n"
+        )
+        pending = ABERTURA_REFERENCE[ABERTURA_REFERENCE.index("  respeFin:\n"):ABERTURA_REFERENCE.index("\n\n", ABERTURA_REFERENCE.index("  respeFin:\n")) + 1]
+        text = ABERTURA_REFERENCE.replace(pending, block)
+        self.assertEqual(yaml.safe_load(text)["datasets"]["respeFin"]["rows"][1]["nome"], "Outro")
+        filled = homologate.fill_binding(text, {"respeFin": CONTACTS})
+        loaded = yaml.safe_load(filled)
+        self.assertEqual(loaded["datasets"]["respeFin"], {"rows": CONTACTS},
+                         "the old rows after the comment must go with the rows they belong to")
+        self.assertNotIn("Antigo", filled)
+        self.assertNotIn("Outro", filled)
+        self.assertEqual(loaded["datasets"]["represLegal"], yaml.safe_load(ABERTURA_REFERENCE)["datasets"]["represLegal"])
+
+    def test_row_keys_are_quoted(self):
+        import yaml
+
+        rows = [{"cpf": "52998224725", "nome: x": "Ana"}]
+        loaded = yaml.safe_load(homologate.fill_binding(ABERTURA_REFERENCE, {"respeFin": rows}))
+        self.assertEqual(loaded["datasets"]["respeFin"]["rows"], rows)
+
+    def test_an_empty_or_malformed_list_stops_the_run(self):
+        for rows in ([], [{}], ["52998224725"], {"cpf": "1"}):
+            with self.subTest(rows=rows), self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                homologate.fill_binding(ABERTURA_REFERENCE, {"respeFin": rows})
+
+    def test_a_value_nobody_writes_by_hand_stops_the_run(self):
+        for value in (None, True, False, {"a": "b"}, ["x"]):
+            with self.subTest(value=value), self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                homologate.fill_binding(ABERTURA_REFERENCE, {"respeFin": [{"cpf": "52998224725", "nome": value}]})
+
+    def test_a_set_not_filled_by_rows_stops_the_run(self):
+        for name in ("represLegal", "naoExiste"):
+            with self.subTest(set=name), self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                homologate.fill_binding(ABERTURA_REFERENCE, {name: CONTACTS})
+
+
+class ApprovedOriginal(unittest.TestCase):
+    """Which approved original stands for an entry: same declarant and, for a
+    document with a filing period, the same period; never one marked excluded."""
+
+    def lookup(self, document_id, parameters, reports):
+        rep = mock.Mock()
+        rep.items.return_value = reports
+        return homologate.approved_event_original(rep, document_id, "EF9J2K7A000114", parameters)
+
+    @staticmethod
+    def report(ident, semestre=None, **extra):
+        out = {"id": ident, "status": "Final", "remittance": "original",
+               "institution": {"cnpj": "EF9J2K7A000114"}, "parameters": {"indRetificacao": "1"}}
+        if semestre:
+            out["parameters"]["semestre"] = semestre
+        out.update(extra)
+        return out
+
+    def test_the_opening_is_found_by_its_semester(self):
+        reports = [self.report("dez", "2026-12"), self.report("jun", "2026-06")]
+        self.assertEqual(self.lookup(ABERTURA, {"indRetificacao": "1", "semestre": "2026-06"}, reports)["id"], "jun")
+        self.assertIsNone(self.lookup(ABERTURA, {"indRetificacao": "1", "semestre": "2027-06"}, reports))
+
+    def test_a_report_marked_excluded_is_not_the_original(self):
+        reports = [self.report("old", "2026-06", excludedAt="2026-11-12T00:00:00Z"), self.report("new", "2026-06")]
+        self.assertEqual(self.lookup(ABERTURA, {"indRetificacao": "1", "semestre": "2026-06"}, reports)["id"], "new")
+
+    def test_the_registration_has_one_original_per_declarant(self):
+        reports = [self.report("cad")]
+        self.assertEqual(self.lookup(DOCUMENT, {"indRetificacao": "1"}, reports)["id"], "cad")
+
+    def test_the_opening_original_is_its_remittance(self):
+        self.assertTrue(homologate.is_event_original(ABERTURA, {"indRetificacao": "1", "semestre": "2026-06"}))
+        self.assertFalse(homologate.is_event_original(ABERTURA, {"indRetificacao": "2", "semestre": "2026-06"}))
+
+    def test_the_closing_is_found_by_its_semester_not_by_the_opening(self):
+        reports = [self.report("dez", "2026-12"), self.report("jun", "2026-06")]
+        self.assertEqual(self.lookup(FECHAMENTO, {"indRetificacao": "1", "semestre": "2026-12"}, reports)["id"], "dez")
+        self.assertIsNone(self.lookup(FECHAMENTO, {"indRetificacao": "1", "semestre": "2027-06"}, reports))
+        self.assertTrue(homologate.is_event_original(FECHAMENTO, {"indRetificacao": "1", "semestre": "2026-06"}))
+        self.assertFalse(homologate.is_event_original(FECHAMENTO, {"indRetificacao": "2", "semestre": "2026-06"}))
+
+    def test_every_event_document_mirrors_its_contract_filing(self):
+        """`original` and `period` are the contract's filing.remittance and
+        filing.period: a mismatch would judge another period's approved original."""
+        import yaml
+
+        for document_id, spec in homologate.EVENT_DOCUMENTS.items():
+            with self.subTest(document=document_id):
+                contract = yaml.safe_load((ROOT / homologate.document_dir(document_id) / "contract.yaml")
+                                          .read_text(encoding="utf-8"))
+                filing = contract.get("filing") or {}
+                remittance = filing.get("remittance")
+                if remittance is None:
+                    self.assertNotIn("original", spec)
+                else:
+                    self.assertEqual(spec.get("original"), (remittance["parameter"], remittance["original"]))
+                    self.assertEqual(tuple(spec.get("period") or ()), tuple(filing.get("period") or ()))
+
+
 class EventRun(unittest.TestCase):
     """run_event against stubs: which path an entry takes, not what the file says."""
 

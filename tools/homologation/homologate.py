@@ -994,6 +994,24 @@ EVENT_DOCUMENTS = {
         # O parâmetro da remessa e o valor do original (filing.remittance do contrato).
         "original": ("indRetificacao", "1"),
     },
+    # A abertura tem remessa E período: um original por semestre. `period` são os
+    # parâmetros de filing.period do contrato — o original aprovado de uma execução
+    # anterior só é o desta entrada se for do mesmo semestre.
+    "br.rfb.efinanceira-abertura": {
+        "schema": "schema/evtAberturaeFinanceira-v1_5_0.xsd",
+        "namespace": "http://www.eFinanceira.gov.br/schemas/evtAberturaeFinanceira/v1_5_0",
+        "event": "evtAberturaeFinanceira",
+        "original": ("indRetificacao", "1"),
+        "period": ("semestre",),
+    },
+    # O fechamento, como a abertura: um original por semestre.
+    "br.rfb.efinanceira-fechamento": {
+        "schema": "schema/evtFechamentoeFinanceira-v1_5_0.xsd",
+        "namespace": "http://www.eFinanceira.gov.br/schemas/evtFechamentoeFinanceira/v1_5_0",
+        "event": "evtFechamentoeFinanceira",
+        "original": ("indRetificacao", "1"),
+        "period": ("semestre",),
+    },
     # As exclusões não declaram filing.remittance: sem `original`, nenhuma entrada
     # é tratada como original (nem procurada aprovada, nem julgada antes de outra).
     "br.rfb.efinanceira-exclusao": {
@@ -1189,6 +1207,9 @@ def fill_binding(text, fills):
     lines = text.splitlines()
     for key, value in sorted(fills.items()):
         dataset, _, field = key.partition(".")
+        if not field:
+            lines = fill_rows(lines, dataset, value)
+            continue
         span = yaml_block(lines, [(0, "datasets"), (2, dataset), (4, "fields"), (6, field)])
         if span is None:
             fail("o binding não declara o campo %s em datasets, e o cenário o preenche" % key)
@@ -1217,6 +1238,66 @@ def fill_binding(text, fills):
         kept.insert(at + 1, written)
         lines[start + 1:end] = kept
     return "\n".join(lines) + "\n"
+
+
+def fill_rows(lines, dataset, rows):
+    """The binding lines with the rows the client writes by hand into a set.
+
+    A fill keyed by the set's name alone ("respeFin": [{...}, ...]) is the rows
+    the client writes in the mapping: only a set the binding fills row by row
+    (`rows:` at four spaces) takes it. Its `rows` become these, one flow mapping
+    per row in the order given, and the set's `pendingReason` goes — the engine
+    refuses it beside rows that are written. An empty list, a row that is not a
+    mapping or a set the binding does not fill by rows stops the run: a scenario
+    that writes nothing would judge the reference's pending draft as if filled.
+    """
+    if not isinstance(rows, list) or not rows or not all(isinstance(r, dict) and r for r in rows):
+        fail("o cenário preenche o conjunto %s com %r; linhas escritas à mão são uma lista não vazia de "
+             "mapeamentos campo: valor" % (dataset, rows))
+    for row in rows:
+        for field, value in row.items():
+            # Um valor escrito à mão é texto (ou um número, escrito como o cenário o
+            # traz). Um nulo ou um booleano sairia como "None" ou "True", um valor que
+            # ninguém escreveu, e um mapa ou uma lista não é o valor de um campo.
+            if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+                fail("o cenário escreve %r no campo %s de uma linha de %s; o valor de uma linha "
+                     "escrita à mão é um texto ou um número" % (value, field, dataset))
+    span = yaml_block(lines, [(0, "datasets"), (2, dataset)])
+    if span is None:
+        fail("o binding não declara o conjunto %s em datasets, e o cenário escreve linhas nele" % dataset)
+    start, end = span
+    body = lines[start + 1:end]
+    if not any(re.match(r"^\s{4}rows:", line) for line in body):
+        fail("o conjunto %s do binding não é preenchido à mão (`rows:`); o cenário só escreve linhas "
+             "num conjunto que o binding preenche linha a linha" % dataset)
+    kept, skipping, comments = [], False, []
+    for line in body:
+        if re.match(r"^\s{4}(rows|pendingReason):", line):
+            skipping, comments = True, []
+            continue
+        # Um comentário no meio das linhas em bloco não diz se a chave acabou: espera a
+        # linha seguinte. Se ela ainda continua a chave, o comentário vai com a chave;
+        # se não, era da chave seguinte e fica.
+        if skipping and line.lstrip().startswith("#"):
+            comments.append(line)
+            continue
+        # O que continua a chave numa linha mais funda (itens da lista em bloco, um
+        # texto quebrado) vai com ela.
+        if skipping and not line.strip():
+            continue
+        if skipping and (len(line) - len(line.lstrip()) > 4 or re.match(r"^\s{4}- ", line)):
+            comments = []
+            continue
+        skipping = False
+        kept.extend(comments)
+        comments = []
+        kept.append(line)
+    kept.extend(comments)
+    written = ["    rows:"] + ["      - {%s}" % ", ".join("%s: %s" % (json.dumps(str(k), ensure_ascii=False),
+                                                                json.dumps(str(v), ensure_ascii=False))
+                                                       for k, v in row.items()) for row in rows]
+    lines[start + 1:end] = written + kept
+    return lines
 
 
 def yaml_block(lines, steps):
@@ -1332,19 +1413,26 @@ def restore_bindings(rep, bases):
             print("binding da assinatura %s restaurado" % subscription)
 
 
-def approved_event_original(rep, document_id, cnpj):
+def approved_event_original(rep, document_id, cnpj, parameters=None):
     """The approved original of the declarant's filing, from any subscription, or None.
 
-    The Reporter holds one original per declarant (document and the institution's
-    CNPJ), whichever subscription approved it: a subscription replaced by a run
-    on another version still has the original an earlier run approved.
+    The Reporter holds one original per declarant and filing period (document, the
+    institution's CNPJ and the values of the contract's `filing.period`
+    parameters, EVENT_DOCUMENTS' `period`), whichever subscription approved it: a
+    subscription replaced by a run on another version still has the original an
+    earlier run approved. A document without a period (the registration) has one
+    per declarant. A report marked excluded at the regulator no longer stands as
+    the original, as in the Reporter's own rule.
     """
     def plain(value):
         return re.sub(r"[^0-9A-Za-z]", "", value or "").upper()
 
+    period = EVENT_DOCUMENTS.get(document_id, {}).get("period") or ()
+    wanted = {name: (parameters or {}).get(name) for name in period}
     for r in rep.items("/v1/reports?regulatory=true&document_id=%s" % urllib.parse.quote(document_id)):
-        if (r.get("status") == "Final" and r.get("remittance") == "original"
-                and plain((r.get("institution") or {}).get("cnpj")) == plain(cnpj)):
+        if (r.get("status") == "Final" and r.get("remittance") == "original" and not r.get("excludedAt")
+                and plain((r.get("institution") or {}).get("cnpj")) == plain(cnpj)
+                and all((r.get("parameters") or {}).get(name) == value for name, value in wanted.items())):
             return r
     return None
 
@@ -1502,7 +1590,8 @@ def run_event(rep, lg, args, doc, institution, run):
     # o original: uma retificação aprovada se gera de novo a cada execução. Um
     # documento sem remessa (as exclusões) não tem original: toda entrada é gerada.
     is_original = is_event_original(document_id, doc["parameters"])
-    final = approved_event_original(rep, document_id, cnpj) if doc.get("approve") and is_original else None
+    final = (approved_event_original(rep, document_id, cnpj, doc["parameters"])
+             if doc.get("approve") and is_original else None)
     if final:
         report, got = final["id"], final
     else:
