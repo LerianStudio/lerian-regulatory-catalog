@@ -425,8 +425,30 @@ def check_template(doc_dir: Path, contract: dict) -> None:
 
     refs = set(re.findall(r"\{\{\s*([A-Za-z_]\w*)\.(\w+)", body))
 
+    # As pontas de um período (`span`) chegam ao template como
+    # system.periods.<parâmetro>.start/.end (o motor publica `periods` em `system`, e
+    # por isso o nome é reservado). Só um parâmetro que declara span tem período: um
+    # outro, ou uma ponta que não é start nem end, imprime vazio num arquivo que parece
+    # completo.
+    spans = span_parameters(contract)
+    for name, edge in sorted(set(re.findall(r"system\.periods\b(?:\.(\w+))?(?:\.(\w+))?", body))):
+        if name not in spans:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: template lê system.periods.{name}"
+                f"{'.' + edge if edge else ''}, e '{name}' não é um parâmetro que declara span; "
+                f"o motor só publica o período de um month com span "
+                f"({', '.join(sorted(spans)) or 'nenhum neste contrato'})"
+            )
+        elif edge not in ("start", "end"):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: template lê system.periods.{name}"
+                f"{'.' + edge if edge else ''}; de um período o template lê só .start e .end"
+            )
+
     placed: set[tuple[str, str]] = set()
     for head, field in sorted(refs):
+        if head == "system" and field == "periods" and spans:
+            continue
         if head == "system":
             if field not in parameters:
                 fail(
@@ -563,6 +585,8 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
     check_binding_queries(doc_dir, binding)
     check_parent_match(doc_dir, contract, binding)
     check_column_survival(doc_dir, binding)
+    _check_span_edges(doc_dir, contract, binding)
+    raw_rows = _raw_rows(example)
 
     queries = {q.get("name") for q in query_list(binding)}
     declared, _ = declared_names(contract)
@@ -650,6 +674,19 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             _check_empty_set(doc_dir, dataset, entry, by_name.get(dataset, {}))
             _check_children_of_empty_set(doc_dir, dataset, bound, by_name)
             continue
+
+        # `rows`: o cliente escreve as linhas do conjunto à mão, uma a uma, e
+        # `rows: []` com `pendingReason` enquanto não as escreveu. Num conjunto
+        # nonEmpty a pendência é do cliente preencher, como a lista manual.
+        if isinstance(entry, dict) and "rows" in entry:
+            if _check_manual_rows(doc_dir, contract, dataset, entry, bound, by_name, raw_rows.get(dataset)):
+                client_fills.add(dataset)
+            continue
+
+        if isinstance(entry, dict) and "pendingReason" in entry:
+            fail(f"{doc_dir.relative_to(ROOT)}: o conjunto '{dataset}' declara pendingReason e não escreve "
+                 f"linhas; o pendingReason de um conjunto diz por que as linhas escritas à mão ainda não "
+                 f"estão lá, então vai ao lado de `rows: []`")
 
         raw_from = entry.get("from")
         if raw_from is not None and not isinstance(raw_from, dict):
@@ -740,10 +777,10 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                         )
 
                     if case.get("from") == "manual" and case.get("value") is None:
-                        if not case.get("pendingReason"):
+                        if not pending_reason(case):
                             fail(
                                 f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
-                                f"é manual sem valor e sem `pendingReason`"
+                                f"é manual sem valor e sem `pendingReason`{_reason_shape(case)}"
                             )
                         if field in required_by_dataset.get(dataset, set()):
                             pending.add(f"{dataset}.{field}")
@@ -784,10 +821,10 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             # (acima): ele não é um valor que o cliente digita uma vez, e o motor nem o
             # leva ao recomeçar da referência.
             if how == "manual" and spec.get("value") is None:
-                if not spec.get("pendingReason"):
+                if not pending_reason(spec):
                     fail(
                         f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} é manual sem "
-                        f"valor e sem `pendingReason`"
+                        f"valor e sem `pendingReason`{_reason_shape(spec)}"
                     )
                 if field in required_by_dataset.get(dataset, set()):
                     client_fills.add(f"{dataset}.{field}")
@@ -829,20 +866,11 @@ def _check_children_of_empty_set(doc_dir: Path, dataset: str, bound: dict, by_na
     """Um conjunto pendurado (a qualquer profundidade) num conjunto declarado vazio
     também é declarado vazio: sem linha no pai, não há onde pendurar as dele, e um
     filho não mapeado deixaria pendências que bloqueiam a aprovação."""
-    for name, declared in by_name.items():
-        parent, seen = name, set()
-        while True:
-            child_of = (by_name.get(parent) or {}).get("childOf")
-            parent = child_of.get("dataset") if isinstance(child_of, dict) else None
-            if not isinstance(parent, str) or parent in seen:
-                break
-            seen.add(parent)
-            if parent == dataset:
-                entry = bound.get(name)
-                if not (isinstance(entry, dict) and "emptyReason" in entry):
-                    fail(f"{doc_dir.relative_to(ROOT)}: o conjunto '{dataset}' é declarado vazio e "
-                         f"'{name}' pendura nele sem ser declarado vazio também")
-                break
+    for name in _hanging_from(by_name, dataset):
+        entry = bound.get(name)
+        if not (isinstance(entry, dict) and "emptyReason" in entry):
+            fail(f"{doc_dir.relative_to(ROOT)}: o conjunto '{dataset}' é declarado vazio e "
+                 f"'{name}' pendura nele sem ser declarado vazio também")
 
 
 def _check_list(doc_dir: Path, contract: dict, dataset: str, field: str, spec: dict, entry: dict) -> bool:
@@ -880,38 +908,310 @@ def _check_list(doc_dir: Path, contract: dict, dataset: str, field: str, spec: d
     if how == "constant" and not values:
         fail(f"{where} é uma lista vazia numa constante: não escreveria linha nenhuma")
         return False
-    if how == "manual" and not values and not spec.get("pendingReason"):
-        fail(f"{where} é uma lista manual vazia e sem `pendingReason`")
+    if how == "manual" and not values and not pending_reason(spec):
+        fail(f"{where} é uma lista manual vazia e sem `pendingReason`{_reason_shape(spec)}")
         return False
 
     declared = next((f for f in fields_of(ds) if isinstance(f, dict) and f.get("name") == field), {})
-    # O motor confere o valor ESCRITO, depois de normalize e format; sem aplicá-los
-    # aqui, o domain, o length e o pattern ficam para o motor nesses campos.
-    if declared.get("normalize") is not None or declared.get("format") is not None:
-        declared = {}
-    # The engine checks the value against the GROUPED pattern. One that does not
-    # compile is reported by _check_field_shape; the values are not judged by it.
-    pattern = None
-    if isinstance(declared.get("pattern"), str):
-        try:
-            pattern = re.compile(f"(?:{declared['pattern']})")
-        except re.error:
-            pattern = None
     seen: set[str] = set()
     for value in values:
         if value.strip() == "":
             fail(f"{where} lista um valor vazio")
         elif value in seen:
             fail(f"{where} lista '{value}' duas vezes")
-        elif isinstance(declared.get("domain"), list) and value not in [str(d) for d in declared["domain"]]:
-            fail(f"{where} lista '{value}', que o domain do campo recusa")
-        elif isinstance(declared.get("length"), int) and len(value) != declared["length"]:
-            fail(f"{where} lista '{value}', e o campo tem {declared['length']} posições")
-        elif pattern is not None and not pattern.fullmatch(value):
-            fail(f"{where} lista '{value}', que o pattern do campo recusa")
+        elif (refusal := _value_refusal(declared, value)) is not None:
+            fail(f"{where} lista '{value}'{refusal}")
         seen.add(value)
 
     return how == "manual" and not values
+
+
+def _value_refusal(declared: dict, value: str) -> str | None:
+    """Por que o campo recusa um valor escrito no mapeamento, ou None.
+
+    Confere o domain, o length e o pattern, como o motor (Populator.CheckValue).
+    O motor confere o valor ESCRITO, depois de normalize e format; sem aplicá-los
+    aqui, o domain, o length e o pattern ficam para o motor nesses campos.
+    """
+    if declared.get("normalize") is not None or declared.get("format") is not None:
+        return None
+    if isinstance(declared.get("domain"), list) and value not in [str(d) for d in declared["domain"]]:
+        return ", que o domain do campo recusa"
+    if isinstance(declared.get("length"), int) and len(value) != declared["length"]:
+        return f", e o campo tem {declared['length']} posições"
+    # The engine checks the value against the GROUPED pattern. One that does not
+    # compile is reported by _check_field_shape; the values are not judged by it.
+    if isinstance(declared.get("pattern"), str):
+        try:
+            pattern = re.compile(f"(?:{declared['pattern']})")
+        except re.error:
+            return None
+        if not pattern.fullmatch(value):
+            return ", que o pattern do campo recusa"
+    return None
+
+
+def pending_reason(entry: object) -> str | None:
+    """O `pendingReason` como o motor o lê (yamldoc.OptionalString), ou None.
+
+    O motor lê o texto de qualquer escalar: `pendingReason: 5` é o motivo "5". Um
+    mapa ou uma lista ele recusa; um nulo ou um texto em branco não dizem motivo.
+    Mais estrito que o motor de propósito: só o motivo de um conjunto de `rows` o
+    motor apara; num campo, numa lista ou num caso de byRowClass ele aceita um
+    motivo só de espaços, que não diz nada a quem preenche, e aqui ele é recusado.
+    """
+    if not isinstance(entry, dict):
+        return None
+    reason = entry.get("pendingReason")
+    if reason is None or isinstance(reason, (dict, list)):
+        return None
+    text = str(reason).strip()
+    return text or None
+
+
+def _reason_shape(entry: dict) -> str:
+    """O complemento da recusa quando o `pendingReason` escrito não é um escalar."""
+    reason = entry.get("pendingReason") if isinstance(entry, dict) else None
+    if isinstance(reason, dict):
+        return " (o pendingReason escrito é um mapa, e o motor o recusa: é um texto)"
+    if isinstance(reason, list):
+        return " (o pendingReason escrito é uma lista, e o motor o recusa: é um texto)"
+    return ""
+
+
+def _raw_rows(example: Path) -> dict[str, object]:
+    """As `rows` de cada conjunto do binding, lidas do NÓ YAML e não do dicionário.
+
+    Duas coisas que o dicionário de yaml.safe_load apaga e o motor vê: a mesma
+    chave escrita duas vezes numa linha (o dicionário guarda a última, calado) e o
+    texto do valor como escrito (`1.50` vira o número 1.5, e o motor lê "1.50").
+
+    Responde, por conjunto, o nó de `rows`; quem o lê é _check_manual_rows.
+    """
+    try:
+        root = yaml.compose(example.read_text(encoding="utf-8"), Loader=yaml.SafeLoader)
+    except (OSError, yaml.YAMLError):
+        return {}  # load() já reprovou
+
+    out: dict[str, object] = {}
+    datasets = _node_child(root, "datasets")
+    if not isinstance(datasets, yaml.MappingNode):
+        return out
+    for key, entry in datasets.value:
+        rows = _node_child(entry, "rows")
+        if isinstance(key, yaml.ScalarNode) and rows is not None:
+            out[key.value] = rows
+    return out
+
+
+def _node_child(node: object, key: str) -> object:
+    """O nó sob `key` num mapeamento YAML, ou None."""
+    if not isinstance(node, yaml.MappingNode):
+        return None
+    for k, v in node.value:
+        if isinstance(k, yaml.ScalarNode) and k.value == key:
+            return v
+    return None
+
+
+YAML_NULL = "tag:yaml.org,2002:null"
+
+
+def _check_manual_rows(doc_dir: Path, contract: dict, dataset: str, entry: dict, bound: dict,
+                       by_name: dict, raw) -> bool:
+    """Um conjunto que o mapeamento preenche à mão, linha a linha (`rows`).
+
+    O motor recusa os mesmos casos ao ler e ao planejar o mapeamento
+    (readManualRows, readManualRow, refuseRowsItCannotFill). Responde se o conjunto
+    é uma pendência do CLIENTE: `rows: []` com `pendingReason` num conjunto nonEmpty
+    — o rascunho sai com a lacuna, que impede aprovar e baixar até o cliente
+    escrever as linhas. Não bloqueia a geração, como a lista manual pendente.
+    """
+    where = f"{doc_dir.relative_to(ROOT)}: {dataset}.rows"
+    declared = by_name.get(dataset, {})
+
+    # As linhas são o conjunto inteiro: ao lado de uma consulta, de um campo ou de
+    # outra origem, o conjunto teria duas respostas para as mesmas linhas.
+    others = sorted(str(key) for key in entry if key not in ("rows", "pendingReason"))
+    if others:
+        fail(f"{doc_dir.relative_to(ROOT)}: o conjunto '{dataset}' declara rows junto com {others}; "
+             f"um conjunto preenchido à mão é as linhas e nada mais, então rows e pendingReason são "
+             f"suas únicas chaves")
+
+    rows = entry.get("rows")
+    if not isinstance(rows, list):
+        fail(f"{where} é {rows!r}; rows é a lista das linhas do conjunto, cada uma um mapa de campo a valor")
+        return False
+
+    reason = pending_reason(entry)
+    if "pendingReason" in entry and reason is None:
+        fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.pendingReason está vazio ou não é um texto"
+             f"{_reason_shape(entry)}; um conjunto sem linha escrita ainda diz por quê, ou fica igual "
+             f"a um conjunto que ninguém preencheu")
+    if rows and "pendingReason" in entry:
+        fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.pendingReason está ao lado de linhas escritas; ele "
+             f"diz por que nenhuma linha está escrita ainda, então sai quando as linhas entram")
+
+    # Onde linhas escritas à mão cabem: um conjunto aberto de várias linhas,
+    # pendurado no singleton de topo — são linhas da única entrega, como as da lista.
+    if declared.get("grain") == "singleton":
+        fail(f"{where} preenche '{dataset}' linha a linha, e ele é de uma linha (singleton): a linha "
+             f"dele é a da própria entrega, então mapeie os campos")
+    elif "rowSet" in declared:
+        fail(f"{where} preenche '{dataset}' linha a linha, e as linhas dele são do catálogo (rowSet): "
+             f"toda linha que o conjunto fechado publica é escrita")
+    elif "childOf" not in declared or not _hangs_from_top_singleton(declared, by_name):
+        fail(f"{where} preenche '{dataset}' linha a linha, e ele não pende de um singleton de topo; "
+             f"linhas escritas à mão são linhas da única entrega, então pendem da linha dela")
+
+    # Uma linha escrita à mão não carrega chave a que a linha de um filho se prenda.
+    # Um filho declarado vazio não escreve linha, então não precisa de onde se prender.
+    for child in _hanging_from(by_name, dataset):
+        child_entry = bound.get(child)
+        if not (isinstance(child_entry, dict) and "emptyReason" in child_entry):
+            fail(f"{where} preenche '{dataset}' linha a linha, e '{child}' pende dele; uma linha escrita "
+                 f"à mão não carrega chave a que as linhas do filho se prendam, então declare '{child}' "
+                 f"vazio ou mapeie '{dataset}' de outro jeito")
+
+    if not rows:
+        if declared.get("nonEmpty") is True and not reason:
+            fail(f"{where} está vazio e sem pendingReason, e '{dataset}' não pode sair vazio (nonEmpty); "
+                 f"quem completa o mapeamento não tem o que fazer. Escreva as linhas, ou diga por que "
+                 f"ainda não estão lá")
+            return False
+        return declared.get("nonEmpty") is True and bool(reason)
+
+    fields = {f["name"]: f for f in fields_of(declared)}
+    derived = {f: s for (d, f), s in derived_fields(contract).items() if d == dataset}
+    generated = {f for (d, f) in generated_fields(contract) if d == dataset}
+
+    # `raw` é o nó das mesmas `rows`, lido do mesmo arquivo que `rows`, então o
+    # comprimento bate sempre; o caso contrário é inalcançável hoje (só se _raw_rows
+    # não tivesse lido o arquivo, que load() já teria reprovado). Se acontecer, cada
+    # linha é recusada como não lida em vez de julgada sem o texto como escrito.
+    nodes = raw.value if isinstance(raw, yaml.SequenceNode) and len(raw.value) == len(rows) \
+        else [None] * len(rows)
+    written_rows = [
+        _check_manual_row(f"{where}[{index}]", dataset, row, node, fields, derived, generated)
+        for index, (row, node) in enumerate(zip(rows, nodes))
+    ]
+
+    _check_rows_grain(where, dataset, declared, fields, written_rows)
+    return False
+
+
+def _check_manual_row(where: str, dataset: str, row, node, fields: dict, derived: dict,
+                      generated: set) -> dict[str, str] | None:
+    """Uma linha escrita à mão: cada campo que ela nomeia e o valor simples que carrega.
+
+    Responde o texto de cada valor COMO ESCRITO, ou None quando a linha não é lida.
+    Um campo que a linha deixa de fora não tem valor nela, então um valor vazio é
+    recusado em vez de lido como valor.
+    """
+    if not isinstance(row, dict) or not isinstance(node, yaml.MappingNode):
+        fail(f"{where} é {row!r}; uma linha é um mapa de cada campo do conjunto ao seu valor")
+        return None
+    if not node.value:
+        fail(f"{where} não escreve campo nenhum; uma linha sem nada escreveria uma linha de brancos")
+        return None
+
+    written: dict[str, str] = {}
+    for key_node, value_node in node.value:
+        key = key_node.value if isinstance(key_node, yaml.ScalarNode) else None
+        if not isinstance(key, str):
+            fail(f"{where} tem uma chave que não é o nome de um campo")
+            continue
+        if key in written:
+            fail(f"{where}.{key} está escrito duas vezes na linha; o valor seria o último lido")
+            continue
+        if not isinstance(value_node, yaml.ScalarNode):
+            kind = "uma lista" if isinstance(value_node, yaml.SequenceNode) else "um mapa"
+            fail(f"{where}.{key} é {kind}, e uma linha escreve um valor simples por campo")
+            continue
+        if value_node.tag == YAML_NULL or not value_node.value.strip():
+            fail(f"{where}.{key} está vazio; tire o campo da linha e ele fica sem valor nela")
+            continue
+        written[key] = value_node.value
+
+    for key in sorted(written):
+        if key not in fields:
+            fail(f"{where} nomeia '{key}', que não é campo de '{dataset}'. Ele declara "
+                 f"{', '.join(sorted(fields))}")
+        elif key in derived or key in generated:
+            fail(f"{where} escreve '{key}', que o motor preenche (derivado pelo contrato ou gerado "
+                 f"na geração), então uma linha não o escreve")
+
+    for name, declared in fields.items():
+        if name in derived or name in generated:
+            continue
+        if name not in written:
+            if declared.get("required") is True:
+                fail(f"{where} deixa de fora '{name}', que o contrato exige em toda linha de '{dataset}'")
+            continue
+        if (refusal := _value_refusal(declared, written[name])) is not None:
+            fail(f"{where}.{name} traz '{written[name]}'{refusal}")
+
+    return written
+
+
+def _check_rows_grain(where: str, dataset: str, declared: dict, fields: dict,
+                      rows: list[dict[str, str] | None]) -> None:
+    """Duas linhas escritas à mão com os mesmos valores do grão: o arquivo levaria a
+    mesma linha duas vezes. O motor recusa o mesmo (refuseRepeatedGrain).
+
+    Compara o texto COMO ESCRITO, porque este validador não aplica normalize nem
+    format: o motor compara depois deles, então "111.111.111-11" e "11111111111" sob
+    `normalize: digits` são uma linha lá e duas aqui. Valor igual como escrito é igual
+    depois de normalizado, então o que se recusa aqui o motor também recusa; o que
+    só a normalização iguala fica para o motor. Uma chave derivada (prefixOf) é
+    comparada pelo corte da origem quando a origem não normaliza, e pela origem
+    inteira quando normaliza — origem igual dá derivado igual.
+    """
+    keys = declared.get("grain")
+    if not isinstance(keys, list) or not keys or not all(isinstance(k, str) for k in keys):
+        return
+
+    def token(row: dict[str, str], key: str) -> str:
+        field = fields.get(key, {})
+        source = field.get("prefixOf")
+        if not isinstance(source, str):
+            return row.get(key, "")
+        value = row.get(source, "")
+        origin = fields.get(source, {})
+        length = field.get("length")
+        if origin.get("normalize") is not None or origin.get("format") is not None \
+                or not isinstance(length, int) or isinstance(length, bool):
+            return value
+        return value[:length]
+
+    seen: dict[tuple[str, ...], int] = {}
+    for index, row in enumerate(rows):
+        if row is None:
+            continue
+        identity = tuple(token(row, key) for key in keys)
+        if identity in seen:
+            fail(f"{where}[{index}] traz o mesmo {', '.join(keys)} que rows[{seen[identity]}] "
+                 f"({', '.join(identity)}); '{dataset}' é uma linha por {', '.join(keys)}, então o "
+                 f"arquivo a levaria duas vezes")
+            continue
+        seen[identity] = index
+
+
+def _hanging_from(by_name: dict, ancestor: str) -> list[str]:
+    """Os conjuntos que pendem, a qualquer profundidade, do conjunto nomeado."""
+    out = []
+    for name in by_name:
+        parent, seen = name, set()
+        while True:
+            child_of = (by_name.get(parent) or {}).get("childOf")
+            parent = child_of.get("dataset") if isinstance(child_of, dict) else None
+            if not isinstance(parent, str) or parent in seen:
+                break
+            seen.add(parent)
+            if parent == ancestor:
+                out.append(name)
+                break
+    return out
 
 
 def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
@@ -1358,6 +1658,44 @@ def _check_parameter_values(doc_dir: Path, qname: str, filters: object) -> None:
             fail(f"{where}: of é {reference.get('of')!r}; um período é day, month ou year")
         if reference.get("calendar") not in (None, "business"):
             fail(f"{where}: calendar é {reference.get('calendar')!r}; o calendário publicado é business")
+
+
+def _check_span_edges(doc_dir: Path, contract: dict, binding: dict) -> None:
+    """Um filtro não corta pela ponta (`at`) de um parâmetro que declara `span`.
+
+    As pontas são cortadas por dia, mês ou ano; o período de N meses que o `span`
+    declara não é nenhuma delas, então a leitura delimitaria um período diferente
+    do que o leiaute imprime. O motor recusa o binding nos mesmos casos
+    (refuseUnresolvableParameters), em filters e em having, a qualquer profundidade
+    de anyOf e allOf.
+    """
+    spans = span_parameters(contract)
+
+    def walk(qname: str, conditions: object) -> None:
+        if not isinstance(conditions, list):
+            return
+        for condition in conditions:
+            if not isinstance(condition, dict):
+                continue
+            walk(qname, condition.get("anyOf"))
+            walk(qname, condition.get("allOf"))
+            values = condition.get("values")
+            for value in values if isinstance(values, list) else []:
+                if not isinstance(value, dict) or not value.get("at"):
+                    continue
+                name = value.get("parameter")
+                span = spans.get(name) if isinstance(name, str) else None
+                if span is not None:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}' "
+                        f"lê o {value.get('at')} do parâmetro '{name}', que nomeia um período de {span} "
+                        f"meses (span); o motor ainda não corta a extração por esse período"
+                    )
+
+    for query in query_list(binding):
+        qname = query.get("name", "<sem nome>")
+        walk(qname, query.get("filters"))
+        walk(qname, query.get("having"))
 
 
 def check_binding_queries(doc_dir: Path, binding: dict) -> None:
@@ -2797,6 +3135,15 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
         elif closed and ptype not in ("month", "date"):
             fail(f"{where} declara closed e não é do tipo month nem date, então não nomeia período que feche")
 
+        # `periods` é a chave sob a qual o motor publica ao template os limites dos
+        # períodos (system.periods.<nome>.start/end); um parâmetro com esse nome
+        # sombrearia os períodos ou seria sombreado por eles.
+        if name == RESERVED_PARAMETER:
+            fail(f"{where} usa um nome reservado: o template lê os limites dos períodos do contrato "
+                 f"sob system.{RESERVED_PARAMETER}")
+
+        _check_relation_keys(where, param, ptype)
+
         months = optional_at(where, param, "allowedMonths")
         if months is None:
             continue
@@ -2811,6 +3158,162 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
         for month in months:
             if not isinstance(month, str) or month not in MONTHS_OF_YEAR:
                 fail(f"{where} tem allowedMonths com {month!r}; um mês é de '01' a '12', com dois dígitos")
+
+    _check_parameter_relations(doc_dir, contract)
+
+
+# O nome que o motor reserva para os limites dos períodos (pongo.PeriodsContextKey).
+RESERVED_PARAMETER = "periods"
+# Quantos meses um período (`span`) cobre, como o carregador do motor aceita.
+MIN_SPAN, MAX_SPAN = 1, 12
+
+
+# O que strconv.Atoi aceita: sinal opcional e algarismos ASCII. É como o motor lê o
+# `span` (yamldoc.OptionalInt): pelo TEXTO do escalar, com aspas ou sem.
+WHOLE_NUMBER = re.compile(r"[+-]?[0-9]+")
+
+
+def _span_as_written(path: Path, contract: dict) -> None:
+    """Troca o `span` de cada parâmetro pelo texto do escalar como escrito.
+
+    yaml.safe_load lê `span: 0x6` como 6, `span: 1_2` como 12 e `span: 010` como 8
+    (YAML 1.1); o motor lê o texto e o passa a strconv.Atoi, que recusa os dois
+    primeiros e lê o terceiro como 10. `span: "6"` é o texto "6", que o motor aceita.
+    Um nulo, uma lista ou um mapa ficam como o dicionário os leu: optional_at e
+    _check_relation_keys os recusam.
+    """
+    try:
+        root = yaml.compose(path.read_text(encoding="utf-8"), Loader=yaml.SafeLoader)
+    except (OSError, yaml.YAMLError):
+        return  # load() já reprovou
+    params = _node_child(root, "parameters")
+    if not isinstance(params, yaml.SequenceNode) or not isinstance(contract.get("parameters"), list):
+        return
+    for node, param in zip(params.value, contract["parameters"]):
+        span = _node_child(node, "span")
+        if isinstance(param, dict) and isinstance(span, yaml.ScalarNode) and span.tag != YAML_NULL:
+            param["span"] = span.value
+
+
+def _span_number(span: object) -> int | None:
+    """O número que o motor lê de um `span`, ou None quando ele o recusaria."""
+    if isinstance(span, bool):
+        return None
+    if isinstance(span, int):
+        return span
+    if isinstance(span, str) and WHOLE_NUMBER.fullmatch(span):
+        return int(span)
+    return None
+
+
+def declared_span(param: object) -> int | None:
+    """O `span` que um parâmetro declara, só quando é um número que o motor aceita."""
+    if not isinstance(param, dict):
+        return None
+    span = _span_number(param.get("span"))
+    if span is not None and MIN_SPAN <= span <= MAX_SPAN:
+        return span
+    return None
+
+
+def span_parameters(contract: dict) -> dict[str, int]:
+    """Os parâmetros que declaram um `span` que o motor aceita, com quantos meses cobrem."""
+    return {
+        p["name"]: span for p in parameters_of(contract)
+        if isinstance(p, dict) and isinstance(p.get("name"), str)
+        and (span := declared_span(p)) is not None
+    }
+
+
+def _check_relation_keys(where: str, param: dict, ptype) -> None:
+    """`span`, `within` e `notBefore` lidos sozinhos: a forma e o tipo onde valem.
+
+    O motor recusa os mesmos casos ao carregar o contrato (readRelationKeys e
+    validateRelationDeclaration). Um `span: 0` ou um `within: ""` escritos são
+    recusados em vez de lidos como ausentes: zero e vazio são como o motor guarda
+    a relação não declarada, e o curador que os escreveu quis dizer outra coisa.
+    """
+    if "span" in param:
+        written = optional_at(where, param, "span")
+        span = _span_number(written)
+        if written is None:
+            pass  # optional_at já reprovou a chave escrita e vazia
+        elif span is None:
+            fail(f"{where} tem span {written!r}; é quantos meses o período cobre, um número inteiro de "
+                 f"{MIN_SPAN} a {MAX_SPAN} (algarismos, como o motor lê)")
+        elif ptype != "month":
+            fail(f"{where} declara span e é do tipo {ptype!r}; só um month nomeia um período de meses")
+        elif not MIN_SPAN <= span <= MAX_SPAN:
+            fail(f"{where} tem span {span}; um período cobre de {MIN_SPAN} a {MAX_SPAN} meses")
+
+    for key, means in (("within", "nomeia o parâmetro month com span em cujo período a data cai"),
+                       ("notBefore", "nomeia o parâmetro date antes do qual esta data não pode vir")):
+        if key not in param:
+            continue
+        named = optional_at(where, param, key)
+        if named is None:
+            continue
+        if not isinstance(named, str) or not named.strip():
+            fail(f"{where} tem {key} {named!r} vazio ou que não é um nome; {key} {means}, ou tire a chave")
+        elif ptype != "date":
+            fail(f"{where} declara {key} e é do tipo {ptype!r}; só uma date se relaciona com um "
+                 f"período ou com outro dia")
+
+
+def _check_parameter_relations(doc_dir: Path, contract: dict) -> None:
+    """O que `within` e `notBefore` nomeiam existe, tem o tipo certo e não fecha ciclo.
+
+    Resolvido depois de todo parâmetro lido, como o motor (resolveParameterRelations):
+    a relação nomeia OUTRO parâmetro. Uma cadeia de `notBefore` que volta ao começo
+    só se satisfaz com o mesmo dia em todos, o que nenhum curador quis declarar.
+    """
+    params = {p["name"]: p for p in parameters_of(contract)
+              if isinstance(p, dict) and isinstance(p.get("name"), str) and p["name"]}
+
+    for name, param in params.items():
+        where = f"{doc_dir.relative_to(ROOT)}: parâmetro '{name}'"
+        if param.get("type") != "date":
+            continue  # _check_relation_keys já recusou a relação fora de uma date
+
+        within = param.get("within")
+        if isinstance(within, str) and within.strip():
+            period = params.get(within)
+            if within == name:
+                fail(f"{where} tem within que nomeia o próprio parâmetro; within nomeia um month com span")
+            elif period is None:
+                fail(f"{where} tem within '{within}', que não é parâmetro deste contrato")
+            elif period.get("type") != "month":
+                fail(f"{where} tem within '{within}', do tipo {period.get('type')!r}; uma data cai "
+                     f"dentro de um month que declara span")
+            elif "span" not in period:
+                fail(f"{where} tem within '{within}', um month que não declara span; declare quantos "
+                     f"meses o período dele cobre")
+
+        floor = param.get("notBefore")
+        if isinstance(floor, str) and floor.strip():
+            other = params.get(floor)
+            if floor == name:
+                fail(f"{where} tem notBefore que nomeia o próprio parâmetro; não relaciona o dia a nada")
+            elif other is None:
+                fail(f"{where} tem notBefore '{floor}', que não é parâmetro deste contrato")
+            elif other.get("type") != "date":
+                fail(f"{where} tem notBefore '{floor}', do tipo {other.get('type')!r}; um dia se "
+                     f"compara com outra date")
+
+    # Cada parâmetro nomeia no máximo um outro, então a cadeia a partir de um deles é
+    # um caminho, e é ciclo exatamente quando volta ao começo. Um ciclo mais adiante
+    # é encontrado a partir de um de seus membros.
+    for start in params:
+        chain, cursor = [start], params[start].get("notBefore")
+        while isinstance(cursor, str) and cursor in params and len(chain) <= len(params):
+            chain.append(cursor)
+            if cursor == start:
+                if len(chain) > 2:  # o auto-notBefore já foi recusado acima
+                    fail(f"{doc_dir.relative_to(ROOT)}: parâmetro '{start}' tem notBefore em ciclo "
+                         f"({' -> '.join(chain)}); cada dia teria de vir depois do seguinte, o que só "
+                         f"o mesmo dia em todos responde")
+                break
+            cursor = params[cursor].get("notBefore")
 
 
 RULE_KEYS = {"id", "severity", "appliesTo", "message", "where", "transform", "check"}
@@ -3055,6 +3558,7 @@ def main() -> int:
         contract = load(path)
         if contract is None:
             continue
+        _span_as_written(path, contract)
 
         doc_dir = path.parent
         metadata = contract.get("metadata")
