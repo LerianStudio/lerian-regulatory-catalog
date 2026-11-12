@@ -94,7 +94,7 @@ datasets:
     fields:
       # O id do evento (A II p.4): "ID" + 18 dígitos, gerado pela declarante, único
       # por instituição e tipo de evento. O motor gera os 18 dígitos a cada geração,
-      # crescentes no tempo e únicos entre os relatórios do tenant; o template
+      # ordenados pelo instante da geração e únicos entre os relatórios do tenant; o template
       # escreve o "ID" na frente. Nenhum binding o mapeia, e não se corrige: uma
       # retificação é um evento NOVO, com id novo — o vínculo é o recibo.
       - name: eventId

@@ -34,7 +34,7 @@ Um original já aprovado impede outro original da mesma instituição. Uma retif
 informa o recibo não precisa de um original aprovado no Reporter: o original pode ter
 sido enviado por outra ferramenta.
 
-Cada geração tira um **id de evento novo** (`ID` + 18 dígitos, crescente no tempo): uma
+Cada geração tira um **id de evento novo** (`ID` + 18 dígitos, ordenado pelo instante da geração): uma
 retificação é um evento novo, ligado ao anterior pelo recibo, nunca pelo id.
 
 ## O arquivo sai sem assinatura
