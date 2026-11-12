@@ -78,6 +78,42 @@ documents:
       situação no CRS e no FATCA, tipos de entidade e residências fiscais. Primeiro
       evento da e-Financeira; reenviado como retificação quando o cadastro muda.
 
+  - id: br.rfb.efinanceira-abertura
+    path: br/rfb/efinanceira-abertura
+    country: BR
+    regulator: RFB
+    document: evtAberturaeFinanceira
+    family: e-financeira
+    title: e-Financeira — Abertura
+    version: 1.0.0
+    status: draft
+    periodicity: semiannual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Abertura da e-Financeira de um semestre: as datas do período, o responsável
+      pelas requisições de movimentação financeira (RMF), os responsáveis pela
+      e-Financeira e o representante legal. Uma abertura original por semestre;
+      reenviada como retificação quando muda.
+
+  - id: br.rfb.efinanceira-fechamento
+    path: br/rfb/efinanceira-fechamento
+    country: BR
+    regulator: RFB
+    document: evtFechamentoeFinanceira
+    family: e-financeira
+    title: e-Financeira — Fechamento
+    version: 1.0.0
+    status: draft
+    periodicity: semiannual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Fechamento da e-Financeira de um semestre: as datas do período, a situação
+      especial e os indicadores de movimento de operações financeiras e de inexistência de
+      contas CRS e FATCA, declarados a cada geração.
+      Um fechamento original por semestre; reenviado como retificação quando muda.
+
   - id: br.rfb.efinanceira-exclusao
     path: br/rfb/efinanceira-exclusao
     country: BR

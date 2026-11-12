@@ -1,0 +1,328 @@
+# Contrato do evtFechamentoeFinanceira — Evento de Fechamento da e-Financeira
+# (Receita Federal).
+#
+# QUEM CURA: a Lerian, a partir do Anexo II do manual da e-Financeira, leiaute
+# "Fechamento da e-Financeira" v1.5.0 (ADE Cofis 10/2026; o PDF está em
+# br/rfb/efinanceira-cad-declarante/schema/anexo-ii-leiautes-gerais-v1-5-0.pdf, "A II p.N"
+# abaixo) e do XSD oficial (schema/evtFechamentoeFinanceira-v1_5_0.xsd, em produção
+# desde 01/09/2026).
+#
+# O QUE É: o fechamento da e-Financeira de um SEMESTRE (A II p.33-53). Diz à Receita
+# que a instituição terminou de enviar a movimentação daquele semestre e se houve ou
+# não movimento. A chave do evento é a da abertura, cnpjDeclarante + dtInicio + dtFim
+# (A II p.33), e a Receita aceita UM fechamento original ativo por semestre e
+# declarante (REGRA_FECHAMENTO_MESMA_EMPRESA, MS1212), e só depois de uma abertura
+# ativa com a mesma data inicial (REGRA_VERIFICA_ABERTURA, MS1009).
+#
+# O SEMESTRE é o período da entrega, como na abertura (br.rfb.efinanceira-abertura):
+# o parâmetro `semestre` (junho ou dezembro) dá as datas do arquivo, e uma instituição
+# aberta ou encerrada DENTRO do semestre informa a data no lugar (dtInicio, dtFim),
+# que o motor confere dentro do semestre.
+#
+# OS INDICADORES SÃO DECLARADOS (v1): com ou sem movimento, situação especial e a
+# inexistência de contas CRS e FATCA são parâmetros da geração, que a pessoa
+# escolhe. O "nada a declarar" não sai na v1 (ver knownGaps, nada-a-declarar-fora).
+# Na Receita os indicadores dependem do que foi ENVIADO no semestre (eventos de
+# movimento, contas reportáveis, patrocinados), e o Reporter não vê o que foi
+# transmitido: as regras que cruzam eventos ficam em knownGaps.
+# Derivar os indicadores das movimentações aprovadas no próprio Reporter é a v2,
+# que espera a movimentação (evtMovOpFin).
+#
+# FORA DO ESCOPO:
+#   - a Previdência Privada (o grupo FechamentoPP), como na abertura: IP, SCD e
+#     SCFI não estão entre as Instituições Habilitadas;
+#   - a movimentação anual (FechamentoMovOpFinAnual): o evtMovOpFinAnual não é
+#     usado;
+#   - os patrocinados do FATCA (EntPatDecExterior): pedem o evtCadPatrocinado, que
+#     este catálogo não tem;
+#   - o nadaADeclarar (infoFechamento): o Anexo II se contradiz sobre quando ele é
+#     aceito (ver knownGaps, nada-a-declarar-fora).
+# Sem o grupo de PP, o de operações financeiras (FechamentoMovOpFin) sai SEMPRE: a
+# Receita exige ao menos uma das duas modalidades (REGRA_VALIDA_MODALIDADES,
+# MS1118), e a abertura deste catálogo sempre leva a de operações financeiras.
+#
+# XSD x ANEXO II: onde os dois divergem, vale o XSD, porque é ele que recusa o
+# arquivo: indRetificacao só 1 ou 2 (a regra MS1119 cita o 3); ContasAReportarFATCA
+# direto em FechamentoMovOpFin, sem o grupo EntDecExterior que o resumo do Anexo II
+# mostra; a ordem é ContasAReportarCRS e depois ContasAReportarFATCA (o Anexo II
+# numera ao contrário, 21 e 20); e o indicador FechamentoMovOpFin é opcional no XSD
+# (0..1; o Anexo II diz 1-1) — o contrato o pede sempre, ver o parâmetro.
+#
+# O ARQUIVO SAI SEM ASSINATURA. O XSD oficial exige `ds:Signature`; assinar com o
+# e-CNPJ ICP-Brasil do declarante, montar o lote, cifrá-lo e transmiti-lo são da
+# borda que envia o arquivo à Receita, não do Reporter (ver knownGaps e o manual).
+#
+# PRECISA DO REPORTER COM PERÍODOS: `span`, `within`, `notBefore` e
+# `system.periods` nos parâmetros. Um Reporter anterior recusa o contrato (chave
+# desconhecida).
+#
+# O motor confia neste contrato; não há validação XSD em runtime. A homologação do
+# catálogo (tools/homologation) é onde o arquivo gerado é validado contra o XSD.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.rfb.efinanceira-fechamento
+  country: BR
+  regulator: RFB
+  document: evtFechamentoeFinanceira
+  family: e-financeira   # o agrupamento: os eventos da e-Financeira
+  title: e-Financeira — Fechamento
+  summary: >-
+    Fechamento da e-Financeira de um semestre: as datas do período, a situação especial e os indicadores de movimento de operações financeiras e de inexistência de contas CRS e FATCA, declarados a cada geração. Um fechamento original por semestre; reenviado como retificação quando muda.
+  version: 1.0.0
+  status: draft
+  output: xml
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  # Um por semestre, depois da movimentação dele.
+  periodicity: semiannual
+  layout:
+    version: "1.5.0"
+    mandatoryFrom: "2026-09-01"
+  sourceOfTruth:
+    layoutManual: http://sped.rfb.gov.br/arquivo/download/8231   # Anexo II — Leiautes Gerais (ADE Cofis 10/2026)
+    schema: schema/evtFechamentoeFinanceira-v1_5_0.xsd
+
+parameters:
+  # O semestre, pelo último mês dele: 2026-06 é janeiro a junho de 2026, 2026-12 é
+  # julho a dezembro. `span: 6` faz o mês nomear os seis meses que terminam nele, e o
+  # template lê o primeiro e o último dia em system.periods.semestre (A II p.37,
+  # campos 12 e 13: "a data do primeiro/último dia do semestre"). Não exige o
+  # semestre encerrado: uma instituição extinta no meio dele fecha antes do fim.
+  - name: semestre
+    type: month
+    required: true
+    allowedMonths: ["06", "12"]
+    span: 6
+    description: Semestre do fechamento, pelo último mês dele (AAAA-06 para janeiro a junho, AAAA-12 para julho a dezembro).
+
+  # A data de abertura da instituição, quando ela abriu DENTRO do semestre (A II
+  # p.37, campo 12, REGRA_VALIDA_INI_MOVIMENTO, MS1008). Ausente, o arquivo leva o
+  # primeiro dia do semestre. É a mesma data inicial da abertura do semestre: a
+  # Receita procura a abertura ativa por ela (MS1009).
+  - name: dtInicio
+    type: date
+    required: false
+    within: semestre
+    description: Data de abertura da instituição, só quando ela abriu dentro do semestre (AAAA-MM-DD).
+
+  # A data de encerramento (baixa), quando a instituição encerrou DENTRO do
+  # semestre (A II p.37, campo 13, MS1008) — por extinção, fusão, incorporação ou
+  # cisão total, com a situação especial em sitEspecial (MS1045). Ausente, o
+  # arquivo leva o último dia do semestre. Dentro do semestre e não antes da data
+  # inicial (REGRA_DT_INI_VAL_MAIOR, MS1010).
+  - name: dtFim
+    type: date
+    required: false
+    within: semestre
+    notBefore: dtInicio
+    description: Data de encerramento da instituição, só quando ela encerrou dentro do semestre (AAAA-MM-DD).
+
+  # Original ou retificação (A II p.35, campo 4). O XSD enumera só 1 e 2 — a regra
+  # MS1119 cita também o 3, que o XSD recusaria. Um valor por arquivo.
+  - name: indRetificacao
+    type: string
+    required: true
+    default: "1"
+    domain: ["1", "2"]
+    description: 1 para o arquivo original, 2 para retificação espontânea.
+
+  # O recibo do evento que a retificação substitui (A II p.35, campo 5). Quem
+  # transmite é a borda que envia o arquivo, então o Reporter nunca vê a resposta
+  # da Receita: a pessoa digita o recibo ao gerar a retificação. O formato é o do XSD
+  # (15 a 49 posições, que o próprio padrão garante).
+  - name: nrRecibo
+    type: string
+    required: false
+    pattern: '[0-9]{1,18}-[0-9]{2}-[0-9]{3}-[0-9]{4}-[0-9]{1,18}'
+    description: Recibo de entrega do fechamento que esta retificação substitui.
+
+  # A situação especial (A II p.37-38, campo 14): 0 não se aplica, 1 extinção, 2
+  # fusão, 3 incorporação/incorporada, 5 cisão total — o 4 não existe, nem no XSD
+  # nem no Anexo II. Obrigatório no XSD (1..1); o caso comum é 0, o padrão. Com
+  # situação especial, dtFim é a data em que a instituição incorreu nela; com dtFim
+  # antes do fim do semestre, a Receita exige situação especial diferente de 0
+  # (REGRA_VALIDA_SITUACAO_ESPECIAL, MS1045) — ver knownGaps.
+  - name: sitEspecial
+    type: string
+    required: true
+    default: "0"
+    domain: ["0", "1", "2", "3", "5"]
+    description: Situação especial — 0 não se aplica, 1 extinção, 2 fusão, 3 incorporação/incorporada, 5 cisão total.
+
+  # O indicador de fechamento das operações financeiras (A II p.39-40, campo 19): 0
+  # sem movimento no semestre, 1 com movimento. Opcional no XSD (0..1), 1-1 no Anexo
+  # II, e a Receita exige 0 quando a abertura levou operações financeiras e nenhum
+  # evento de movimento foi enviado (MS1227) e 1 quando foi (MS1228): com a abertura
+  # deste catálogo há sempre um valor certo. Por isso o contrato o PEDE, e sem
+  # padrão: escolher entre com e sem movimento é declarar o semestre, e um padrão
+  # esconderia a escolha. Se houve movimento, só a Receita confere (ver knownGaps).
+  - name: fechamentoMovOpFin
+    type: string
+    required: true
+    domain: ["0", "1"]
+    description: Movimento de operações financeiras no semestre — 0 sem movimento, 1 com movimento.
+
+  # Inexistência de contas CRS (A II p.40, campo 21; no XSD, o primeiro depois do
+  # indicador): 0, único valor, quando a declarante, Instituição Financeira Brasileira
+  # Informante do CRS (inDeclaranteCRS 1 no cadastro), fez a diligência e não achou
+  # contas reportáveis no semestre. Opcional: ausente, o elemento não sai. A
+  # Receita o exige quando o cadastro diz CRS e nenhuma conta reportável foi
+  # enviada (MS1225) — ver knownGaps.
+  - name: contasAReportarCRS
+    type: string
+    required: false
+    domain: ["0"]
+    description: 0 quando a declarante do CRS não tem contas reportáveis no semestre; em branco nos demais casos.
+
+  # Inexistência de contas FATCA (A II p.40-41, campo 20; no XSD, depois do CRS e
+  # direto em FechamentoMovOpFin): 0, único valor, quando a declarante do FATCA
+  # (inDeclaranteFATCA 1) não achou contas reportáveis para os EUA no semestre. Não
+  # vale para as entidades patrocinadas. Opcional: ausente, o elemento não sai. A
+  # Receita exige GIIN e categoria no cadastro do declarante (MS1181, MS1170).
+  - name: contasAReportarFATCA
+    type: string
+    required: false
+    domain: ["0"]
+    description: 0 quando a declarante do FATCA não tem contas reportáveis para os EUA no semestre; em branco nos demais casos.
+
+# ---------------------------------------------------------------------------
+# A entrega e a remessa.
+#
+# `period: [semestre]` — cada semestre é uma entrega: um original, depois
+# retificações. As datas e os indicadores não entram no período: dois fechamentos
+# do mesmo semestre com datas ou indicadores diferentes são a MESMA entrega, e o
+# segundo original é recusado, como a Receita recusa (REGRA_FECHAMENTO_MESMA_EMPRESA,
+# MS1212): para fechar de novo, retifica-se.
+#
+# A retificação nomeia o que retifica (`reference: nrRecibo`): exigida na
+# retificação, recusada no original (MS1005, MS1123). Com a referência, a
+# retificação não precisa de um original aprovado no Reporter — o original pode ter
+# sido enviado por outra ferramenta; é a Receita, que tem o recibo, quem o confere.
+# ---------------------------------------------------------------------------
+filing:
+  period: [semestre]
+  remittance:
+    parameter: indRetificacao
+    original: "1"
+    replacement: ["2"]
+    reference: nrRecibo
+
+datasets:
+  - name: declarante
+    description: A entidade declarante — uma linha.
+    grain: singleton
+    fields:
+      # O id do evento (A II p.34, campo 2): "ID" + 18 dígitos, gerado pela
+      # declarante, único por instituição e tipo de evento (REGRA_VALIDA_CHAVE_ACESSO,
+      # REGRA_VALIDA_FORMACAO_ID). O motor tira os 18 dígitos a cada geração, um
+      # número ordenado pelo instante da geração, e o guarda no relatório sob um
+      # índice único: não se repete entre os relatórios do tenant. O rascunho o
+      # congela (a correção não o muda); o template escreve o "ID" na frente.
+      # Nenhum binding o mapeia, e uma retificação é um evento NOVO, com id novo.
+      - name: eventId
+        type: string
+        length: 18
+        required: true
+        generate: timeOrderedId
+        description: Número do evento (o arquivo leva ID + este número).
+
+      # Ambiente para onde o arquivo vai (A II p.35-36, campo 6): 1 produção, 2
+      # homologação (produção restrita). O cliente o preenche no mapeamento (ver
+      # knownGaps, ambiente-de-destino).
+      - name: tpAmb
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: Ambiente de destino — 1 produção, 2 produção restrita.
+
+      # Quem emitiu o arquivo (A II p.36, campo 7): 1 aplicativo da empresa, 2 outros.
+      - name: aplicEmi
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: Emissor do aplicativo — 1 aplicativo da empresa, 2 outros.
+
+      # Versão do aplicativo que gerou o arquivo, 1 a 20 posições (A II p.36, campo 8),
+      # sem os caracteres que a Receita proíbe (caracteres especiais restritos, MS1124, sem lista oficial: aspas, apóstrofo,
+      # cerquilha; o hífen duplo, ver knownGaps).
+      - name: verAplic
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,20}$'
+        description: Versão do aplicativo de emissão.
+
+      # O CNPJ da declarante, 14 posições, letras e dígitos (o XSD aceita o CNPJ
+      # alfanumérico). É DADO: vem da base, e a instituição da entrega é conferida
+      # contra ele (RPT-0196). O contrato confere só o formato; os dígitos
+      # verificadores, a Receita (REGRA_VALIDA_CNPJ, A II p.36 e p.52-53, MS1002):
+      # o Reporter confia na origem do valor (ver knownGaps, digitos-verificadores).
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        normalize: alphanumeric
+        identifiesInstitution: true
+        pattern: '^[0-9A-Z]{14}$'
+        description: CNPJ da entidade declarante (quatorze posições).
+
+# ---------------------------------------------------------------------------
+# O que este contrato NÃO confere, e por quê.
+# ---------------------------------------------------------------------------
+knownGaps:
+  - id: assinatura-e-transmissao
+    description: >-
+      O arquivo sai sem `ds:Signature`, que o XSD oficial exige. Assinar com o e-CNPJ ICP-Brasil do declarante, montar o lote, cifrá-lo e transmiti-lo à Receita são da borda que envia o arquivo: cada regulador pede o seu certificado, e o Reporter não o guarda. Pela mesma razão o Reporter não vê o recibo que a Receita devolve — a pessoa o digita ao gerar uma retificação.
+  - id: indicadores-declarados
+    description: >-
+      Os indicadores do fechamento (FechamentoMovOpFin, sitEspecial, ContasAReportarCRS e ContasAReportarFATCA) são parâmetros que a pessoa escolhe ao gerar. Na Receita eles dependem do que foi enviado no semestre — eventos de movimento, contas reportáveis, patrocinados —, e o Reporter não vê o que foi transmitido. O contrato confere só o domínio de cada um (o do XSD); que o valor bate com o semestre, só a Receita sabe. Derivá-los das movimentações aprovadas no próprio Reporter espera a movimentação (evtMovOpFin).
+  - id: abertura-ativa-do-semestre
+    description: >-
+      O fechamento só é recebido se houver uma abertura ativa com a mesma data inicial (REGRA_VERIFICA_ABERTURA, A II p.45, MS1009), e o grupo de operações financeiras só se a abertura o levou (REGRA_VALIDA_FECHAMENTO_OP_FIN, A II p.48, MS1049). O Reporter não liga um documento a outro nem vê o que foi transmitido: envie antes a abertura do semestre, com a mesma data inicial, por este catálogo (br.rfb.efinanceira-abertura, que leva sempre as operações financeiras) ou por outra ferramenta.
+  - id: original-ativa-na-receita
+    description: >-
+      A Receita recusa um fechamento original quando já existe um fechamento ativo da mesma declarante no semestre (REGRA_FECHAMENTO_MESMA_EMPRESA, A II p.45, MS1212); para fechar de novo, retifica-se. O Reporter recusa o segundo original do semestre entre os que ele aprovou (RPT-0197); um original enviado por outra ferramenta, só a Receita vê.
+  - id: situacao-especial-no-meio-do-semestre
+    description: >-
+      Com a data final antes do último dia do semestre, a situação especial tem de ser diferente de 0 (REGRA_VALIDA_SITUACAO_ESPECIAL, A II p.47, MS1045), e com situação especial a data final é a da extinção, fusão, incorporação ou cisão (A II p.37-38, campo 14). O motor ainda não declara "obrigatório quando outro parâmetro vem" (requiredWhen): um dtFim no meio do semestre com sitEspecial 0 passa daqui e é recusado pela Receita.
+  - id: datas-no-meio-do-semestre
+    description: >-
+      O período informado tem de ser o semestre, salvo quando a instituição foi aberta ou encerrada dentro dele; então se informa a data de abertura ou de encerramento (REGRA_VALIDA_INI_MOVIMENTO, A II p.46, MS1008). O motor confere que dtInicio e dtFim caem dentro do semestre e que o fim não vem antes do início (MS1010); que a instituição de fato abriu ou encerrou naquelas datas, e que a data final não deixa de fora eventos já enviados (REGRA_VALIDA_FIM_MOVIMENTO, A II p.47, MS1011), só a Receita sabe.
+  - id: movimento-enviado-no-semestre
+    description: >-
+      O indicador FechamentoMovOpFin tem de ser 0 quando a abertura levou operações financeiras e nenhum evento de movimento foi enviado no semestre (MS1227), e 1 quando algum foi (MS1228) (REGRA_FECHAMENTO_MOV_OP_FIN, A II p.48). O Reporter não vê o que foi transmitido: o contrato pede o indicador e confere o domínio; qual é o certo, só a Receita sabe.
+  - id: contas-crs-enviadas
+    description: >-
+      ContasAReportarCRS = 0 é obrigatório quando o cadastro do declarante diz que ele é Declarante CRS (inDeclaranteCRS 1) e nenhuma conta reportável para país diferente de BR e US foi enviada no semestre (REGRA_OBRIGATORIO_CONTAS_DECLARANTE_CRS, A II p.49, MS1225). O contrato o deixa opcional e confere só o domínio; o cadastro e as contas enviadas, só a Receita vê.
+  - id: contas-fatca-do-cadastro
+    description: >-
+      Com ContasAReportarFATCA informado, o cadastro do declarante tem de trazer o GIIN (REGRA_VALIDA_GIIN_DECLARANTE_FECHAMENTO, A II p.49, MS1181) e a categoria do declarante (REGRA_VALIDA_REPORTAVEL_CATEGORIA_DECLARANTE_FECHAMENTO, A II p.49, MS1170). O Reporter não liga o fechamento ao cadastro: preencha GIIN e categoria no evtCadDeclarante (br.rfb.efinanceira-cad-declarante) antes de informar o indicador.
+  - id: nada-a-declarar-fora
+    description: >-
+      O indicador nadaADeclarar (infoFechamento, A II p.38, campo 15) não sai nesta versão, porque o Anexo II se contradiz sobre quando ele é aceito. A regra dele o aceita só se a abertura do semestre não levou nenhuma modalidade (REGRA_VALIDA_NADA_A_DECLARAR, A II p.47, MS1237); mas uma abertura sem modalidade é recusada (A II p.29, MS1069), o fechamento tem de trazer ao menos uma modalidade (REGRA_VALIDA_MODALIDADES, A II p.45, MS1118), e o grupo FechamentoMovOpFin é recusado quando a abertura não levou operações financeiras (REGRA_VALIDA_FECHAMENTO_OP_FIN, A II p.48, MS1049). Não há fechamento que cumpra as quatro regras, então a v1 não o oferece. Não foi conferido como a Receita se comporta de fato.
+  - id: patrocinados-fora
+    description: >-
+      O grupo EntPatDecExterior (as entidades patrocinadas do FATCA sem contas a reportar) não sai. A Receita exige que ele liste TODO patrocinado ativo, com GIIN, sem contas reportáveis para os EUA e não encerrado (MS1189), e só esses (MS1195); que a retificação repita os encerrados no evento anterior (MS1229); e que cada um tenha um cadastro de patrocinado (evtCadPatrocinado) ativo com o mesmo CNPJ e GIIN (REGRA_VALIDA_FUNDO_FECHAMENTO, MS1131) (A II p.41-42 e p.49-51). Este catálogo não tem o cadastro de patrocinado: uma declarante patrocinadora no FATCA não fecha o semestre por ele.
+  - id: retificacao-muda-as-datas
+    description: >-
+      Uma retificação que muda dtInicio ou dtFim é incerta: a chave do evento inclui as datas (cnpjDeclarante + dtIni + dtFim, A II p.33), e a retificação tem de trazer a mesma chave do evento retificado (REGRA_MESMO_IDENTIFICADOR, A II p.45, MS1006). Na abertura, a REGRA_ALTERA_DTINI (A II p.28) admite mudar a data inicial; o leiaute do fechamento não traz regra igual. O motor prende as datas ao semestre da entrega; o que a Receita faz com uma retificação que muda uma data não foi conferido.
+  - id: retificacao-do-ultimo-recibo
+    description: >-
+      A retificação deve citar o recibo do ÚLTIMO evento aceito, ativo, do mesmo tipo e da mesma declarante (REGRA_OBRIGATORIO_NR_ULTIMO_RECIBO e REGRA_VALIDA_NR_RECIBO, A II p.46, MS1005 e MS1004), e com a mesma chave (REGRA_MESMO_IDENTIFICADOR, A II p.45, MS1006). O contrato confere só o formato do recibo digitado; qual é o último, e de que semestre, é a Receita quem sabe.
+  - id: fechamento-excluido-nao-marcado
+    description: >-
+      Um fechamento excluído pela Exclusão de Evento (br.rfb.efinanceira-exclusao) não se retifica: a Receita recusa a retificação de um recibo que não está mais ativo, e o fechamento é enviado de novo como original. O Reporter não fica sabendo da exclusão; até a pessoa marcar como "excluído na Receita" o relatório Final do fechamento excluído e cada retificação aprovada dele, o novo original do semestre é recusado (RPT-0197, ou RPT-0203 se ficar uma retificação aprovada sem marca). A marcação exige a versão do Reporter que a traz.
+  - id: digitos-verificadores
+    description: >-
+      Os dígitos verificadores do CNPJ da declarante são conferidos pela Receita (REGRA_VALIDA_CNPJ, A II p.36 e p.52-53, MS1002). O Reporter não os confere, por princípio: ele confia na origem do dado, a fonte (o Midaz) ou quem digita o valor no mapeamento ou corrige o rascunho, e o contrato confere só o formato que o arquivo exige (quatorze posições, letras e dígitos). Um dígito errado passa daqui como foi informado e é recusado pela Receita.
+  - id: ambiente-de-destino
+    description: >-
+      Só dados reais (tpAmb 1) vão ao ambiente de produção da e-Financeira, que recusa um arquivo com tpAmb 2 (REGRA_VALIDA_TIPO_AMBIENTE, A II p.46, MS1163). O tpAmb é preenchido pelo cliente no mapeamento; o contrato confere só o domínio (1 ou 2), não que ele bate com o ambiente para onde a borda transmite.
+  - id: id-unico-na-base-nacional
+    description: >-
+      O id tem de ser único na base do Ambiente Nacional para eventos da mesma instituição e do mesmo tipo (REGRA_VALIDA_CHAVE_ACESSO, A II p.45, MS1001). O motor garante que o número não se repete entre as gerações do próprio Reporter, no tenant; um id que outra ferramenta já tenha enviado pela mesma instituição só a Receita vê.
+  - id: hifen-duplo
+    description: >-
+      A Receita recusa caracteres especiais restritos no conteúdo (MS1124) sem listá-los; o "--" é tratado aqui como um deles. O contrato recusa aspas, apóstrofo e cerquilha na versão do aplicativo, o único texto livre do arquivo, mas não o hífen duplo: a forma de expressão do motor (uma expressão regular sem lookahead) não junta essa recusa ao limite de tamanho do campo. Um "--" no verAplic passa daqui e é recusado pela Receita (MS1124, "caracteres especiais restritos", que está no Manual de Orientação do Usuário da e-Financeira v1.2, ADE Cofis 12/2025, §6.2, e não no Anexo II).
