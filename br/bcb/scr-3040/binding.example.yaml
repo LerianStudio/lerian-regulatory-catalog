@@ -223,6 +223,10 @@ datasets:
       DtaProxParcela: {from: query, column: next_due_date}
       VlrProxParcela: {from: query, column: next_due_amount}
       QtdParcelas: {from: query, column: installment_count}
+      exitType: {from: query, column: exit_type}
+      exitCd: {from: query, column: exit_cd}
+      exitIdent: {from: query, column: exit_ident}
+      exitValue: {from: query, column: exit_value}
       OrigemRec:
         from: manual
         pendingReason: Perfil de reporte da instituição ainda sem dado (institution.reporting_profile).

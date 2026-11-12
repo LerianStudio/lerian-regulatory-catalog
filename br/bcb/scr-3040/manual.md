@@ -18,9 +18,15 @@ O validador oficial (Java) não está neste repositório: **rode-o sobre o arqui
 ## O que esta versão cobre
 
 Cabeçalho (`Doc3040`), `Cli`, `Op`, `Venc`, `Gar` e dois `Inf`: 1002 (adquirida de pessoa não
-integrante do SFN, hoje só a recompra de consignado) e 1701 (reestruturação). Ficam fora
-`Agreg`, `Sicor`, `ConIpocs`, `ContInstFinRes4966`, `Estagio`, `Perda` e os
-demais `Inf`, entre eles toda a saída do mês (0301 a 0317).
+integrante do SFN, hoje só a recompra de consignado) e 1701 (reestruturação), mais o `Inf`
+de saída da operação que deixou a instituição no mês. Ficam fora `Agreg`, `Sicor`, `ConIpocs`,
+`ContInstFinRes4966`, `Estagio`, `Perda` e os demais `Inf`.
+
+**Operação que saiu no mês.** O Lender entrega a linha uma vez, no mês da saída, com `exit_type` (0301, 0302,
+0304, 0310, 0311, 0316 ou 0317), e o template escreve um `Inf` de saída: sem `ProvConsttd` e sem `Venc`
+(Instruções p.89, "Informações proibidas"); `Cd`, `Ident` e `Valor` só saem quando têm valor (p.88-95). No 0316,
+`Cd` é o IPOC novo, composto como o `IPOC` da operação, e `Qtd="02"` é o motivo renegociação (Anexo 34, p.95). Lacunas
+declaradas em `saida-do-mes`: 0311 `Ident` e `Cd`, 0316 `Valor` do art. 22 e 0304 `Ident` de fundo sem CNPJ.
 
 O arquivo **não é particionado**: `Parte="1"` e `TpArq="F"` (Instruções p.8). `TotalCli` é a
 contagem de `Cli` do arquivo; ver a lacuna `cli-por-holder`.
@@ -36,6 +42,7 @@ contagem de `Cli` do arquivo; ver a lacuna `cli-por-holder`.
 | `Venc` | Lender (`scr_maturity_current`) | um atributo `vCOD` por código com valor |
 | `Gar` | Lender (`scr_guarantee_current`) e CRM | o garantidor pessoal tem o documento lido do CRM |
 | `Inf` 1002 e 1701 | Lender (`scr_operation_current`) | só as operações que têm a data |
+| `Inf` de saída | Lender (`scr_operation_current`) | só a linha com `exit_type` |
 
 O **Lender nunca publica CPF, CNPJ ou nome**. O binding de referência junta as consultas em
 memória, depois da leitura: o titular (`holder_id`, `midaz_organization_id`) vai ao CRM e
@@ -86,7 +93,7 @@ pesam para a remessa:
    47 a 49, `NatuOp` de CCB comprada, `CaracEspecial 01` e `Inf 1701` depois da conversão,
    Anexo 42, primeira data-base depois do corte): **a remessa desta versão não é enviável**
    até a consulta ao BACEN responder.
-2. **A operação que saiu do livro no mês** não aparece no mês da saída, nem com `Inf` de saída.
+2. **A operação que saiu do livro no mês** sai com `Inf` de saída; as lacunas dele estão em `saida-do-mes`.
 3. **Garantia de contrato carregado** só a partir da data-base que contém o dia da carga.
 4. **`Cli.IniRelactCli`** (decisão do Fred, 10/11): sai o menor entre o dia civil da criação do titular no
    CRM (America/Sao_Paulo) e o contrato mais antigo dele no Lender, em qualquer estado (liquidado,
