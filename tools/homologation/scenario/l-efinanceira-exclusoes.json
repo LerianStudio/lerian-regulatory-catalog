@@ -1,0 +1,24 @@
+{
+  "_about": "Org L — as duas exclusões da e-Financeira (evtExclusao e evtExclusaoeFinanceira), sobre a MESMA organização do cenário J (o mesmo nome, CNPJ alfanumérico EF9J2K7A000114 e endereço; o setup a acha pelo nome e não cria outra). As exclusões leem da organização só o CNPJ, conferido também pelos dígitos verificadores (checkDigit: cnpj, REGRA_VALIDA_CNPJ). O endereço é o do J para que um setup de um não mude a organização do outro. O único campo manual das exclusões é o ambiente (tpAmb), preenchido com 2 (produção restrita). Os recibos são sintéticos, do menor que o formato aceita (15 posições) ao maior (49): o Reporter confere só o formato; que existam e estejam ativos é a Receita.",
+  "organization": {
+    "legalName": "Declarante Completa e-Financeira S.A. (sintética, homologação)",
+    "doingBusinessAs": "Declarante Completa",
+    "legalDocument": "EF9J2K7A000114",
+    "address": {
+      "line1": "Av. Brasil, 1.500 sala 10.0",
+      "line2": "Torre Norte",
+      "zipCode": "13015-904",
+      "city": "Campinas",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "fills": {
+    "br.rfb.efinanceira-exclusao": {
+      "declarante.tpAmb": "2"
+    },
+    "br.rfb.efinanceira-exclusao-efinanceira": {
+      "declarante.tpAmb": "2"
+    }
+  }
+}

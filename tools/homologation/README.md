@@ -26,6 +26,7 @@ Três peças, e a separação entre elas é o que dá valor ao resultado:
 | `i-efinanceira-cadastro` | **Sintético, declarado como tal** | o evtCadDeclarante da e-Financeira (`br.rfb.efinanceira-cad-declarante`): só uma organização, criada com o endereço, sem ledger nem lançamento; o original aprovado e baixado, uma retificação com recibo, as recusas do pedido (recibo na original, retificação sem recibo, recibo fora do formato, segunda original) e as duas regras do contrato que recusam a geração (município de outra UF, residências sem `BR`) |
 | `j-efinanceira-completo` | **Sintético, declarado como tal** | o evtCadDeclarante com TODO opcional preenchido (GIIN, categoria, tpNome, tpEndereco), três tipos de entidade e duas residências, numa organização nova de CNPJ alfanumérico (`EF9J2K7A000114`) e `line1` com vírgula e pontos (`Av. Brasil, 1.500 sala 10.0`, escrito como veio); o original julgado e só então aprovado; uma retificação a pedido (3); uma retificação corrigida no rascunho (`municipio`) com o mesmo id antes e depois; e as recusas de pattern na geração (apóstrofo no nome, GIIN com a letra O, logradouro de 147), com o logradouro de 146 e a cidade de 40 gerando um `enderecoLivre` de 199 que o XSD aceita |
 | `k-efinanceira-sem-original` | **Sintético, declarado como tal** | o declarante cujo original foi enviado por outra ferramenta: a primeira geração no Reporter é uma retificação com recibo, aceita sem original (`filing.remittance.reference`), julgada e aprovada; depois dela, um original é recusado com `409 RPT-0203` |
+| `l-efinanceira-exclusoes` | **Sintético, declarado como tal** | as duas exclusões da e-Financeira (`br.rfb.efinanceira-exclusao` e `br.rfb.efinanceira-exclusao-efinanceira`) sobre a organização do cenário J: um evtExclusao e um evtExclusaoeFinanceira julgados elemento a elemento (este com o recibo de 49 posições, o maior do formato), um evtExclusao com o recibo de 15 posições, o menor, um recibo fora do formato recusado na geração em cada documento (`400 RPT-0140`), e o mesmo recibo gerado duas vezes — dois rascunhos aceitos, o anterior `supersededBy` o mais novo, porque sem remessa não há regra de original |
 
 Os cenários A a H tocam juntos as 30 linhas do conjunto do 4111 e os nove grupos do 4010. A
 contabilidade é fictícia: as rubricas fora do conjunto do 4111 têm nome plausível
@@ -48,12 +49,17 @@ python3 tools/homologation/homologate.py setup  $S
 python3 tools/homologation/homologate.py reports $S --bindings .
 ```
 
-O cenário I (e-Financeira) roda igual; o `setup` só cria a organização (ou põe nela
-o endereço do cenário) e o `reports` precisa de `--bindings` ou de uma assinatura que
-já exista (ver "e-Financeira" abaixo):
+Os cenários I a L (e-Financeira) rodam igual; o `setup` só cria a organização (ou
+põe nela o endereço do cenário) e o `reports` precisa de `--bindings` ou de uma
+assinatura que já exista (ver "e-Financeira" abaixo):
 
 ```bash
 S=tools/homologation/scenario/i-efinanceira-cadastro.json
+python3 tools/homologation/homologate.py setup   $S
+python3 tools/homologation/homologate.py reports $S --bindings .
+
+# As exclusões (evtExclusao e evtExclusaoeFinanceira), sobre a organização do J
+S=tools/homologation/scenario/l-efinanceira-exclusoes.json
 python3 tools/homologation/homologate.py setup   $S
 python3 tools/homologation/homologate.py reports $S --bindings .
 ```
@@ -119,7 +125,7 @@ O Midaz grava as operações de uma transação de forma **assíncrona**: a leit
 razão espera até todo lançamento que o `setup` registrou aparecer, e para dizendo
 quais faltam depois de 30s.
 
-## e-Financeira: o evtCadDeclarante (cenário I)
+## e-Financeira: o evtCadDeclarante e as exclusões (cenários I a L)
 
 O cadastro do declarante não tem período: não há `dataBase` nem `tipoRemessa`.
 Toda geração para a mesma instituição é a mesma entrega (`filing.period: []`), e o
@@ -199,12 +205,32 @@ execução, com ou sem `--bindings`, cada assinatura volta ao binding que tinha 
   opcionais não preenchidos), uma lista para os elementos naquela ordem e
   `{"unordered": [...]}` em qualquer ordem. Um elemento do arquivo que o gabarito
   não nomeia é "a mais";
-- o `id` pela forma (`ID` + 18 dígitos) e, ao longo da execução, crescente — nunca
-  pelo valor, que o motor tira a cada geração. A retificação é um evento novo, com
-  id maior que o do original.
+- o `id` pela forma (`ID` + 18 dígitos) e, ao longo da execução, maior que os
+  anteriores — nunca pelo valor, que o motor tira a cada geração. O número começa
+  pelo instante da geração, e as gerações da execução são uma depois da outra (com
+  mais de um worker, enquanto os relógios deles concordam). A retificação é um
+  evento novo, com id maior que o do original.
 
 O `enderecoLivre` é `line1/CEP/cidade/UF`: o `line2` não entra, e o CEP sai em oito
 dígitos, sem o traço com que o cenário o grava.
+
+**As exclusões (cenário L).** O evtExclusao e o evtExclusaoeFinanceira não
+declaram `filing.remittance`: não há `indRetificacao`, e cada recibo excluído é a
+sua entrega (`filing.period: [nrReciboEvento]`). Em `EVENT_DOCUMENTS` eles não têm
+`original`, então nenhuma entrada é tratada como original: nada é procurado
+aprovado para ser julgado no lugar, e toda execução gera de novo. O único parâmetro
+é o `nrReciboEvento`, no mesmo formato do `nrRecibo`; fora dele, a geração é
+recusada na hora. Uma entrada pode trazer `"supersedes": "<label>"`, o rótulo de
+uma entrada do MESMO documento, listada antes no gabarito, com a mesma entrega: o
+rascunho dela tem de continuar `Draft` e responder `supersededBy` com o relatório
+desta — dois rascunhos do mesmo recibo são aceitos, e enquanto os dois são
+rascunho o mais novo é o que vale. Os relatórios gerados são lembrados por
+documento e `label`: um `label` repetido no gabarito, ou um `supersedes` que nomeia
+uma entrada de outro documento ou não listada antes, para a execução antes de
+gerar. O julgamento é o mesmo do
+evtCadDeclarante, contra o XSD de cada um (`evtExclusao-v1_5_0.xsd`,
+`evtExclusaoeFinanceira-v1_5_0.xsd`) sem a assinatura, pelo caminho debaixo de
+`evtExclusao` ou `evtExclusaoeFinanceira`.
 
 **Autenticação.** O script não manda token. Com a autenticação do Reporter ligada,
 a aprovação exige o token de uma **pessoa** (`RPT-0201` para um token de aplicação);
