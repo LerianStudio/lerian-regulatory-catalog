@@ -1,0 +1,42 @@
+{
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/k-efinanceira-sem-original.json. O original deste declarante foi enviado por outra ferramenta: a primeira geração no Reporter é a retificação com o recibo dele. Opcionais não preenchidos saem ausentes (null). enderecoLivre = line1/CEP/cidade/UF, CEP sem o traço. A ordem importa: a retificação é aprovada antes de o original ser pedido.",
+  "documents": [
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "retificacao-sem-original",
+      "parameters": {"indRetificacao": "2", "nrRecibo": "1-01-001-2026-424242"},
+      "approve": true,
+      "_note": "Nenhum original deste CNPJ no Reporter. Com `filing.remittance.reference`, a retificação que nomeia o recibo é aceita (sem RPT-0198), gerada, julgada e só então aprovada. Numa execução seguinte gera-se e aprova-se outra retificação: retificações se repetem.",
+      "elements": {
+        "ideEvento/indRetificacao": "2",
+        "ideEvento/nrRecibo": "1-01-001-2026-424242",
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "K5EFNC9R000142",
+        "infoCadastro/inDeclaranteCRS": "2",
+        "infoCadastro/inDeclaranteFATCA": "3",
+        "infoCadastro/tpEntidade": "1",
+        "infoCadastro/GIIN": null,
+        "infoCadastro/CategoriaDeclarante": null,
+        "infoCadastro/NIF": null,
+        "infoCadastro/nome": "Declarante Sem Original e-Financeira S.A. (sintética, homologação)",
+        "infoCadastro/tpNome": null,
+        "infoCadastro/enderecoLivre": "Rua XV de Novembro 200 6o andar/80020310/Curitiba/PR",
+        "infoCadastro/tpEndereco": null,
+        "infoCadastro/municipio": "4106902",
+        "infoCadastro/UF": "PR",
+        "infoCadastro/CEP": "80020310",
+        "infoCadastro/Pais": "BR",
+        "infoCadastro/paisResid/Pais": "BR"
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-cad-declarante",
+      "label": "original-depois-da-retificacao",
+      "parameters": {"indRetificacao": "1"},
+      "refused": {"status": 409, "code": "RPT-0203"},
+      "_note": "A retificação aprovada acima mostra que o original já foi entregue (por outra ferramenta): um original agora é recusado na hora (refuseOriginalAfterReplacement), não o RPT-0197 — não há original aprovado no Reporter."
+    }
+  ]
+}

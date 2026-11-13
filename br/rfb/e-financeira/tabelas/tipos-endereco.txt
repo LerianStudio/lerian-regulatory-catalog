@@ -1,0 +1,6 @@
+versão=1 COD_TIPO, NOM_TIPO, DT_INI, DT_FIM
+OECD301|Residencial ou Comercial|01012018|
+OECD302|Residencial|01012018|
+OECD303|Comercial|01012018|
+OECD304|Endereço Oficial|01012018|
+OECD305|Não especificado|01012018|

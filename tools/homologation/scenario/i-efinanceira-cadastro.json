@@ -1,0 +1,27 @@
+{
+  "_about": "Org I — declarante da e-Financeira, sintética e declarada como tal. Só a organização, registrada no Midaz COM o endereço: o evtCadDeclarante lê dela o CNPJ (legalDocument, 12034056000146, DV válido), a razão social (legalName) e o endereço (address). Nenhum ledger, conta ou lançamento — o documento não lê movimentação. O line2 existe de propósito: o enderecoLivre não o inclui (o binding diz para pôr o complemento no line1). O CEP vem com traço, e o contrato o normaliza para oito dígitos. A UF é a sigla de duas letras, e o município (3550308, São Paulo) é da UF do endereço. Os `fills` são o que o cliente preenche UMA vez no mapeamento, no lugar dos campos `manual` que o Midaz não guarda: escritos no binding.example.yaml (value para um campo, values para uma lista) antes de ele ir para a assinatura. GIIN, tpNome e tpEndereco ficam pendentes (opcionais): o arquivo sai sem eles. O conjunto nifs fica como a referência o declara, vazio.",
+  "organization": {
+    "legalName": "Declarante e-Financeira S.A. (sintética, homologação)",
+    "doingBusinessAs": "Declarante e-Financeira",
+    "legalDocument": "12034056000146",
+    "address": {
+      "line1": "Av. Paulista 1578 conj 41",
+      "line2": "Bloco B",
+      "zipCode": "01310-200",
+      "city": "São Paulo",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "fills": {
+    "br.rfb.efinanceira-cad-declarante": {
+      "declarante.tpAmb": "2",
+      "declarante.inDeclaranteCRS": "1",
+      "declarante.inDeclaranteFATCA": "1",
+      "declarante.municipio": "3550308",
+      "declarante.categoriaDeclarante": "FATCA602",
+      "tiposEntidade.tpEntidade": ["6", "1"],
+      "residenciasFiscais.pais": ["BR"]
+    }
+  }
+}

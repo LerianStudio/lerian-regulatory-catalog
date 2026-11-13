@@ -16,13 +16,17 @@ Idempotente: cada recurso é procurado (por nome, alias, keyValue ou título) an
 de ser criado, e cada lançamento leva X-Idempotency e fica registrado no arquivo
 de estado, então rodar de novo não duplica nada.
 
-Só biblioteca padrão, Python 3.9+.
+Um cenário sem ledger é só de organização (o cadastro do declarante da
+e-Financeira lê dela CNPJ, nome e endereço): o setup a cria com o endereço.
+
+Só biblioteca padrão, Python 3.9+, e xmllint para o XSD.
 
     python3 tools/homologation/homologate.py setup  tools/homologation/scenario/a-pagare-ip.json
     python3 tools/homologation/homologate.py ledger tools/homologation/scenario/a-pagare-ip.json
 """
 
 import argparse
+import atexit
 import calendar
 import datetime
 import json
@@ -635,9 +639,17 @@ def restore_subscription(rep, document_id, current, replacement=None):
     return True
 
 
+def document_dir(document):
+    """Where a document lives in a catalog checkout: br.rfb.efinanceira-cad-declarante
+    is br/rfb/efinanceira-cad-declarante; a bare CADOC number (4010) is br/bcb/cadoc-4010."""
+    if "." not in document:
+        document = "br.bcb.cadoc-" + document
+    return os.path.join(*document.split(".", 2))
+
+
 def contract_version(root, number):
-    """The version a catalog checkout declares for a document's contract."""
-    with open(os.path.join(root, "br/bcb/cadoc-%s/contract.yaml" % number)) as fh:
+    """The version a catalog checkout declares for a document's contract (a CADOC number or a document id)."""
+    with open(os.path.join(root, document_dir(number), "contract.yaml")) as fh:
         # metadata.version, quoted or not: `version: "1.0.0"` is the same 1.0.0.
         found = re.search(r"""^  version:\s*["']?([^"'\s#]+)["']?""", fh.read(), re.M)
     return found.group(1) if found else None
@@ -700,12 +712,32 @@ def worker_log_since(started):
     return done.stdout + done.stderr if done.returncode == 0 else None
 
 
-def expect_error(number, doc, status, report, started):
-    """A generation the worker must refuse, for the reason the gabarito names."""
+def recorded_refusal(rep, report):
+    """The refusal the Reporter recorded on an errored report (code and message), or ''.
+
+    A refusal the engine wrote — a rule of the contract, a read that answered
+    nothing — is kept in the report's metadata (error_code, error); a technical
+    failure keeps only a generic line there, and the worker's log is where to look.
+    """
+    if rep is None:
+        return ""
+    _, got = rep.get("/v1/reports/" + report)
+    metadata = (got or {}).get("metadata") or {}
+    return " ".join(str(metadata.get(k) or "") for k in ("error_code", "error"))
+
+
+def expect_error(number, doc, status, report, started, rep=None):
+    """A generation the worker must refuse, for the reason the gabarito names.
+
+    The reason is looked for first in what the Reporter recorded on the report,
+    then in the worker's log.
+    """
     wanted = doc.get("errorContains") or []
     problem = None
     if status != "Error":
         problem = "terminou em %s" % status
+    elif wanted and all(w in recorded_refusal(rep, report) for w in wanted):
+        problem = None
     elif wanted:
         logged = worker_log_since(started)
         if logged is None:
@@ -722,20 +754,30 @@ def expect_error(number, doc, status, report, started):
                         if all(w in line for w in wanted) and any(t in line for t in traces)]
             if not refusals:
                 problem = "terminou em Error, mas não pelo motivo esperado (%s)" % " + ".join(wanted)
-    print("%-6s %-4s %-10s erro esperado: %s, report %s" % ("OK" if not problem else "FALHOU", number, doc["dataBase"],
+    print("%-6s %-4s %-10s erro esperado: %s, report %s" % ("OK" if not problem else "FALHOU", number,
+                                                           doc.get("dataBase") or doc.get("label", ""),
                                                            problem or "Error, " + " + ".join(wanted), report))
     return 0 if not problem else 1
 
 
-def generate(rep, subscription, data_base, kind="I"):
-    _, created = rep.call("POST", "/v1/regulatory/reports", {
-        "subscriptionId": subscription, "parameters": {"dataBase": data_base, "tipoRemessa": kind}})
+def request_report(rep, subscription, parameters):
+    """Asks the Reporter for a generation with these parameters and waits for it to leave Processing.
+
+    Answers the report id and the report as last read (Processing after the wait
+    is a timeout).
+    """
+    _, created = rep.call("POST", "/v1/regulatory/reports", {"subscriptionId": subscription, "parameters": parameters})
     report = created["report"]["id"]
     for _ in range(60):
         _, got = rep.get("/v1/reports/" + report)
         if got.get("status") != "Processing":
             break
         time.sleep(2)
+    return report, got
+
+
+def generate(rep, subscription, data_base, kind="I"):
+    report, got = request_report(rep, subscription, {"dataBase": data_base, "tipoRemessa": kind})
     status = got.get("status")
     if status in ("Error", "Partial", "Processing"):
         # Processing after the wait is a timeout: downloading would judge an
@@ -834,6 +876,10 @@ def run_reports(lg, args):
     with open(args.expected) as fh:
         expected = json.load(fh)
     for doc in expected["documents"]:
+        if "dataBase" not in doc:
+            # A document with no period (an e-Financeira event) is generated by its
+            # parameters alone, and has no date to fill in.
+            continue
         for token, value in (getattr(args, "dates", None) or {}).items():
             doc["dataBase"] = doc["dataBase"].replace(token, value)
         if "{" in doc["dataBase"]:
@@ -844,8 +890,15 @@ def run_reports(lg, args):
     print("\ninstituição  %s" % institution)
     failures = 0
     generated = {}
+    events = {"subscriptions": {}, "ids": [], "bases": {}}
+    # The bindings an entry replaced go back when the run ends, however it ends
+    # (fail() exits): the next run starts from the binding this one found.
+    atexit.register(restore_bindings, rep, events["bases"])
 
     for doc in expected["documents"]:
+        if doc.get("documentId") in EVENT_DOCUMENTS:
+            failures += run_event(rep, lg, args, doc, institution, events)
+            continue
         number = doc["document"]
         subscription = ensure_subscription(rep, "br.bcb.cadoc-" + number, institution,
                                            contract_version(args.bindings, number) if args.bindings else None)
@@ -880,8 +933,9 @@ def run_reports(lg, args):
         if doc.get("errored"):
             # Refused by the worker: the read answered nothing the document can be
             # filed from. An Error alone proves nothing — any failure ends there —
-            # so the refusal the gabarito names has to be in the worker's log.
-            failures += expect_error(number, doc, status, report, started)
+            # so the refusal the gabarito names has to be in the report's recorded
+            # refusal or, failing that, in the worker's log.
+            failures += expect_error(number, doc, status, report, started, rep)
             continue
         if artifact is None:
             problems = ["a geração terminou em %s" % status]
@@ -907,6 +961,499 @@ def run_reports(lg, args):
     failures += cross_check(generated)
 
     return failures
+
+
+# ---------------------------------------------------------------------------
+# Eventos da e-Financeira: sem período, gerados por parâmetros.
+#
+# O evtCadDeclarante não tem data-base nem tipoRemessa: cada geração é a mesma
+# entrega da instituição (`filing.period: []`), original (`indRetificacao` 1) ou
+# retificação (2 ou 3, com o `nrRecibo` do evento retificado). O gabarito traz,
+# por entrada, os parâmetros da geração e o valor esperado de cada elemento.
+# ---------------------------------------------------------------------------
+
+EVENT_DOCUMENTS = {
+    "br.rfb.efinanceira-cad-declarante": {
+        "schema": "schema/evtCadDeclarante-v1_5_0.xsd",
+        "namespace": "http://www.eFinanceira.gov.br/schemas/evtCadDeclarante/v1_5_0",
+        "event": "evtCadDeclarante",
+        # O parâmetro da remessa e o valor do original (filing.remittance do contrato).
+        "original": ("indRetificacao", "1"),
+    },
+}
+
+# O id do evento: "ID" + os 18 dígitos que o motor gera. Conferido pela forma e,
+# ao longo da execução, crescente — nunca pelo valor, que muda a cada geração.
+EVENT_ID = re.compile(r"^ID[0-9]{18}$")
+
+# A assinatura no XSD oficial: o import do XMLDSig e a referência ao elemento.
+# O Reporter entrega o evento sem assinatura (assinar é da borda que transmite),
+# então o arquivo é validado contra uma cópia do XSD oficial sem as duas.
+SIGNATURE_IMPORT = re.compile(r'[ \t]*<xs:import\s+namespace="http://www\.w3\.org/2000/09/xmldsig#"[^>]*/>\r?\n?')
+SIGNATURE_ELEMENT = re.compile(r'[ \t]*<xs:element\s+ref="ds:Signature"\s*/>\r?\n?')
+
+_RELAXED = {}
+
+
+def relaxed_schema(official):
+    """A copy of the official XSD without the signature, derived now.
+
+    The shipped file never changes: the copy is written to a temporary directory
+    on every run, so it cannot drift from the official one. Removed are the
+    import of the XMLDSig schema and the `ds:Signature` element — each exactly
+    once; an official file of another shape stops the run instead of being
+    half-derived.
+    """
+    if official in _RELAXED:
+        return _RELAXED[official]
+    with open(official, encoding="utf-8-sig") as fh:
+        text = fh.read()
+    for name, pattern in (("o import do xmldsig", SIGNATURE_IMPORT), ("o elemento ds:Signature", SIGNATURE_ELEMENT)):
+        found = len(pattern.findall(text))
+        if found != 1:
+            fail("%s: esperava %s uma vez no XSD oficial e achei %d; o XSD mudou de forma" % (official, name, found))
+        text = pattern.sub("", text)
+    folder = tempfile.mkdtemp(prefix="xsd-sem-assinatura-")
+    atexit.register(shutil.rmtree, folder, True)
+    derived = os.path.join(folder, os.path.basename(official))
+    with open(derived, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    _RELAXED[official] = derived
+    return derived
+
+
+def xsd_problems(schema, artifact, who):
+    """What xmllint says against a schema, as a list with at most one sentence."""
+    if not shutil.which("xmllint"):
+        return ["xmllint não está instalado: o arquivo não foi conferido contra o XSD"]
+    with tempfile.NamedTemporaryFile(suffix=".xml") as fh:
+        fh.write(artifact)
+        fh.flush()
+        run = subprocess.run(["xmllint", "--noout", "--schema", schema, fh.name], capture_output=True, text=True)
+    if run.returncode == 0:
+        return []
+    said = [line for line in (run.stderr or run.stdout).strip().splitlines() if "fails to validate" not in line]
+    return ["%s recusa: %s" % (who, said[0] if said else "xmllint saiu com %d" % run.returncode)]
+
+
+def leaf_paths(element, ns, prefix=""):
+    """Every leaf element under `element`, as (path without namespace, text), in document order."""
+    out = []
+    for child in element:
+        tag = child.tag[len(ns) + 2:] if child.tag.startswith("{%s}" % ns) else child.tag
+        path = prefix + tag
+        if len(child):
+            out.extend(leaf_paths(child, ns, path + "/"))
+        else:
+            out.append((path, child.text or ""))
+    return out
+
+
+def judge_event(document_id, artifact, expected, catalog_root, previous_ids):
+    """Every problem with one generated e-Financeira event, as a list of sentences.
+
+    `expected["elements"]` maps each path under the event element (the
+    namespace left out, "infoCadastro/paisResid/Pais") to what the file carries:
+    a string for exactly one element with that text; null for no element at all
+    (an optional element the generation must leave out); a list for every
+    element of the path, in that order; {"unordered": [...]} for the same
+    elements in any order. Every leaf of the file must be covered by a path of
+    the gabarito (itself or an ancestor): nothing extra goes unjudged.
+
+    `previous_ids` are the event numbers judged before in this run: the id must
+    be ID + 18 digits and greater than all of them. Answers the problems and the
+    event number (None when the id could not be read).
+    """
+    spec = EVENT_DOCUMENTS[document_id]
+    ns = spec["namespace"]
+    problems = []
+
+    if not artifact.startswith(b"<?xml"):
+        problems.append("o arquivo não começa pela declaração XML no primeiro byte")
+    try:
+        root = ET.fromstring(artifact)
+    except ET.ParseError as err:
+        return problems + ["não é XML bem formado: %s" % err], None
+
+    official = os.path.join(catalog_root, document_dir(document_id), spec["schema"])
+    problems += xsd_problems(relaxed_schema(official), artifact, "o XSD oficial (sem a assinatura)")
+
+    if root.tag != "{%s}eFinanceira" % ns:
+        return problems + ["a raiz é %s, esperado {%s}eFinanceira" % (root.tag, ns)], None
+    events = root.findall("{%s}%s" % (ns, spec["event"]))
+    if len(events) != 1:
+        return problems + ["esperava um %s dentro de eFinanceira, há %d" % (spec["event"], len(events))], None
+    event = events[0]
+
+    number = None
+    event_id = event.get("id") or ""
+    if not EVENT_ID.match(event_id):
+        problems.append("id=%r não tem a forma ID + 18 dígitos" % event_id)
+    else:
+        number = int(event_id[2:])
+        if previous_ids and number <= max(previous_ids):
+            problems.append("id %s não é maior que o do evento julgado antes nesta execução (ID%018d)"
+                            % (event_id, max(previous_ids)))
+
+    leaves = leaf_paths(event, ns)
+    got = {}
+    for path, text in leaves:
+        got.setdefault(path, []).append(text)
+    present = {path for path, _ in leaves}
+    # A path the gabarito names covers it and everything under it.
+    for path in sorted(present):
+        parts = path.split("/")
+        if not any("/".join(parts[:n]) in expected["elements"] for n in range(1, len(parts) + 1)):
+            problems.append("elemento a mais %s = %s" % (path, got[path]))
+
+    for path, want in sorted(expected["elements"].items()):
+        under = [p for p in present if p == path or p.startswith(path + "/")]
+        values = got.get(path, [])
+        if want is None:
+            if under:
+                problems.append("%s deveria estar ausente, e o arquivo traz %s" % (path, ", ".join(sorted(under))))
+        elif isinstance(want, str):
+            if values != [want]:
+                problems.append("%s: gerado %s, esperado %r" % (path, values or "ausente", want))
+        elif isinstance(want, list):
+            if values != want:
+                problems.append("%s: gerado %s, esperado %s nesta ordem" % (path, values or "ausente", want))
+        elif isinstance(want, dict) and "unordered" in want:
+            if sorted(values) != sorted(want["unordered"]):
+                problems.append("%s: gerado %s, esperado %s em qualquer ordem" % (path, values or "ausente",
+                                                                               want["unordered"]))
+        else:
+            problems.append("o gabarito de %s não é texto, null, lista nem {\"unordered\": [...]}" % path)
+
+    return problems, number
+
+
+BINDING_KEY = re.compile(r"^(\s*)([A-Za-z_][A-Za-z0-9_]*):\s*(#.*)?$")
+
+
+def fill_binding(text, fills):
+    """The binding with the client's fills written into its manual fields.
+
+    `fills` maps "dataset.field" to a value (a scalar field: `value:`) or to a
+    list (a list the client fills: `values: [...]`). Only a field the binding
+    declares `from: manual` is filled — the way a client fills it once in the
+    mapping, which keeps its pendingReason and its origin. A fill for a field the
+    binding does not have, or that is not manual, stops the run: a scenario that
+    fills nothing would judge the reference's pending draft as if it were filled.
+    The YAML is edited line by line (standard library only), on the layout of the
+    reference binding: datasets at two spaces, fields at six, keys at eight.
+    """
+    lines = text.splitlines()
+    for key, value in sorted(fills.items()):
+        dataset, _, field = key.partition(".")
+        span = yaml_block(lines, [(0, "datasets"), (2, dataset), (4, "fields"), (6, field)])
+        if span is None:
+            fail("o binding não declara o campo %s em datasets, e o cenário o preenche" % key)
+        start, end = span
+        body = lines[start + 1:end]
+        if not any(re.match(r"^\s{8}from:\s*manual\s*(#.*)?$", line) for line in body):
+            fail("o campo %s do binding não é `from: manual`; o cenário só preenche campos manuais" % key)
+        kept, skipping = [], False
+        for line in body:
+            if re.match(r"^\s{8}values?:", line):
+                # A block-style list continues on deeper lines: they go with it.
+                skipping = True
+                continue
+            # Os itens de uma lista em bloco ficam mais fundo, ou no mesmo recuo
+            # começando por "- " (forma compacta, válida em YAML).
+            if skipping and (not line.strip() or len(line) - len(line.lstrip()) > 8
+                             or re.match(r"^\s{8}- ", line)):
+                continue
+            skipping = False
+            kept.append(line)
+        if isinstance(value, list):
+            written = "        values: [%s]" % ", ".join(json.dumps(str(v), ensure_ascii=False) for v in value)
+        else:
+            written = "        value: %s" % json.dumps(str(value), ensure_ascii=False)
+        at = next(i for i, line in enumerate(kept) if re.match(r"^\s{8}from:", line))
+        kept.insert(at + 1, written)
+        lines[start + 1:end] = kept
+    return "\n".join(lines) + "\n"
+
+
+def yaml_block(lines, steps):
+    """The (header, end) line indexes of a nested YAML mapping key, or None.
+
+    `steps` are (indent, key) from the outermost: each key is looked for inside
+    the block of the one before it. A block ends at the next line, not blank nor
+    a comment, indented at or left of its key.
+    """
+    start, end = -1, len(lines)
+    for indent, key in steps:
+        found = None
+        for i in range(start + 1, end):
+            m = BINDING_KEY.match(lines[i])
+            if m and len(m.group(1)) == indent and m.group(2) == key:
+                found = i
+                break
+        if found is None:
+            return None
+        start = found
+        for i in range(found + 1, end):
+            line = lines[i]
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            if len(line) - len(line.lstrip()) <= indent:
+                end = i
+                break
+    # Trailing blank and comment lines belong to what follows, not to the block.
+    while end - 1 > start and (not lines[end - 1].strip() or lines[end - 1].lstrip().startswith("#")):
+        end -= 1
+    return start, end
+
+
+def replace_binding_fields(text, fields):
+    """The binding with whole field mappings replaced, for one gabarito entry.
+
+    `fields` maps "dataset.field" to the mapping that takes the field's place
+    (`{"from": "constant", "value": "..."}`): every key the binding had under the
+    field goes, these are written in their place. It is how an entry proves a
+    pattern of the contract on a field the Midaz fills (the name, the address)
+    without registering another organization: the value comes from the binding
+    as a constant. A field the binding does not declare stops the run.
+    """
+    lines = text.splitlines()
+    for key, mapping in sorted(fields.items()):
+        dataset, _, field = key.partition(".")
+        span = yaml_block(lines, [(0, "datasets"), (2, dataset), (4, "fields"), (6, field)])
+        if span is None:
+            fail("o binding não declara o campo %s em datasets, e a entrada o substitui" % key)
+        if not isinstance(mapping, dict) or "from" not in mapping:
+            fail("a substituição de %s não é um mapeamento com `from`" % key)
+        start, end = span
+        written = []
+        for k, v in mapping.items():
+            if isinstance(v, list):
+                written.append("        %s: [%s]" % (k, ", ".join(json.dumps(str(i), ensure_ascii=False) for i in v)))
+            else:
+                written.append("        %s: %s" % (k, json.dumps(str(v), ensure_ascii=False)))
+        lines[start + 1:end] = written
+    return "\n".join(lines) + "\n"
+
+
+def apply_filled_binding(rep, subscription, base_path, fills, replaced=None, bases=None):
+    """Puts the binding with the scenario's fills on the subscription, when it differs.
+
+    `bases` (subscription -> binding text) keeps the binding the subscription had
+    when the run first touched it, with or without `--bindings`: restore_bindings
+    puts it back at exit, so a run leaves no entry's replacement behind. The base
+    is the checkout's binding.example.yaml (`--bindings`) or, without it, that
+    first-read binding, so an entry's replacement never becomes the base of the
+    entries after it. `replaced` (an entry's `binding`) swaps whole field
+    mappings after the fills.
+    """
+    if bases is not None and subscription not in bases:
+        _, _, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
+        bases[subscription] = current.decode("utf-8")
+    if base_path:
+        with open(base_path, encoding="utf-8") as fh:
+            base = fh.read()
+    elif bases is not None:
+        base = bases[subscription]
+    else:
+        _, _, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
+        base = current.decode("utf-8")
+    wanted = fill_binding(base, fills)
+    if replaced:
+        wanted = replace_binding_fields(wanted, replaced)
+    return put_binding(rep, subscription, wanted)
+
+
+def put_binding(rep, subscription, text):
+    """Puts `text` as the subscription's binding, when it differs from the current one."""
+    wanted = text.encode("utf-8")
+    _, headers, current = rep.raw("GET", "/v1/regulatory/subscriptions/%s/binding" % subscription)
+    if current == wanted:
+        return "inalterado"
+    etag = {k.lower(): v for k, v in headers.items()}.get("etag", "")
+    rep.raw("PUT", "/v1/regulatory/subscriptions/%s/binding" % subscription, wanted,
+            {"Content-Type": "application/yaml", "If-Match": etag})
+    return "preenchido"
+
+
+def restore_bindings(rep, bases):
+    """Puts back on each subscription the binding the run found on it (`bases`)."""
+    for subscription, text in sorted(bases.items()):
+        try:
+            how = put_binding(rep, subscription, text)
+        except (Exception, SystemExit) as err:  # noqa: BLE001 - rep.raw fail()s; at exit, report and carry on
+            print("AVISO: o binding da assinatura %s não voltou ao original: %s" % (subscription, err),
+                  file=sys.stderr)
+            continue
+        if how != "inalterado":
+            print("binding da assinatura %s restaurado" % subscription)
+
+
+def approved_event_original(rep, document_id, cnpj):
+    """The approved original of the declarant's filing, from any subscription, or None.
+
+    The Reporter holds one original per declarant (document and the institution's
+    CNPJ), whichever subscription approved it: a subscription replaced by a run
+    on another version still has the original an earlier run approved.
+    """
+    def plain(value):
+        return re.sub(r"[^0-9A-Za-z]", "", value or "").upper()
+
+    for r in rep.items("/v1/reports?regulatory=true&document_id=%s" % urllib.parse.quote(document_id)):
+        if (r.get("status") == "Final" and r.get("remittance") == "original"
+                and plain((r.get("institution") or {}).get("cnpj")) == plain(cnpj)):
+            return r
+    return None
+
+
+def expect_generation_refusal(rep, subscription, doc):
+    """A generation the Reporter must refuse while the caller waits, as the gabarito says.
+
+    `refused` carries the HTTP status and the code (400 RPT-0140 by default) and,
+    optionally, `detailContains`: what the refusal has to say.
+    """
+    refusal = doc["refused"] if isinstance(doc["refused"], dict) else {}
+    want_status, want_code = refusal.get("status", 400), refusal.get("code", "RPT-0140")
+    status, answer = rep.call("POST", "/v1/regulatory/reports",
+                              {"subscriptionId": subscription, "parameters": doc["parameters"]},
+                              ok=(200, 201, 400, 409, 422))
+    answer = answer if isinstance(answer, dict) else {}
+    detail = answer.get("detail", "") or answer.get("message", "")
+    wanted = refusal.get("detailContains") or []
+    ok = status == want_status and answer.get("code") == want_code and all(w in detail for w in wanted)
+    if ok:
+        said = "%d %s %s" % (status, want_code, detail[:150])
+    elif status in (200, 201):
+        said = "foi aceita (report %s), esperado %d %s" % (((answer.get("report") or {}).get("id")), want_status, want_code)
+    else:
+        said = "respondeu %d %s, esperado %d %s%s: %s" % (status, answer.get("code"), want_status, want_code,
+                                                          (" dizendo " + " + ".join(wanted)) if wanted else "",
+                                                          detail[:150])
+    print("%-6s %-22s %-28s recusa esperada: %s" % ("OK" if ok else "FALHOU", "evtCadDeclarante", doc["label"], said))
+    return 0 if ok else 1
+
+
+def correct_event(rep, report, document_id, doc, args, number, cnpj, name, label):
+    """Corrects a judged draft and judges the file it becomes. Answers the problems.
+
+    `correct` carries the `overrides` sent to POST /v1/regulatory/reports/{id}/overrides
+    (with If-Match on the draft version read) and the `elements` of the corrected
+    file, written by hand like any other. A correction re-renders the SAME frozen
+    rows, so the event id must not move: the corrected file carries the number the
+    generation drew (and the report's generatedIds still name it).
+    """
+    spec = doc["correct"]
+    _, got = rep.get("/v1/reports/" + report)
+    before = got.get("draftVersion")
+    status, answer = rep.call("POST", "/v1/regulatory/reports/%s/overrides" % report,
+                              {"overrides": spec["overrides"]},
+                              headers={"If-Match": '"%s"' % before}, ok=(200, 400, 409, 422))
+    if status != 200:
+        return ["a correção respondeu %d %s" % (status, json.dumps(answer, ensure_ascii=False)[:300])]
+    _, got = rep.get("/v1/reports/" + report)
+    problems = []
+    if got.get("status") != "Draft":
+        problems.append("corrigido, o relatório ficou em %s" % got.get("status"))
+    if str(got.get("draftVersion")) == str(before):
+        problems.append("a correção não mudou a versão do rascunho (%s)" % before)
+    _, _, artifact = rep.raw("GET", "/v1/reports/%s/download" % report)
+    with open(os.path.join(args.out, "%s-%s-%s-corrigido.xml" % (cnpj, name, label)), "wb") as fh:
+        fh.write(artifact)
+    judged, after = judge_event(document_id, artifact, spec, args.catalog, None)
+    problems += ["corrigido: " + p for p in judged]
+    if after != number:
+        problems.append("a correção mudou o id do evento: ID%018d antes, %s depois"
+                        % (number, "ID%018d" % after if after is not None else "ilegível"))
+    drawn = [g.get("value") for g in (got.get("generatedIds") or []) if g.get("field", "").endswith(".eventId")]
+    if number is not None and drawn != ["%018d" % number]:
+        problems.append("generatedIds do relatório %s não é o id do arquivo ID%018d" % (drawn, number))
+    print("         corrigido: rascunho %s -> %s, id antes ID%s, depois ID%s" % (
+        before, got.get("draftVersion"), "%018d" % number if number is not None else "?",
+        "%018d" % after if after is not None else "?"))
+    return problems
+
+
+def run_event(rep, lg, args, doc, institution, run):
+    """One gabarito entry of an e-Financeira event: generated, refused or errored, and judged.
+
+    The binding the subscription carries is the reference's with the scenario's
+    fills (`fills` of the scenario, for this document) and the entry's own on top
+    — a rule of the contract is proved by a fill that breaks it.
+    """
+    document_id = doc["documentId"]
+    label = doc["label"]
+    name = EVENT_DOCUMENTS[document_id]["event"]
+    cnpj = lg.sc["organization"]["legalDocument"]
+
+    subscription = run["subscriptions"].get(document_id)
+    if subscription is None:
+        subscription = ensure_subscription(rep, document_id, institution,
+                                           contract_version(args.bindings, document_id) if args.bindings else None)
+        run["subscriptions"][document_id] = subscription
+
+    fills = dict((lg.sc.get("fills") or {}).get(document_id) or {})
+    fills.update(doc.get("fills") or {})
+    base = os.path.join(args.bindings, document_dir(document_id), "binding.example.yaml") if args.bindings else None
+    how = apply_filled_binding(rep, subscription, base, fills, doc.get("binding"),
+                               run.setdefault("bases", {}))
+
+    if doc.get("refused"):
+        return expect_generation_refusal(rep, subscription, doc)
+
+    started = datetime.datetime.now(datetime.timezone.utc)
+    # UM ORIGINAL POR DECLARANTE: aprovado, não se gera outro (RPT-0197). Numa
+    # execução seguinte, o original que uma anterior aprovou é o que se julga. Só
+    # o original: uma retificação aprovada se gera de novo a cada execução.
+    parameter, original = EVENT_DOCUMENTS[document_id]["original"]
+    is_original = doc["parameters"].get(parameter) == original
+    final = approved_event_original(rep, document_id, cnpj) if doc.get("approve") and is_original else None
+    if final:
+        report, got = final["id"], final
+    else:
+        report, got = request_report(rep, subscription, doc["parameters"])
+    status = got.get("status")
+
+    if doc.get("errored"):
+        return expect_error(name, doc, status, report, started, rep)
+
+    problems, artifact = [], None
+    if status not in ("Draft", "Final"):
+        problems.append("a geração terminou em %s" % status)
+    if status == "Draft":
+        # A Draft with a required gap cannot be approved nor downloaded: the
+        # scenario's fills did not reach the binding.
+        _, got = rep.get("/v1/reports/" + report)
+        gaps = [g.get("field") for g in (got.get("openGaps") or []) if g.get("required")]
+        if gaps:
+            problems.append("o rascunho tem pendência obrigatória: %s" % ", ".join(gaps))
+    if not problems:
+        # Julga o arquivo ANTES de aprovar, como nos CADOCs: o Reporter guarda uma
+        # original por declarante, e uma original errada aprovada ficaria Final para
+        # sempre naquele CNPJ — toda execução seguinte julgaria aquele arquivo.
+        _, _, artifact = rep.raw("GET", "/v1/reports/%s/download" % report)
+        judged, number = judge_event(document_id, artifact, doc, args.catalog, run["ids"])
+        problems += judged
+        if number is not None:
+            run["ids"].append(number)
+        out = os.path.join(args.out, "%s-%s-%s.xml" % (cnpj, name, label))
+        with open(out, "wb") as fh:
+            fh.write(artifact)
+        if not problems and doc.get("correct"):
+            if status != "Draft":
+                problems.append("a correção pede um rascunho, e o relatório está em %s" % status)
+            else:
+                problems += correct_event(rep, report, document_id, doc, args, number, cnpj, name, label)
+        if not problems and status == "Draft" and doc.get("approve"):
+            status = approve(rep, report)
+            if status != "Final":
+                problems.append("aprovado, o relatório ficou em %s" % status)
+
+    failures = bool(problems)
+    print("%-6s %-22s %-28s binding %-10s %-6s report %s" % ("OK" if not problems else "FALHOU", name, label,
+                                                             how, status, report))
+    for p in problems:
+        print("         - " + p)
+    return int(failures)
 
 
 def cosif_prefix(code):
@@ -1273,6 +1820,10 @@ def main():
         run_books(args, scenario, state)
         return
 
+    if "ledger" not in scenario:
+        run_organization(args, scenario)
+        return
+
     lg = Ledger(Midaz(args.midaz), scenario, state)
     # Only setup builds. reports and ledger read what setup built, and finding
     # nothing is a refusal: creating an empty organization there judged a file
@@ -1312,6 +1863,49 @@ def main():
         sys.exit(1 if run_reports(lg, args) else 0)
 
     report_ledger(lg)
+
+
+def read_organization(midaz, org_id, attempts=15):
+    """A organização, relida até aparecer: o Midaz lê de uma réplica, e logo depois
+    de criar (ou de mudar o endereço) a leitura ainda responde 404 por alguns
+    segundos. Desiste dizendo isso depois de `attempts` segundos."""
+    for _ in range(attempts):
+        status, body = midaz.call("GET", "/v1/organizations/" + org_id, ok=(200, 404))
+        if status == 200:
+            return body
+        time.sleep(1)
+    fail("a organização %s não apareceu na leitura do Midaz em %ds" % (org_id, attempts))
+
+
+def run_organization(args, scenario):
+    """A scenario of an organization alone: no ledger, no account, no entry.
+
+    A document that reads only the organization (the e-Financeira declarant
+    registration: CNPJ, name, address) needs nothing else from Midaz. setup creates
+    the organization with its address, or puts the scenario's address on the one
+    found by name; reports and ledger only read it. There is no state to keep.
+    """
+    lg = Ledger(Midaz(args.midaz), scenario, {})
+    lg.ensure_organization(create=args.command == "setup")
+    found = read_organization(lg.midaz, lg.org)
+    wanted = scenario["organization"].get("address") or {}
+    current = (found or {}).get("address") or {}
+    differs = {k: v for k, v in wanted.items() if current.get(k) != v}
+    if differs and args.command == "setup":
+        lg.midaz.call("PATCH", "/v1/organizations/" + lg.org, {"address": wanted})
+        found = read_organization(lg.midaz, lg.org)
+        current = (found or {}).get("address") or {}
+        differs = {k: v for k, v in wanted.items() if current.get(k) != v}
+    if differs:
+        fail("o endereço da organização no Midaz difere do cenário em %s (Midaz: %s)%s"
+             % (", ".join(sorted(differs)), json.dumps({k: current.get(k) for k in differs}, ensure_ascii=False),
+                "" if args.command == "setup" else "; rode setup antes"))
+    print("endereço     %s" % json.dumps(current, ensure_ascii=False))
+    print("CNPJ         %s" % (found or {}).get("legalDocument"))
+    if args.command == "reports":
+        args.expected = args.expected or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(args.scenario))),
+                                                      "expected", os.path.basename(args.scenario))
+        sys.exit(1 if run_reports(lg, args) else 0)
 
 
 def run_books(args, scenario, state):
