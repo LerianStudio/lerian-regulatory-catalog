@@ -1,0 +1,493 @@
+# Contrato do evtAberturaeFinanceira — Evento de Abertura da e-Financeira (Receita
+# Federal).
+#
+# QUEM CURA: a Lerian, a partir do Anexo II do manual da e-Financeira, leiaute
+# "Abertura da e-Financeira" v1.5.0 (ADE Cofis 10/2026; o PDF está em
+# br/rfb/efinanceira-cad-declarante/schema/anexo-ii-leiautes-gerais-v1-5-0.pdf, "A II p.N"
+# abaixo), do XSD oficial (schema/evtAberturaeFinanceira-v1_5_0.xsd, em produção desde
+# 01/09/2026) e da tabela de UF da Receita (br/rfb/e-financeira/tabelas/uf.txt).
+#
+# O QUE É: a abertura da e-Financeira de um SEMESTRE (A II p.18-27). Diz à Receita que
+# a instituição vai enviar a movimentação de operações financeiras daquele semestre e
+# quem responde por ela: o responsável pelas Requisições de Movimentação Financeira
+# (RMF), as pessoas que respondem pela e-Financeira e o representante legal. A chave
+# do evento é cnpjDeclarante + dtInicio + dtFim (A II p.18), e a Receita aceita UMA
+# abertura original ativa por semestre e declarante (REGRA_MESMA_EMPRESA, MS1034).
+#
+# O SEMESTRE é o período da entrega: o parâmetro `semestre` (junho ou dezembro, o
+# último mês do semestre) dá as datas inicial e final do arquivo. Uma instituição
+# que abriu ou encerrou DENTRO do semestre informa a data de abertura ou de
+# encerramento no lugar (A II p.30-31, MS1008), pelos parâmetros dtInicio e dtFim,
+# que o motor confere dentro do semestre.
+#
+# FORA DO ESCOPO: a Previdência Privada (o grupo AberturaPP): as instituições deste
+# catálogo (IP, SCD, SCFI) não estão na tabela de Instituições Habilitadas (MS1032).
+# Sem o grupo de PP, o de operações financeiras (AberturaMovOpFin) sai SEMPRE: a
+# Receita exige ao menos uma das duas modalidades (MS1069) e o de operações
+# financeiras quando já há movimento do período (MS1055).
+#
+# XSD x ANEXO II: onde os dois divergem, vale o XSD, porque é ele que recusa o
+# arquivo: indRetificacao só 1 ou 2 (o Anexo II lista também o 3) e RepresLegal
+# opcional (0..1; o Anexo II diz 1-1).
+#
+# O ARQUIVO SAI SEM ASSINATURA. O XSD oficial exige `ds:Signature`; assinar com o
+# e-CNPJ ICP-Brasil do declarante, montar o lote, cifrá-lo e transmiti-lo são da
+# borda que envia o arquivo à Receita, não do Reporter (ver knownGaps e o manual).
+#
+# PRECISA DO REPORTER COM PERÍODOS E LINHAS À MÃO: `span`, `within`, `notBefore` e
+# `system.periods` nos parâmetros e `rows` no binding. Um Reporter anterior recusa o
+# contrato (chave desconhecida).
+#
+# O motor confia neste contrato; não há validação XSD em runtime. A homologação do
+# catálogo (tools/homologation) é onde o arquivo gerado é validado contra o XSD.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.rfb.efinanceira-abertura
+  country: BR
+  regulator: RFB
+  document: evtAberturaeFinanceira
+  family: e-financeira   # o agrupamento: os eventos da e-Financeira
+  title: e-Financeira — Abertura
+  summary: >-
+    Abertura da e-Financeira de um semestre: as datas do período, o responsável pelas requisições de movimentação financeira (RMF), os responsáveis pela e-Financeira e o representante legal. Uma abertura original por semestre; reenviada como retificação quando muda.
+  version: 1.0.0
+  status: draft
+  output: xml
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  # Uma por semestre, antes da movimentação dele.
+  periodicity: semiannual
+  layout:
+    version: "1.5.0"
+    mandatoryFrom: "2026-09-01"
+  sourceOfTruth:
+    layoutManual: http://sped.rfb.gov.br/arquivo/download/8231   # Anexo II — Leiautes Gerais (ADE Cofis 10/2026)
+    schema: schema/evtAberturaeFinanceira-v1_5_0.xsd
+
+parameters:
+  # O semestre, pelo último mês dele: 2026-06 é janeiro a junho de 2026, 2026-12 é
+  # julho a dezembro. `span: 6` faz o mês nomear os seis meses que terminam nele, e o
+  # template lê o primeiro e o último dia em system.periods.semestre (A II p.21-22,
+  # campos 12 e 13: "a data inicial/final do semestre"). Não exige o semestre
+  # encerrado: a abertura vem antes da movimentação dele.
+  - name: semestre
+    type: month
+    required: true
+    allowedMonths: ["06", "12"]
+    span: 6
+    description: Semestre da abertura, pelo último mês dele (AAAA-06 para janeiro a junho, AAAA-12 para julho a dezembro).
+
+  # A data de abertura da instituição, quando ela abriu DENTRO do semestre (A II
+  # p.30-31, REGRA_VALIDA_INI_MOVIMENTO, MS1008). Ausente, o arquivo leva o primeiro
+  # dia do semestre. `within` a prende ao semestre: fora dele, a geração é recusada.
+  - name: dtInicio
+    type: date
+    required: false
+    within: semestre
+    description: Data de abertura da instituição, só quando ela abriu dentro do semestre (AAAA-MM-DD).
+
+  # A data de encerramento, quando a instituição encerrou DENTRO do semestre (MS1008).
+  # Ausente, o arquivo leva o último dia do semestre. Dentro do semestre e não antes
+  # da data inicial (REGRA_DT_INI_VAL_MAIOR, MS1010).
+  - name: dtFim
+    type: date
+    required: false
+    within: semestre
+    notBefore: dtInicio
+    description: Data de encerramento da instituição, só quando ela encerrou dentro do semestre (AAAA-MM-DD).
+
+  # Original ou retificação (A II p.20, campo 4). O XSD enumera só 1 e 2 — o Anexo
+  # II lista também o 3, retificação a pedido, que o XSD recusaria. Um valor por arquivo.
+  - name: indRetificacao
+    type: string
+    required: true
+    default: "1"
+    domain: ["1", "2"]
+    description: 1 para o arquivo original, 2 para retificação espontânea.
+
+  # O recibo do evento que a retificação substitui (A II p.20, campo 5). Quem
+  # transmite é a borda que envia o arquivo, então o Reporter nunca vê a resposta
+  # da Receita: a pessoa digita o recibo ao gerar a retificação. O formato é o do XSD
+  # (15 a 49 posições, que o próprio padrão garante).
+  - name: nrRecibo
+    type: string
+    required: false
+    pattern: '[0-9]{1,18}-[0-9]{2}-[0-9]{3}-[0-9]{4}-[0-9]{1,18}'
+    description: Recibo de entrega da abertura que esta retificação substitui.
+
+# ---------------------------------------------------------------------------
+# A entrega e a remessa.
+#
+# `period: [semestre]` — cada semestre é uma entrega: uma original, depois
+# retificações. As datas dtInicio e dtFim não entram no período: duas aberturas do
+# mesmo semestre com datas diferentes são a MESMA entrega, e a segunda original é
+# recusada, como a Receita recusa (REGRA_MESMA_EMPRESA, MS1034).
+#
+# A retificação nomeia o que retifica (`reference: nrRecibo`): exigida na
+# retificação, recusada na original (MS1005, MS1123). Com a referência, a
+# retificação não precisa de uma original aprovada no Reporter — a original pode ter
+# sido enviada por outra ferramenta; é a Receita, que tem o recibo, quem o confere.
+# ---------------------------------------------------------------------------
+filing:
+  period: [semestre]
+  remittance:
+    parameter: indRetificacao
+    original: "1"
+    replacement: ["2"]
+    reference: nrRecibo
+
+datasets:
+  - name: declarante
+    description: A entidade declarante — uma linha.
+    grain: singleton
+    fields:
+      # O id do evento (A II p.19-20, campo 2): "ID" + 18 dígitos, gerado pela
+      # declarante, único por instituição e tipo de evento (REGRA_VALIDA_CHAVE_ACESSO,
+      # REGRA_VALIDA_FORMACAO_ID). O motor tira os 18 dígitos a cada geração, um
+      # número ordenado pelo instante da geração, e o guarda no relatório sob um
+      # índice único: não se repete entre os relatórios do tenant. O rascunho o
+      # congela (a correção não o muda); o template escreve o "ID" na frente.
+      # Nenhum binding o mapeia, e uma retificação é um evento NOVO, com id novo.
+      - name: eventId
+        type: string
+        length: 18
+        required: true
+        generate: timeOrderedId
+        description: Número do evento (o arquivo leva ID + este número).
+
+      # Ambiente para onde o arquivo vai (A II p.20, campo 6): 1 produção, 2
+      # homologação (produção restrita). O cliente o preenche no mapeamento (ver
+      # knownGaps, ambiente-de-destino).
+      - name: tpAmb
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: Ambiente de destino — 1 produção, 2 produção restrita.
+
+      # Quem emitiu o arquivo (A II p.21, campo 7): 1 aplicativo da empresa, 2 outros.
+      - name: aplicEmi
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: Emissor do aplicativo — 1 aplicativo da empresa, 2 outros.
+
+      # Versão do aplicativo que gerou o arquivo, 1 a 20 posições (A II p.21, campo 8),
+      # sem os caracteres que a Receita proíbe (caracteres especiais restritos, MS1124, sem lista oficial: aspas, apóstrofo,
+      # cerquilha; o hífen duplo, ver knownGaps).
+      - name: verAplic
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,20}$'
+        description: Versão do aplicativo de emissão.
+
+      # O CNPJ da declarante, 14 posições, letras e dígitos (o XSD aceita o CNPJ
+      # alfanumérico). É DADO: vem da base, e a instituição da entrega é conferida
+      # contra ele (RPT-0196). O contrato confere só o formato; os dígitos
+      # verificadores, a Receita (REGRA_VALIDA_CNPJ, A II p.21 e p.29-30, MS1002):
+      # o Reporter confia na origem do valor (ver knownGaps, digitos-verificadores).
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        normalize: alphanumeric
+        identifiesInstitution: true
+        pattern: '^[0-9A-Z]{14}$'
+        description: CNPJ da entidade declarante (quatorze posições).
+
+  # O responsável pelo atendimento às Requisições de Movimentação Financeira (RMF)
+  # que a Receita endereça à instituição (A II p.23-25, campos 18 a 34): a pessoa
+  # jurídica (a declarante ou uma filial) e a pessoa física, com telefone e
+  # endereço. Um só. Nada disso está no Midaz: o cliente preenche uma vez no
+  # mapeamento. Telefone e endereço são grupos no arquivo e campos aqui; o template
+  # os aninha.
+  - name: responsavelRMF
+    description: O responsável pelo atendimento às RMF — uma linha.
+    grain: singleton
+    fields:
+      # O CNPJ da entidade (declarante ou filial) que atende a RMF (campo 19). Os
+      # dígitos verificadores, a Receita confere (REGRA_VALIDA_CNPJ, MS1002).
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        normalize: alphanumeric
+        pattern: '^[0-9A-Z]{14}$'
+        description: CNPJ da entidade (declarante ou filial) responsável pelo atendimento à RMF.
+
+      # O CPF de quem responde a RMF, 11 posições (campo 20). O XSD aceita de 1 a
+      # 11; o Anexo II pede as 11. Os dígitos verificadores, a Receita confere
+      # (ver knownGaps, digitos-verificadores).
+      - name: cpf
+        type: string
+        length: 11
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{11}$'
+        description: CPF do responsável pelo atendimento à RMF (onze dígitos).
+
+      # Nome e setor em formato livre, até 100 e 90 posições (campos 21 e 22).
+      - name: nome
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,100}$'
+        description: Nome do responsável pelo atendimento à RMF.
+      - name: setor
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,90}$'
+        description: Setor em que trabalha o responsável pelo atendimento à RMF.
+
+      # Telefone (campos 23 a 26): DDD até 3, número até 10 e ramal opcional até 4
+      # posições. Só algarismos: um "(11)" ou "3333-4444" digitado sai sem os sinais.
+      - name: ddd
+        type: string
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{1,3}$'
+        description: DDD do telefone do responsável pelo atendimento à RMF.
+      - name: telefone
+        type: string
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{1,10}$'
+        description: Número do telefone do responsável pelo atendimento à RMF, só algarismos.
+      - name: ramal
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,4}$'
+        description: Ramal do telefone do responsável pelo atendimento à RMF.
+
+      # Endereço para onde a Receita envia as RMF (campos 27 a 34): o do Cadastro
+      # CNPJ do campo 19 (ver knownGaps, endereco-rmf-do-cadastro-cnpj). O
+      # município aqui é o NOME, em texto livre — não o código da tabela.
+      - name: logradouro
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,100}$'
+        description: Logradouro do endereço do responsável pelo atendimento à RMF.
+      - name: numero
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,20}$'
+        description: Número no logradouro.
+      - name: complemento
+        type: string
+        required: false
+        pattern: '^[^"''#]{1,20}$'
+        description: Complemento do endereço.
+      - name: bairro
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,100}$'
+        description: Bairro do endereço.
+      # CEP, oito algarismos sem o traço (o XSD aceita até 8).
+      - name: cep
+        type: string
+        length: 8
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{8}$'
+        description: CEP do endereço, oito algarismos.
+      - name: municipio
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,100}$'
+        description: Nome do município do endereço.
+      # Sigla da UF, uma das 27 UFs da tabela de UF da Receita (a tabela traz também
+      # EX, exterior, que o contrato não aceita) (REGRA_EXISTE_UF, MS2013).
+      - name: uf
+        type: string
+        length: 2
+        required: true
+        domain: ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS",
+                 "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC",
+                 "SE", "SP", "TO"]
+        description: Sigla da UF do endereço.
+
+  # Os responsáveis pela e-Financeira (A II p.25-27, campos 35 a 51): quem atende os
+  # pedidos de esclarecimento da Receita sobre o preenchimento. Um ou mais (1-N), uma
+  # linha por pessoa, e o CPF não se repete. O cliente escreve as linhas no
+  # mapeamento, uma a uma (`rows`); telefone e endereço são campos de cada linha, e
+  # o template os aninha.
+  - name: respeFin
+    description: Os responsáveis pela e-Financeira — uma linha por pessoa.
+    grain: [cpf]
+    childOf: {dataset: declarante}
+    nonEmpty: true
+    fields:
+      # CPF, 11 posições (campo 36). Os dígitos verificadores, a Receita confere
+      # (ver knownGaps, digitos-verificadores).
+      - name: cpf
+        type: string
+        length: 11
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{11}$'
+        description: CPF do responsável pela e-Financeira (onze dígitos).
+      - name: nome
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,100}$'
+        description: Nome do responsável pela e-Financeira.
+      - name: setor
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,90}$'
+        description: Setor do responsável pela e-Financeira.
+      - name: ddd
+        type: string
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{1,3}$'
+        description: DDD do telefone.
+      - name: telefone
+        type: string
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{1,10}$'
+        description: Número do telefone, só algarismos.
+      - name: ramal
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,4}$'
+        description: Ramal do telefone.
+      - name: logradouro
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,100}$'
+        description: Logradouro do endereço.
+      - name: numero
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,20}$'
+        description: Número no logradouro.
+      - name: complemento
+        type: string
+        required: false
+        pattern: '^[^"''#]{1,20}$'
+        description: Complemento do endereço.
+      - name: bairro
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,100}$'
+        description: Bairro do endereço.
+      - name: cep
+        type: string
+        length: 8
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{8}$'
+        description: CEP do endereço, oito algarismos.
+      - name: municipio
+        type: string
+        required: true
+        pattern: '^[^"''#]{1,100}$'
+        description: Nome do município do endereço.
+      - name: uf
+        type: string
+        length: 2
+        required: true
+        domain: ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS",
+                 "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC",
+                 "SE", "SP", "TO"]
+        description: Sigla da UF do endereço.
+      # E-mail, até 60 posições (campo 51), sem espaço e sem os caracteres que a
+      # Receita proíbe. A forma de um e-mail não é conferida: nem o XSD nem o Anexo
+      # II a pedem.
+      - name: email
+        type: string
+        required: true
+        pattern: '^[^"''#\s]{1,60}$'
+        description: E-mail do responsável pela e-Financeira.
+
+  # O representante legal da declarante perante a Receita (A II p.27, campos 52 a
+  # 58): CPF, setor e telefone, sem nome nem endereço. Opcional no XSD (0..1), que
+  # vale sobre o Anexo II (1-1). Quando vem, vem inteiro: o template escreve o grupo
+  # quando qualquer campo dele está preenchido, e o XSD exige CPF, setor, DDD e
+  # número (ver knownGaps, representante-legal-inteiro).
+  - name: represLegal
+    description: O representante legal da declarante — uma linha, opcional.
+    grain: singleton
+    fields:
+      - name: cpf
+        type: string
+        length: 11
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{11}$'
+        description: CPF do representante legal (onze dígitos).
+      - name: setor
+        type: string
+        required: false
+        pattern: '^[^"''#]{1,90}$'
+        description: Setor em que trabalha o representante legal.
+      - name: ddd
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,3}$'
+        description: DDD do telefone do representante legal.
+      - name: telefone
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,10}$'
+        description: Número do telefone do representante legal, só algarismos.
+      - name: ramal
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,4}$'
+        description: Ramal do telefone do representante legal.
+
+# ---------------------------------------------------------------------------
+# O que este contrato NÃO confere, e por quê.
+# ---------------------------------------------------------------------------
+knownGaps:
+  - id: assinatura-e-transmissao
+    description: >-
+      O arquivo sai sem `ds:Signature`, que o XSD oficial exige. Assinar com o e-CNPJ ICP-Brasil do declarante, montar o lote, cifrá-lo e transmiti-lo à Receita são da borda que envia o arquivo: cada regulador pede o seu certificado, e o Reporter não o guarda. Pela mesma razão o Reporter não vê o recibo que a Receita devolve — a pessoa o digita ao gerar uma retificação.
+  - id: cadastro-do-declarante-ativo
+    description: >-
+      A abertura só é recebida se houver um evento de cadastro do declarante (evtCadDeclarante) ativo na Receita (REGRA_EXISTE_INFO_DECLARANTE, A II p.28, MS1007). O Reporter não liga um documento a outro nem vê o que foi transmitido: envie o cadastro antes, por este catálogo (br.rfb.efinanceira-cad-declarante) ou por outra ferramenta.
+  - id: original-ativa-na-receita
+    description: >-
+      A Receita recusa uma abertura original quando já existe uma abertura ativa da mesma declarante no semestre (REGRA_MESMA_EMPRESA, A II p.28, MS1034). O Reporter recusa a segunda original do semestre entre as que ele aprovou (RPT-0197); uma original enviada por outra ferramenta, só a Receita vê.
+  - id: datas-no-meio-do-semestre
+    description: >-
+      O período informado tem de ser o semestre, salvo quando a instituição foi aberta ou encerrada dentro dele; então se informa a data de abertura ou de encerramento (REGRA_VALIDA_INI_MOVIMENTO, A II p.30-31, MS1008). O motor confere que dtInicio e dtFim caem dentro do semestre e que o fim não vem antes do início (MS1010); que a instituição de fato abriu ou encerrou naquelas datas, só a Receita sabe.
+  - id: data-de-implantacao
+    description: >-
+      A data inicial tem de ser igual ou posterior à data de implantação do sistema (REGRA_VALIDA_DATA_IMPLANTACAO, A II p.31, MS1020). O Anexo II não diz qual é essa data, então o contrato não a confere: a Receita confere.
+  - id: retificacao-muda-as-datas
+    description: >-
+      Na retificação, a data inicial só muda dentro do mesmo semestre e se não houver eventos de movimentação ativos fora do novo período (REGRA_ALTERA_DTINI, A II p.28, MS1194 e MS1198), e a data final não pode cortar eventos já enviados com período de apuração posterior a ela (REGRA_VALIDA_FIM_MOVIMENTO, A II p.31, MS1011). O motor prende as datas ao semestre da entrega; que eventos de movimentação já foram enviados, e com que datas, só a Receita sabe. E o Anexo II não fecha a questão: a chave do evento inclui as datas (cnpjDeclarante + dtIni + dtFim, A II p.18), e a retificação tem de trazer a mesma chave do evento retificado (REGRA_MESMO_IDENTIFICADOR, A II p.28, MS1006), enquanto a REGRA_ALTERA_DTINI admite mudar a data inicial. O que a Receita faz com uma retificação que muda uma data não foi conferido.
+  - id: retificacao-do-ultimo-recibo
+    description: >-
+      A retificação deve citar o recibo do ÚLTIMO evento aceito, ativo, do mesmo tipo e da mesma declarante (REGRA_OBRIGATORIO_NR_ULTIMO_RECIBO e REGRA_VALIDA_NR_RECIBO, A II p.29, MS1004), e com a mesma chave (REGRA_MESMO_IDENTIFICADOR, A II p.28, MS1006). O contrato confere só o formato do recibo digitado; qual é o último, e de que semestre, é a Receita quem sabe.
+  - id: digitos-verificadores
+    description: >-
+      Os dígitos verificadores são conferidos pela Receita: os do CNPJ da declarante e do CNPJ do responsável pela RMF (REGRA_VALIDA_CNPJ, A II p.21 e p.29-30, MS1002), e os do CPF do responsável pela RMF, dos responsáveis pela e-Financeira e do representante legal (REGRA_VALIDA_CPF, A II p.31-32, MS1057). O Reporter não os confere, por princípio: ele confia na origem do dado, a fonte (o Midaz) ou quem digita o valor no mapeamento ou corrige o rascunho, e o contrato confere só o formato que o arquivo exige (as quatorze posições do CNPJ, as onze do CPF). Um dígito errado passa daqui como foi informado e é recusado pela Receita.
+  - id: endereco-rmf-do-cadastro-cnpj
+    description: >-
+      O endereço do responsável pela RMF é para onde a Receita envia as requisições e tem de ser o do Cadastro CNPJ do CNPJ informado no grupo (A II p.24, campo 27). O Reporter não consulta o Cadastro CNPJ: o endereço é o que o cliente preenche no mapeamento, e conferir que ele bate é de quem preenche.
+  - id: representante-legal-inteiro
+    description: >-
+      O representante legal é opcional no XSD, mas, quando vem, vem com CPF, setor, DDD e número do telefone. O motor ainda não declara "obrigatório quando outro campo vem" (requiredWhen): os campos do grupo são todos opcionais aqui, e o template escreve o grupo quando qualquer um está preenchido. Um grupo preenchido pela metade passa daqui e é recusado pelo XSD na borda. O Anexo II o diz obrigatório (1-1); o XSD, que recusa o arquivo, não.
+  - id: abertura-excluida-nao-marcada
+    description: >-
+      A Exclusão da e-Financeira (br.rfb.efinanceira-exclusao-efinanceira) só exclui uma abertura enquanto o fechamento do semestre não foi enviado (A II p.60-61); com um fechamento ativo, exclua antes o fechamento pela Exclusão de Evento (br.rfb.efinanceira-exclusao) e marque-o como "excluído na Receita" (ver o fechamento). Uma abertura excluída não se retifica: a Receita recusa a retificação de um recibo que não está mais ativo, e a abertura é enviada de novo como original. O Reporter não fica sabendo da exclusão; até a pessoa marcar como "excluída na Receita" o relatório Final da abertura excluída e cada retificação aprovada dela, a nova original do semestre é recusada (RPT-0197, ou RPT-0203 se ficar uma retificação aprovada sem marca). A marcação exige a versão do Reporter que a traz.
+  - id: ambiente-de-destino
+    description: >-
+      Só dados reais (tpAmb 1) vão ao ambiente de produção da e-Financeira, que recusa um arquivo com tpAmb 2 (REGRA_VALIDA_TIPO_AMBIENTE, A II p.29, MS1163). O tpAmb é preenchido pelo cliente no mapeamento; o contrato confere só o domínio (1 ou 2), não que ele bate com o ambiente para onde a borda transmite.
+  - id: id-unico-na-base-nacional
+    description: >-
+      O id tem de ser único na base do Ambiente Nacional para eventos da mesma instituição e do mesmo tipo (REGRA_VALIDA_CHAVE_ACESSO, A II p.29, MS1001). O motor garante que o número não se repete entre as gerações do próprio Reporter, no tenant; um id que outra ferramenta já tenha enviado pela mesma instituição só a Receita vê.
+  - id: hifen-duplo
+    description: >-
+      A Receita recusa caracteres especiais restritos no conteúdo (MS1124) sem listá-los; o "--" é tratado aqui como um deles. O contrato recusa aspas, apóstrofo e cerquilha nos campos de texto livre, mas não o hífen duplo: a forma de expressão do motor (uma expressão regular sem lookahead) não junta essa recusa ao limite de tamanho do campo. Um "--" num nome, setor ou endereço passa daqui e é recusado pela Receita (MS1124, "caracteres especiais restritos", que está no Manual de Orientação do Usuário da e-Financeira v1.2, ADE Cofis 12/2025, §6.2, e não no Anexo II).

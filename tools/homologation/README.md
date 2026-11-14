@@ -22,10 +22,13 @@ Três peças, e a separação entre elas é o que dá valor ao resultado:
 | `e-cheque-especial` | **Sintético, declarado como tal** | cheque especial no saldo de uma conta de depósito: o débito acima do saldo fica só com a parte coberta na rubrica do depósito (que vai a zero, nunca negativo) e o excedente vira uma operação companheira (`OVERDRAFT`) na rubrica de Adiantamentos a Depositantes que a rota declara; um crédito quita primeiro o adiantamento; um débito com saldo zero sai com a perna original de valor 0 |
 | `f-bloqueio` | **Sintético, declarado como tal** | bloqueio judicial como a transação BLOCK do Midaz: o valor vai do saldo `default` para um saldo `bloqueio` da mesma conta, sob a mesma rubrica, e o depósito continua inteiro no 4010 e no 4111 (o bloqueio limita o que se gasta, não o que se deve); o desbloqueio (UNBLOCK) devolve parte |
 | `g-livros-multiplos` | **Sintético, declarado como tal** | a instituição é a organização: dois ledgers (Contas e Tesouraria) lidos juntos pelo escopo só de organização, e lançamentos CROSS-LEDGER entre eles pela API v2 — cada parte fechada contra a `@external/BRL` do ledger com a rubrica da rota-ponte, que zera na soma dos livros. A v2 não retrodata: o 4111 do dia e o 4010 do mês dos lançamentos ficam como recusa esperada até o período fechar |
-| `h-cnpj-alfanumerico` | **Sintético, declarado como tal** | organização com CNPJ no formato alfanumérico da Receita (`LR4ZAB12000138`): o Midaz o aceita no `legalDocument`, o Reporter o normaliza e confere os dígitos verificadores, e a raiz do cabeçalho sai com letras (`cnpj="LR4ZAB12"`) no 4010 e no 4111 |
+| `h-cnpj-alfanumerico` | **Sintético, declarado como tal** | organização com CNPJ no formato alfanumérico da Receita (`LR4ZAB12000138`): o Midaz o aceita no `legalDocument`, o Reporter o normaliza, e a raiz do cabeçalho sai com letras (`cnpj="LR4ZAB12"`) no 4010 e no 4111 |
 | `i-efinanceira-cadastro` | **Sintético, declarado como tal** | o evtCadDeclarante da e-Financeira (`br.rfb.efinanceira-cad-declarante`): só uma organização, criada com o endereço, sem ledger nem lançamento; o original aprovado e baixado, uma retificação com recibo, as recusas do pedido (recibo na original, retificação sem recibo, recibo fora do formato, segunda original) e as duas regras do contrato que recusam a geração (município de outra UF, residências sem `BR`) |
 | `j-efinanceira-completo` | **Sintético, declarado como tal** | o evtCadDeclarante com TODO opcional preenchido (GIIN, categoria, tpNome, tpEndereco), três tipos de entidade e duas residências, numa organização nova de CNPJ alfanumérico (`EF9J2K7A000114`) e `line1` com vírgula e pontos (`Av. Brasil, 1.500 sala 10.0`, escrito como veio); o original julgado e só então aprovado; uma retificação a pedido (3); uma retificação corrigida no rascunho (`municipio`) com o mesmo id antes e depois; e as recusas de pattern na geração (apóstrofo no nome, GIIN com a letra O, logradouro de 147), com o logradouro de 146 e a cidade de 40 gerando um `enderecoLivre` de 199 que o XSD aceita |
 | `k-efinanceira-sem-original` | **Sintético, declarado como tal** | o declarante cujo original foi enviado por outra ferramenta: a primeira geração no Reporter é uma retificação com recibo, aceita sem original (`filing.remittance.reference`), julgada e aprovada; depois dela, um original é recusado com `409 RPT-0203` |
+| `l-efinanceira-exclusoes` | **Sintético, declarado como tal** | as duas exclusões da e-Financeira (`br.rfb.efinanceira-exclusao` e `br.rfb.efinanceira-exclusao-efinanceira`) sobre a organização do cenário J: um evtExclusao e um evtExclusaoeFinanceira julgados elemento a elemento (este com o recibo de 49 posições, o maior do formato), um evtExclusao com o recibo de 15 posições, o menor, um recibo fora do formato recusado na geração em cada documento (`400 RPT-0140`), e o mesmo recibo gerado duas vezes — dois rascunhos aceitos, o anterior `supersededBy` o mais novo, porque sem remessa não há regra de original |
+| `m-efinanceira-abertura` | **Sintético, declarado como tal** | a abertura da e-Financeira (`br.rfb.efinanceira-abertura`) sobre a organização do cenário J: o original de 2026-06 com as datas do semestre, o responsável pela RMF digitado com pontuação (sai só com os algarismos), três responsáveis pela e-Financeira escritos à mão (`rows`) fora da ordem dos CPFs e o representante legal, julgado e só então aprovado; uma retificação sem o representante legal; as duas datas no último dia do semestre (bordas aceitas); uma abertura no meio de 2026-12 (`dtInicio`) e um encerramento no meio (`dtFim`); o CNPJ do responsável pela RMF e dois CPFs com o dígito verificador errado, gerados e escritos como digitados (o Reporter confia na origem do dado; quem confere os dígitos é a Receita); as recusas na geração — data fora do semestre e fim antes do início (`400 RPT-0140` com as datas do semestre), semestre em setembro, `indRetificacao` 3, retificação sem recibo — e a segunda original do semestre, com outra data inicial (`409 RPT-0197`) |
+| `n-efinanceira-fechamento` | **Sintético, declarado como tal** | o fechamento da e-Financeira (`br.rfb.efinanceira-fechamento`) sobre a organização do cenário J, com os indicadores declarados a cada geração: o original de 2026-06 com movimento (`FechamentoMovOpFin` 1) e `sitEspecial` 0 pelo padrão, julgado e só então aprovado; uma retificação com recibo que acrescenta `ContasAReportarCRS` e `ContasAReportarFATCA` 0 (na ordem do XSD); o original de 2026-12 sem movimento (0); uma retificação de 2026-12 com encerramento no meio (`dtFim` 2026-11-30) e `sitEspecial` 1 (extinção); as recusas na geração (`400 RPT-0140`) — `sitEspecial` 4, `contasAReportarCRS` 1, `fechamentoMovOpFin` 2 e ausente, `dtFim` fora do semestre, `indRetificacao` 3 — e a segunda original de 2026-06 (`409 RPT-0197`) |
 
 Os cenários A a H tocam juntos as 30 linhas do conjunto do 4111 e os nove grupos do 4010. A
 contabilidade é fictícia: as rubricas fora do conjunto do 4111 têm nome plausível
@@ -48,12 +51,29 @@ python3 tools/homologation/homologate.py setup  $S
 python3 tools/homologation/homologate.py reports $S --bindings .
 ```
 
-O cenário I (e-Financeira) roda igual; o `setup` só cria a organização (ou põe nela
-o endereço do cenário) e o `reports` precisa de `--bindings` ou de uma assinatura que
-já exista (ver "e-Financeira" abaixo):
+Os cenários I a N (e-Financeira) rodam igual; o `setup` só cria a organização (ou
+põe nela o endereço do cenário) e o `reports` precisa de `--bindings` ou de uma
+assinatura que já exista (ver "e-Financeira" abaixo):
 
 ```bash
 S=tools/homologation/scenario/i-efinanceira-cadastro.json
+python3 tools/homologation/homologate.py setup   $S
+python3 tools/homologation/homologate.py reports $S --bindings .
+
+# As exclusões (evtExclusao e evtExclusaoeFinanceira), sobre a organização do J
+S=tools/homologation/scenario/l-efinanceira-exclusoes.json
+python3 tools/homologation/homologate.py setup   $S
+python3 tools/homologation/homologate.py reports $S --bindings .
+
+# A abertura (evtAberturaeFinanceira), sobre a organização do J; precisa do
+# Reporter com períodos de parâmetro (span/within/notBefore) e linhas à mão (rows)
+S=tools/homologation/scenario/m-efinanceira-abertura.json
+python3 tools/homologation/homologate.py setup   $S
+python3 tools/homologation/homologate.py reports $S --bindings .
+
+# O fechamento (evtFechamentoeFinanceira), sobre a organização do J; precisa do
+# Reporter com períodos de parâmetro (span/within/notBefore)
+S=tools/homologation/scenario/n-efinanceira-fechamento.json
 python3 tools/homologation/homologate.py setup   $S
 python3 tools/homologation/homologate.py reports $S --bindings .
 ```
@@ -119,7 +139,7 @@ O Midaz grava as operações de uma transação de forma **assíncrona**: a leit
 razão espera até todo lançamento que o `setup` registrou aparecer, e para dizendo
 quais faltam depois de 30s.
 
-## e-Financeira: o evtCadDeclarante (cenário I)
+## e-Financeira: o evtCadDeclarante, as exclusões, a abertura e o fechamento (cenários I a N)
 
 O cadastro do declarante não tem período: não há `dataBase` nem `tipoRemessa`.
 Toda geração para a mesma instituição é a mesma entrega (`filing.period: []`), e o
@@ -199,12 +219,65 @@ execução, com ou sem `--bindings`, cada assinatura volta ao binding que tinha 
   opcionais não preenchidos), uma lista para os elementos naquela ordem e
   `{"unordered": [...]}` em qualquer ordem. Um elemento do arquivo que o gabarito
   não nomeia é "a mais";
-- o `id` pela forma (`ID` + 18 dígitos) e, ao longo da execução, crescente — nunca
-  pelo valor, que o motor tira a cada geração. A retificação é um evento novo, com
-  id maior que o do original.
+- o `id` pela forma (`ID` + 18 dígitos) e, ao longo da execução, maior que os
+  anteriores — nunca pelo valor, que o motor tira a cada geração. O número começa
+  pelo instante da geração, e as gerações da execução são uma depois da outra (com
+  mais de um worker, enquanto os relógios deles concordam). A retificação é um
+  evento novo, com id maior que o do original.
 
 O `enderecoLivre` é `line1/CEP/cidade/UF`: o `line2` não entra, e o CEP sai em oito
 dígitos, sem o traço com que o cenário o grava.
+
+**As exclusões (cenário L).** O evtExclusao e o evtExclusaoeFinanceira não
+declaram `filing.remittance`: não há `indRetificacao`, e cada recibo excluído é a
+sua entrega (`filing.period: [nrReciboEvento]`). Em `EVENT_DOCUMENTS` eles não têm
+`original`, então nenhuma entrada é tratada como original: nada é procurado
+aprovado para ser julgado no lugar, e toda execução gera de novo. O único parâmetro
+é o `nrReciboEvento`, no mesmo formato do `nrRecibo`; fora dele, a geração é
+recusada na hora. Uma entrada pode trazer `"supersedes": "<label>"`, o rótulo de
+uma entrada do MESMO documento, listada antes no gabarito, com a mesma entrega: o
+rascunho dela tem de continuar `Draft` e responder `supersededBy` com o relatório
+desta — dois rascunhos do mesmo recibo são aceitos, e enquanto os dois são
+rascunho o mais novo é o que vale. Os relatórios gerados são lembrados por
+documento e `label`: um `label` repetido no gabarito, ou um `supersedes` que nomeia
+uma entrada de outro documento ou não listada antes, para a execução antes de
+gerar. O julgamento é o mesmo do
+evtCadDeclarante, contra o XSD de cada um (`evtExclusao-v1_5_0.xsd`,
+`evtExclusaoeFinanceira-v1_5_0.xsd`) sem a assinatura, pelo caminho debaixo de
+`evtExclusao` ou `evtExclusaoeFinanceira`.
+
+**A abertura (cenário M).** O evtAberturaeFinanceira tem remessa E período: o
+`semestre` (`AAAA-06` ou `AAAA-12`) é a entrega (`filing.period: [semestre]`), e as
+datas `dtInicio`/`dtFim` só entram para a abertura ou o encerramento no meio dele. Em
+`EVENT_DOCUMENTS` a abertura declara `period: ("semestre",)`: o original aprovado de
+uma execução anterior só é julgado no lugar de uma entrada `approve` do MESMO
+semestre (e um relatório marcado "excluído na Receita" nunca é). Os responsáveis pela
+e-Financeira são linhas escritas à mão no mapeamento: em `fills`, a chave é o nome do
+conjunto, sem campo, e o valor a lista de linhas (`"respeFin": [{"cpf": ..., ...},
+...]`). O `rows: []` do binding vira essas linhas, na ordem dada, e o `pendingReason`
+do conjunto sai (o motor o recusa ao lado de linhas escritas); só um conjunto que o
+binding preenche por `rows` aceita, e uma lista vazia ou que não é de mapeamentos para
+a execução. O gabarito diz cada elemento repetido como lista na ordem do arquivo
+(`AberturaMovOpFin/RespeFin/CPF`), e um opcional que só algumas linhas têm (o
+`Ramal`, o `Complemento`) tem na lista só os delas. As recusas de datas
+(`within`, `notBefore`) vêm na hora com `400 RPT-0140`, dizendo o parâmetro e as
+datas do semestre. Nenhum documento da e-Financeira confere dígito verificador de CNPJ
+ou CPF: o contrato confere só o formato que o arquivo exige, e o Reporter confia em
+quem informou o valor (o Midaz ou quem o digitou). A entrada
+`digitos-verificadores-como-informados` prova isso com valores de dígito errado, que
+saem no arquivo tal como digitados.
+
+**O fechamento (cenário N).** O evtFechamentoeFinanceira tem a mesma entrega da
+abertura (`filing.period: [semestre]`) e, em `EVENT_DOCUMENTS`, o mesmo `period:
+("semestre",)` — o teste confere que `original` e `period` de cada evento são os do
+`filing` do contrato. Os indicadores (`sitEspecial`,
+`fechamentoMovOpFin`, `contasAReportarCRS`, `contasAReportarFATCA`) são parâmetros da
+geração, não do mapeamento: cada entrada do gabarito os traz em `parameters`, e o
+único `fills` é o `tpAmb`. Como há um original por semestre, as entradas originais
+ficam em semestres diferentes: o de 2026-06 (com movimento) é o aprovado, e os de
+2026-12 (sem movimento) ficam em rascunho. As recusas
+de domínio e a do indicador de movimento ausente são de 2026-12, onde não há
+original aprovado.
 
 **Autenticação.** O script não manda token. Com a autenticação do Reporter ligada,
 a aprovação exige o token de uma **pessoa** (`RPT-0201` para um token de aplicação);

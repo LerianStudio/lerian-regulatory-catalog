@@ -223,5 +223,17 @@ class ContractDomains(unittest.TestCase):
                                  f"o domínio de {dataset}.{field} não é a tabela {table} vigente")
 
 
+
+class AberturaDomains(ContractDomains):
+    """O mesmo para o evtAberturaeFinanceira: a UF dos endereços do responsável pela
+    RMF e dos responsáveis pela e-Financeira é a tabela de UF vigente."""
+
+    CONTRACT = tr.ROOT / "br" / "rfb" / "efinanceira-abertura" / "contract.yaml"
+
+    FROM_TABLE = {
+        ("responsavelRMF", "uf"): "uf",
+        ("respeFin", "uf"): "uf",
+    }
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
