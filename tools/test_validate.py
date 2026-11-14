@@ -103,6 +103,29 @@ def rule(contract: dict, rule_id: str) -> dict:
     return next(r for r in contract["rules"] if r["id"] == rule_id)
 
 
+def nifs_by_hand(bundle: dict, rows: list, **entry) -> dict:
+    """FECHADO com `nifs` preenchido à mão (`rows`), e um campo opcional `pais` de duas posições.
+
+    `nifs` é o conjunto aberto pendurado no singleton de topo, de grão `numero`:
+    onde o motor aceita linhas escritas à mão.
+    """
+    dataset(bundle[FECHADO]["contract"], "nifs")["fields"].append(
+        {"name": "pais", "type": "string", "required": False, "length": 2, "description": "País."})
+    bundle[FECHADO]["binding"]["datasets"]["nifs"] = {"rows": rows, **entry}
+    return bundle
+
+
+def fechado_generatable(bundle: dict) -> dict:
+    """FECHADO sem nada que bloqueie: a classe de fluxo lê a consulta, e o binding gera."""
+    binding = bundle[FECHADO]["binding"]
+    binding["generatable"] = True
+    binding.pop("incompleteReason")
+    binding.pop("incompleteFields")
+    binding["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1] = {
+        "when": {"rowSet": "measure", "equals": "flow"}, "from": "query", "column": "valor"}
+    return bundle
+
+
 class Mutation:
     """Uma quebra deliberada e a reprovação que ela deve provocar.
 
@@ -1925,6 +1948,379 @@ MUTATIONS: list[Mutation] = [
                                                      "byPrefix": {"1": "debit", "4": "credit"}})),
         "diferem",
     ),
+
+    # ------------------------------- relações entre parâmetros (span, within, notBefore)
+    Mutation(
+        "span-fora-de-mes",
+        "só um month nomeia um período de meses; o motor recusa o span numa date",
+        lambda b: parameter(b[HIER]["contract"], "dtIni").update({"span": 6}),
+        "declara span e é do tipo 'date'",
+    ),
+    Mutation(
+        "span-acima-de-doze",
+        "um período cobre de 1 a 12 meses",
+        lambda b: parameter(b[HIER]["contract"], "dataBase").update({"span": 13}),
+        "tem span 13; um período cobre de 1 a 12 meses",
+    ),
+    Mutation(
+        "span-zero",
+        "zero é como o motor guarda o span não declarado; escrito, é recusado",
+        lambda b: parameter(b[HIER]["contract"], "dataBase").update({"span": 0}),
+        "tem span 0; um período cobre de 1 a 12 meses",
+    ),
+    Mutation(
+        "span-nao-numero",
+        "span é um número de meses; o motor lê o texto com strconv.Atoi, que recusa palavras",
+        lambda b: parameter(b[HIER]["contract"], "dataBase").update({"span": "seis"}),
+        "tem span 'seis'; é quantos meses o período cobre",
+    ),
+    Mutation(
+        "span-hexadecimal",
+        "o YAML lê 0x6 como 6, o motor lê o texto e o recusa",
+        lambda b: parameter(b[HIER]["contract"], "dataBase").update({"span": "0x6"}),
+        "tem span '0x6'; é quantos meses o período cobre",
+    ),
+    Mutation(
+        "span-com-sublinhado",
+        "o YAML lê 1_2 como 12, o motor lê o texto e o recusa",
+        lambda b: parameter(b[HIER]["contract"], "dataBase").update({"span": "1_2"}),
+        "tem span '1_2'; é quantos meses o período cobre",
+    ),
+    Mutation(
+        "span-booleano",
+        "span: true não é um número de meses",
+        lambda b: parameter(b[HIER]["contract"], "dataBase").update({"span": True}),
+        "tem span 'true'; é quantos meses o período cobre",
+    ),
+    Mutation(
+        "periodo-de-parametro-sem-span",
+        "o motor só publica system.periods de um month com span; outro nome imprime vazio",
+        lambda b: _mutate_template(b, HIER, "system.periods.dataBase.start", "system.periods.dtIni.start"),
+        "'dtIni' não é um parâmetro que declara span",
+    ),
+    Mutation(
+        "periodo-com-ponta-desconhecida",
+        "um período tem só .start e .end; outra ponta imprime vazio",
+        lambda b: _mutate_template(b, HIER, "system.periods.dataBase.end", "system.periods.dataBase.fim"),
+        "de um período o template lê só .start e .end",
+    ),
+    Mutation(
+        "periodo-do-template-sem-ponta",
+        "o período sem .start nem .end imprimiria o mapa do período, não um dia",
+        lambda b: _mutate_template(b, HIER, "{{ system.periods.dataBase.start }}", "{{ system.periods.dataBase }}"),
+        "lê system.periods.dataBase; de um período o template lê só .start e .end",
+    ),
+    Mutation(
+        "periodo-sem-parametro",
+        "system.periods sozinho não é um dia: o template imprimiria o mapa inteiro",
+        lambda b: _mutate_template(b, HIER, "{{ system.periods.dataBase.start }}", "{{ system.periods }}"),
+        "não é um parâmetro que declara span",
+    ),
+    Mutation(
+        "within-escrito-vazio",
+        "within: sem valor é trabalho pela metade, não ausência",
+        lambda b: parameter(b[HIER]["contract"], "dtIni").update({"within": ""}),
+        "tem within '' vazio",
+    ),
+    Mutation(
+        "notbefore-escrito-vazio",
+        "notBefore: sem valor é trabalho pela metade, não ausência",
+        lambda b: parameter(b[HIER]["contract"], "dtFim").update({"notBefore": ""}),
+        "tem notBefore '' vazio",
+    ),
+    Mutation(
+        "within-nulo",
+        "within: escrito sem nada embaixo é null em YAML",
+        lambda b: parameter(b[HIER]["contract"], "dtIni").update({"within": None}),
+        "dtIni'.within foi escrita e está vazia",
+    ),
+    Mutation(
+        "within-fora-de-data",
+        "só uma date cai num período",
+        lambda b: parameter(b[HIER]["contract"], "dataBase").update({"within": "dataBase"}),
+        "declara within e é do tipo 'month'",
+    ),
+    Mutation(
+        "notbefore-fora-de-data",
+        "só uma date vem antes ou depois de outro dia",
+        lambda b: parameter(b[HIER]["contract"], "dataBase").update({"notBefore": "dtIni"}),
+        "declara notBefore e é do tipo 'month'",
+    ),
+    Mutation(
+        "within-inexistente",
+        "a data cairia num período que o contrato não declara",
+        lambda b: parameter(b[HIER]["contract"], "dtIni").update({"within": "semestre"}),
+        "tem within 'semestre', que não é parâmetro deste contrato",
+    ),
+    Mutation(
+        "within-nao-mes",
+        "um período é um month com span",
+        lambda b: parameter(b[HIER]["contract"], "dtFim").update({"within": "dtIni"}),
+        "tem within 'dtIni', do tipo 'date'",
+    ),
+    Mutation(
+        "within-mes-sem-span",
+        "um month sem span não nomeia período de que a data possa cair fora",
+        lambda b: parameter(b[HIER]["contract"], "dataBase").pop("span"),
+        "um month que não declara span",
+    ),
+    Mutation(
+        "within-a-si-mesmo",
+        "a data não cai dentro de si mesma",
+        lambda b: parameter(b[HIER]["contract"], "dtIni").update({"within": "dtIni"}),
+        "tem within que nomeia o próprio parâmetro",
+    ),
+    Mutation(
+        "notbefore-a-si-mesmo",
+        "um dia comparado consigo mesmo não relaciona nada",
+        lambda b: parameter(b[HIER]["contract"], "dtFim").update({"notBefore": "dtFim"}),
+        "tem notBefore que nomeia o próprio parâmetro",
+    ),
+    Mutation(
+        "notbefore-inexistente",
+        "o dia seria comparado com um parâmetro que a requisição não responde",
+        lambda b: parameter(b[HIER]["contract"], "dtFim").update({"notBefore": "dtZero"}),
+        "tem notBefore 'dtZero', que não é parâmetro deste contrato",
+    ),
+    Mutation(
+        "notbefore-nao-data",
+        "um dia se compara com outro dia, não com um mês",
+        lambda b: parameter(b[HIER]["contract"], "dtFim").update({"notBefore": "dataBase"}),
+        "tem notBefore 'dataBase', do tipo 'month'",
+    ),
+    Mutation(
+        "notbefore-em-ciclo",
+        "cada dia depois do seguinte: só o mesmo dia em todos responde",
+        lambda b: parameter(b[HIER]["contract"], "dtIni").update({"notBefore": "dtFim"}),
+        "tem notBefore em ciclo",
+    ),
+    Mutation(
+        "parametro-periods",
+        "periods é a chave sob a qual o template lê os limites dos períodos",
+        lambda b: b[HIER]["contract"]["parameters"].append(
+            {"name": "periods", "type": "string", "required": False, "description": "Reservado."}),
+        "usa um nome reservado",
+    ),
+    Mutation(
+        "filtro-na-ponta-de-um-span",
+        "a ponta de um filtro é dia, mês ou ano; o período do span não é nenhuma delas",
+        lambda b: query(b[HIER]["binding"], "movimento").update({"filters": [
+            {"field": "criado_em", "operator": "lt", "values": [{"parameter": "dataBase", "at": "end"}]}]}),
+        "lê o end do parâmetro 'dataBase', que nomeia um período de 6 meses",
+    ),
+    Mutation(
+        "having-na-ponta-de-um-span",
+        "a recusa vale em having e dentro de anyOf, como no motor",
+        lambda b: query(b[HIER]["binding"], "por_titular")["having"][0]["anyOf"].append(
+            {"field": "dia", "operator": "gte", "values": [{"parameter": "dataBase", "at": "start"}]}),
+        "lê o start do parâmetro 'dataBase', que nomeia um período de 6 meses",
+    ),
+    Mutation(
+        "having-na-ponta-de-um-span-em-allof",
+        "a recusa vale dentro de allOf, como no motor",
+        lambda b: query(b[HIER]["binding"], "por_titular")["having"].append(
+            {"allOf": [{"field": "dia", "operator": "lt", "values": [{"parameter": "dataBase", "at": "end"}]}]}),
+        "lê o end do parâmetro 'dataBase', que nomeia um período de 6 meses",
+    ),
+    Mutation(
+        "pendencia-de-conjunto-que-pode-ficar-vazio-listada",
+        "um conjunto que pode sair vazio não bloqueia nada: listá-lo deixa a lista desatualizada",
+        lambda b: (b[FECHADO]["binding"]["datasets"].__setitem__(
+                       "nifs", {"rows": [], "pendingReason": "os NIFs da entidade"}),
+                   b[FECHADO]["binding"]["incompleteFields"].append("nifs")),
+        "lista nifs, que não",
+    ),
+    Mutation(
+        "motivo-pendente-em-mapa",
+        "o motor lê o pendingReason como texto e recusa um mapa",
+        lambda b: b[FECHADO]["binding"]["datasets"]["institution"]["fields"].__setitem__(
+            "cnpj8", {"from": "manual", "pendingReason": {"texto": "a raiz do CNPJ"}}),
+        "o pendingReason escrito é um mapa",
+    ),
+
+    # ------------------------------- linhas escritas à mão (rows)
+    Mutation(
+        "linhas-com-outra-origem",
+        "linhas e origem ao mesmo tempo: o conjunto teria duas respostas",
+        lambda b: nifs_by_hand(b, [{"numero": "A1"}], fields={"numero": {"from": "constant", "value": "A1"}}),
+        "declara rows junto com ['fields']",
+    ),
+    Mutation(
+        "linhas-com-consulta",
+        "as linhas seriam da consulta e do mapeamento",
+        lambda b: nifs_by_hand(b, [{"numero": "A1"}], **{"from": {"query": "estoque"}}),
+        "declara rows junto com ['from']",
+    ),
+    Mutation(
+        "linhas-com-emptyReason",
+        "vazio e com linhas ao mesmo tempo",
+        lambda b: nifs_by_hand(b, [{"numero": "A1"}], emptyReason="nenhum"),
+        "declara emptyReason junto com ['rows']",
+    ),
+    Mutation(
+        "linhas-nao-lista",
+        "rows é a lista das linhas",
+        lambda b: nifs_by_hand(b, "A1"),
+        "rows é a lista das linhas do conjunto",
+    ),
+    Mutation(
+        "pendingReason-ao-lado-de-linhas",
+        "o motivo da pendência ao lado das linhas escritas diz que falta o que não falta",
+        lambda b: nifs_by_hand(b, [{"numero": "A1"}], pendingReason="falta"),
+        "nifs.pendingReason está ao lado de linhas escritas",
+    ),
+    Mutation(
+        "pendingReason-em-branco",
+        "uma pendência sem motivo é igual a um conjunto esquecido",
+        lambda b: nifs_by_hand(b, [], pendingReason="  "),
+        "nifs.pendingReason está vazio",
+    ),
+    Mutation(
+        "pendingReason-sem-linhas",
+        "o pendingReason do conjunto vai ao lado de rows: []",
+        lambda b: b[FECHADO]["binding"]["datasets"]["tipos"].update({"pendingReason": "falta"}),
+        "declara pendingReason e não escreve linhas",
+    ),
+    Mutation(
+        "linha-vazia",
+        "uma linha sem campo escreveria uma linha de brancos",
+        lambda b: nifs_by_hand(b, [{"numero": "A1"}, {}]),
+        "nifs.rows[1] não escreve campo nenhum",
+    ),
+    Mutation(
+        "linha-nao-mapa",
+        "uma linha é um mapa de campo a valor",
+        lambda b: nifs_by_hand(b, ["A1"]),
+        "uma linha é um mapa de cada campo",
+    ),
+    Mutation(
+        "valor-em-branco",
+        "um valor em branco é o campo deixado de fora, escrito de outro jeito",
+        lambda b: nifs_by_hand(b, [{"numero": "A1", "pais": "  "}]),
+        "nifs.rows[0].pais está vazio",
+    ),
+    Mutation(
+        "valor-nulo",
+        "um campo escrito sem valor é null em YAML",
+        lambda b: nifs_by_hand(b, [{"numero": "A1", "pais": None}]),
+        "nifs.rows[0].pais está vazio",
+    ),
+    Mutation(
+        "valor-lista",
+        "uma linha escreve um valor simples por campo",
+        lambda b: nifs_by_hand(b, [{"numero": ["A1", "B2"]}]),
+        "nifs.rows[0].numero é uma lista",
+    ),
+    Mutation(
+        "valor-mapa",
+        "uma linha escreve um valor simples por campo",
+        lambda b: nifs_by_hand(b, [{"numero": {"de": "A1"}}]),
+        "nifs.rows[0].numero é um mapa",
+    ),
+    Mutation(
+        "linhas-em-singleton",
+        "a linha de um singleton é a da própria entrega",
+        lambda b: b[FECHADO]["binding"]["datasets"].update({"institution": {"rows": [{"cnpj8": "12345678"}]}}),
+        "é de uma linha (singleton)",
+    ),
+    Mutation(
+        "linhas-em-conjunto-fechado",
+        "as linhas de um conjunto fechado são do catálogo",
+        lambda b: b[FECHADO]["binding"]["datasets"].update(
+            {"linhas": {"rows": [{"codigo": "1100000002", "valor": "1.00"}]}}),
+        "as linhas dele são do catálogo (rowSet)",
+    ),
+    Mutation(
+        "linhas-em-conjunto-de-topo",
+        "linhas escritas à mão são da única entrega, então pendem do singleton de topo",
+        lambda b: b[PLANO]["binding"]["datasets"].update(
+            {"saldos": {"rows": [{"codigo": "1100000002", "valor": "1.00"}]}}),
+        "saldos.rows preenche 'saldos' linha a linha, e ele não pende de um singleton de topo",
+    ),
+    Mutation(
+        "linhas-sob-pai-de-varias-linhas",
+        "sob um pai de várias linhas, nada diz sob qual linha ficam",
+        lambda b: b[HIER]["binding"]["datasets"].update({"detalhes": {"rows": [{"id": "1", "valor": "1.00"}]}}),
+        "detalhes.rows preenche 'detalhes' linha a linha, e ele não pende de um singleton de topo",
+    ),
+    Mutation(
+        "linhas-com-filho-mapeado",
+        "uma linha escrita à mão não carrega chave a que o filho se prenda",
+        lambda b: (nifs_by_hand(b, [{"numero": "A1"}]),
+                   b[FECHADO]["contract"]["datasets"].append(
+                       {"name": "notas", "description": "Notas do NIF.", "grain": ["nota"],
+                        "childOf": {"dataset": "nifs"},
+                        "fields": [{"name": "nota", "type": "string", "required": False, "description": "Nota."}]}),
+                   b[FECHADO]["binding"]["datasets"].update(
+                       {"notas": {"fields": {"nota": {"from": "manual", "pendingReason": "a nota"}}}})),
+        "e 'notas' pende dele",
+    ),
+    Mutation(
+        "linha-com-campo-desconhecido",
+        "um campo que o conjunto não declara não chega ao arquivo",
+        lambda b: nifs_by_hand(b, [{"numero": "A1", "codigoPais": "BR"}]),
+        "nomeia 'codigoPais', que não é campo de 'nifs'",
+    ),
+    Mutation(
+        "linha-com-campo-derivado",
+        "o derivado é cortado da origem pelo motor; escrito à mão, divergiria dela",
+        lambda b: (nifs_by_hand(b, [{"numero": "A1", "raiz": "A"}]),
+                   dataset(b[FECHADO]["contract"], "nifs")["fields"].append(
+                       {"name": "raiz", "type": "string", "length": 1, "prefixOf": "numero",
+                        "description": "Raiz."})),
+        "escreve 'raiz', que o motor preenche",
+    ),
+    Mutation(
+        "linha-com-campo-gerado",
+        "o campo gerado é escrito pelo motor a cada geração",
+        lambda b: (nifs_by_hand(b, [{"numero": "A1", "evento": "000000000000000001"}]),
+                   dataset(b[FECHADO]["contract"], "nifs")["fields"].append(
+                       {"name": "evento", "type": "string", "length": 18, "generate": "timeOrderedId",
+                        "description": "Evento."})),
+        "escreve 'evento', que o motor preenche",
+    ),
+    Mutation(
+        "linha-sem-campo-obrigatorio",
+        "o contrato exige o campo em toda linha",
+        lambda b: (nifs_by_hand(b, [{"numero": "A1", "pais": "BR"}, {"numero": "B2"}]),
+                   field(b[FECHADO]["contract"], "nifs", "pais").update({"required": True})),
+        "nifs.rows[1] deixa de fora 'pais'",
+    ),
+    Mutation(
+        "linha-com-valor-que-o-campo-recusa",
+        "o valor passa pelas regras do campo, como no motor",
+        lambda b: b[FECHADO]["binding"]["datasets"].update({"tipos": {"rows": [{"tipo": "1"}, {"tipo": "9"}]}}),
+        "tipos.rows[1].tipo traz '9', que o domain do campo recusa",
+    ),
+    Mutation(
+        "linhas-vazias-sem-motivo-em-nonempty",
+        "um conjunto que não sai vazio, sem linha e sem motivo, não mostra a ninguém o que fazer",
+        lambda b: b[FECHADO]["binding"]["datasets"].update({"tipos": {"rows": []}}),
+        "tipos.rows está vazio e sem pendingReason",
+    ),
+    Mutation(
+        "linhas-com-grao-repetido",
+        "duas linhas com o mesmo grão: o arquivo levaria a linha duas vezes",
+        lambda b: nifs_by_hand(b, [{"numero": "A1", "pais": "BR"}, {"numero": "B2"}, {"numero": "A1"}]),
+        "nifs.rows[2] traz o mesmo numero que rows[0] (A1)",
+    ),
+    Mutation(
+        "linhas-com-grao-derivado-repetido",
+        "a chave derivada é comparada pelo corte da origem, como o motor a escreve",
+        lambda b: (nifs_by_hand(b, [{"numero": "A1"}, {"numero": "A2"}]),
+                   dataset(b[FECHADO]["contract"], "nifs")["fields"].append(
+                       {"name": "raiz", "type": "string", "length": 1, "prefixOf": "numero",
+                        "description": "Raiz."}),
+                   dataset(b[FECHADO]["contract"], "nifs").update({"grain": ["raiz"]})),
+        "nifs.rows[1] traz o mesmo raiz que rows[0] (A)",
+    ),
+    Mutation(
+        "linhas-preenchidas-listadas-como-incompletas",
+        "um conjunto com as linhas escritas não é incompleto; a lista ficou desatualizada",
+        lambda b: (b[FECHADO]["binding"]["datasets"].update({"tipos": {"rows": [{"tipo": "1"}]}}),
+                   b[FECHADO]["binding"]["incompleteFields"].append("tipos")),
+        "`incompleteFields` lista tipos",
+    ),
 ]
 
 
@@ -1938,7 +2334,7 @@ _NOT_CONTRACT_KEYS = {
     "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
     "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
     "accumulate", "rowKey", "compute", "case", "otherwise", "at", "calendar", "operator",
-    "values", "parameter",
+    "values", "parameter", "anyOf", "allOf",
     # o texto livre que saiu da gramática: lido só para ser recusado
     "assert",
     "when", "value", "statedIn", "pendingReason", "measures", "contract", "institution",
@@ -2173,6 +2569,27 @@ class ValidatorSuite(unittest.TestCase):
         code, out = _run(self._write(data))
         self.assertEqual(code, 0, f"manual a preencher pelo cliente deveria validar:\n{out}")
 
+    def test_a_span_is_read_as_the_engine_reads_it(self) -> None:
+        """O `span` é o texto do escalar, lido como strconv.Atoi o lê.
+
+        `"6"` entre aspas, `+6` e `010` (dez, não o oito do YAML 1.1) são números para o
+        motor, e o validador os aceita igual.
+        """
+        for written in ("6", "+6", "010"):
+            with self.subTest(span=written):
+                data = fixtures.bundle()
+                parameter(data[HIER]["contract"], "dataBase")["span"] = written
+                code, out = _run(self._write(data))
+                self.assertEqual(code, 0, f"span {written!r} o motor aceita, e o validador também:\n{out}")
+
+    def test_a_pending_reason_of_any_scalar_is_read_as_text(self) -> None:
+        """`pendingReason: 5` é o motivo "5" para o motor (OptionalString lê o texto)."""
+        data = fixtures.bundle()
+        fields = data[FECHADO]["binding"]["datasets"]
+        fields["institution"]["fields"]["cnpj8"] = {"from": "manual", "pendingReason": 5}
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"um motivo numérico é um texto para o motor:\n{out}")
+
     def test_a_binding_not_generatable_may_list_what_the_client_fills(self) -> None:
         """`generatable: false` pode enumerar um `manual` simples obrigatório sem valor.
 
@@ -2201,6 +2618,79 @@ class ValidatorSuite(unittest.TestCase):
         data[FECHADO]["binding"]["datasets"]["tipos"] = {"emptyReason": "a entidade não informa tipo"}
         code, out = _run(self._write(data))
         self.assertEqual(code, 0, f"conjunto declarado vazio deveria validar:\n{out}")
+
+    def test_rows_written_by_hand_are_valid(self) -> None:
+        """`rows` num conjunto aberto pendurado no singleton de topo: as linhas do cliente.
+
+        Uma por item, na ordem escrita, com o grão distinto; o filho declarado vazio
+        não precisa de chave a que se prender. O motor aceita; o validador também.
+        """
+        data = nifs_by_hand(fixtures.bundle(), [{"numero": "A1", "pais": "BR"}, {"numero": "B2"}])
+        data[FECHADO]["contract"]["datasets"].append(
+            {"name": "notas", "description": "Notas do NIF.", "grain": ["nota"], "childOf": {"dataset": "nifs"},
+             "fields": [{"name": "nota", "type": "string", "required": False, "description": "Nota."}]})
+        data[FECHADO]["binding"]["datasets"]["notas"] = {"emptyReason": "nenhuma nota"}
+        data[FECHADO]["binding"]["datasets"]["tipos"] = {"rows": [{"tipo": "1"}, {"tipo": "3"}]}
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"linhas escritas à mão deveriam validar:\n{out}")
+
+    def test_rows_compare_the_grain_as_written(self) -> None:
+        """O grão é comparado como escrito; o que só a normalização iguala fica com o motor.
+
+        `123` e `"123"` são o mesmo texto para o motor (e aqui, lidos do nó YAML); `A1`
+        e `a1` não, sem normalize. Duas raízes derivadas diferentes são duas linhas.
+        """
+        data = nifs_by_hand(fixtures.bundle(), [{"numero": "A1"}, {"numero": "a1"}, {"numero": "B1"}])
+        dataset(data[FECHADO]["contract"], "nifs")["fields"].append(
+            {"name": "raiz", "type": "string", "length": 1, "prefixOf": "numero", "description": "Raiz."})
+        dataset(data[FECHADO]["contract"], "nifs")["grain"] = ["raiz"]
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"raízes distintas como escritas deveriam validar:\n{out}")
+
+        repeated = nifs_by_hand(fixtures.bundle(), [{"numero": 123}, {"numero": "123"}])
+        code, out = _run(self._write(repeated))
+        self.assertEqual(code, 1, f"123 e '123' são o mesmo texto e deveriam reprovar:\n{out}")
+        self.assertIn("nifs.rows[1] traz o mesmo numero que rows[0] (123)", out)
+
+    def test_a_key_written_twice_in_a_row_is_refused(self) -> None:
+        """A mesma chave duas vezes numa linha: o dicionário guardaria a última, calado.
+
+        O motor recusa; aqui a linha é lida do nó YAML para ver o que o dicionário apaga.
+        """
+        data = nifs_by_hand(fixtures.bundle(), [{"numero": "A1", "zzrepetida": "B2"}])
+        root = self._write(data)
+        example = root / FECHADO / "binding.example.yaml"
+        text = example.read_text(encoding="utf-8")
+        self.assertEqual(1, text.count("zzrepetida:"))
+        example.write_text(text.replace("zzrepetida:", "numero:"), encoding="utf-8")
+        code, out = _run(root)
+        self.assertEqual(code, 1, f"a chave repetida deveria reprovar:\n{out}")
+        self.assertIn("nifs.rows[0].numero está escrito duas vezes na linha", out)
+
+    def test_a_pending_rows_set_that_cannot_be_empty_is_a_client_fill(self) -> None:
+        """`rows: []` com `pendingReason` num conjunto nonEmpty: a lacuna é do cliente.
+
+        Como a lista manual pendente: o rascunho sai com a pendência, que impede
+        aprovar e baixar, e a geração não é bloqueada. Um binding que gera não precisa
+        se declarar incompleto por ela; um que não gera pode enumerá-la.
+        """
+        pending = {"rows": [], "pendingReason": "os tipos que a entidade é"}
+
+        data = fechado_generatable(fixtures.bundle())
+        data[FECHADO]["binding"]["datasets"]["tipos"] = dict(pending)
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"a pendência do cliente não bloqueia um binding que gera:\n{out}")
+
+        data = fixtures.bundle()
+        data[FECHADO]["binding"]["datasets"]["tipos"] = dict(pending)
+        data[FECHADO]["binding"]["incompleteFields"].append("tipos")
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"um binding que não gera pode enumerar a pendência:\n{out}")
+
+        data = fixtures.bundle()
+        data[FECHADO]["binding"]["datasets"]["nifs"] = dict(pending)
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"um conjunto que pode sair vazio também aceita a pendência:\n{out}")
 
     def test_a_municipality_table_edited_by_hand_is_refused(self) -> None:
         """A tabela de municípios é a que tools/tabelas_receita.py gera da tabela da
