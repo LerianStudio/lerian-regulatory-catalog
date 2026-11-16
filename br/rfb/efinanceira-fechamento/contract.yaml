@@ -311,9 +311,9 @@ knownGaps:
   - id: retificacao-do-ultimo-recibo
     description: >-
       A retificação deve citar o recibo do ÚLTIMO evento aceito, ativo, do mesmo tipo e da mesma declarante (REGRA_OBRIGATORIO_NR_ULTIMO_RECIBO e REGRA_VALIDA_NR_RECIBO, A II p.46, MS1005 e MS1004), e com a mesma chave (REGRA_MESMO_IDENTIFICADOR, A II p.45, MS1006). O contrato confere só o formato do recibo digitado; qual é o último, e de que semestre, é a Receita quem sabe.
-  - id: fechamento-excluido-nao-marcado
+  - id: fechamento-nao-se-exclui
     description: >-
-      Um fechamento excluído pela Exclusão de Evento (br.rfb.efinanceira-exclusao) não se retifica: a Receita recusa a retificação de um recibo que não está mais ativo, e o fechamento é enviado de novo como original. O Reporter não fica sabendo da exclusão; até a pessoa marcar como "excluído na Receita" o relatório Final do fechamento excluído e cada retificação aprovada dele, o novo original do semestre é recusado (RPT-0197, ou RPT-0203 se ficar uma retificação aprovada sem marca). A marcação exige a versão do Reporter que a traz.
+      A Receita recusa a exclusão de um evento de fechamento (MS1083, Anexo VI; Manual de Orientação do Usuário v2.1.2, p.25). Um fechamento enviado errado se corrige pela retificação; quando a correção é da movimentação do semestre já fechado, o semestre é reaberto pela retificação da abertura, os movimentos são enviados ou retificados e o fechamento é retificado de novo (Manual de Orientação do Usuário v2.1.2, p.23-24). A Exclusão de Evento (br.rfb.efinanceira-exclusao) não sabe de que evento é o recibo digitado, então não impede gerar a exclusão de um fechamento; a Receita a recusa.
   - id: digitos-verificadores
     description: >-
       Os dígitos verificadores do CNPJ da declarante são conferidos pela Receita (REGRA_VALIDA_CNPJ, A II p.36 e p.52-53, MS1002). O Reporter não os confere, por princípio: ele confia na origem do dado, a fonte (o Midaz) ou quem digita o valor no mapeamento ou corrige o rascunho, e o contrato confere só o formato que o arquivo exige (quatorze posições, letras e dígitos). Um dígito errado passa daqui como foi informado e é recusado pela Receita.
