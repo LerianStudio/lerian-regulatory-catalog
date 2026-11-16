@@ -94,9 +94,11 @@ retifica: o recibo dela não está mais ativo, e a Receita recusa a retificaçã
 semestre é aberto de novo **como original**.
 
 A Exclusão da e-Financeira só vale **enquanto o fechamento do semestre não foi enviado**
-(A II p.60-61). Com um fechamento ativo, exclua antes o fechamento pela **Exclusão de
-Evento** (`br.rfb.efinanceira-exclusao`) e marque-o como "excluído na Receita" (ver o
-manual do fechamento); só então exclua a abertura.
+(A II p.60-61). Depois do fechamento, a abertura não se exclui, e o fechamento também não
+(MS1083, Anexo VI; Manual de Orientação do Usuário v2.1.2, p.25). Para corrigir um
+semestre já fechado, **retifique** a abertura: o semestre volta a "em andamento"; envie
+os movimentos novos ou as retificações deles e retifique o fechamento (Manual de
+Orientação do Usuário v2.1.2, p.23-24; ver o manual do fechamento).
 
 O Reporter não fica sabendo da exclusão. Depois que ela for transmitida e **aceita** pela
 Receita, marque no Reporter como **"excluída na Receita"** o relatório Final da abertura
@@ -223,3 +225,6 @@ pendência e não pode ser aprovado nem baixado.
   páginas 18 a 32.
 - XSD oficial: `schema/evtAberturaeFinanceira-v1_5_0.xsd`.
 - Tabela de UF da Receita: `br/rfb/e-financeira/tabelas/uf.txt`.
+- Manual de Orientação do Usuário da e-Financeira v2.1.2 (ADE Cofis 10/2026), p.23-25:
+  reabertura de um semestre fechado e as restrições de exclusão.
+- Anexo VI — mensagens de retorno das validações (ADE Cofis 10/2026): MS1083.

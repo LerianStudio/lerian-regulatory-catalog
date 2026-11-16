@@ -4,8 +4,7 @@ Evento de Fechamento da e-Financeira, leiaute v1.5.0 (ADE Cofis 10/2026), em pro
 desde 01/09/2026.
 
 **Versão mínima do Reporter:** a que traz os períodos de parâmetro (`span`, `within`,
-`notBefore`). Um Reporter anterior recusa este contrato ao assinar o documento. A
-marcação "excluído na Receita" (ver abaixo) também só existe a partir dessa versão.
+`notBefore`). Um Reporter anterior recusa este contrato ao assinar o documento.
 
 ## O que é
 
@@ -127,18 +126,26 @@ abertura tem. O que a Receita faz com isso não foi conferido.
 Cada geração tira um **id de evento novo** (`ID` + 18 dígitos, ordenado pelo instante da
 geração): uma retificação é um evento novo, ligado ao anterior pelo recibo, nunca pelo id.
 
-## Fechamento excluído: marque o relatório antes de fechar de novo
+## Fechamento errado: retifique, não exclua
 
-Um fechamento enviado por engano é excluído pela **Exclusão de Evento**
-(`br.rfb.efinanceira-exclusao`), com o recibo dele, se a Receita aceitar a exclusão. Um
-fechamento excluído não se retifica: o recibo dele não está mais ativo, e a Receita
-recusa a retificação. O semestre é fechado de novo **como original**.
+Um fechamento **não se exclui**: a Receita recusa a exclusão de um evento de fechamento
+(MS1083, Anexo VI; Manual de Orientação do Usuário v2.1.2, p.25). Nem a Exclusão de
+Evento (`br.rfb.efinanceira-exclusao`) nem a Exclusão da e-Financeira servem para ele.
+Um fechamento enviado errado se corrige pela **retificação** (`indRetificacao` `2`, com
+o recibo do último fechamento aceito).
 
-O Reporter não fica sabendo da exclusão. Depois que ela for transmitida e **aceita** pela
-Receita, marque no Reporter como **"excluído na Receita"** o relatório Final do
-fechamento excluído **e cada retificação aprovada** dele. Só então gere o novo
-fechamento original do semestre: sem a marca, ele é recusado (`409 RPT-0197`), e com uma
-retificação aprovada sem marca, também (`409 RPT-0203`).
+Quando a correção é da **movimentação** do semestre já fechado, o semestre é reaberto
+(Manual de Orientação do Usuário v2.1.2, p.23-24, "Fluxo de Retificação de um Período
+Fechado"):
+
+1. **Reabra**: retifique a abertura do semestre (`br.rfb.efinanceira-abertura`, com o
+   recibo dela). O semestre volta a "em andamento".
+2. **Corrija**: envie os eventos de movimento novos ou as retificações deles.
+3. **Feche de novo**: retifique o fechamento. É o fechamento retificador que efetiva as
+   mudanças dos movimentos e devolve o semestre a "ativa".
+
+Nenhum relatório do Reporter precisa ser marcado como "excluído na Receita" nesse
+caminho: tudo é retificação, e o Reporter aceita uma retificação que informa o recibo.
 
 ## O arquivo sai sem assinatura
 
@@ -205,8 +212,9 @@ aprovado nem baixado.
   dele; um id já enviado por outra ferramenta, só a Receita vê.
 - **Hífen duplo** (`--`) na versão do aplicativo: a Receita recusa (MS1124, "caracteres especiais restritos", do Manual de
   Orientação do Usuário da e-Financeira v1.2, §6.2).
-- **Fechamento excluído**: você marca os relatórios como "excluído na Receita" antes de
-  fechar o semestre de novo.
+- **Exclusão de um fechamento** (MS1083): a Receita a recusa. A Exclusão de Evento não
+  sabe de que evento é o recibo digitado, então não impede gerar a exclusão de um
+  fechamento; corrija o fechamento pela retificação.
 - **Assinatura e transmissão**: da etapa que envia o arquivo.
 
 ## Fonte primária
@@ -215,3 +223,6 @@ aprovado nem baixado.
   (ADE Cofis 10/2026): `br/rfb/efinanceira-cad-declarante/schema/anexo-ii-leiautes-gerais-v1-5-0.pdf`,
   páginas 33 a 53.
 - XSD oficial: `schema/evtFechamentoeFinanceira-v1_5_0.xsd`.
+- Manual de Orientação do Usuário da e-Financeira v2.1.2 (ADE Cofis 10/2026), p.23-25:
+  reabertura de um semestre fechado e as restrições de exclusão.
+- Anexo VI — mensagens de retorno das validações (ADE Cofis 10/2026): MS1083.

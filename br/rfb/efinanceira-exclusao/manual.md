@@ -92,7 +92,11 @@ ser aprovado nem baixado.
   Midaz ou quem digita o valor; quem preenche responde por ele, e a Receita recusa um
   dígito errado.
 - **Se o evento pode ser excluído** (REGRA_VERIFICA_EXCLUSAO): a Receita decide; o Anexo
-  II nomeia a regra sem detalhá-la.
+  II nomeia a regra sem detalhá-la. O que se sabe dela: a Receita recusa a exclusão de um
+  **fechamento** e de outra **exclusão** (MS1083, Anexo VI), e a de uma **abertura** com
+  eventos de movimento já enviados (Manual de Orientação do Usuário v2.1.2, p.25). O
+  Reporter não sabe de que evento é o recibo digitado, então não impede gerar essas
+  exclusões. Um fechamento se corrige pela retificação (ver o manual do fechamento).
 - **Se o recibo é de um evento recebido, ativo e desta instituição**: o Anexo II só nomeia
   a REGRA_VALIDA_NR_RECIBO_EVENTO; o que ela exige vem do campo 10 e da
   REGRA_VALIDA_NR_RECIBO (A II p.14). Só o formato é conferido.
@@ -113,3 +117,6 @@ ser aprovado nem baixado.
   (ADE Cofis 10/2026): `br/rfb/efinanceira-cad-declarante/schema/anexo-ii-leiautes-gerais-v1-5-0.pdf`,
   páginas 13 a 14, 55 a 57 e 62 a 63.
 - XSD oficial: `schema/evtExclusao-v1_5_0.xsd`.
+- Manual de Orientação do Usuário da e-Financeira v2.1.2 (ADE Cofis 10/2026), p.25:
+  restrições de exclusão.
+- Anexo VI — mensagens de retorno das validações (ADE Cofis 10/2026): MS1083.
