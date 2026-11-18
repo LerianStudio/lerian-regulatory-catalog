@@ -144,7 +144,7 @@ def unscoped_queries(found: dict[str, dict]) -> list[str]:
 class SimbaBindings(unittest.TestCase):
     def test_o_catalogo_tem_documentos_do_simba(self) -> None:
         # Controle positivo: sem documento nenhum, as conferências abaixo passariam vazias.
-        self.assertGreaterEqual(len(bindings(ROOT)), 3)
+        self.assertEqual({"agencias", "contas", "titulares", "extrato", "origem-destino"}, set(bindings(ROOT)))
 
     def test_a_mesma_consulta_tem_o_mesmo_texto(self) -> None:
         self.assertEqual([], divergent_queries(bindings(ROOT)))
@@ -176,6 +176,17 @@ class Mutations(unittest.TestCase):
         found = copy.deepcopy(self.found)
         found["contas"]["queries"] = [q for q in found["contas"]["queries"] if q.get("name") != CASE_ACCOUNTS]
         self.assertIn("contas", missing_case_accounts(found))
+
+    def test_consulta_que_perde_a_cadeia_ate_os_investigados_e_pega(self) -> None:
+        # `lancamentos` chega a `documentos` pela consulta `contas_do_caso`; trocada pela
+        # consulta da instituicao, que nao le cliente, a cadeia se perde.
+        found = copy.deepcopy(self.found)
+        query = queries_of(found["contas"])["lancamentos"]
+        for condition in query["filters"]:
+            for value in condition.get("values") or []:
+                if isinstance(value, dict) and value.get("query") == CASE_ACCOUNTS:
+                    value["query"] = "declarante"
+        self.assertTrue(any("'lancamentos'" in p for p in unscoped_queries(found)))
 
     def test_um_campo_do_od_que_o_extrato_nao_tem_e_pego(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
