@@ -2433,6 +2433,20 @@ MUTATIONS: list[Mutation] = [
         "linhas.valor.byRowClass[1] escreve o parâmetro 'pedidos', que é uma lista (multiple)",
     ),
     Mutation(
+        "parametro-de-campo-que-nao-e-nome",
+        "um campo `from: parameter` nomeia um parâmetro; uma lista no lugar do nome estourava a ferramenta",
+        lambda b: b[HIER]["binding"]["datasets"]["titulares"]["fields"].update(
+            {"tipo": {"from": "parameter", "parameter": ["titularesPedidos"]}}),
+        "titulares.tipo resolve por parameter com parameter ['titularesPedidos']",
+    ),
+    Mutation(
+        "parametro-de-caso-de-classe-que-nao-e-nome",
+        "o caso de classe é o outro caminho do mesmo campo e tem a mesma conferência de forma",
+        lambda b: b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1].update(
+            {"from": "parameter", "parameter": {"nome": "x"}}),
+        "linhas.valor.byRowClass[1] resolve por parameter com parameter {'nome': 'x'}",
+    ),
+    Mutation(
         "parametro-multiple-com-ponta-de-periodo",
         "uma lista de valores não tem início nem fim de período",
         lambda b: query(b[HIER]["binding"], "base_titulares").update({"filters": [
