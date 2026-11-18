@@ -26,7 +26,8 @@ Notas:
   em `descontinuados_sem_linha_no_anexo_ii`, sem descrição.
 - **ISPB → COMPE.** O código de compensação da contraparte (ORIGEM-DESTINO campo 5
   `COD_COMP_INSTITUIÇÃO_OD`, cópia linha 206) sai desta lista. A lista é a mesma para
-  todo cliente, então vive no template do origem-destino, gerada desta cópia, e é
+  todo cliente, então vive no template do origem-destino, gerada desta cópia por
+  `tools/ispb_compe.py` (que confere o sha256 da cópia), e é
   congelada por versão do documento: uma lista nova do Banco Central é uma versão nova.
   Instituição com código e `Participa_da_Compe = Não` sai com o código; `n/a`, `0` ou
   ISPB fora da lista saem `999` (o "sem código Compe" da mesma linha 206).
