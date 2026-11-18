@@ -13,6 +13,9 @@ resposta ao caso, gerado com os mesmos parametros dos outros.
 
 Os mesmos nos cinco documentos SIMBA: `caso`, `documentos`, `contas` (opcional), `inicio` e
 `fim`. Duas geracoes do mesmo `caso` sao a mesma entrega: a mais nova substitui a anterior.
+`contas` se preenche so quando o oficio restringir a contas especificas; o normal e nao
+preencher (ausente, todas as contas dos documentos), e preencher sem a ordem pedir omite
+contas do investigado.
 
 ## Ligacao com o EXTRATO
 
@@ -79,6 +82,11 @@ Na tarifa e na contraparte interna, o Compe da propria instituicao.
 
 ## Limitacoes desta versao
 
+- **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada
+  investigado, e esta versao tem um so `inicio`/`fim` por caso (a geracao mais nova do
+  mesmo `caso` substitui a anterior, entao o caso nao se divide em duas). Nao suportado
+  nesta versao; tratar fora do Reporter. Gerar com o periodo mais amplo poria no arquivo
+  movimento fora do afastamento.
 - **TED cifrada**: o documento do recebedor da TED enviada e os dados do pagador da TED
   recebida (exceto o banco) sao gravados cifrados pelo plugin e saem em branco.
 - **Devolucao e estorno**: nao herdam a contraparte da transacao original, e as linhas de
