@@ -74,6 +74,10 @@ parameters:
 
 filing:
   period: [caso]
+  # Uma ordem pode ser gerada de novo (dado corrigido, cadastro completado). So a
+  # geracao mais nova do mesmo caso pode ser aprovada: aprovar uma anterior
+  # entregaria ao orgao o arquivo que a correcao ja substituiu.
+  approve: newest
 
 datasets:
   # Os campos 1, 22 e 23 sao da instituicao e se repetem em toda linha (IN :137,
