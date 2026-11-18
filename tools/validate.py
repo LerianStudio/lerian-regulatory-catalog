@@ -606,6 +606,8 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             f"'{binding.get('contract')}', não para este contrato"
         )
 
+    multiple = multiple_parameters(contract)
+
     check_binding_queries(doc_dir, binding)
     check_parent_match(doc_dir, contract, binding)
     check_column_survival(doc_dir, binding)
@@ -787,6 +789,12 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                     # algo se o conjunto declarar rowSet no contrato. Aplicá-la num
                     # caminho e não no outro é o furo de sempre — a origem existe em
                     # dois lugares, a conferência tem de existir nos dois.
+                    if case.get("from") == "parameter" and case.get("parameter") in multiple:
+                        fail(
+                            f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
+                            f"escreve o parâmetro '{case.get('parameter')}', que é uma lista (multiple); "
+                            f"um campo recebe um valor só"
+                        )
                     if case.get("from") == "rowSet" and not contract_row_sets.get(dataset):
                         fail(
                             f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
@@ -819,6 +827,15 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                 fail(
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
                     f"{how!r}; use query, constant, parameter, manual, rowSet ou byRowClass"
+                )
+
+            # Uma lista (`multiple`) é o conjunto de um filtro, nunca o valor de um campo:
+            # escrita numa célula, viraria o texto da lista inteira. Mesma conferência
+            # do caso de classe acima: a origem existe nos dois caminhos.
+            if how == "parameter" and spec.get("parameter") in multiple:
+                fail(
+                    f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} escreve o parâmetro "
+                    f"'{spec.get('parameter')}', que é uma lista (multiple); um campo recebe um valor só"
                 )
 
             # `rowSet` só significa algo se o CONJUNTO declarar rowSet no contrato:
