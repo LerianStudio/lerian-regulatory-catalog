@@ -13,13 +13,28 @@
 # O TIPO DA CONTA vem de `regulatory_fields.account_type` do CRM, cujos valores o
 # proprio Midaz documenta com os codigos da IN (midaz pkg/mmodel/instrument.go:19).
 #
+# AS CONTAS DE CONTRAPARTE (IN art. 2o, III: os titulares das contas do arquivo
+# CONTAS, que lista tambem as contas com que as do caso transacionaram, codigo 3)
+# saem de `contas_contraparte`, o MESMO texto (de `lancamentos` a
+# `contas_contraparte`) do binding do CONTAS: trocar de onde vem esse conjunto e
+# trocar nos dois. As pessoas dessas contas saem com o campo 6 = 0.
+#
 # O PAPEL DE CADA PARTE RELACIONADA (campo 5) e do cliente: o CRM tem os papeis
 # PRIMARY_HOLDER, LEGAL_REPRESENTATIVE e RESPONSIBLE_PARTY, e o campo 5 tem T, 1..n,
 # R, L, P e O. PRIMARY_HOLDER e o cotitular ("C", que o template numera 1, 2... por
-# conta) e LEGAL_REPRESENTATIVE e o representante legal ("L"). O codigo de
-# RESPONSIBLE_PARTY (representante R, procurador P ou outros O) depende de como o
-# cliente cadastra: declare-o em `vinculo` abaixo. Sem a declaracao, uma parte com
-# esse papel recusa a geracao.
+# conta) e LEGAL_REPRESENTATIVE e o representante legal ("L"). O CRM nao define
+# RESPONSIBLE_PARTY; o exemplo declara "O" (outros), o unico codigo que nao afirma
+# procuracao nem representacao. Quem usa o papel para procurador declara "P"; para
+# representante, "R". Declare-o em `vinculo` nas duas consultas de partes. Sem a
+# declaracao, uma parte com esse papel recusa a geracao.
+#
+# A RENDA (campos 18 e 19): da pessoa natural, a renda mensal bruta declarada; da
+# pessoa juridica, o faturamento anual declarado, como esta no cadastro (sem
+# dividir por 12). A data e a `reference_date` de cada um.
+#
+# CONTRATO DE CAMBIO (campo 28): declare em `operaCambio` se a instituicao firma
+# contrato de cambio. "nao" escreve 0 em toda linha; "sim" recusa a geracao, porque
+# nenhuma aplicacao Lerian registra o contrato de cambio e nao ha fonte para o 1.
 #
 # A UF DO TITULAR (campo 14) converte a sigla do endereco principal no codigo IBGE,
 # com a tabela de br/bcb/simba/tabelas/uf-ibge.compute.yaml.
@@ -134,7 +149,7 @@ queries:
             SP: {constant: "35"}
             TO: {constant: "17"}
           otherwise: refuse
-    select: [_id, document, name, tipo_pessoa, codigo_uf, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date]
+    select: [_id, document, name, tipo_pessoa, codigo_uf, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date]
 
   # Uma linha por parte relacionada de cada conta do caso.
   - name: partes_dados
@@ -172,7 +187,180 @@ queries:
             LEGAL_REPRESENTATIVE: {constant: "L"}
             # Declare aqui o codigo do papel RESPONSIBLE_PARTY neste cliente
             # (R representante, P procurador ou O outros). Exemplo:
-            RESPONSIBLE_PARTY: {constant: "P"}
+            RESPONSIBLE_PARTY: {constant: "O"}
+          otherwise: refuse
+
+  # Contas com que as do caso transacionaram no periodo (IN art. 2o, II, :29;
+  # campo 7 = 3): as outras pernas das transacoes dos lancamentos do caso.
+  - name: lancamentos
+    description: Lancamentos das contas do caso no periodo, so a transacao de cada um.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    select: [transaction_id, account_id]
+
+  # Toda perna das mesmas transacoes, inclusive a propria conta do caso (o motor
+  # nao tem `nin` com valores de consulta): o template nao a repete.
+  - name: outras_pernas
+    description: As pernas das transacoes dos lancamentos do caso.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: transaction_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  # So as outras pernas que sao conta de cliente no CRM. Conta de sistema ou de
+  # liquidacao, sem instrumento, nao entra.
+  - name: contas_contraparte
+    description: Os ids das contas das outras pernas que tem instrumento no CRM.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: outras_pernas, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  # As contas de contraparte, com o titular e as partes, como as do caso.
+  - name: titulares_contraparte_dados
+    description: As contas de contraparte, com agencia, tipo, datas e o cadastro do titular.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+    join:
+      - query: cadastro_contraparte
+        match: {holder_id: _id}
+    # Quem junta uma consulta declara o que devolve; o documento e o nome vem do
+    # cadastro do titular, e nao do instrumento.
+    select: [account_id, holder_id, numero_agencia, tipo_conta, banking_details.account, banking_details.opening_date, banking_details.closing_date]
+
+  # O titular da conta de contraparte nao e pessoa da ordem: o cadastro sai pelo
+  # holder_id do instrumento. Consulta propria porque a origem de um filtro
+  # encadeado declara `select`, e a `contas_contraparte` e a do CONTAS.
+  - name: contraparte_titulares
+    description: O titular (holder_id) de cada conta de contraparte.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, holder_id]
+
+  # O cadastro do titular de cada conta de contraparte, pelo holder_id.
+  - name: cadastro_contraparte
+    description: O cadastro do titular de cada conta de contraparte.
+    dataSource: plugin_crm
+    table: holders
+    filters:
+      - {field: _id, operator: in, values: [{query: contraparte_titulares, column: holder_id}]}
+    compute:
+      - as: tipo_pessoa
+        case:
+          column: type
+          when:
+            NATURAL_PERSON: {constant: "1"}
+            LEGAL_PERSON: {constant: "2"}
+          otherwise: refuse
+      - as: codigo_uf
+        case:
+          column: addresses.primary.state
+          when:
+            AC: {constant: "12"}
+            AL: {constant: "27"}
+            AM: {constant: "13"}
+            AP: {constant: "16"}
+            BA: {constant: "29"}
+            CE: {constant: "23"}
+            DF: {constant: "53"}
+            ES: {constant: "32"}
+            GO: {constant: "52"}
+            MA: {constant: "21"}
+            MG: {constant: "31"}
+            MS: {constant: "50"}
+            MT: {constant: "51"}
+            PA: {constant: "15"}
+            PB: {constant: "25"}
+            PE: {constant: "26"}
+            PI: {constant: "22"}
+            PR: {constant: "41"}
+            RJ: {constant: "33"}
+            RN: {constant: "24"}
+            RO: {constant: "11"}
+            RR: {constant: "14"}
+            RS: {constant: "43"}
+            SC: {constant: "42"}
+            SE: {constant: "28"}
+            SP: {constant: "35"}
+            TO: {constant: "17"}
+          otherwise: refuse
+    select: [_id, document, name, tipo_pessoa, codigo_uf, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date]
+
+  # Uma linha por parte relacionada de cada conta de contraparte.
+  - name: partes_contraparte_dados
+    description: As partes relacionadas de cada conta de contraparte, uma linha por parte.
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+      - as: vinculo
+        case:
+          column: related_parties.role
+          when:
+            PRIMARY_HOLDER: {constant: "C"}
+            LEGAL_REPRESENTATIVE: {constant: "L"}
+            # Declare aqui o codigo do papel RESPONSIBLE_PARTY neste cliente
+            # (R representante, P procurador ou O outros). Exemplo:
+            RESPONSIBLE_PARTY: {constant: "O"}
           otherwise: refuse
 
 datasets:
@@ -189,9 +377,11 @@ datasets:
       nomeUnicad:
         from: manual
         pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
-      contratoCambio:
+      # Declaracao da implantacao: "nao" se a instituicao nao firma contrato de
+      # cambio (campo 28 = 0); "sim" se firma, e a geracao e recusada.
+      operaCambio:
         from: manual
-        pendingReason: "0 se a instituicao nao firma contrato de cambio; a que firma nao tem fonte para o 1 neste documento"
+        pendingReason: "nao se a instituicao nao firma contrato de cambio (campo 28 = 0); sim se firma (a geracao e recusada)"
 
   titulares:
     from:
@@ -213,6 +403,8 @@ datasets:
       outroTelefone: {from: query, column: contact.other_phone}
       renda: {from: query, column: natural_person.monthly_gross_income.value}
       dataRenda: {from: query, column: natural_person.monthly_gross_income.reference_date}
+      faturamento: {from: query, column: legal_person.annual_gross_revenue.value}
+      dataFaturamento: {from: query, column: legal_person.annual_gross_revenue.reference_date}
       dataInicio: {from: query, column: banking_details.opening_date}
       dataFim: {from: query, column: banking_details.closing_date}
       nomeSocial: {from: query, column: natural_person.social_name}
@@ -222,6 +414,49 @@ datasets:
   partes:
     from:
       query: partes_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      parteId: {from: query, column: related_parties._id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      vinculo: {from: query, column: vinculo}
+      documento: {from: query, column: related_parties.document}
+      nome: {from: query, column: related_parties.name}
+      dataInicio: {from: query, column: related_parties.start_date}
+      dataFim: {from: query, column: related_parties.end_date}
+
+  titulares_contraparte:
+    from:
+      query: titulares_contraparte_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      tipoPessoa: {from: query, column: tipo_pessoa}
+      documento: {from: query, column: document}
+      nome: {from: query, column: name}
+      logradouro: {from: query, column: addresses.primary.line_1}
+      complemento: {from: query, column: addresses.primary.line_2}
+      codigoUf: {from: query, column: codigo_uf}
+      pais: {from: query, column: addresses.primary.country}
+      cep: {from: query, column: addresses.primary.zip_code}
+      celular: {from: query, column: contact.mobile_phone}
+      outroTelefone: {from: query, column: contact.other_phone}
+      renda: {from: query, column: natural_person.monthly_gross_income.value}
+      dataRenda: {from: query, column: natural_person.monthly_gross_income.reference_date}
+      faturamento: {from: query, column: legal_person.annual_gross_revenue.value}
+      dataFaturamento: {from: query, column: legal_person.annual_gross_revenue.reference_date}
+      dataInicio: {from: query, column: banking_details.opening_date}
+      dataFim: {from: query, column: banking_details.closing_date}
+      nomeSocial: {from: query, column: natural_person.social_name}
+      emailPrincipal: {from: query, column: contact.primary_email}
+      emailSecundario: {from: query, column: contact.secondary_email}
+
+  partes_contraparte:
+    from:
+      query: partes_contraparte_dados
     fields:
       contaId: {from: query, column: account_id}
       parteId: {from: query, column: related_parties._id}
