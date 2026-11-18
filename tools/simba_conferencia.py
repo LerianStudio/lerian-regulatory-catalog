@@ -33,9 +33,11 @@ AVISO (listado para o aprovador, não bloqueia):
     não aparece no EXTRATO. Por isso a conferência lê as linhas do rascunho do CONTAS,
     como o Reporter as devolve em `GET /v1/regulatory/reports/{reportId}/rows`, onde o
     saldo tem sinal. Sem elas, o saldo devedor não é conferido, e a conferência diz isso;
-  * pelas linhas do rascunho do EXTRATO: lançamento sem o cheque especial usado
-    (operação gravada antes de o Midaz guardar o snapshot), cujo saldo sai sem ele. Sem
-    essas linhas, isso não é conferido, e a conferência diz isso;
+  * pelas linhas do rascunho do EXTRATO: conta que usou cheque especial no período ou
+    teve valor bloqueado depois de algum lançamento (o saldo final pode não mostrar
+    nenhum dos dois), e lançamento sem o cheque especial usado (operação gravada antes
+    de o Midaz guardar o snapshot), cujo saldo sai sem ele. Sem essas linhas, nada
+    disso é conferido, e a conferência diz isso;
   * TITULARES sem documento de identificação (campos 10 e 11) ou sem dispositivo
     cadastrado (26 e 27): nenhuma aplicação Lerian registra esses dados, então o aviso
     sai em todo caso, por desenho, para quem aprova saber o que vai em branco.
@@ -52,8 +54,8 @@ sem o envio anterior na pasta também bloqueia. Uma chave nova é só aviso. A p
 Final; quem roda a conferência a escolhe, e o script recusa pasta vazia, status que
 não seja Final e documento repetido.
 
-Fora do alcance: valor bloqueado na conta, e o cheque especial usado e coberto dentro
-do período (saldos inicial e final credores).
+Fora do alcance: valor bloqueado em conta sem lançamento no período. As linhas do
+rascunho do CONTAS não trazem o bloqueado, e a conta não aparece no EXTRATO.
 
 As mensagens citam agência, conta e número da linha, nunca documento ou nome: a
 saída da conferência é lida por quem aprova, e o arquivo é sigiloso.
@@ -216,17 +218,27 @@ def _check_balances_by_instant(entries: list[dict], accounts: dict, report: Repo
 
 
 def check_entry_balances(drafts: dict[str, dict] | None, report: Report) -> None:
-    """Operação sem o cheque especial medido (anterior ao snapshot), pelas linhas do EXTRATO."""
+    """Cheque especial usado, valor bloqueado e operação sem snapshot, pelas linhas do EXTRATO."""
     entries = (drafts or {}).get(EXTRATO_DOCUMENT, {}).get(EXTRATO_ENTRIES)
     if entries is None:
-        report.warn("EXTRATO: sem as linhas do rascunho do EXTRATO (--rascunhos), os lançamentos sem o cheque "
-                    "especial medido NÃO foram conferidos")
+        report.warn("EXTRATO: sem as linhas do rascunho do EXTRATO (--rascunhos), o cheque especial usado, o valor "
+                    "bloqueado e os lançamentos sem o cheque especial medido NÃO foram conferidos")
         return
+    used: set[tuple[str, str]] = set()
+    held: set[tuple[str, str]] = set()
     unmeasured: dict[tuple[str, str], int] = {}
     for row in entries:
         key = (str(row.get("numeroAgencia")), str(row.get("numeroConta")))
         if row.get("chequeEspecialApos") in (None, ""):
             unmeasured[key] = unmeasured.get(key, 0) + 1
+        elif (_decimal(str(row.get("chequeEspecialApos"))) or Decimal(0)) > 0:
+            used.add(key)
+        if (_decimal(str(row.get("bloqueadoApos") or "0")) or Decimal(0)) > 0:
+            held.add(key)
+    for key in sorted(used):
+        report.warn(f"EXTRATO: a conta {key[1]} da agência {key[0]} usou cheque especial no período")
+    for key in sorted(held):
+        report.warn(f"EXTRATO: a conta {key[1]} da agência {key[0]} teve valor bloqueado no período")
     for key, count in sorted(unmeasured.items()):
         report.warn(f"EXTRATO: {count} lançamento(s) da conta {key[1]} da agência {key[0]} sem o cheque especial "
                     "usado (operação anterior ao snapshot do Midaz); o saldo deles sai sem ele")
