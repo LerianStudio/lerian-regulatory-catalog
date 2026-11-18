@@ -124,7 +124,8 @@ datasets:
       whenKeyRepeats: refuse
       columns: {transacaoId: first, contaId: first, numeroAgencia: first, numeroConta: first, tipoConta: first,
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
-                valor: first, natureza: first, naturezaOposta: first, saldoApos: first, rail: first, fluxo: first, direcao: first,
+                valor: first, natureza: first, naturezaOposta: first, saldoApos: first, bloqueadoApos: first,
+                chequeEspecialApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, e2e: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
                 iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
     fields:
@@ -192,8 +193,20 @@ datasets:
       - name: saldoApos
         type: decimal
         required: true
-        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Saldo disponivel da conta apos o lancamento, como o Midaz o gravou (campos 12 e 13, IN :181-182).
+        description: >-
+          Saldo disponivel da conta apos o lancamento, como o Midaz o gravou (nunca abaixo de zero). Com o bloqueado
+          e o cheque especial usado, da o saldo da conta dos campos 12 e 13 (IN :181-182). Sem `format`: o template
+          faz conta com ele, e o valor formatado chega cercado para impressao, nao para conta.
+      - name: bloqueadoApos
+        type: decimal
+        required: true
+        description: Saldo bloqueado da conta apos o lancamento (on_hold), somado ao disponivel no campo 12.
+      - name: chequeEspecialApos
+        type: decimal
+        required: false
+        description: >-
+          Cheque especial usado apos o lancamento, do snapshot da operacao; subtraido no campo 12. Ausente em
+          operacao gravada antes de o Midaz guardar o snapshot: conta 0, e a conferencia lista o lancamento.
       - name: rail
         type: string
         required: false
@@ -276,11 +289,13 @@ datasets:
 knownGaps:
   - id: saldo-do-midaz
     description: >-
-      O campo 12 e o saldo disponivel que o Midaz gravou na operacao (available_balance_after), na ordem em que
-      gravou: nao e a soma corrida pela data do lancamento. Com lancamento retroativo, ou com a conta em mais de uma
-      chave de saldo, o saldo da linha nao fecha com o saldo do CONTAS. O saldo disponivel nunca fica abaixo de zero:
-      conta no cheque especial sai com saldo 000 e natureza C, e o valor bloqueado fica fora. O motor nao tem soma
-      corrida.
+      O campo 12 sai dos saldos que o Midaz gravou em cada operacao (disponivel, bloqueado e cheque especial
+      usado), na ordem em que gravou. Com lancamento retroativo, ou conta com mais de uma chave de saldo, o saldo da
+      linha nao fecha com o saldo do CONTAS. O motor nao tem soma corrida.
+  - id: cheque-especial-antes-do-snapshot
+    description: >-
+      Operacao gravada antes de o Midaz guardar o cheque especial usado no snapshot nao o tem: o saldo dela sai sem
+      o cheque especial. A conferencia lista esses lancamentos.
   - id: codigo-generico
     description: >-
       O campo 9 sai 125 (debito) ou 218 (credito) quando nenhuma regra se aplica: lancamento sem metadata de plugin,
