@@ -13,6 +13,7 @@ quebra uma coisa e exige a mensagem dela.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import json
 import tempfile
@@ -75,11 +76,23 @@ def case() -> dict[str, list[list[str]]]:
 
 
 def rows(saldo_final: str = "5.00") -> dict:
-    return {"datasets": {
+    """A resposta de /rows do rascunho do CONTAS (o saldo tem sinal aqui)."""
+    return {"documentId": "br.bcb.simba.contas", "datasets": {
+        "instituicao": [{"compe": "999"}],
         "contas_investigadas": [
-            {"numeroAgencia": "0001", "numeroConta": "123456", "saldoInicial": "100.00", "saldoFinal": "40.00"},
-            {"numeroAgencia": "0001", "numeroConta": "654321", "saldoInicial": "5.00", "saldoFinal": saldo_final}],
+            {"contaId": "c1", "numeroAgencia": "0001", "numeroConta": "123456", "saldoInicial": "100.00",
+             "saldoFinal": "40.00"},
+            {"contaId": "c2", "numeroAgencia": "0001", "numeroConta": "654321", "saldoInicial": "5.00",
+             "saldoFinal": saldo_final}],
         "contas_contraparte": []}}
+
+
+def titulares_rows(*partes: tuple[str, str]) -> dict:
+    """A resposta de /rows do rascunho do TITULARES, com as partes (contaId, parteId) dadas."""
+    return {"documentId": "br.bcb.simba.titulares", "datasets": {
+        "instituicao": [{"compe": "999"}],
+        "titulares": [{"contaId": "c1"}, {"contaId": "c2"}],
+        "partes": [{"contaId": conta, "parteId": parte} for conta, parte in partes]}}
 
 
 class Conferencia(unittest.TestCase):
@@ -88,20 +101,25 @@ class Conferencia(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
 
-    def write(self, files: dict[str, list[list[str]]], folder: str = "atual", contas_rows: dict | None = None):
+    def write(self, files: dict[str, list[list[str]]], folder: str = "atual", drafts: list[dict] | None = None):
         target = self.root / folder
         target.mkdir(exist_ok=True)
         for name, content in files.items():
             (target / f"{CASO}_{name}.txt").write_bytes("".join(line(r) for r in content).encode("ascii"))
-        rows_path = None
-        if contas_rows is not None:
-            rows_path = target / "contas-rows.json"
-            rows_path.write_text(json.dumps(contas_rows), encoding="utf-8")
-        return target, rows_path
+        return target, self.rows_folder(f"{folder}-rows", drafts)
 
-    def run_case(self, files=None, contas_rows=None, previous=None) -> conf.Report:
-        folder, rows_path = self.write(files or case(), contas_rows=rows() if contas_rows is None else contas_rows)
-        return conf.conferir(folder, CASO, rows_path, previous)
+    def rows_folder(self, folder: str, drafts: list[dict] | None) -> Path | None:
+        if drafts is None:
+            return None
+        target = self.root / folder
+        target.mkdir(exist_ok=True)
+        for i, draft in enumerate(drafts):
+            (target / f"{i}.json").write_text(json.dumps(draft), encoding="utf-8")
+        return target
+
+    def run_case(self, files=None, drafts=None, previous=None, justifications=None) -> conf.Report:
+        folder, drafts_folder = self.write(files or case(), drafts=[rows()] if drafts is None else drafts)
+        return conf.conferir(folder, CASO, drafts_folder, previous, justifications)
 
     def assert_says(self, texts: list[str], fragment: str) -> None:
         self.assertTrue(any(fragment in t for t in texts), f"nenhuma mensagem com {fragment!r}: {texts}")
@@ -114,10 +132,10 @@ class Conferencia(unittest.TestCase):
 
     # ------------------------------------------------------------ forma do arquivo
     def test_linha_sem_crlf_e_erro(self) -> None:
-        folder, rows_path = self.write(case(), contas_rows=rows())
+        folder, drafts_folder = self.write(case(), drafts=[rows()])
         path = folder / f"{CASO}_CONTAS.txt"
         path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n"))
-        self.assert_says(conf.conferir(folder, CASO, rows_path).errors, "CONTAS")
+        self.assert_says(conf.conferir(folder, CASO, drafts_folder).errors, "CONTAS")
 
     def test_campos_a_menos_e_erro(self) -> None:
         files = case()
@@ -186,7 +204,7 @@ class Conferencia(unittest.TestCase):
         # No arquivo, -12,50 sai 1250 (o CONTAS escreve o saldo sem sinal).
         files = case()
         files["CONTAS"][1] = conta("0001", "654321", "2", "500", "1250")
-        report = self.run_case(files, contas_rows=rows(saldo_final="-12.50"))
+        report = self.run_case(files, drafts=[rows(saldo_final="-12.50")])
         self.assertEqual([], report.errors)
         self.assert_says(report.warnings, "a conta 654321 da agência 0001 tem saldo final devedor (-12.50)")
 
@@ -195,27 +213,80 @@ class Conferencia(unittest.TestCase):
         self.assert_says(conf.conferir(folder, CASO, None).warnings, "NÃO foi conferida")
 
     # ------------------------------------------------------------ completude do reenvio
-    def test_reenvio_conta_as_linhas_que_entraram_e_sairam(self) -> None:
-        anterior, _ = self.write(case(), folder="anterior")
-        files = case()
-        files["EXTRATO"].append(lancamento("3", "0001", "123456", "135", "1", "D", "3999", "C"))
-        files["ORIGEM_DESTINO"].append(od("3", "3", "1"))
-        files["CONTAS"][0] = conta("0001", "123456", "1", "10000", "3999")
-        report = self.run_case(files, previous=anterior)
+    def test_linha_do_final_que_falta_no_rascunho_bloqueia(self) -> None:
+        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))])
+        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"))], previous=anterior)
         self.assertEqual([], report.errors)
-        self.assert_says(report.warnings, "EXTRATO: em relação ao envio anterior, 1 linha(s) entraram e 0 saíram")
-        self.assert_says(report.warnings, "CONTAS: em relação ao envio anterior, 1 linha(s) entraram e 1 saíram")
+        self.assert_says(report.blocks, "br.bcb.simba.titulares partes: a linha contaId=c1, parteId=p2")
+
+    def test_bloqueio_sai_com_codigo_de_erro(self) -> None:
+        folder, drafts_folder = self.write(case(), drafts=[rows(), titulares_rows(("c1", "p1"))])
+        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = conf.main([str(folder), CASO, "--rascunhos", str(drafts_folder), "--anterior", str(anterior)])
+        self.assertEqual(1, code)
+        self.assertIn("BLOQUEIO:", out.getvalue())
+
+    def test_justificativa_registrada_libera_a_linha(self) -> None:
+        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))])
+        justificativas = self.root / "justificativas.json"
+        justificativas.write_text(json.dumps([{
+            "documentId": "br.bcb.simba.titulares", "dataset": "partes",
+            "key": {"contaId": "c1", "parteId": "p2"}, "motivo": "CPF corrigido no cadastro"}]), encoding="utf-8")
+        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"))], previous=anterior,
+                               justifications=justificativas)
+        self.assertEqual([], report.blocks)
+        self.assert_says(report.released, "contaId=c1, parteId=p2")
+
+    def test_justificativa_sem_motivo_nao_libera(self) -> None:
+        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))])
+        justificativas = self.root / "justificativas.json"
+        justificativas.write_text(json.dumps([{
+            "documentId": "br.bcb.simba.titulares", "dataset": "partes",
+            "key": {"contaId": "c1", "parteId": "p2"}, "motivo": " "}]), encoding="utf-8")
+        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"))], previous=anterior,
+                               justifications=justificativas)
+        self.assert_says(report.blocks, "parteId=p2")
+        self.assert_says(report.errors, "justificativa sem motivo")
+
+    def test_linha_nova_e_so_aviso(self) -> None:
+        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"))])
+        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"), ("c2", "p3"))], previous=anterior)
+        self.assertEqual([], report.blocks)
+        self.assert_says(report.warnings, "br.bcb.simba.titulares partes: 1 linha(s) novas")
+
+    def test_documento_do_final_sem_rascunho_bloqueia(self) -> None:
+        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"))])
+        report = self.run_case(drafts=[rows()], previous=anterior)
+        self.assert_says(report.blocks, "br.bcb.simba.titulares: há envio aprovado anterior e não há rascunho novo")
 
 
 class Mutations(unittest.TestCase):
-    """O aviso de saldo devedor sem movimento, visto sumindo: sem ele, o teste reprova."""
+    """Os avisos e bloqueios que uma decisão exige, vistos sumindo: sem eles, o teste reprova."""
+
+    def failures_with(self, target: str, replacement, test: str) -> int:
+        with mock.patch.object(conf, target, replacement):
+            result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(
+                unittest.defaultTestLoader.loadTestsFromName(test, Conferencia))
+        return len(result.failures)
 
     def test_tirar_o_aviso_de_saldo_devedor_reprova_o_teste(self) -> None:
-        with mock.patch.object(conf, "check_overdraft_rows", lambda path, report: None):
-            result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(
-                unittest.defaultTestLoader.loadTestsFromName(
-                    "test_saldo_devedor_sem_movimento_e_aviso", Conferencia))
-        self.assertEqual(1, len(result.failures), "o teste do saldo devedor passou sem o aviso")
+        self.assertEqual(1, self.failures_with(
+            "check_overdraft_rows", lambda drafts, report: None, "test_saldo_devedor_sem_movimento_e_aviso"))
+
+    def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "Report", _ReportBlocksAsWarnings, "test_linha_do_final_que_falta_no_rascunho_bloqueia"))
+        self.assertEqual(1, self.failures_with(
+            "Report", _ReportBlocksAsWarnings, "test_bloqueio_sai_com_codigo_de_erro"))
+
+
+class _ReportBlocksAsWarnings(conf.Report):
+    """A mutação: a linha perdida vira só um aviso."""
+
+    def block(self, text: str) -> None:
+        self.warn(text)
 
 
 if __name__ == "__main__":
