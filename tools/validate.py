@@ -1787,7 +1787,7 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
             return
         if isinstance(qname, str):  # um name que não é texto já foi recusado; não vira chave
             reads.setdefault(qname, set()).add(source)
-        produced = own_columns(queries[source])
+        produced = own_columns(queries[source], queries)
         if produced is not None and column not in produced:
             fail(f"{where}: lê a coluna '{column}' de '{source}', que ela não entrega antes do junte "
                  f"(entrega {sorted(produced)})")
@@ -2133,7 +2133,16 @@ def _check_field_parameter(where: str, name: object, multiple: set[str]) -> None
         fail(f"{where} escreve o parâmetro '{name}', que é uma lista (multiple); um campo recebe um valor só")
 
 
-def own_columns(query: dict) -> set[str] | None:
+def _as_names(items: object) -> set[str] | None:
+    """Os `as` de uma lista de colunas calculadas; None se a forma não é uma lista de mapas."""
+    if items is None:
+        return set()
+    if not isinstance(items, list):
+        return None
+    return {i["as"] for i in items if isinstance(i, dict) and isinstance(i.get("as"), str) and i["as"]}
+
+
+def own_columns(query: dict, queries: dict[str, dict]) -> set[str] | None:
     """As colunas que uma consulta tem ANTES dos juntes: o que um valor de consulta lê.
 
     O motor resolve o conjunto de um `{query, column}` quando lê as consultas, e só
@@ -2141,22 +2150,45 @@ def own_columns(query: dict) -> set[str] | None:
     ainda não existe ali, e o `in` sairia vazio. Por isso não é produced_columns,
     que soma as parceiras.
 
-    Agregada: groupBy, medidas e derivadas. Sem agregação: o `select` declarado e as
-    colunas calculadas. Sem `select` nem agregação o esquema é o da tabela, que este
-    repositório não conhece: None, "não confira".
+    Como o motor (ownOutputs): segue a cadeia de `from` até a consulta que seleciona
+    (`select`) ou agrega, somando as derivadas do caminho. Agregada: groupBy e medidas;
+    com `select`: as colunas selecionadas. Colunas de `compute` não entram por conta
+    própria: o motor só as entrega se o `select` as nomeia. Sem `select` nem agregação
+    na cadeia o esquema é o da tabela, que este repositório não conhece; forma
+    malformada também: None, "não confira" (a forma é recusada onde é conferida).
     """
-    computed = {c["as"] for c in query.get("compute") or [] if isinstance(c, dict) and c.get("as")}
-    derived = {d["as"] for d in query.get("derive") or [] if isinstance(d, dict) and d.get("as")}
+    derived: set[str] = set()
+    seen: set[str] = set()
+    cursor = query
 
-    aggregate = _aggregation(query)
-    if aggregate:
-        columns = set(aggregate.get("groupBy") or [])
-        columns |= {m["as"] for m in aggregate.get("measures") or [] if isinstance(m, dict) and m.get("as")}
-        return columns | derived
+    while isinstance(cursor, dict):
+        name = cursor.get("name")
+        if isinstance(name, str):
+            if name in seen:
+                return None  # ciclo de `from`: já recusado em check_binding_queries
+            seen.add(name)
 
-    select = query.get("select")
-    if isinstance(select, list) and select:
-        return {c for c in select if isinstance(c, str)} | computed | derived
+        names = _as_names(cursor.get("derive"))
+        if names is None:
+            return None
+        derived |= names
+
+        aggregate = _aggregation(cursor)
+        if aggregate:
+            group = aggregate.get("groupBy") or []
+            measures = _as_names(aggregate.get("measures"))
+            if not isinstance(group, list) or measures is None:
+                return None
+            return {g for g in group if isinstance(g, str)} | measures | derived
+
+        select = cursor.get("select")
+        if isinstance(select, list) and select:
+            return {c for c in select if isinstance(c, str)} | derived
+
+        base = cursor.get("from")
+        if not isinstance(base, str) or base not in queries:
+            return None
+        cursor = queries[base]
 
     return None
 
