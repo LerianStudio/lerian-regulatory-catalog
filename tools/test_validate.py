@@ -1020,6 +1020,19 @@ MUTATIONS: list[Mutation] = [
         "que o motor não conhece",
     ),
     # ---------------------------------------------------------------- ISPB→COMPE
+    # ---------------------------------------------------------------- multiple no período
+    Mutation(
+        "periodo-nomeia-multiple",
+        "um parâmetro lista no período iria junto em cada relatório; o motor recusa",
+        lambda b: b[HIER]["contract"]["filing"].update({"period": ["dataBase", "titularesPedidos"]}),
+        "que é multiple",
+    ),
+    Mutation(
+        "periodo-derivado-com-multiple",
+        "sem filing.period, o período é todo parâmetro, a lista inclusive; o motor recusa",
+        lambda b: b[HIER]["contract"].pop("filing"),
+        "que é multiple",
+    ),
     Mutation(
         "ispb-compe-marca-sem-trecho",
         "a marca sem o trecho gerado escreve o campo em branco",

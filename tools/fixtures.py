@@ -290,6 +290,8 @@ HIER_CONTRACT = {
                    # Uma lista de valores (`multiple`), lida por `in` num filtro do binding.
                    {"name": "titularesPedidos", "type": "string", "required": False, "multiple": True,
                     "maxItems": 50, "description": "Titulares pedidos; ausente, todos."}],
+    # O período é declarado: uma lista (`multiple`) nunca entra nele.
+    "filing": {"period": ["dataBase", "dtIni", "dtFim"]},
     "datasets": [
         {"name": "titulares", "description": "Titulares.", "grain": ["codigo"],
          "consolidation": {"key": ["codigo"], "whenKeyRepeats": "refuse",
