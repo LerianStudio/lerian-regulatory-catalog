@@ -61,6 +61,10 @@ O campo 3 e o valor do lancamento (plugin, tarifa, linha vazia) ou o da outra pe
 Na contraparte de outra instituicao, o plugin grava o ISPB; o template o converte no codigo
 Compe pela lista de participantes do STR publicada pelo Banco Central
 (`br/bcb/simba/tabelas/ParticipantesSTR.csv`); ISPB fora da lista ou sem codigo sai `999`.
+O trecho do template que faz a conversao e gerado da lista por `tools/ispb_compe.py`, e o
+validador do catalogo recusa o template se o trecho nao for o gerado. ISPB vazio ou
+ausente sai `999` (nunca o Banco do Brasil, cujo ISPB e `00000000`); uma TED recebida
+registrada antes de o plugin gravar o ISPB do remetente cai nesse caso.
 Na tarifa e na contraparte interna, o Compe da propria instituicao.
 
 ## O que o tenant preenche no mapeamento (binding)
