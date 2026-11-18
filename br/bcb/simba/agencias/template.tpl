@@ -3,8 +3,8 @@ SIMBA - arquivo I AGENCIAS (IN BCB 636/2025, Anexo I, campos 1 a 14; normas/IN-B
 Comentario em bloco (comment) e nao em linhas: no .txt cada linha de comentario deixava uma quebra de linha antes do 1o registro.
 So a forma: sem cabecalho, TAB entre colunas, CR LF no fim de cada linha (IN art. 3o, :59-61).
 Formato e dominio de cada campo estao no contrato; de onde vem, no binding.
-autoescape off: sem ele o render escreve & < > aspas como entidades HTML (esqueleto EB2.2 § 7).
-Macro ascii: esqueleto EB2.2 § 4 + TAB -> espaco (§ 7). CR/LF dentro do valor nao sai: limitacao do manual.
+autoescape off: sem ele o render escreve & < > aspas como entidades HTML.
+Macro ascii: tira acentos (texto em ASCII) e troca TAB por espaco. CR/LF dentro do valor nao sai: limitacao do manual.
 Uma linha por agencia: o contrato traz uma linha por conta; aqui cada numero de agencia sai uma vez so
 (marca jaListada: a agencia ja escrita numa linha anterior, ou no conjunto do caso, nao se repete).
 Sem agencia fisica (campo 14 = 2): sentinelas do Anexo I sem acento, campos 3 a 6, 8 e 9.

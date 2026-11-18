@@ -31,8 +31,8 @@ queries:
       - field: deleted_at
         operator: isNull
 
-  # As contas do caso (esqueleto EB2.2 § 3, interina: so o TITULAR; o cotitular e
-  # decisao pendente). Excluida do CRM fica fora; encerrada entra.
+  # As contas do caso (nesta versao, so as que o documento investigado TITULA; a conta
+  # em que ele e cotitular esta em aberto). Excluida do CRM fica fora; encerrada entra.
   - name: contas_do_caso
     dataSource: plugin_crm
     table: aliases
