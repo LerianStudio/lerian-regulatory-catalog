@@ -3069,7 +3069,10 @@ def _check_childof_cycles(doc_dir: Path, contract: dict) -> None:
 
 
 
-FILING_KEYS = {"period", "remittance"}
+FILING_KEYS = {"period", "remittance", "approve"}
+# Quais gerações de uma entrega podem ser aprovadas: qualquer uma (o padrão, igual a
+# não escrever) ou só a que nada mais novo da mesma entrega substitui.
+FILING_APPROVE = ("any", "newest")
 REMITTANCE_KEYS = {"parameter", "original", "replacement", "reference"}
 
 
@@ -3088,12 +3091,17 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
 
     where = f"{doc_dir.relative_to(ROOT)}: filing"
     filing = mapping_at(where, contract.get("filing"),
-                        "filing é um mapeamento de period e remittance")
+                        "filing é um mapeamento de period, remittance e approve")
     if filing is None:
         return
 
     for key in sorted(set(filing) - FILING_KEYS):
         fail(f"{where} declara {key!r}, que o motor não conhece; filing aceita {sorted(FILING_KEYS)}")
+
+    # O motor recusa na carga qualquer outra grafia, inclusive "" e true: a regra de
+    # aprovar só a mais nova não pode ficar desligada por um valor que parece certo.
+    if "approve" in filing and filing.get("approve") not in FILING_APPROVE:
+        fail(f"{where}.approve é {filing.get('approve')!r}; aceita {list(FILING_APPROVE)}")
 
     params = {}
     for param in parameters_of(contract):

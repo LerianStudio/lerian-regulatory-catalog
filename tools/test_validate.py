@@ -1010,6 +1010,24 @@ MUTATIONS: list[Mutation] = [
         "que o motor não conhece",
     ),
     Mutation(
+        "filing-approve-maiusculo",
+        "o motor só lê any ou newest; outra grafia recusa o contrato na carga",
+        lambda b: b[PLANO]["contract"]["filing"].update({"approve": "Newest"}),
+        "aceita ['any', 'newest']",
+    ),
+    Mutation(
+        "filing-approve-booleano",
+        "approve: true parece ligar a regra, e o motor o recusa",
+        lambda b: b[PLANO]["contract"]["filing"].update({"approve": True}),
+        "aceita ['any', 'newest']",
+    ),
+    Mutation(
+        "filing-approve-vazio",
+        "approve vazio não diz qual geração se aprova",
+        lambda b: b[PLANO]["contract"]["filing"].update({"approve": ""}),
+        "aceita ['any', 'newest']",
+    ),
+    Mutation(
         "filing-period-vazio",
         "period sem lista não diz se o documento tem período ou não",
         lambda b: b[PLANO]["contract"]["filing"].update({"period": None}),
