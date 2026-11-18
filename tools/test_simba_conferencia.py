@@ -109,6 +109,12 @@ def extrato_rows(*lancamentos: tuple) -> dict:
     return {"documentId": "br.bcb.simba.extrato", "status": "Draft", "datasets": {"lancamentos": linhas}}
 
 
+def coherent_drafts() -> list[dict]:
+    """As linhas dos rascunhos do CONTAS e do EXTRATO que casam com case()."""
+    return [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "50.00"),
+                                 ("123456", "2026-12-01T10:00:02Z", "40.00"))]
+
+
 def final(*drafts: dict) -> list[dict]:
     """As mesmas respostas, como as de um envio aprovado."""
     return [dict(d, status="Final") for d in drafts]
@@ -137,7 +143,7 @@ class Conferencia(unittest.TestCase):
         return target
 
     def run_case(self, files=None, drafts=None, previous=None, justifications=None) -> conf.Report:
-        folder, drafts_folder = self.write(files or case(), drafts=[rows()] if drafts is None else drafts)
+        folder, drafts_folder = self.write(files or case(), drafts=coherent_drafts() if drafts is None else drafts)
         return conf.conferir(folder, CASO, drafts_folder, previous, justifications)
 
     def assert_says(self, texts: list[str], fragment: str) -> None:
@@ -204,7 +210,7 @@ class Conferencia(unittest.TestCase):
     def test_ultimo_saldo_diferente_do_contas_e_aviso(self) -> None:
         files = case()
         files["CONTAS"][0] = conta("0001", "123456", "1", "10000", "3900")
-        report = self.run_case(files)
+        report = self.run_case(files, drafts=[rows()])
         self.assertEqual([], report.errors)
         self.assert_says(report.warnings, "o saldo da última linha da conta 123456 da agência 0001 é 4000")
 
@@ -257,6 +263,21 @@ class Conferencia(unittest.TestCase):
         self.assert_says(self.run_case(drafts=drafts).warnings,
                          "1 lançamento(s) da conta 123456 da agência 0001 sem o cheque especial usado")
 
+    def test_lancamento_sem_cheque_especial_medido_sem_o_contas_ainda_e_aviso(self) -> None:
+        drafts = [extrato_rows(("123456", "2026-12-01T10:00:01Z", "40.00", "0", None))]
+        self.assert_says(self.run_case(drafts=drafts).warnings, "sem o cheque especial usado")
+
+    def test_sem_as_linhas_do_extrato_a_conferencia_diz_o_que_nao_viu(self) -> None:
+        self.assert_says(self.run_case(drafts=[rows()]).warnings,
+                         "sem as linhas do rascunho do EXTRATO (--rascunhos), os lançamentos sem o cheque")
+
+    def test_cheque_especial_ausente_conta_zero_no_saldo(self) -> None:
+        # Sem o cheque especial medido, o saldo é disponível + bloqueado: 40,00 bate com o CONTAS.
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "40.00", "0", None))]
+        report = self.run_case(drafts=drafts)
+        self.assertFalse(any("o saldo após o último lançamento" in w or "não pôde ser comparado" in w
+                             for w in report.warnings), report.warnings)
+
     def test_saldo_ausente_nas_linhas_e_aviso(self) -> None:
         drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "40.00"))]
         drafts[0]["datasets"]["contas_investigadas"][0]["saldoFinal"] = None
@@ -264,16 +285,17 @@ class Conferencia(unittest.TestCase):
 
     def test_instante_ilegivel_ou_sem_fuso_e_erro(self) -> None:
         for instante in ("ontem", "2026-12-01T10:00:01"):
-            drafts = [rows(), extrato_rows(("123456", instante, "40.00"))]
-            self.assert_says(self.run_case(drafts=drafts).errors, "não tem instante legível")
+            with self.subTest(instante=instante):
+                drafts = [rows(), extrato_rows(("123456", instante, "40.00"))]
+                self.assert_says(self.run_case(drafts=drafts).errors, "não tem instante legível")
 
     def test_titulares_sem_identificacao_nem_dispositivo_e_aviso(self) -> None:
         files = case()
         files["TITULARES"][0][9:11] = ["", ""]
         files["TITULARES"][1][25:27] = ["", ""]
         warnings = self.run_case(files).warnings
-        self.assert_says(warnings, "TITULARES: 1 linha(s) sem documento de identificação (campos 10 e 11)")
-        self.assert_says(warnings, "TITULARES: 1 linha(s) sem dispositivo cadastrado (campos 26 e 27)")
+        self.assert_says(warnings, "TITULARES: 1 linha(s) sem documento de identificação (campos 10 e 11;")
+        self.assert_says(warnings, "TITULARES: 1 linha(s) sem dispositivo cadastrado (campos 26 e 27;")
 
     def test_saldo_devedor_sem_movimento_e_aviso(self) -> None:
         # A conta 654321 não tem lançamento: só as linhas do rascunho mostram o sinal.
