@@ -4,8 +4,8 @@
     "ispb": "00000000",
     "agencia": "1",
     "conta": "12345",
-    "documento": "11122233344",
-    "nome": "Pagador Exemplo",
+    "documento": "AB.12C.D34/0001-55",
+    "nome": "Pagadora Exemplo Ltda",
     "comentario": "pagamento exemplo",
     "txid": "",
     "e2e": "E00000000202612021300EXEMPLO0001"
