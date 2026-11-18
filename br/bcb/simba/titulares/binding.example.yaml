@@ -17,7 +17,7 @@
 # CONTAS, que lista tambem as contas com que as do caso transacionaram, codigo 3)
 # saem de `contas_contraparte`, o MESMO texto (de `lancamentos` a
 # `contas_contraparte`) do binding do CONTAS: trocar de onde vem esse conjunto e
-# trocar nos dois. As pessoas dessas contas saem com o campo 6 = 0.
+# trocar nos dois. O campo 6 dessas pessoas segue a pessoa, como nas do caso (IN :142).
 #
 # O PAPEL DE CADA PARTE RELACIONADA (campo 5) e do cliente: o CRM tem os papeis
 # PRIMARY_HOLDER, LEGAL_REPRESENTATIVE e RESPONSIBLE_PARTY, e o campo 5 tem T, 1..n,
