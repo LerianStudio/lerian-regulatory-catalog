@@ -19,6 +19,9 @@ aprovacao avisa o documento sem conta. `contas` se preenche so quando o oficio r
 preencher (ausente, todas as contas dos documentos), e preencher sem a ordem pedir omite
 contas do investigado.
 
+O `fim` tem de ser um dia que ja acabou no calendario do Reporter: a geracao le um periodo
+fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos.
+
 Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter restringe
 `organization.id` a organizacao dela; sem isso a leitura traz todas, e a geracao e recusada
 (o CNPJ lido nao e o da instituicao, ou chegam duas linhas para uma) em vez de escolher uma.

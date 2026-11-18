@@ -75,6 +75,7 @@ parameters:
     description: Primeiro dia do afastamento do sigilo.
   - name: fim
     type: date
+    closed: true
     required: true
     description: Ultimo dia do afastamento do sigilo.
 
