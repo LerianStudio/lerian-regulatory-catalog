@@ -8,7 +8,8 @@
 #
 # MESMA NUMERACAO DO ORIGEM-DESTINO: `lancamentos_dados` e as consultas que ela junta
 # (`lancamentos_descricao`, `contas_lancamento`, `metadados_transacao`) e `taxas_lancamento` tem o MESMO texto
-# nos dois bindings, e o conjunto `lancamentos` e o mesmo nos dois contratos. Mudar
+# nos dois bindings, e o conjunto `lancamentos` tem o mesmo grao e os campos do
+# ORIGEM-DESTINO no EXTRATO (o EXTRATO le tambem os saldos; test_simba confere). Mudar
 # uma delas e mudar nos dois; senao o numero do lancamento (campo 1) aponta para
 # outra linha no ORIGEM-DESTINO.
 #
