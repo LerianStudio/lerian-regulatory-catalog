@@ -1,0 +1,36 @@
+# UF (sigla) -> codigo IBGE de 2 digitos, para CODIGO_UF do SIMBA
+# (IN BCB 636/2025, Anexo I: normas/IN-BCB-636-2025.md L106 e demais campos *_UF).
+# Derivado de br/rfb/e-financeira/tabelas/uf.txt (Receita, Portal SPED,
+# http://sped.rfb.gov.br/arquivo/download/1949, baixado em 06/11/2026),
+# sha256 5816106201212a3ba1a17b787f278b7de6491342184f47ca5de041ccb66983ef,
+# linhas vigentes (DT_FIM vazio) lidas por tools/tabelas_receita.py read_table.
+# Fora: 99|EX (exterior, convencao da Receita). No SIMBA exterior/sem agencia
+# e o sentinela "00" (IN L106), condicao do template, nao deste mapa.
+# Nao e lido pelo motor: proveniencia + oraculo de teste. Nao edite; regere.
+AC: "12"
+AL: "27"
+AM: "13"
+AP: "16"
+BA: "29"
+CE: "23"
+DF: "53"
+ES: "32"
+GO: "52"
+MA: "21"
+MG: "31"
+MS: "50"
+MT: "51"
+PA: "15"
+PB: "25"
+PE: "26"
+PI: "22"
+PR: "41"
+RJ: "33"
+RN: "24"
+RO: "11"
+RR: "14"
+RS: "43"
+SC: "42"
+SE: "28"
+SP: "35"
+TO: "17"

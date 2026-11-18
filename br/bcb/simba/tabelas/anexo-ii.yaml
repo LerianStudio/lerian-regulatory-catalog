@@ -1,0 +1,626 @@
+# Anexo II da IN BCB 636/2025: codigos do campo 9 CODIGO_TIPO_LANCAMENTO do
+# arquivo IV EXTRATO. Transcrito de normas/IN-BCB-636-2025.md (sha256
+# 1f01cb2c9a2722d644d17f150041b1613e1af8be1e4843dbefe36c08c91376c8), secao `## ANEXO II`.
+# Descricoes copiadas literalmente da norma (inclusive grafias como
+# "Debloqueio" e "deposito"): sao proveniencia, nunca texto de saida.
+# descontinuado_em_2028_06_01: o codigo esta no § 4º do art. 2º (copia L55),
+# "serao descontinuados a partir de 1º de junho de 2028".
+# descontinuados_sem_linha_no_anexo_ii: codigos que o § 4º lista e que nao
+# tem linha nas tabelas do Anexo II (contradicao da propria norma; sem
+# descricao inventada).
+# Contagem: debito 66, credito 78, total 144;
+# § 4º: 29 codigos.
+# Nao e lido pelo motor: proveniencia + oraculo de teste.
+debito:
+  '101':
+    descricao_sugerida: Cheques compensados
+    linha_na_copia: 371
+    descontinuado_em_2028_06_01: false
+  '102':
+    descricao_sugerida: Encargos
+    linha_na_copia: 372
+    descontinuado_em_2028_06_01: false
+  '103':
+    descricao_sugerida: Estornos
+    linha_na_copia: 373
+    descontinuado_em_2028_06_01: true
+  '104':
+    descricao_sugerida: Lançamento avisado
+    linha_na_copia: 374
+    descontinuado_em_2028_06_01: true
+  '105':
+    descricao_sugerida: Tarifas
+    linha_na_copia: 375
+    descontinuado_em_2028_06_01: false
+  '106':
+    descricao_sugerida: Aplicação
+    linha_na_copia: 376
+    descontinuado_em_2028_06_01: true
+  '107':
+    descricao_sugerida: Pagamento de empréstimo ou financiamento
+    linha_na_copia: 377
+    descontinuado_em_2028_06_01: false
+  '108':
+    descricao_sugerida: Câmbio
+    linha_na_copia: 378
+    descontinuado_em_2028_06_01: false
+  '109':
+    descricao_sugerida: CPMF
+    linha_na_copia: 379
+    descontinuado_em_2028_06_01: false
+  '110':
+    descricao_sugerida: IOF
+    linha_na_copia: 380
+    descontinuado_em_2028_06_01: false
+  '111':
+    descricao_sugerida: Imposto de renda
+    linha_na_copia: 381
+    descontinuado_em_2028_06_01: true
+  '112':
+    descricao_sugerida: Pagamento a fornecedores
+    linha_na_copia: 382
+    descontinuado_em_2028_06_01: true
+  '113':
+    descricao_sugerida: Pagamento de salário/proventos/subsídios
+    linha_na_copia: 383
+    descontinuado_em_2028_06_01: false
+  '114':
+    descricao_sugerida: Saque eletrônico
+    linha_na_copia: 384
+    descontinuado_em_2028_06_01: true
+  '115':
+    descricao_sugerida: Ações
+    linha_na_copia: 385
+    descontinuado_em_2028_06_01: false
+  '117':
+    descricao_sugerida: Transferência entre contas
+    linha_na_copia: 386
+    descontinuado_em_2028_06_01: true
+  '118':
+    descricao_sugerida: Devolução da compensação
+    linha_na_copia: 387
+    descontinuado_em_2028_06_01: true
+  '119':
+    descricao_sugerida: Devolução de cheque depositado
+    linha_na_copia: 388
+    descontinuado_em_2028_06_01: true
+  '120':
+    descricao_sugerida: Transferência interbancária (DOC, TED)
+    linha_na_copia: 389
+    descontinuado_em_2028_06_01: true
+  '121':
+    descricao_sugerida: Antecipação a fornecedores
+    linha_na_copia: 390
+    descontinuado_em_2028_06_01: true
+  '122':
+    descricao_sugerida: OC/AEROPS
+    linha_na_copia: 391
+    descontinuado_em_2028_06_01: true
+  '123':
+    descricao_sugerida: Saques em espécie
+    linha_na_copia: 392
+    descontinuado_em_2028_06_01: true
+  '124':
+    descricao_sugerida: Cheque pago em espécie
+    linha_na_copia: 393
+    descontinuado_em_2028_06_01: true
+  '125':
+    descricao_sugerida: Pagamentos diversos (não incluídos em códigos específicos)
+    linha_na_copia: 394
+    descontinuado_em_2028_06_01: true
+  '126':
+    descricao_sugerida: Pagamento de tributos
+    linha_na_copia: 395
+    descontinuado_em_2028_06_01: false
+  '127':
+    descricao_sugerida: Pagamento de fatura de cartão de crédito da mesma instituição
+    linha_na_copia: 396
+    descontinuado_em_2028_06_01: false
+  '128':
+    descricao_sugerida: Pagamento de fatura de cartão de crédito de outra instituição
+    linha_na_copia: 397
+    descontinuado_em_2028_06_01: false
+  '129':
+    descricao_sugerida: Investimento
+    linha_na_copia: 398
+    descontinuado_em_2028_06_01: false
+  '130':
+    descricao_sugerida: Aplicação automática
+    linha_na_copia: 399
+    descontinuado_em_2028_06_01: false
+  '131':
+    descricao_sugerida: Título de capitalização
+    linha_na_copia: 400
+    descontinuado_em_2028_06_01: false
+  '132':
+    descricao_sugerida: Aplicação em previdência privada
+    linha_na_copia: 401
+    descontinuado_em_2028_06_01: false
+  '133':
+    descricao_sugerida: Envio por transferência entre contas na mesma instituição
+    linha_na_copia: 402
+    descontinuado_em_2028_06_01: false
+  '134':
+    descricao_sugerida: Envio por transferência interinstituições
+    linha_na_copia: 403
+    descontinuado_em_2028_06_01: false
+  '135':
+    descricao_sugerida: Envio por transferência por PIX
+    linha_na_copia: 404
+    descontinuado_em_2028_06_01: false
+  '136':
+    descricao_sugerida: Envio/remessa de valores para o exterior
+    linha_na_copia: 405
+    descontinuado_em_2028_06_01: false
+  '137':
+    descricao_sugerida: Envio por transferência para mesma titularidade, exceto PIX
+    linha_na_copia: 406
+    descontinuado_em_2028_06_01: false
+  '138':
+    descricao_sugerida: Devolução de cheque depositado
+    linha_na_copia: 407
+    descontinuado_em_2028_06_01: false
+  '139':
+    descricao_sugerida: Estornos de depósitos em dinheiro
+    linha_na_copia: 408
+    descontinuado_em_2028_06_01: false
+  '140':
+    descricao_sugerida: Estornos de transferências
+    linha_na_copia: 409
+    descontinuado_em_2028_06_01: false
+  '141':
+    descricao_sugerida: Estorno de envio/remessa de valores para o exterior
+    linha_na_copia: 410
+    descontinuado_em_2028_06_01: false
+  '142':
+    descricao_sugerida: Estornos diversos (não incluídos em códigos específicos)
+    linha_na_copia: 411
+    descontinuado_em_2028_06_01: false
+  '143':
+    descricao_sugerida: Compra por cartão de débito
+    linha_na_copia: 412
+    descontinuado_em_2028_06_01: false
+  '144':
+    descricao_sugerida: Pagamento de seguros
+    linha_na_copia: 413
+    descontinuado_em_2028_06_01: false
+  '145':
+    descricao_sugerida: Pagamento de contas de consumo
+    linha_na_copia: 414
+    descontinuado_em_2028_06_01: false
+  '146':
+    descricao_sugerida: Pagamento de consórcio
+    linha_na_copia: 415
+    descontinuado_em_2028_06_01: false
+  '147':
+    descricao_sugerida: Pagamento de boletos cobrança, exceto contas de consumo
+    linha_na_copia: 416
+    descontinuado_em_2028_06_01: false
+  '148':
+    descricao_sugerida: Recarga de cartão pré-pago
+    linha_na_copia: 417
+    descontinuado_em_2028_06_01: false
+  '149':
+    descricao_sugerida: Recarga de serviço pré-pago
+    linha_na_copia: 418
+    descontinuado_em_2028_06_01: false
+  '150':
+    descricao_sugerida: Bloqueio judicial/legal
+    linha_na_copia: 419
+    descontinuado_em_2028_06_01: false
+  '151':
+    descricao_sugerida: Saque em dinheiro via Pix-Saque
+    linha_na_copia: 420
+    descontinuado_em_2028_06_01: false
+  '152':
+    descricao_sugerida: Saque em dinheiro via Pix-Troco
+    linha_na_copia: 421
+    descontinuado_em_2028_06_01: false
+  '153':
+    descricao_sugerida: Saque de dinheiro em espécie no caixa convencional dentro da agência com cartão da conta
+    linha_na_copia: 422
+    descontinuado_em_2028_06_01: false
+  '154':
+    descricao_sugerida: Saque de dinheiro em espécie no ATM em sua agência
+    linha_na_copia: 423
+    descontinuado_em_2028_06_01: false
+  '155':
+    descricao_sugerida: Saque de dinheiro em espécie dentro de sua agência por meio de cheque
+    linha_na_copia: 424
+    descontinuado_em_2028_06_01: false
+  '156':
+    descricao_sugerida: Saque de dinheiro em espécie dentro de sua agência por meio de recibo de retirada
+    linha_na_copia: 425
+    descontinuado_em_2028_06_01: false
+  '157':
+    descricao_sugerida: Saque de dinheiro em espécie em ATM do Banco 24 Horas
+    linha_na_copia: 426
+    descontinuado_em_2028_06_01: false
+  '158':
+    descricao_sugerida: Saque de dinheiro em espécie no correspondente
+    linha_na_copia: 427
+    descontinuado_em_2028_06_01: false
+  '159':
+    descricao_sugerida: Saque de dinheiro em espécie no correspondente bancário por meio de cheque
+    linha_na_copia: 428
+    descontinuado_em_2028_06_01: false
+  '160':
+    descricao_sugerida: Saque de dinheiro em espécie no correspondente bancário por meio de recibo de retirada
+    linha_na_copia: 429
+    descontinuado_em_2028_06_01: false
+  '161':
+    descricao_sugerida: Saque de dinheiro em espécie em ATM da rede Saque e Pague
+    linha_na_copia: 430
+    descontinuado_em_2028_06_01: false
+  '162':
+    descricao_sugerida: Saque de dinheiro em espécie em ATM da rede Plus
+    linha_na_copia: 431
+    descontinuado_em_2028_06_01: false
+  '163':
+    descricao_sugerida: Saque de dinheiro em espécie em ATM da rede Cirrus
+    linha_na_copia: 432
+    descontinuado_em_2028_06_01: false
+  '164':
+    descricao_sugerida: Saque em dinheiro via Empresa Transportadora de Valores (ETV) entregue em domicílio
+    linha_na_copia: 433
+    descontinuado_em_2028_06_01: false
+  '165':
+    descricao_sugerida: Débito em operação interna
+    linha_na_copia: 434
+    descontinuado_em_2028_06_01: false
+  '166':
+    descricao_sugerida: Débito em mecanismo especial de devolução PIX BLOQUEIO
+    linha_na_copia: 435
+    descontinuado_em_2028_06_01: false
+  '167':
+    descricao_sugerida: Débito bloqueio cautelar do PIX
+    linha_na_copia: 436
+    descontinuado_em_2028_06_01: false
+credito:
+  '201':
+    descricao_sugerida: Depósitos
+    linha_na_copia: 442
+    descontinuado_em_2028_06_01: true
+  '202':
+    descricao_sugerida: Líquido de cobrança
+    linha_na_copia: 443
+    descontinuado_em_2028_06_01: true
+  '203':
+    descricao_sugerida: Devolução de cheques
+    linha_na_copia: 444
+    descontinuado_em_2028_06_01: true
+  '204':
+    descricao_sugerida: Estornos
+    linha_na_copia: 445
+    descontinuado_em_2028_06_01: true
+  '205':
+    descricao_sugerida: Lançamento avisado
+    linha_na_copia: 446
+    descontinuado_em_2028_06_01: true
+  '206':
+    descricao_sugerida: Resgate de aplicação
+    linha_na_copia: 447
+    descontinuado_em_2028_06_01: true
+  '207':
+    descricao_sugerida: Empréstimo/financiamento
+    linha_na_copia: 448
+    descontinuado_em_2028_06_01: false
+  '208':
+    descricao_sugerida: Câmbio
+    linha_na_copia: 449
+    descontinuado_em_2028_06_01: false
+  '209':
+    descricao_sugerida: Transferência interbancária (DOC, TED)
+    linha_na_copia: 450
+    descontinuado_em_2028_06_01: true
+  '210':
+    descricao_sugerida: Ações
+    linha_na_copia: 451
+    descontinuado_em_2028_06_01: false
+  '211':
+    descricao_sugerida: Dividendos
+    linha_na_copia: 452
+    descontinuado_em_2028_06_01: false
+  '212':
+    descricao_sugerida: Seguro
+    linha_na_copia: 453
+    descontinuado_em_2028_06_01: false
+  '213':
+    descricao_sugerida: Transferência entre contas
+    linha_na_copia: 454
+    descontinuado_em_2028_06_01: true
+  '214':
+    descricao_sugerida: Depósitos especiais
+    linha_na_copia: 455
+    descontinuado_em_2028_06_01: false
+  '215':
+    descricao_sugerida: Devolução da compensação
+    linha_na_copia: 456
+    descontinuado_em_2028_06_01: true
+  '216':
+    descricao_sugerida: OCT
+    linha_na_copia: 457
+    descontinuado_em_2028_06_01: true
+  '217':
+    descricao_sugerida: Pagamento de fornecedores
+    linha_na_copia: 458
+    descontinuado_em_2028_06_01: false
+  '218':
+    descricao_sugerida: Pagamentos diversos (não incluídos em códigos específicos)
+    linha_na_copia: 459
+    descontinuado_em_2028_06_01: true
+  '219':
+    descricao_sugerida: Recebimento de salário/proventos/subsídios
+    linha_na_copia: 460
+    descontinuado_em_2028_06_01: false
+  '220':
+    descricao_sugerida: Depósitos em espécie
+    linha_na_copia: 461
+    descontinuado_em_2028_06_01: true
+  '221':
+    descricao_sugerida: Recebimentos de tributos
+    linha_na_copia: 462
+    descontinuado_em_2028_06_01: false
+  '222':
+    descricao_sugerida: Recebíveis de cartão de crédito
+    linha_na_copia: 463
+    descontinuado_em_2028_06_01: true
+  '223':
+    descricao_sugerida: Recebimento de crédito por PIX via QRCODE
+    linha_na_copia: 464
+    descontinuado_em_2028_06_01: false
+  '224':
+    descricao_sugerida: Depósito de dinheiro em espécie no caixa convencional dentro da agência da conta creditada
+    linha_na_copia: 465
+    descontinuado_em_2028_06_01: false
+  '225':
+    descricao_sugerida: Depósito de cheque no caixa convencional dentro da agência da conta creditada
+    linha_na_copia: 466
+    descontinuado_em_2028_06_01: false
+  '226':
+    descricao_sugerida: Depósito com recursos disponíveis na própria instituição, no caixa convencional dentro da agência da conta creditada
+    linha_na_copia: 467
+    descontinuado_em_2028_06_01: false
+  '227':
+    descricao_sugerida: Depósito em espécie em ATM
+    linha_na_copia: 468
+    descontinuado_em_2028_06_01: false
+  '228':
+    descricao_sugerida: Depósito em cheque em ATM
+    linha_na_copia: 469
+    descontinuado_em_2028_06_01: false
+  '229':
+    descricao_sugerida: Depósito com recursos disponíveis na própria instituição em ATM
+    linha_na_copia: 470
+    descontinuado_em_2028_06_01: false
+  '230':
+    descricao_sugerida: Depósito em espécie no caixa convencional dentro de agência diferente daquela da conta creditada
+    linha_na_copia: 471
+    descontinuado_em_2028_06_01: false
+  '231':
+    descricao_sugerida: Depósito em cheque no caixa convencional dentro de agência diferente daquela da conta creditada
+    linha_na_copia: 472
+    descontinuado_em_2028_06_01: false
+  '232':
+    descricao_sugerida: Depósito com recursos disponíveis na própria instituição, no caixa convencional dentro de agência diferente daquela da conta creditada
+    linha_na_copia: 473
+    descontinuado_em_2028_06_01: false
+  '233':
+    descricao_sugerida: Depósito de dinheiro em espécie no caixa convencional dentro da agência para depósito com identificação numérica
+    linha_na_copia: 474
+    descontinuado_em_2028_06_01: false
+  '234':
+    descricao_sugerida: Depósito de cheque para compensação no caixa convencional dentro da agência para depósito com identificação numérica
+    linha_na_copia: 475
+    descontinuado_em_2028_06_01: false
+  '235':
+    descricao_sugerida: Depósito com recurso disponível no caixa convencional dentro da agência para depósito com identificação numérica
+    linha_na_copia: 476
+    descontinuado_em_2028_06_01: false
+  '236':
+    descricao_sugerida: Depósito de dinheiro em espécie no caixa convencional dentro da agência para depósito com identificação alfanumérica
+    linha_na_copia: 477
+    descontinuado_em_2028_06_01: false
+  '237':
+    descricao_sugerida: Depósito de cheque para compensação no caixa convencional dentro da agência para depósito com identificação alfanumérica
+    linha_na_copia: 478
+    descontinuado_em_2028_06_01: false
+  '238':
+    descricao_sugerida: Depósito com recurso disponível no caixa convencional dentro da agência para depósito com identificação alfanumérica
+    linha_na_copia: 479
+    descontinuado_em_2028_06_01: false
+  '239':
+    descricao_sugerida: Depósito de dinheiro em espécie no caixa convencional dentro da agência para depósito com identificação com cartão de identificação
+    linha_na_copia: 480
+    descontinuado_em_2028_06_01: false
+  '240':
+    descricao_sugerida: Depósito de cheque para compensação no caixa convencional dentro da agência para depósito com identificação com cartão de identificação
+    linha_na_copia: 481
+    descontinuado_em_2028_06_01: false
+  '241':
+    descricao_sugerida: Depósito com recurso disponível no caixa convencional dentro da agência para depósito com identificação com cartão de identificação
+    linha_na_copia: 482
+    descontinuado_em_2028_06_01: false
+  '242':
+    descricao_sugerida: Depósito de dinheiro em espécie na centralizadora/tesouraria da empresa de valores por meio de carro forte
+    linha_na_copia: 483
+    descontinuado_em_2028_06_01: false
+  '243':
+    descricao_sugerida: Depósito de cheque na centralizadora da instituição por meio de carro forte
+    linha_na_copia: 484
+    descontinuado_em_2028_06_01: false
+  '244':
+    descricao_sugerida: Depósito de dinheiro em espécie no correspondente
+    linha_na_copia: 485
+    descontinuado_em_2028_06_01: false
+  '245':
+    descricao_sugerida: Depósito de cheque no correspondente
+    linha_na_copia: 486
+    descontinuado_em_2028_06_01: false
+  '246':
+    descricao_sugerida: Depósito com recursos disponíveis na própria instituição, no correspondente
+    linha_na_copia: 487
+    descontinuado_em_2028_06_01: false
+  '247':
+    descricao_sugerida: Depósito de dinheiro em espécie no terminal Saque e Pague
+    linha_na_copia: 488
+    descontinuado_em_2028_06_01: false
+  '248':
+    descricao_sugerida: Depósito de cheque no terminal Saque e Pague
+    linha_na_copia: 489
+    descontinuado_em_2028_06_01: false
+  '249':
+    descricao_sugerida: Depósito de dinheiro em espécie no terminal Banco 24 horas
+    linha_na_copia: 490
+    descontinuado_em_2028_06_01: false
+  '250':
+    descricao_sugerida: Depósito de cheque no terminal Banco 24 horas
+    linha_na_copia: 491
+    descontinuado_em_2028_06_01: false
+  '251':
+    descricao_sugerida: Depósito em dinheiro no produto TecBan Mais Varejo
+    linha_na_copia: 492
+    descontinuado_em_2028_06_01: false
+  '252':
+    descricao_sugerida: Recebimento de PIX destinado para operação de Pix-Saque
+    linha_na_copia: 493
+    descontinuado_em_2028_06_01: false
+  '253':
+    descricao_sugerida: Recebimento de PIX destinado para operação de Pix-Troco
+    linha_na_copia: 494
+    descontinuado_em_2028_06_01: false
+  '254':
+    descricao_sugerida: Resgate de investimento financeiro não automático
+    linha_na_copia: 495
+    descontinuado_em_2028_06_01: false
+  '255':
+    descricao_sugerida: Resgate de aplicação automática
+    linha_na_copia: 496
+    descontinuado_em_2028_06_01: false
+  '256':
+    descricao_sugerida: Recebimento de valores oriundos de previdência privada
+    linha_na_copia: 497
+    descontinuado_em_2028_06_01: false
+  '257':
+    descricao_sugerida: Recebimento de valores oriundos de título de capitalização
+    linha_na_copia: 498
+    descontinuado_em_2028_06_01: false
+  '258':
+    descricao_sugerida: Recebimento de valores oriundos de transferência entre contas, exceto PIX
+    linha_na_copia: 499
+    descontinuado_em_2028_06_01: false
+  '259':
+    descricao_sugerida: Recebimento de valores por transferências interinstituições
+    linha_na_copia: 500
+    descontinuado_em_2028_06_01: false
+  '260':
+    descricao_sugerida: Recebimento de valores oriundos de transferência entre contas de mesma titularidade
+    linha_na_copia: 501
+    descontinuado_em_2028_06_01: false
+  '261':
+    descricao_sugerida: Recebimento de valores por transferência via PIX
+    linha_na_copia: 502
+    descontinuado_em_2028_06_01: false
+  '262':
+    descricao_sugerida: Recebimento de valores do exterior
+    linha_na_copia: 503
+    descontinuado_em_2028_06_01: false
+  '263':
+    descricao_sugerida: Recebimento de valores oriundos de estorno de cheque
+    linha_na_copia: 504
+    descontinuado_em_2028_06_01: false
+  '264':
+    descricao_sugerida: Recebimento de valores oriundos de estorno de transferências
+    linha_na_copia: 505
+    descontinuado_em_2028_06_01: false
+  '265':
+    descricao_sugerida: Recebimento de valores oriundos de estorno de remessas para o exterior
+    linha_na_copia: 506
+    descontinuado_em_2028_06_01: false
+  '266':
+    descricao_sugerida: Recebimento de valores oriundos de estornos diversos dos já identificados
+    linha_na_copia: 507
+    descontinuado_em_2028_06_01: false
+  '267':
+    descricao_sugerida: Antecipação de recebíveis
+    linha_na_copia: 508
+    descontinuado_em_2028_06_01: false
+  '268':
+    descricao_sugerida: Crédito de recebíveis de outras instituições (IF ou IP)
+    linha_na_copia: 509
+    descontinuado_em_2028_06_01: false
+  '269':
+    descricao_sugerida: Recebimento de ressarcimentos diversos
+    linha_na_copia: 510
+    descontinuado_em_2028_06_01: false
+  '270':
+    descricao_sugerida: Recebimento de rendimentos/juros
+    linha_na_copia: 511
+    descontinuado_em_2028_06_01: false
+  '271':
+    descricao_sugerida: Recebimento de créditos governamentais
+    linha_na_copia: 512
+    descontinuado_em_2028_06_01: false
+  '272':
+    descricao_sugerida: Debloqueio de ordem judicial/legal
+    linha_na_copia: 513
+    descontinuado_em_2028_06_01: false
+  '273':
+    descricao_sugerida: Recebimento de deposito pendente
+    linha_na_copia: 514
+    descontinuado_em_2028_06_01: false
+  '274':
+    descricao_sugerida: Crédito de operação interna
+    linha_na_copia: 515
+    descontinuado_em_2028_06_01: false
+  '275':
+    descricao_sugerida: Crédito de mecanismo especial de devolução de PIX bloqueado
+    linha_na_copia: 516
+    descontinuado_em_2028_06_01: false
+  '276':
+    descricao_sugerida: Crédito oriundo do desbloqueio cautelar de operação via PIX
+    linha_na_copia: 517
+    descontinuado_em_2028_06_01: false
+  '277':
+    descricao_sugerida: Crédito de cobrança por boletos
+    linha_na_copia: 518
+    descontinuado_em_2028_06_01: false
+  '278':
+    descricao_sugerida: Crédito de recebíveis por cheque
+    linha_na_copia: 519
+    descontinuado_em_2028_06_01: false
+descontinuados_2028_06_01:
+- '103'
+- '104'
+- '106'
+- '111'
+- '112'
+- '114'
+- '116'
+- '117'
+- '118'
+- '119'
+- '120'
+- '121'
+- '122'
+- '123'
+- '124'
+- '125'
+- '201'
+- '202'
+- '203'
+- '204'
+- '205'
+- '206'
+- '209'
+- '213'
+- '215'
+- '216'
+- '218'
+- '220'
+- '222'
+# 116: a IN BCB 636/2025 art. 2º § 4º cita o 116; o Anexo II nao tem a linha
+# (115 -> 117); nao existia na Carta-Circular 3.454. Nao emitivel: fica so nas
+# listas de descontinuados, nunca em debito/credito.
+descontinuados_sem_linha_no_anexo_ii:
+- '116'
