@@ -2511,6 +2511,14 @@ MUTATIONS: list[Mutation] = [
         "lê a coluna 'montante' de 'por_titular', que ela não entrega",
     ),
     Mutation(
+        "valor-de-consulta-coluna-do-junte",
+        "o motor lê o conjunto antes de juntar: a coluna que a origem só recebe da parceira ainda não existe",
+        lambda b: (query(b[HIER]["binding"], "por_titular").update(
+                       {"join": [{"query": "detalhado", "match": {"titular": "titular"}}]}),
+                   chained_filter(b, column="ident")),
+        "lê a coluna 'ident' de 'por_titular', que ela não entrega antes do junte",
+    ),
+    Mutation(
         "valor-de-consulta-em-having-aninhado",
         "o mesmo valor em `having`, dentro de allOf: o caminho gêmeo",
         lambda b: query(b[HIER]["binding"], "por_titular")["having"][0]["anyOf"].append(

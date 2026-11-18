@@ -1794,9 +1794,9 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
             return
         if isinstance(qname, str):  # um name que não é texto já foi recusado; não vira chave
             reads.setdefault(qname, set()).add(source)
-        produced = produced_columns(queries[source], queries)
+        produced = own_columns(queries[source])
         if produced is not None and column not in produced:
-            fail(f"{where}: lê a coluna '{column}' de '{source}', que ela não entrega "
+            fail(f"{where}: lê a coluna '{column}' de '{source}', que ela não entrega antes do junte "
                  f"(entrega {sorted(produced)})")
 
     def walk(qname: str, conditions: object) -> None:
@@ -2125,6 +2125,34 @@ def _aggregation(query: object) -> dict | None:
     aggregate = query.get("aggregate")
 
     return aggregate if isinstance(aggregate, dict) else None
+
+
+def own_columns(query: dict) -> set[str] | None:
+    """As colunas que uma consulta tem ANTES dos juntes: o que um valor de consulta lê.
+
+    O motor resolve o conjunto de um `{query, column}` quando lê as consultas, e só
+    depois junta as linhas; a coluna que a origem recebe de uma parceira de junte
+    ainda não existe ali, e o `in` sairia vazio. Por isso não é produced_columns,
+    que soma as parceiras.
+
+    Agregada: groupBy, medidas e derivadas. Sem agregação: o `select` declarado e as
+    colunas calculadas. Sem `select` nem agregação o esquema é o da tabela, que este
+    repositório não conhece: None, "não confira".
+    """
+    computed = {c["as"] for c in query.get("compute") or [] if isinstance(c, dict) and c.get("as")}
+    derived = {d["as"] for d in query.get("derive") or [] if isinstance(d, dict) and d.get("as")}
+
+    aggregate = _aggregation(query)
+    if aggregate:
+        columns = set(aggregate.get("groupBy") or [])
+        columns |= {m["as"] for m in aggregate.get("measures") or [] if isinstance(m, dict) and m.get("as")}
+        return columns | derived
+
+    select = query.get("select")
+    if isinstance(select, list) and select:
+        return {c for c in select if isinstance(c, str)} | computed | derived
+
+    return None
 
 
 def produced_columns(
