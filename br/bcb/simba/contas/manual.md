@@ -62,6 +62,9 @@ data).
   (cheque especial) sai com o saldo em valor absoluto (`1250` para -R$ 12,50): o arquivo
   nao mostra que o saldo era devedor. Antes de aprovar, confira as contas com saldo
   negativo, inclusive as que nao tiveram lancamento no periodo.
+- **Reserva (hold)**: as reservas e liberacoes do Midaz nao entram no saldo nem nos
+  lancamentos, e a transferencia concluida sai uma vez so. Num ledger que valida rotas, uma
+  reserva ainda aberta na data de corte ja tirou o valor do disponivel, e o saldo sai sem ele.
 - Cliente com arquivo morto do Midaz (`retain`) perde o historico antigo e o saldo sai
   errado sem aviso: o SIMBA parte de cliente sem `retain`.
 
