@@ -64,6 +64,7 @@ jobs:
       - run: python3 tools/test_validate.py
       - run: python3 tools/test_natureza.py
       - run: python3 tools/test_tabelas_receita.py
+      - run: python3 tools/test_simba.py
       - run: python3 tools/test_ispb_compe.py
       - run: python3 tools/test_ispb_cnpj.py
       - run: python3 tools/validate.py
