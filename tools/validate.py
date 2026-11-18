@@ -1753,8 +1753,9 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
     e nunca pela ponta (`at`) de um período, que uma lista não tem.
 
     Um valor de consulta (`{query, column}`) é o conjunto de valores de uma coluna de
-    outra consulta, lido só por `in` e sozinho na condição. A consulta existe, não é a
-    própria, e entrega a coluna quando o conjunto dela é conhecido. Um nome trocado não
+    outra consulta, lido só por `in`, sozinho na condição e só no nível de cima de
+    filters (nunca em having nem dentro de anyOf/allOf). A consulta existe, não é a
+    própria, seleciona ou agrega, e entrega a coluna antes dos juntes. Um nome trocado não
     falharia na escrita: o `in` sairia vazio e o documento, sem linha, com cara de certo.
 
     Como em _check_span_edges, em filters e em having, a qualquer profundidade de anyOf
@@ -1789,18 +1790,21 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
         if isinstance(qname, str):  # um name que não é texto já foi recusado; não vira chave
             reads.setdefault(qname, set()).add(source)
         produced = own_columns(queries[source], queries)
-        if produced is not None and column not in produced:
+        if produced is None:
+            fail(f"{where}: lê a coluna '{column}' de '{source}', que não seleciona nem agrega; "
+                 f"a consulta de origem declara no select a coluna que entrega")
+        elif column not in produced:
             fail(f"{where}: lê a coluna '{column}' de '{source}', que ela não entrega antes do junte "
                  f"(entrega {sorted(produced)})")
 
-    def walk(qname: str, conditions: object) -> None:
+    def walk(qname: str, conditions: object, nested: bool = False, having: bool = False) -> None:
         if not isinstance(conditions, list):
             return
         for condition in conditions:
             if not isinstance(condition, dict):
                 continue
-            walk(qname, condition.get("anyOf"))
-            walk(qname, condition.get("allOf"))
+            walk(qname, condition.get("anyOf"), True, having)
+            walk(qname, condition.get("allOf"), True, having)
             values = condition.get("values")
             where = f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}'"
             operator = condition.get("operator")
@@ -1808,7 +1812,19 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
                 if not isinstance(value, dict):
                     continue
                 if is_query_value(value):
-                    check_query_value(where, qname, condition, values, value)
+                    # O motor recusa na carga o valor de consulta em having e dentro de
+                    # anyOf/allOf: ele estreita as linhas lidas, antes de agrupar, e é uma
+                    # condição própria em filters.
+                    if having:
+                        fail(f"{where}: lê os valores da consulta '{value.get(QUERY_VALUE_KEYS[0])}' em "
+                             f"having; um filtro lido de outra consulta estreita as linhas lidas, antes "
+                             f"de agrupar, e vai em filters")
+                    elif nested:
+                        fail(f"{where}: lê os valores da consulta '{value.get(QUERY_VALUE_KEYS[0])}' dentro "
+                             f"de anyOf ou allOf; um filtro lido de outra consulta é uma condição própria "
+                             f"em filters, nunca combinada com outras")
+                    else:
+                        check_query_value(where, qname, condition, values, value)
                     continue
                 name = value.get("parameter")
                 if not isinstance(name, str) or name not in multiple:
@@ -1823,7 +1839,7 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
     for query in query_list(binding):
         qname = query.get("name", "<sem nome>")
         walk(qname, query.get("filters"))
-        walk(qname, query.get("having"))
+        walk(qname, query.get("having"), having=True)
 
     _check_query_value_cycles(doc_dir, queries, reads)
 
