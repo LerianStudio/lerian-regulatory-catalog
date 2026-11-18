@@ -269,7 +269,16 @@ class Conferencia(unittest.TestCase):
 
     def test_sem_as_linhas_do_extrato_a_conferencia_diz_o_que_nao_viu(self) -> None:
         self.assert_says(self.run_case(drafts=[rows()]).warnings,
-                         "sem as linhas do rascunho do EXTRATO (--rascunhos), os lançamentos sem o cheque")
+                         "sem as linhas do rascunho do EXTRATO (--rascunhos), o cheque especial usado")
+
+    def test_cheque_especial_usado_e_coberto_no_periodo_e_aviso(self) -> None:
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "0", "0", "12.50"),
+                                       ("123456", "2026-12-01T10:00:02Z", "40.00", "0", "0"))]
+        self.assert_says(self.run_case(drafts=drafts).warnings, "a conta 123456 da agência 0001 usou cheque especial")
+
+    def test_valor_bloqueado_no_periodo_e_aviso(self) -> None:
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "20.00", "20.00", "0"))]
+        self.assert_says(self.run_case(drafts=drafts).warnings, "a conta 123456 da agência 0001 teve valor bloqueado")
 
     def test_cheque_especial_ausente_conta_zero_no_saldo(self) -> None:
         # Sem o cheque especial medido, o saldo é disponível + bloqueado: 40,00 bate com o CONTAS.
