@@ -52,9 +52,10 @@ inicio do primeiro dia do afastamento; o final, ate o fim do ultimo. Os valores 
 centavos, sem separador (`10000` para R$ 100,00; `000` para zero ou sem lancamento ate a
 data).
 
-- **Saldo negativo**: o Anexo I nao da sinal nem natureza a estes campos. Uma conta que
-  comeca ou termina devedora (cheque especial) sai, nesta versao, com o sinal `-`. A forma
-  esta em aberto (pergunta ao orgao): confira o arquivo antes de enviar.
+- **Saldo negativo**: o Anexo I nao da sinal nem natureza a estes campos, e um campo
+  numerico nao admite traco (IN art. 3o VII). Uma conta que comeca ou termina devedora
+  (cheque especial) faz a geracao ser RECUSADA nesta versao, com a mensagem que nomeia o
+  campo e o valor; a forma de escrever esse saldo esta em aberto.
 - Cliente com arquivo morto do Midaz (`retain`) perde o historico antigo e o saldo sai
   errado sem aviso: o SIMBA parte de cliente sem `retain`.
 
