@@ -33,10 +33,12 @@ AVISO (listado para o aprovador, não bloqueia):
     não aparece no EXTRATO. Por isso a conferência lê as linhas do rascunho do CONTAS,
     como o Reporter as devolve em `GET /v1/regulatory/reports/{reportId}/rows`, onde o
     saldo tem sinal. Sem elas, o saldo devedor não é conferido, e a conferência diz isso;
-  * lançamento sem o cheque especial usado (operação gravada antes de o Midaz guardar o
-    snapshot): o saldo dele no EXTRATO sai sem o cheque especial;
+  * pelas linhas do rascunho do EXTRATO: lançamento sem o cheque especial usado
+    (operação gravada antes de o Midaz guardar o snapshot), cujo saldo sai sem ele. Sem
+    essas linhas, isso não é conferido, e a conferência diz isso;
   * TITULARES sem documento de identificação (campos 10 e 11) ou sem dispositivo
-    cadastrado (26 e 27): nenhuma aplicação Lerian registra esses dados.
+    cadastrado (26 e 27): nenhuma aplicação Lerian registra esses dados, então o aviso
+    sai em todo caso, por desenho, para quem aprova saber o que vai em branco.
 
 BLOQUEIO (completude do reenvio): com `--anterior`, as linhas de cada rascunho são
 comparadas com as do último envio aprovado (Final) do mesmo caso, conjunto a
@@ -45,13 +47,13 @@ rascunho novo é uma linha que o reenvio perdeu (um cadastro apagado, um lançam
 estornado na base, um binding alterado) e BLOQUEIA a aprovação, a menos que o
 arquivo de justificativas a libere com o motivo registrado. Um conjunto do envio
 anterior que o contrato atual não tem, um documento sem rascunho novo ou um rascunho
-sem o envio anterior na pasta também bloqueia. Uma chave nova é só aviso. A pasta de `--anterior` traz o ÚLTIMO envio
-aprovado, uma resposta por documento, com status Final; quem roda a conferência a
-escolhe, e o script recusa pasta vazia, status que não seja Final e documento repetido.
+sem o envio anterior na pasta também bloqueia. Uma chave nova é só aviso. A pasta de
+`--anterior` traz o ÚLTIMO envio aprovado, uma resposta por documento, com status
+Final; quem roda a conferência a escolhe, e o script recusa pasta vazia, status que
+não seja Final e documento repetido.
 
 Fora do alcance: valor bloqueado na conta, e o cheque especial usado e coberto dentro
-do período (saldos inicial e final credores). Nenhum dos cinco arquivos nem as linhas
-do rascunho trazem esses valores.
+do período (saldos inicial e final credores).
 
 As mensagens citam agência, conta e número da linha, nunca documento ou nome: a
 saída da conferência é lida por quem aprova, e o arquivo é sigiloso.
@@ -191,20 +193,14 @@ def check_balances(extrato: list[list[str]], contas: list[list[str]], drafts: di
 
 def _check_balances_by_instant(entries: list[dict], accounts: dict, report: Report) -> None:
     last: dict[tuple[str, str], tuple[datetime, Decimal | None]] = {}
-    unmeasured: dict[tuple[str, str], int] = {}
     for row in entries:
         key = (str(row.get("numeroAgencia")), str(row.get("numeroConta")))
         instant = _instant(row.get("horaLancamento"))
         if instant is None:
             report.error(f"EXTRATO: um lançamento da conta {key[1]} da agência {key[0]} não tem instante legível")
             continue
-        if row.get("chequeEspecialApos") in (None, ""):
-            unmeasured[key] = unmeasured.get(key, 0) + 1
         if key not in last or instant >= last[key][0]:
             last[key] = (instant, _account_balance(row))
-    for key, count in sorted(unmeasured.items()):
-        report.warn(f"EXTRATO: {count} lançamento(s) da conta {key[1]} da agência {key[0]} sem o cheque especial "
-                    "usado (operação anterior ao snapshot do Midaz); o saldo deles sai sem ele")
     final = {(str(r.get("numeroAgencia")), str(r.get("numeroConta"))): r.get("saldoFinal")
              for name in CONTAS_SETS for r in accounts.get(name) or []}
     for key, (_, balance) in sorted(last.items()):
@@ -217,6 +213,23 @@ def _check_balances_by_instant(entries: list[dict], accounts: dict, report: Repo
         elif balance != expected:
             report.warn(f"EXTRATO: o saldo após o último lançamento da conta {key[1]} da agência {key[0]} é {balance}, "
                         f"e o saldo final no CONTAS é {expected} (lançamento retroativo ou outra chave de saldo)")
+
+
+def check_entry_balances(drafts: dict[str, dict] | None, report: Report) -> None:
+    """Operação sem o cheque especial medido (anterior ao snapshot), pelas linhas do EXTRATO."""
+    entries = (drafts or {}).get(EXTRATO_DOCUMENT, {}).get(EXTRATO_ENTRIES)
+    if entries is None:
+        report.warn("EXTRATO: sem as linhas do rascunho do EXTRATO (--rascunhos), os lançamentos sem o cheque "
+                    "especial medido NÃO foram conferidos")
+        return
+    unmeasured: dict[tuple[str, str], int] = {}
+    for row in entries:
+        key = (str(row.get("numeroAgencia")), str(row.get("numeroConta")))
+        if row.get("chequeEspecialApos") in (None, ""):
+            unmeasured[key] = unmeasured.get(key, 0) + 1
+    for key, count in sorted(unmeasured.items()):
+        report.warn(f"EXTRATO: {count} lançamento(s) da conta {key[1]} da agência {key[0]} sem o cheque especial "
+                    "usado (operação anterior ao snapshot do Midaz); o saldo deles sai sem ele")
 
 
 def _account_balance(row: dict) -> Decimal | None:
@@ -234,9 +247,11 @@ def check_identity(titulares: list[list[str]], report: Report) -> None:
     without_id = sum(1 for r in titulares if not field(r, 10) and not field(r, 11))
     without_device = sum(1 for r in titulares if not field(r, 26) and not field(r, 27))
     if without_id:
-        report.warn(f"TITULARES: {without_id} linha(s) sem documento de identificação (campos 10 e 11)")
+        report.warn(f"TITULARES: {without_id} linha(s) sem documento de identificação (campos 10 e 11; "
+                    "nenhuma aplicação Lerian registra esse dado)")
     if without_device:
-        report.warn(f"TITULARES: {without_device} linha(s) sem dispositivo cadastrado (campos 26 e 27)")
+        report.warn(f"TITULARES: {without_device} linha(s) sem dispositivo cadastrado (campos 26 e 27; "
+                    "nenhuma aplicação Lerian registra esse dado)")
 
 
 def check_generic_entries(extrato: list[list[str]], od: list[list[str]], report: Report) -> None:
@@ -422,6 +437,7 @@ def conferir(folder: Path, caso: str, drafts_folder: Path | None = None, previou
     check_balances(files["EXTRATO"], files["CONTAS"], drafts, report)
     check_generic_entries(files["EXTRATO"], files["ORIGEM_DESTINO"], report)
     check_identity(files["TITULARES"], report)
+    check_entry_balances(drafts, report)
     check_overdraft_rows(drafts, report)
     if previous_folder is None:
         if justifications is not None:
