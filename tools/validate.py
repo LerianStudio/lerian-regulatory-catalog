@@ -71,7 +71,8 @@ def contract_paths(root: Path) -> list[Path]:
 
     A varredura era de três níveis fixos, e um documento do SIMBA (br/bcb/simba/agencias)
     ficava de fora sem aviso: o índice o anunciava, nada do contrato era conferido. Uma
-    porta só, lida pelo validador e por tools/natureza.py, para os dois não divergirem.
+    porta só, lida pelo validador, por tools/natureza.py e por tools/tabelas_receita.py,
+    para os três não divergirem.
     """
     return sorted(
         path for path in root.rglob("contract.yaml")
