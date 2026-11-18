@@ -227,8 +227,10 @@ def extract_text(pdf: Path) -> str:
 def documents_declaring_natures() -> list[Path]:
     import yaml  # noqa: PLC0415
 
+    from validate import contract_paths  # noqa: PLC0415 — a mesma varredura do validador
+
     found = []
-    for path in sorted(ROOT.glob("*/*/*/contract.yaml")):
+    for path in contract_paths(ROOT):
         contract = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         # A tabela é publicada pelo contrato em `tables`; quem a declara recebe a cópia.
         for table in contract.get("tables") or []:

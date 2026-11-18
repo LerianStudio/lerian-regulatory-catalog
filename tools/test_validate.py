@@ -2526,6 +2526,37 @@ class ValidatorSuite(unittest.TestCase):
         com_crua = {**agregada, "join": [{"query": "c", "match": {"k": "_id"}}]}
         self.assertIsNone(validate.produced_columns(com_crua, {"a": com_crua, "c": crua}))
 
+    def test_a_document_inside_a_family_folder_is_checked(self) -> None:
+        """`<país>/<regulador>/<família>/<documento>/` é um documento como os de três níveis.
+
+        Os documentos do SIMBA vivem numa pasta da família (br/bcb/simba/agencias). Uma
+        varredura de três níveis não os via: o índice os anunciava sem contrato, e nada
+        do que o contrato declara era conferido. O `schema/` continua material de
+        curadoria, mesmo quando traz um arquivo chamado contract.yaml.
+        """
+        familia = "zz/fixture/familia/plano"
+
+        def with_family(broken: bool) -> dict:
+            data = fixtures.bundle()
+            parts = copy.deepcopy(data[PLANO])
+            parts["contract"]["metadata"]["id"] = "zz.fixture.familia.plano"
+            parts["binding"]["contract"] = "zz.fixture.familia.plano"
+            if broken:
+                dataset(parts["contract"], "saldos")["fields"][0]["type"] = "texto"
+            data[familia] = parts
+            return data
+
+        root = self._write(with_family(broken=False))
+        stray = root / PLANO / "schema" / "contract.yaml"
+        stray.write_text(yaml.safe_dump({"metadata": {"id": "zz.fixture.rascunho"}}), encoding="utf-8")
+        code, out = _run(root)
+        self.assertEqual(code, 0, f"o documento de quatro níveis deveria validar e o schema/ ficar de fora:\n{out}")
+        self.assertIn("5 documento(s) conferido(s)", out)
+
+        code, out = _run(self._write(with_family(broken=True)))
+        self.assertEqual(code, 1, f"o contrato de quatro níveis deveria ser conferido:\n{out}")
+        self.assertIn(f"{familia}", out)
+
     def test_fixtures_are_valid(self) -> None:
         """A base é válida — sem isso, toda mutação passaria por acidente."""
         code, out = _run(self._write(fixtures.bundle()))
