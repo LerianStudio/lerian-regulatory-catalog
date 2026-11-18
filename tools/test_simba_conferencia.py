@@ -21,6 +21,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import yaml
+
 import simba_conferencia as conf
 
 CASO = "001-XYZ-000001-01"
@@ -77,7 +79,7 @@ def case() -> dict[str, list[list[str]]]:
 
 def rows(saldo_final: str = "5.00") -> dict:
     """A resposta de /rows do rascunho do CONTAS (o saldo tem sinal aqui)."""
-    return {"documentId": "br.bcb.simba.contas", "datasets": {
+    return {"documentId": "br.bcb.simba.contas", "status": "Draft", "datasets": {
         "instituicao": [{"compe": "999"}],
         "contas_investigadas": [
             {"contaId": "c1", "numeroAgencia": "0001", "numeroConta": "123456", "saldoInicial": "100.00",
@@ -89,10 +91,23 @@ def rows(saldo_final: str = "5.00") -> dict:
 
 def titulares_rows(*partes: tuple[str, str]) -> dict:
     """A resposta de /rows do rascunho do TITULARES, com as partes (contaId, parteId) dadas."""
-    return {"documentId": "br.bcb.simba.titulares", "datasets": {
+    return {"documentId": "br.bcb.simba.titulares", "status": "Draft", "datasets": {
         "instituicao": [{"compe": "999"}],
         "titulares": [{"contaId": "c1"}, {"contaId": "c2"}],
         "partes": [{"contaId": conta, "parteId": parte} for conta, parte in partes]}}
+
+
+def extrato_rows(*lancamentos: tuple[str, str, str]) -> dict:
+    """A resposta de /rows do rascunho do EXTRATO: (conta, instante, saldo após)."""
+    return {"documentId": "br.bcb.simba.extrato", "status": "Draft", "datasets": {
+        "lancamentos": [{"operacaoId": f"o{i}", "numeroAgencia": "0001", "numeroConta": conta,
+                         "horaLancamento": instante, "saldoApos": saldo}
+                        for i, (conta, instante, saldo) in enumerate(lancamentos)]}}
+
+
+def final(*drafts: dict) -> list[dict]:
+    """As mesmas respostas, como as de um envio aprovado."""
+    return [dict(d, status="Final") for d in drafts]
 
 
 class Conferencia(unittest.TestCase):
@@ -135,14 +150,26 @@ class Conferencia(unittest.TestCase):
         folder, drafts_folder = self.write(case(), drafts=[rows()])
         path = folder / f"{CASO}_CONTAS.txt"
         path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n"))
-        self.assert_says(conf.conferir(folder, CASO, drafts_folder).errors, "CONTAS")
+        self.assert_says(conf.conferir(folder, CASO, drafts_folder).errors, "CONTAS: a última linha não termina em CRLF")
 
     def test_campos_a_menos_e_erro(self) -> None:
         files = case()
         files["TITULARES"][0] = files["TITULARES"][0][:27]
         self.assert_says(self.run_case(files).errors, "TITULARES:1: 27 campos")
 
-    # ------------------------------------------------------------ Epic 4.3, linha a linha
+    def test_caractere_fora_do_ascii_e_erro(self) -> None:
+        files = case()
+        files["TITULARES"][0][8] = "PESSOA EXEMPLO"
+        folder, drafts_folder = self.write(files, drafts=[rows()])
+        path = folder / f"{CASO}_TITULARES.txt"
+        path.write_bytes(path.read_bytes().replace(b"PESSOA EXEMPLO", "PESSOA EXEMPLÃ".encode("utf-8"), 1))
+        self.assert_says(conf.conferir(folder, CASO, drafts_folder).errors, "TITULARES:1: caractere fora do ASCII")
+
+    def test_contas_sem_conta_e_aviso(self) -> None:
+        files = {name: [] for name in conf.FILES}
+        self.assert_says(self.run_case(files).warnings, "CONTAS: nenhuma conta")
+
+    # ------------------------------------------------------------ a tabela de conferência, linha a linha
     def test_numeros_de_lancamento_diferentes_e_erro(self) -> None:
         files = case()
         files["ORIGEM_DESTINO"][1] = od("2", "3", "1000")
@@ -175,7 +202,7 @@ class Conferencia(unittest.TestCase):
         files["CONTAS"][0] = conta("0001", "123456", "1", "10000", "3900")
         report = self.run_case(files)
         self.assertEqual([], report.errors)
-        self.assert_says(report.warnings, "o último saldo da conta 123456 da agência 0001 é 4000")
+        self.assert_says(report.warnings, "o saldo da última linha da conta 123456 da agência 0001 é 4000")
 
     def test_codigo_generico_e_aviso(self) -> None:
         files = case()
@@ -194,10 +221,17 @@ class Conferencia(unittest.TestCase):
         files["ORIGEM_DESTINO"][1] = od("2", "2", "1000", documento="")
         self.assert_says(self.run_case(files).warnings, "lançamento 2 está sem CPF/CNPJ")
 
-    def test_cheque_especial_com_movimento_e_aviso(self) -> None:
+    def test_ultimo_saldo_e_o_do_maior_instante_nas_linhas_do_rascunho(self) -> None:
+        # A transação pendente da linha 2 do arquivo foi confirmada antes da linha 1:
+        # o último saldo é o da linha 1 (4000 = 40.00), que bate com o CONTAS.
         files = case()
-        files["EXTRATO"][1] = lancamento("2", "0001", "123456", "135", "1000", "D", "4000", "D")
-        self.assert_says(self.run_case(files).warnings, "termina o período devedora")
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:03Z", "40.00"),
+                                       ("123456", "2026-12-01T10:00:01Z", "50.00"))]
+        report = self.run_case(files, drafts=drafts)
+        self.assertEqual([], report.warnings)
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "40.00"),
+                                       ("123456", "2026-12-01T10:00:03Z", "50.00"))]
+        self.assert_says(self.run_case(files, drafts=drafts).warnings, "o saldo após o último lançamento da conta 123456")
 
     def test_saldo_devedor_sem_movimento_e_aviso(self) -> None:
         # A conta 654321 não tem lançamento: só as linhas do rascunho mostram o sinal.
@@ -210,18 +244,18 @@ class Conferencia(unittest.TestCase):
 
     def test_sem_as_linhas_do_rascunho_a_conferencia_diz_o_que_nao_viu(self) -> None:
         folder, _ = self.write(case())
-        self.assert_says(conf.conferir(folder, CASO, None).warnings, "NÃO foi conferida")
+        self.assert_says(conf.conferir(folder, CASO, None).warnings, "o saldo devedor NÃO foi conferido")
 
     # ------------------------------------------------------------ completude do reenvio
     def test_linha_do_final_que_falta_no_rascunho_bloqueia(self) -> None:
-        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))])
+        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))))
         report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"))], previous=anterior)
         self.assertEqual([], report.errors)
         self.assert_says(report.blocks, "br.bcb.simba.titulares partes: a linha contaId=c1, parteId=p2")
 
     def test_bloqueio_sai_com_codigo_de_erro(self) -> None:
         folder, drafts_folder = self.write(case(), drafts=[rows(), titulares_rows(("c1", "p1"))])
-        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))])
+        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))))
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             code = conf.main([str(folder), CASO, "--rascunhos", str(drafts_folder), "--anterior", str(anterior)])
@@ -229,7 +263,7 @@ class Conferencia(unittest.TestCase):
         self.assertIn("BLOQUEIO:", out.getvalue())
 
     def test_justificativa_registrada_libera_a_linha(self) -> None:
-        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))])
+        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))))
         justificativas = self.root / "justificativas.json"
         justificativas.write_text(json.dumps([{
             "documentId": "br.bcb.simba.titulares", "dataset": "partes",
@@ -240,7 +274,7 @@ class Conferencia(unittest.TestCase):
         self.assert_says(report.released, "contaId=c1, parteId=p2")
 
     def test_justificativa_sem_motivo_nao_libera(self) -> None:
-        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))])
+        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))))
         justificativas = self.root / "justificativas.json"
         justificativas.write_text(json.dumps([{
             "documentId": "br.bcb.simba.titulares", "dataset": "partes",
@@ -251,15 +285,92 @@ class Conferencia(unittest.TestCase):
         self.assert_says(report.errors, "justificativa sem motivo")
 
     def test_linha_nova_e_so_aviso(self) -> None:
-        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"))])
+        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"))))
         report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"), ("c2", "p3"))], previous=anterior)
         self.assertEqual([], report.blocks)
         self.assert_says(report.warnings, "br.bcb.simba.titulares partes: 1 linha(s) novas")
 
     def test_documento_do_final_sem_rascunho_bloqueia(self) -> None:
-        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"))])
+        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"))))
         report = self.run_case(drafts=[rows()], previous=anterior)
         self.assert_says(report.blocks, "br.bcb.simba.titulares: há envio aprovado anterior e não há rascunho novo")
+
+
+    def test_anterior_inexistente_e_erro_e_sai_com_1(self) -> None:
+        folder, drafts_folder = self.write(case(), drafts=[rows()])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = conf.main([str(folder), CASO, "--rascunhos", str(drafts_folder),
+                              "--anterior", str(self.root / "nao-existe")])
+        self.assertEqual(1, code)
+        self.assertIn("--anterior:", out.getvalue())
+
+    def test_anterior_vazia_e_erro(self) -> None:
+        (self.root / "vazia").mkdir()
+        self.assert_says(self.run_case(previous=self.root / "vazia").errors, "não tem resposta de /rows")
+
+    def test_rascunho_como_base_e_erro(self) -> None:
+        anterior = self.rows_folder("final", [rows(), titulares_rows(("c1", "p1"))])
+        self.assert_says(self.run_case(previous=anterior).errors, "tem status 'Draft'; aqui vai Final")
+
+    def test_dois_finais_do_mesmo_documento_e_erro(self) -> None:
+        anterior = self.rows_folder("final", final(rows(), rows()))
+        self.assert_says(self.run_case(previous=anterior).errors, "há mais de uma resposta de br.bcb.simba.contas")
+
+    def test_conjunto_do_final_fora_do_contrato_bloqueia(self) -> None:
+        antigo = rows()
+        antigo["datasets"]["contas_renomeadas"] = [{"contaId": "c1"}]
+        anterior = self.rows_folder("final", final(antigo))
+        self.assert_says(self.run_case(previous=anterior).blocks,
+                         "contas_renomeadas: o conjunto do envio anterior não existe no contrato atual")
+
+    def test_documento_de_fora_do_simba_na_base_e_erro(self) -> None:
+        anterior = self.rows_folder("final", final(rows(), {"documentId": "br.bcb.cadoc-4010", "datasets": {}}))
+        self.assert_says(self.run_case(previous=anterior).errors, "br.bcb.cadoc-4010: não é documento do SIMBA")
+
+    def test_justificativas_sem_anterior_e_erro(self) -> None:
+        justificativas = self.root / "justificativas.json"
+        justificativas.write_text("[]", encoding="utf-8")
+        folder, drafts_folder = self.write(case(), drafts=[rows()])
+        report = conf.conferir(folder, CASO, drafts_folder, None, justificativas)
+        self.assert_says(report.errors, "--justificativas só vale com --anterior")
+
+    def test_justificativas_que_nao_sao_lista_e_erro(self) -> None:
+        anterior = self.rows_folder("final", final(rows()))
+        justificativas = self.root / "justificativas.json"
+        justificativas.write_text("{}", encoding="utf-8")
+        self.assert_says(self.run_case(previous=anterior, justifications=justificativas).errors,
+                         "as justificativas são uma lista")
+
+
+class Deriva(unittest.TestCase):
+    """O que o script copia dos documentos continua igual ao que os documentos escrevem."""
+
+    def contract(self, folder: str) -> dict:
+        return yaml.safe_load((conf.ROOT / "br" / "bcb" / "simba" / folder / "contract.yaml").read_text(encoding="utf-8"))
+
+    def fields(self, folder: str, dataset: str) -> set[str]:
+        for d in self.contract(folder)["datasets"]:
+            if d["name"] == dataset:
+                return {f["name"] for f in d["fields"]}
+        self.fail(f"{folder} não declara {dataset}")
+
+    def test_a_frase_da_contraparte_vazia_e_a_do_template(self) -> None:
+        template = (conf.ROOT / "br" / "bcb" / "simba" / "origem-destino" / "template.tpl").read_text(encoding="utf-8")
+        self.assertIn("\t" + conf.UNIDENTIFIED + "\t", template)
+
+    def test_os_campos_do_contas_lidos_existem(self) -> None:
+        for dataset in conf.CONTAS_SETS:
+            self.assertLessEqual({"numeroAgencia", "numeroConta", "saldoInicial", "saldoFinal"},
+                                 self.fields("contas", dataset))
+
+    def test_os_campos_do_extrato_lidos_existem(self) -> None:
+        self.assertLessEqual({"numeroAgencia", "numeroConta", "horaLancamento", "saldoApos"},
+                             self.fields("extrato", conf.EXTRATO_ENTRIES))
+
+    def test_os_ids_dos_documentos_existem(self) -> None:
+        ids = {self.contract(f)["metadata"]["id"] for f in ("contas", "extrato")}
+        self.assertEqual({conf.CONTAS_DOCUMENT, conf.EXTRATO_DOCUMENT}, ids)
 
 
 class Mutations(unittest.TestCase):
