@@ -229,3 +229,19 @@ documents:
     summary: >-
       Lancamentos das contas investigadas no periodo do afastamento do sigilo, com valor,
       natureza, saldo apos o lancamento e o codigo do tipo de lancamento do Anexo II.
+
+  - id: br.bcb.simba.origem-destino
+    path: br/bcb/simba/origem-destino
+    country: BR
+    regulator: BCB
+    document: ORIGEM-DESTINO
+    family: simba
+    title: SIMBA — Origem-Destino
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Origem e destino dos recursos de cada lancamento do EXTRATO: a contraparte pelo plugin
+      Pix ou TED da transacao, pela outra perna interna, ou a propria instituicao na tarifa.
