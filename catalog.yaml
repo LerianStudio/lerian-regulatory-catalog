@@ -197,3 +197,19 @@ documents:
     summary: >-
       Contas investigadas e contas da mesma instituicao com as quais elas transacionaram
       no periodo do afastamento do sigilo, com abertura, encerramento e saldos.
+
+  - id: br.bcb.simba.titulares
+    path: br/bcb/simba/titulares
+    country: BR
+    regulator: BCB
+    document: TITULARES
+    family: simba
+    title: SIMBA — Titulares
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Titulares, cotitulares, representantes e procuradores das contas investigadas, uma
+      linha por vinculo da pessoa com a conta, com cadastro, renda e datas do vinculo.
