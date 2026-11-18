@@ -15,7 +15,8 @@
 # Conta sem tipo, ou com outro, recusa a geracao: preencha o tipo no CRM.
 #
 # SALDOS (campos 10 e 11): soma, com sinal, dos lancamentos que movem saldo em BRL,
-# sem a chave de sistema overdraft, ate o inicio do primeiro dia (`lt` o dia
+# inclusive a chave de sistema overdraft (a parte do saque tirada do cheque especial e
+# a parte do credito que o paga), sem reservas e liberacoes, ate o inicio do primeiro dia (`lt` o dia
 # `inicio`) e ate o fim do ultimo (`lt` o fim de `fim`). Credito soma, debito
 # subtrai; outra direcao recusa a geracao (como no Cadoc 4010).
 #
@@ -98,7 +99,6 @@ queries:
       - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
-      - {field: balance_key, operator: nin, values: ["overdraft"]}
       - {field: created_at, operator: lt, values: [{parameter: inicio}]}
     compute:
       - as: valor_no_razao
@@ -125,7 +125,6 @@ queries:
       - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
-      - {field: balance_key, operator: nin, values: ["overdraft"]}
       - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
     compute:
       - as: valor_no_razao
@@ -272,7 +271,6 @@ queries:
       - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
-      - {field: balance_key, operator: nin, values: ["overdraft"]}
       - {field: created_at, operator: lt, values: [{parameter: inicio}]}
     compute:
       - as: valor_no_razao
@@ -299,7 +297,6 @@ queries:
       - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
-      - {field: balance_key, operator: nin, values: ["overdraft"]}
       - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
     compute:
       - as: valor_no_razao

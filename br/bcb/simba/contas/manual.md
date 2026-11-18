@@ -52,7 +52,9 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
 
 O periodo vai do inicio do dia `inicio` ao fim do dia `fim` no calendario do Reporter
 (`REPORT_TIMEZONE`, padrao `America/Sao_Paulo`). O saldo e a soma, com sinal, dos lancamentos que movem saldo em reais desde a abertura:
-credito soma, debito subtrai, sem a chave de sistema `overdraft`. O inicial vai ate o
+credito soma, debito subtrai, inclusive na chave de sistema `overdraft` (no saque que
+entra no cheque especial, o Midaz grava ali a parte sacada; no credito que o paga, a parte
+paga), sem as reservas e liberacoes. O inicial vai ate o
 inicio do primeiro dia do afastamento; o final, ate o fim do ultimo. Os valores saem em
 centavos, sem separador (`10000` para R$ 100,00; `000` para zero ou sem lancamento ate a
 data).
