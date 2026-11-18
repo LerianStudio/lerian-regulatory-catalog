@@ -1,0 +1,28 @@
+[
+  {
+    "name": "linha da chave overdraft com a formula do disponivel",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% if l.chaveSaldo == \"overdraft\" %}",
+    "new": "{% if false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 4,
+      "field": 12
+    }
+  },
+  {
+    "name": "sinal da divida na linha overdraft",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% with st=0-l.saldoApos|float %}",
+    "new": "{% with st=l.saldoApos|float %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 4,
+      "field": 13
+    }
+  }
+]

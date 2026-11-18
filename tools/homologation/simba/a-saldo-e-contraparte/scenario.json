@@ -1,8 +1,8 @@
 {
   "description": "Sintetico. Saldo da conta no EXTRATO (devedor, centavo, bloqueado) e a contraparte no ORIGEM-DESTINO (Pix do Banco do Brasil, TED sem ISPB, perna interna, tarifa e lancamento sem contraparte), com a mesma numeracao nos dois arquivos.",
   "documents": [
-    "extrato",
-    "origem-destino"
+    "br/bcb/simba/extrato",
+    "br/bcb/simba/origem-destino"
   ],
   "system": {
     "caso": "001-XYZ-000001-01",

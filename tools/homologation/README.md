@@ -294,19 +294,27 @@ bases é dos casos E2E.
 
 ```
 simba/<cenario>/
-  scenario.json                  documentos, parâmetros da geração (system) e a instituição
+  scenario.json                  documentos (path a partir da raiz, ex. br/bcb/simba/extrato),
+                                 parâmetros da geração (system) e a instituição
   rows/<documento>/<conjunto>.json   as linhas de um conjunto do contrato (número JSON = float64, como no worker)
   expected/<documento>.txt       o arquivo esperado: TAB, CRLF, ASCII
+  mutants.json                   as quebras que o gabarito tem de pegar (opcional)
 ```
+
+Cada item de `mutants.json` troca um trecho de um arquivo de um documento
+(`document`, `file`, `old`, `new`), diz quantas vezes o trecho aparece (`count`; outro
+número reprova, para a quebra não deixar de se aplicar calada) e onde o arquivo gerado
+tem de divergir primeiro do gabarito (`expect`: documento, linha e campo). Mudou o
+template num trecho que um mutante cita: o mutante muda junto, aqui.
 
 | Cenário | O que cobre |
 |---|---|
 | `a-saldo-e-contraparte` | **Sintético.** EXTRATO: saldo devedor no cheque especial (`1250 D`), saldo devedor abaixo de meio centavo (`000 C`), exatamente meio centavo (`001 D`), bloqueado somado ao disponível, saldo que o ponto flutuante não representa (0,29 ⇒ `029`), códigos 223, 125, 259, 133 e 105, a sessão de uma transação com a tarifa. ORIGEM-DESTINO: contraparte de um Pix do Banco do Brasil (ISPB `00000000` ⇒ `001`), TED sem ISPB (`999`), perna interna com o titular, tarifa com a própria instituição e a linha sem contraparte; o campo 2 é o campo 1 do EXTRATO |
 | `b-cheque-especial` | **Sintético.** O Midaz grava a parte coberta pelo disponível numa operação e a parte tirada (ou paga) do cheque especial em outra, na chave `overdraft`: Pix recebido que paga 70 de dívida (70 + 30), Pix enviado de 100 com 30 disponíveis (30 + 70) e a tarifa da mesma transação toda no cheque especial (0,00 + 1,00). EXTRATO com as duas linhas de cada operação, na mesma sessão, o saldo da linha `overdraft` = menos a dívida (`7000 D`, `7100 D`); ORIGEM-DESTINO com a contraparte do Pix nas duas linhas (Bradesco `237`, Banco do Brasil `001`, CNPJ alfanumérico) e a tarifa com a instituição; CONTAS com saldo devedor no início e no fim (`7000`, `7100`) |
 
-O teste que roda os cenários fica no Reporter (o motor), ao lado da conformidade do
-catálogo, e lê esta pasta a partir da raiz do catálogo em
-`REGULATORY_CATALOG_CONFORMANCE_DIR`. Um gabarito novo é escrito à mão a partir das
+O teste que roda os cenários fica no Reporter (o motor) e lê
+`tools/homologation/*/*/scenario.json` a partir da raiz do catálogo em
+`REGULATORY_CATALOG_HOMOLOGATION_DIR`. Um gabarito novo é escrito à mão a partir das
 linhas e da norma, nunca copiado da saída do motor.
 
 ## O que esta ferramenta já encontrou
