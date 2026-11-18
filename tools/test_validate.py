@@ -2533,6 +2533,13 @@ MUTATIONS: list[Mutation] = [
         "lê a coluna 'ident' de 'por_titular', que ela não entrega antes do junte",
     ),
     Mutation(
+        "valor-de-consulta-de-origem-composta",
+        "a origem composta (`from`) entrega o que a consulta de baixo seleciona ou agrega, como no motor",
+        lambda b: (b[HIER]["binding"]["queries"].append({"name": "filtrado", "from": "por_titular"}),
+                   chained_filter(b, query="filtrado", column="nao_existe")),
+        "lê a coluna 'nao_existe' de 'filtrado', que ela não entrega antes do junte",
+    ),
+    Mutation(
         "valor-de-consulta-em-having-aninhado",
         "o mesmo valor em `having`, dentro de allOf: o caminho gêmeo",
         lambda b: query(b[HIER]["binding"], "por_titular")["having"][0]["anyOf"].append(
