@@ -126,7 +126,7 @@ datasets:
       whenKeyRepeats: refuse
       columns: {transacaoId: first, contaId: first, numeroAgencia: first, numeroConta: first, tipoConta: first,
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
-                valor: first, natureza: first, naturezaOposta: first, saldoApos: first, bloqueadoApos: first,
+                valor: first, natureza: first, naturezaOposta: first, saldoApos: first, chaveSaldo: first, bloqueadoApos: first,
                 chequeEspecialApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, e2e: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
                 iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
@@ -199,6 +199,12 @@ datasets:
           Saldo disponivel da conta apos o lancamento, como o Midaz o gravou (nunca abaixo de zero). Com o bloqueado
           e o cheque especial usado, da o saldo da conta dos campos 12 e 13 (IN :181-182). Sem `format`: o template
           faz conta com ele, e o valor formatado chega cercado para impressao, nao para conta.
+      - name: chaveSaldo
+        type: string
+        required: false
+        description: >-
+          A chave de saldo da operacao. Na chave overdraft (a parte de um saque tirada do cheque especial, ou a parte
+          de um credito que o paga), o saldo disponivel gravado e a divida, e o saldo da conta e menos ela.
       - name: bloqueadoApos
         type: decimal
         required: true

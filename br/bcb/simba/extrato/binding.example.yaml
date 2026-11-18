@@ -78,7 +78,6 @@ queries:
       - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
-      - {field: balance_key, operator: nin, values: ["overdraft"]}
       - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
       - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
     compute:
@@ -111,7 +110,7 @@ queries:
     # vazias: chave vazia recusa a leitura inteira, por isso as descricoes vem de
     # `lancamentos_descricao`.
     aggregate:
-      groupBy: [transaction_id, id, account_id, created_at, natureza, natureza_oposta, available_balance_after]
+      groupBy: [transaction_id, id, account_id, created_at, natureza, natureza_oposta, available_balance_after, balance_key]
       measures:
         - as: valor
           fn: sum
@@ -241,6 +240,7 @@ datasets:
       natureza: {from: query, column: natureza}
       naturezaOposta: {from: query, column: natureza_oposta}
       saldoApos: {from: query, column: available_balance_after}
+      chaveSaldo: {from: query, column: balance_key}
       bloqueadoApos: {from: query, column: on_hold_balance_after}
       chequeEspecialApos: {from: query, column: snapshot.overdraftUsedAfter}
       rail: {from: query, column: metadata.rail}
