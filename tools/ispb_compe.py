@@ -64,12 +64,12 @@ class TableError(Exception):
     """A tabela publicada não é a esperada, ou traz uma linha que não se lê."""
 
 
-def read_codes(path: Path = TABLE) -> dict[str, str]:
+def read_codes(path: Path = TABLE, sha256: str = TABLE_SHA256) -> dict[str, str]:
     """ISPB (8 dígitos) → código COMPE (3 dígitos), só dos participantes com código."""
     raw = path.read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
-    if digest != TABLE_SHA256:
-        raise TableError(f"{path.name} tem sha256 {digest}, e não {TABLE_SHA256}; trocar a tabela é decisão")
+    if digest != sha256:
+        raise TableError(f"{path.name} tem sha256 {digest}, e não {sha256}; trocar a tabela é decisão")
 
     codes: dict[str, str] = {}
     for line, row in enumerate(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))), start=2):
