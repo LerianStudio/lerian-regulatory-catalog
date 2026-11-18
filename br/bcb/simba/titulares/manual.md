@@ -21,6 +21,9 @@ restringir a contas especificas: o normal e nao preencher, e ausente entram toda
 dos documentos; preencher sem a ordem pedir omite contas do investigado), `inicio` e `fim` (primeiro e ultimo dia do afastamento). Duas geracoes do
 mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 
+O `fim` tem de ser um dia que ja acabou no calendario do Reporter: a geracao le um periodo
+fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos.
+
 ## Quais linhas entram
 
 Para cada conta do caso (as contas em que um documento da ordem e o **titular**; encerradas

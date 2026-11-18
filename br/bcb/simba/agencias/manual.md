@@ -24,6 +24,9 @@ Os mesmos nos cinco documentos SIMBA:
   dos documentos. Preencher sem a ordem pedir omite contas do investigado.
 - `inicio` e `fim`: o primeiro e o ultimo dia do afastamento do sigilo.
 
+O `fim` tem de ser um dia que ja acabou no calendario do Reporter: a geracao le um periodo
+fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos.
+
 Duas geracoes do mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho
 anterior, mesmo com documentos ou periodo corrigidos.
 
