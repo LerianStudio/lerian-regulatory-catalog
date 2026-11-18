@@ -22,17 +22,19 @@ AVISO (listado para o aprovador, não bloqueia):
   * CONTAS sem conta nenhuma: confira os documentos da ordem;
   * último saldo do EXTRATO diferente do saldo final do CONTAS (lançamento
     retroativo, ou outra chave de saldo). Com as linhas dos rascunhos, o último é o
-    de maior instante (`horaLancamento`); sem elas, a última linha do arquivo, que
-    pode não ser a mais recente (uma transação pendente confirmada depois);
+    de maior instante (`horaLancamento`), e o saldo é o do campo 12 (disponível +
+    bloqueado − cheque especial usado); sem elas, a última linha do arquivo, que pode
+    não ser a mais recente (uma transação pendente confirmada depois);
   * lançamento com o código genérico 125 ou 218 do Anexo II;
   * ORIGEM-DESTINO com a contraparte não identificada pelo trilho, ou com a
     contraparte sem CPF/CNPJ;
   * conta com saldo inicial ou final devedor (cheque especial). O CONTAS escreve o
-    saldo sem sinal (o Anexo I não lhe dá sinal), e o EXTRATO nunca o mostra devedor
-    (o saldo disponível do Midaz não fica abaixo de zero). Por isso a conferência lê
-    as linhas do rascunho do CONTAS, como o Reporter as devolve em
-    `GET /v1/regulatory/reports/{reportId}/rows`, onde o saldo tem sinal. Sem elas, o
-    saldo devedor não é conferido, e a conferência diz isso.
+    saldo sem sinal (o Anexo I não lhe dá sinal), e a conta sem lançamento no período
+    não aparece no EXTRATO. Por isso a conferência lê as linhas do rascunho do CONTAS,
+    como o Reporter as devolve em `GET /v1/regulatory/reports/{reportId}/rows`, onde o
+    saldo tem sinal. Sem elas, o saldo devedor não é conferido, e a conferência diz isso;
+  * lançamento sem o cheque especial usado (operação gravada antes de o Midaz guardar o
+    snapshot): o saldo dele no EXTRATO sai sem o cheque especial.
 
 BLOQUEIO (completude do reenvio): com `--anterior`, as linhas de cada rascunho são
 comparadas com as do último envio aprovado (Final) do mesmo caso, conjunto a
@@ -40,8 +42,8 @@ conjunto, pela chave do grão que o contrato declara. Uma chave do Final que fal
 rascunho novo é uma linha que o reenvio perdeu (um cadastro apagado, um lançamento
 estornado na base, um binding alterado) e BLOQUEIA a aprovação, a menos que o
 arquivo de justificativas a libere com o motivo registrado. Um conjunto do envio
-anterior que o contrato atual não tem, ou um documento sem rascunho novo, também
-bloqueia. Uma chave nova é só aviso. A pasta de `--anterior` traz o ÚLTIMO envio
+anterior que o contrato atual não tem, um documento sem rascunho novo ou um rascunho
+sem o envio anterior na pasta também bloqueia. Uma chave nova é só aviso. A pasta de `--anterior` traz o ÚLTIMO envio
 aprovado, uma resposta por documento, com status Final; quem roda a conferência a
 escolhe, e o script recusa pasta vazia, status que não seja Final e documento repetido.
 
@@ -181,25 +183,48 @@ def check_balances(extrato: list[list[str]], contas: list[list[str]], drafts: di
         if key in final and _cents(field(row, 12)) != _cents(final[key]):
             report.warn(f"EXTRATO: o saldo da última linha da conta {key[1]} da agência {key[0]} é {field(row, 12)}, e o "
                         f"saldo final no CONTAS é {final[key]} (lançamento retroativo, outra chave de saldo, ou uma "
-                        "transação confirmada depois de outra: sem --rascunhos, o último é a última linha do arquivo)")
+                        "transação confirmada depois de outra: sem as linhas dos rascunhos do EXTRATO e do CONTAS, "
+                        "o último é a última linha do arquivo)")
 
 
 def _check_balances_by_instant(entries: list[dict], accounts: dict, report: Report) -> None:
-    last: dict[tuple[str, str], tuple[datetime, str]] = {}
+    last: dict[tuple[str, str], tuple[datetime, Decimal | None]] = {}
+    unmeasured: dict[tuple[str, str], int] = {}
     for row in entries:
         key = (str(row.get("numeroAgencia")), str(row.get("numeroConta")))
         instant = _instant(row.get("horaLancamento"))
         if instant is None:
             report.error(f"EXTRATO: um lançamento da conta {key[1]} da agência {key[0]} não tem instante legível")
             continue
+        if row.get("chequeEspecialApos") in (None, ""):
+            unmeasured[key] = unmeasured.get(key, 0) + 1
         if key not in last or instant >= last[key][0]:
-            last[key] = (instant, str(row.get("saldoApos")))
-    final = {(str(r.get("numeroAgencia")), str(r.get("numeroConta"))): str(r.get("saldoFinal"))
+            last[key] = (instant, _account_balance(row))
+    for key, count in sorted(unmeasured.items()):
+        report.warn(f"EXTRATO: {count} lançamento(s) da conta {key[1]} da agência {key[0]} sem o cheque especial "
+                    "usado (operação anterior ao snapshot do Midaz); o saldo deles sai sem ele")
+    final = {(str(r.get("numeroAgencia")), str(r.get("numeroConta"))): r.get("saldoFinal")
              for name in CONTAS_SETS for r in accounts.get(name) or []}
     for key, (_, balance) in sorted(last.items()):
-        if key in final and _decimal(balance) != _decimal(final[key]):
+        if key not in final:
+            continue
+        expected = _decimal(str(final[key])) if final[key] not in (None, "") else None
+        if balance is None or expected is None:
+            report.warn(f"EXTRATO: o saldo da conta {key[1]} da agência {key[0]} não pôde ser comparado: um dos "
+                        "saldos está ausente nas linhas dos rascunhos")
+        elif balance != expected:
             report.warn(f"EXTRATO: o saldo após o último lançamento da conta {key[1]} da agência {key[0]} é {balance}, "
-                        f"e o saldo final no CONTAS é {final[key]} (lançamento retroativo ou outra chave de saldo)")
+                        f"e o saldo final no CONTAS é {expected} (lançamento retroativo ou outra chave de saldo)")
+
+
+def _account_balance(row: dict) -> Decimal | None:
+    """O saldo da conta do campo 12: disponível + bloqueado − cheque especial usado (ausente conta 0)."""
+    available = _decimal(str(row.get("saldoApos"))) if row.get("saldoApos") not in (None, "") else None
+    if available is None:
+        return None
+    held = _decimal(str(row.get("bloqueadoApos") or "0")) or Decimal(0)
+    used = _decimal(str(row.get("chequeEspecialApos") or "0")) or Decimal(0)
+    return available + held - used
 
 
 def check_generic_entries(extrato: list[list[str]], od: list[list[str]], report: Report) -> None:
@@ -230,6 +255,8 @@ def check_overdraft_rows(drafts: dict[str, dict] | None, report: Report) -> None
 def check_resubmission(drafts: dict[str, dict], previous: dict[str, dict], justified: set[tuple],
                        report: Report) -> None:
     """Diff por linha, pela chave do grão, entre o último Final e o rascunho novo."""
+    for document in sorted(set(drafts) - set(previous)):
+        report.block(f"{document}: há rascunho novo e a pasta do envio anterior não traz o Final dele")
     for document, final_sets in sorted(previous.items()):
         try:
             grains = grains_of(document)
@@ -340,10 +367,12 @@ def _file(folder: Path, caso: str, name: str) -> Path:
 
 
 def _instant(text: object) -> datetime | None:
+    """O instante, só com fuso: sem ele não se compara com os outros."""
     try:
-        return datetime.fromisoformat(str(text).replace("Z", "+00:00"))
+        instant = datetime.fromisoformat(str(text).replace("Z", "+00:00"))
     except ValueError:
         return None
+    return instant if instant.tzinfo is not None else None
 
 
 def _decimal(text: str) -> Decimal | None:

@@ -97,12 +97,15 @@ def titulares_rows(*partes: tuple[str, str]) -> dict:
         "partes": [{"contaId": conta, "parteId": parte} for conta, parte in partes]}}
 
 
-def extrato_rows(*lancamentos: tuple[str, str, str]) -> dict:
-    """A resposta de /rows do rascunho do EXTRATO: (conta, instante, saldo após)."""
-    return {"documentId": "br.bcb.simba.extrato", "status": "Draft", "datasets": {
-        "lancamentos": [{"operacaoId": f"o{i}", "numeroAgencia": "0001", "numeroConta": conta,
-                         "horaLancamento": instante, "saldoApos": saldo}
-                        for i, (conta, instante, saldo) in enumerate(lancamentos)]}}
+def extrato_rows(*lancamentos: tuple) -> dict:
+    """A resposta de /rows do rascunho do EXTRATO: (conta, instante, disponível[, bloqueado, cheque especial])."""
+    linhas = []
+    for i, (conta, instante, disponivel, *resto) in enumerate(lancamentos):
+        bloqueado, cheque = (resto + ["0", "0"])[:2]
+        linhas.append({"operacaoId": f"o{i}", "numeroAgencia": "0001", "numeroConta": conta,
+                       "horaLancamento": instante, "saldoApos": disponivel, "bloqueadoApos": bloqueado,
+                       "chequeEspecialApos": cheque})
+    return {"documentId": "br.bcb.simba.extrato", "status": "Draft", "datasets": {"lancamentos": linhas}}
 
 
 def final(*drafts: dict) -> list[dict]:
@@ -233,6 +236,36 @@ class Conferencia(unittest.TestCase):
                                        ("123456", "2026-12-01T10:00:03Z", "50.00"))]
         self.assert_says(self.run_case(files, drafts=drafts).warnings, "o saldo após o último lançamento da conta 123456")
 
+    def test_saldo_pela_formula_do_campo_12_nao_avisa_conta_devedora(self) -> None:
+        # Disponível 0, cheque especial 12,50: o EXTRATO diz -12,50, como o CONTAS.
+        files = case()
+        drafts = [rows(saldo_final="5.00"), extrato_rows(("123456", "2026-12-01T10:00:01Z", "0", "0", "12.50"))]
+        drafts[0]["datasets"]["contas_investigadas"][0]["saldoFinal"] = "-12.50"
+        report = self.run_case(files, drafts=drafts)
+        self.assertFalse(any("o saldo após o último lançamento" in w for w in report.warnings), report.warnings)
+
+    def test_saldo_pela_formula_soma_o_bloqueado(self) -> None:
+        # Disponível 36,50 e bloqueado 20,05: o EXTRATO diz 56,55, como o CONTAS.
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "36.50", "20.05", "0"))]
+        drafts[0]["datasets"]["contas_investigadas"][0]["saldoFinal"] = "56.55"
+        report = self.run_case(drafts=drafts)
+        self.assertFalse(any("o saldo após o último lançamento" in w for w in report.warnings), report.warnings)
+
+    def test_lancamento_sem_cheque_especial_medido_e_aviso(self) -> None:
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "40.00", "0", None))]
+        self.assert_says(self.run_case(drafts=drafts).warnings,
+                         "1 lançamento(s) da conta 123456 da agência 0001 sem o cheque especial usado")
+
+    def test_saldo_ausente_nas_linhas_e_aviso(self) -> None:
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "40.00"))]
+        drafts[0]["datasets"]["contas_investigadas"][0]["saldoFinal"] = None
+        self.assert_says(self.run_case(drafts=drafts).warnings, "não pôde ser comparado")
+
+    def test_instante_ilegivel_ou_sem_fuso_e_erro(self) -> None:
+        for instante in ("ontem", "2026-12-01T10:00:01"):
+            drafts = [rows(), extrato_rows(("123456", instante, "40.00"))]
+            self.assert_says(self.run_case(drafts=drafts).errors, "não tem instante legível")
+
     def test_saldo_devedor_sem_movimento_e_aviso(self) -> None:
         # A conta 654321 não tem lançamento: só as linhas do rascunho mostram o sinal.
         # No arquivo, -12,50 sai 1250 (o CONTAS escreve o saldo sem sinal).
@@ -295,7 +328,6 @@ class Conferencia(unittest.TestCase):
         report = self.run_case(drafts=[rows()], previous=anterior)
         self.assert_says(report.blocks, "br.bcb.simba.titulares: há envio aprovado anterior e não há rascunho novo")
 
-
     def test_anterior_inexistente_e_erro_e_sai_com_1(self) -> None:
         folder, drafts_folder = self.write(case(), drafts=[rows()])
         out = io.StringIO()
@@ -304,6 +336,11 @@ class Conferencia(unittest.TestCase):
                               "--anterior", str(self.root / "nao-existe")])
         self.assertEqual(1, code)
         self.assertIn("--anterior:", out.getvalue())
+
+    def test_anterior_sem_o_final_de_um_rascunho_bloqueia(self) -> None:
+        anterior = self.rows_folder("final", final(rows()))
+        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"))], previous=anterior)
+        self.assert_says(report.blocks, "br.bcb.simba.titulares: há rascunho novo e a pasta do envio anterior não traz")
 
     def test_anterior_vazia_e_erro(self) -> None:
         (self.root / "vazia").mkdir()
@@ -365,7 +402,8 @@ class Deriva(unittest.TestCase):
                                  self.fields("contas", dataset))
 
     def test_os_campos_do_extrato_lidos_existem(self) -> None:
-        self.assertLessEqual({"numeroAgencia", "numeroConta", "horaLancamento", "saldoApos"},
+        self.assertLessEqual({"numeroAgencia", "numeroConta", "horaLancamento", "saldoApos", "bloqueadoApos",
+                              "chequeEspecialApos"},
                              self.fields("extrato", conf.EXTRATO_ENTRIES))
 
     def test_os_ids_dos_documentos_existem(self) -> None:
