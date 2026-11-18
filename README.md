@@ -36,6 +36,17 @@ com o número de clientes.
 
 Exemplo: `br/bcb/cadoc-4010/`.
 
+Quando um regulador publica uma família de documentos que se entregam juntos, cada um
+fica numa pasta dentro da pasta da família, com os mesmos arquivos:
+
+```
+<país>/<regulador>/<família>/<documento>/
+```
+
+O id do documento é o caminho com pontos no lugar das barras: `br.bcb.cadoc-4010` está
+em `br/bcb/cadoc-4010/`, e um documento `agencias` da família `simba` estaria em
+`br/bcb/simba/agencias/`, com o id `br.bcb.simba.agencias`.
+
 ## Sobre os arquivos em `schema/`
 
 São os XSDs publicados pelo regulador. Estão aqui como **fonte para escrever e
