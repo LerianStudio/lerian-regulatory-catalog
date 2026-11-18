@@ -196,13 +196,47 @@ datasets:
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
         description: Saldo da conta no fim do ultimo dia do afastamento, em reais (campo 11, IN :130). Ausente, sai 000.
 
+rules:
+  # Campos 10 e 11 sao numericos: so algarismos, sem traco (IN art. 3o VII, :71), e o
+  # CONTAS nao tem natureza do saldo (so o EXTRATO 12/13 tem). Um saldo devedor nao
+  # tem forma escrita nesta versao: a geracao e recusada, nomeando o campo e o valor,
+  # em vez de sair um arquivo que o orgao recusa.
+  - id: saldo-inicial-investigada-sem-sinal
+    severity: error
+    appliesTo: contas_investigadas
+    check:
+      notStartsWith: {field: saldoInicial, values: ["-"]}
+    message: >-
+      Saldo inicial negativo: o campo 10 e numerico e nao admite sinal (IN art. 3o VII).
+  - id: saldo-final-investigada-sem-sinal
+    severity: error
+    appliesTo: contas_investigadas
+    check:
+      notStartsWith: {field: saldoFinal, values: ["-"]}
+    message: >-
+      Saldo final negativo: o campo 11 e numerico e nao admite sinal (IN art. 3o VII).
+  - id: saldo-inicial-contraparte-sem-sinal
+    severity: error
+    appliesTo: contas_contraparte
+    check:
+      notStartsWith: {field: saldoInicial, values: ["-"]}
+    message: >-
+      Saldo inicial negativo: o campo 10 e numerico e nao admite sinal (IN art. 3o VII).
+  - id: saldo-final-contraparte-sem-sinal
+    severity: error
+    appliesTo: contas_contraparte
+    check:
+      notStartsWith: {field: saldoFinal, values: ["-"]}
+    message: >-
+      Saldo final negativo: o campo 11 e numerico e nao admite sinal (IN art. 3o VII).
+
 knownGaps:
   - id: saldo-negativo
     description: >-
       Os campos 10 e 11 sao numericos e o Anexo I nao lhes da sinal nem natureza (IN :129-130), ao contrario do
       EXTRATO. Uma conta que comeca ou termina o periodo devedora (cheque especial) tem saldo negativo, e a forma de
-      escreve-lo esta em aberto (pergunta ao orgao). Ate a decisao, o sinal sai como esta ("-"), e o arquivo com
-      esse sinal deve ser conferido antes de enviar.
+      escreve-lo esta em aberto. Ate a decisao, a geracao e recusada (regras *-sem-sinal): o campo numerico nao
+      admite o sinal (IN art. 3o VII, :71).
   - id: saldo-pela-soma-dos-lancamentos
     description: >-
       O saldo e a soma, com sinal, dos lancamentos que movem saldo em BRL desde a abertura ate a data, sem a chave de
