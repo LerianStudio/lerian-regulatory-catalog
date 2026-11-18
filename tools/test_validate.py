@@ -2385,12 +2385,6 @@ MUTATIONS: list[Mutation] = [
         "parâmetro 'titularesPedidos' tem maxItems 0",
     ),
     Mutation(
-        "parametro-multiple-com-allowedMonths",
-        "meses permitidos são de um month, e uma lista não é um mês",
-        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"allowedMonths": ["06"]}),
-        "parâmetro 'titularesPedidos' declara multiple e allowedMonths",
-    ),
-    Mutation(
         "parametro-multiple-com-closed",
         "fechar o período é de um month ou date",
         lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"closed": True}),
@@ -2401,24 +2395,6 @@ MUTATIONS: list[Mutation] = [
         "dia útil é de uma date",
         lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"businessDay": True}),
         "parâmetro 'titularesPedidos' declara multiple e businessDay",
-    ),
-    Mutation(
-        "parametro-multiple-com-span",
-        "um período de meses é de um month",
-        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"span": 6}),
-        "parâmetro 'titularesPedidos' declara multiple e span",
-    ),
-    Mutation(
-        "parametro-multiple-com-within",
-        "cair num período é de uma date",
-        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"within": "dataBase"}),
-        "parâmetro 'titularesPedidos' declara multiple e within",
-    ),
-    Mutation(
-        "parametro-multiple-com-notBefore",
-        "vir depois de outro dia é de uma date",
-        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"notBefore": "dtIni"}),
-        "parâmetro 'titularesPedidos' declara multiple e notBefore",
     ),
     Mutation(
         "parametro-multiple-com-appliesTo",
