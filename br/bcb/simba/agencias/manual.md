@@ -29,11 +29,8 @@ anterior, mesmo com documentos ou periodo corrigidos.
 - Contas em que um documento da ordem e o **titular** (o documento do instrumento no CRM).
 - Contas encerradas **entram** (o encerramento nao filtra).
 - Contas apagadas do CRM **nao entram**.
-- **Cotitular**: nesta versao, a conta em que o documento investigado e so cotitular nao
-  entra. A decisao esta pendente: o motor ainda nao executa a condicao "titular OU
-  cotitular", e o indice das partes no CRM nao separa o papel (cotitular, procurador,
-  responsavel).
-- Procurador e representante: a conta de que o investigado e so procurador nao entra.
+- **So titular**: a conta em que o documento investigado e so cotitular, representante
+  ou procurador nao entra; o indice das partes no CRM nao separa o papel.
 - Contas com que as do caso transacionaram: as outras pernas dos lancamentos das contas do
   caso no periodo que tem instrumento no CRM. Conta de sistema ou de liquidacao, sem
   instrumento, nao entra.

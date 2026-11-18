@@ -216,10 +216,10 @@ knownGaps:
     description: >-
       Uma conta das outras pernas so entra se tiver instrumento no CRM. Conta de sistema, de liquidacao ou de outra
       instituicao nao e conta da mesma instituicao com cliente, e nao entra.
-  - id: cotitular-pendente
+  - id: so-titular
     description: >-
-      Nesta versao as contas do caso sao as que o documento investigado TITULA. A conta em que ele e cotitular
-      depende de uma decisao pendente (o motor ainda nao executa anyOf, e o indice das partes no CRM nao tem o papel).
+      As contas do caso sao as que o documento investigado TITULA. A conta em que ele e so cotitular, representante
+      ou procurador nao entra: o indice das partes no CRM nao separa o papel.
   - id: excluida-do-crm
     description: >-
       Uma conta apagada do CRM (deleted_at) nao entra. Uma conta encerrada (closing_date) entra, com a data.

@@ -469,11 +469,10 @@ datasets:
         description: Fim do vinculo da parte; ausente, o vinculo esta ativo e o campo sai em branco (campo 21, IN :157).
 
 knownGaps:
-  - id: cotitular-pendente
+  - id: so-titular
     description: >-
-      Nesta versao as contas do caso sao as que o documento investigado TITULA. A conta em que ele e so cotitular
-      depende de uma decisao pendente (o motor ainda nao executa anyOf, e o indice das partes no CRM nao tem o papel);
-      ate la, as pessoas dessa conta nao entram.
+      As contas do caso sao as que o documento investigado TITULA. A conta em que ele e so cotitular, representante
+      ou procurador nao entra: o indice das partes no CRM nao separa o papel.
   - id: contas-de-contraparte
     description: >-
       As pessoas das contas de contraparte (CONTAS campo 7 = 3) entram com o campo 6 pela pessoa (IN :142): 1 se o
