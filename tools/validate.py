@@ -2065,6 +2065,34 @@ def _reaches(by_name: dict[str, dict], start: str, goal: str) -> bool:
     return False
 
 
+def check_ispb_block(doc_dir: Path) -> None:
+    """O trecho que troca ISPB por código COMPE é EXATAMENTE o que tools/ispb_compe.py
+    gera da lista de participantes do STR publicada em br/bcb/simba/tabelas/.
+
+    Escrito ou retocado à mão, ele erra em silêncio: um código trocado manda a
+    contraparte para outro banco, e a guarda de ISPB vazio removida faz o vazio virar
+    00000000, que é o Banco do Brasil.
+    """
+    path = doc_dir / "template.tpl"
+    if not path.is_file():
+        return
+    with path.open(encoding="utf-8", newline="") as handle:
+        text = handle.read()
+    if "ISPB_COMPE_BLOCK" not in text:
+        return
+
+    import ispb_compe
+
+    try:
+        expected = ispb_compe.expected_template(text, ispb_compe.read_codes())
+    except (OSError, ispb_compe.TableError) as problem:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→COMPE não pôde ser conferido contra a tabela do STR: {problem}")
+        return
+    if text != expected:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→COMPE do template não é o que tools/ispb_compe.py "
+             "gera da tabela do STR; regere")
+
+
 def check_template_parses(doc_dir: Path) -> None:
     """Regras do MOTOR de template que uma leitura por regex não pega.
 
@@ -3939,6 +3967,7 @@ def main() -> int:
         check_consolidation(doc_dir, contract)
         check_structure(doc_dir, contract)
         check_template_parses(doc_dir)
+        check_ispb_block(doc_dir)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_tables(doc_dir, contract)
