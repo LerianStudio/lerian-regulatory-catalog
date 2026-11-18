@@ -2083,6 +2083,11 @@ def check_ispb_block(doc_dir: Path) -> None:
 
     import ispb_compe
 
+    if ispb_compe.malformed_markers(text):
+        fail(f"{doc_dir.relative_to(ROOT)}: o template menciona ISPB_COMPE_BLOCK fora de uma marca bem escrita "
+             f"(`{{# ISPB_COMPE_BLOCK: <expressao> #}}` ... `{ispb_compe.END}`); o trecho ao lado nao seria conferido")
+        return
+
     try:
         expected = ispb_compe.expected_template(text, ispb_compe.read_codes())
     except (OSError, ispb_compe.TableError) as problem:
