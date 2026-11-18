@@ -1,0 +1,14 @@
+[
+  {
+    "referencia": "A2",
+    "ispb": "00000000",
+    "agencia": "1",
+    "conta": "555",
+    "digito": "0",
+    "documento": "AB12CD34000155",
+    "nome": "Loja Exemplo",
+    "comentario": "compra",
+    "txid": "",
+    "e2e": "E2"
+  }
+]

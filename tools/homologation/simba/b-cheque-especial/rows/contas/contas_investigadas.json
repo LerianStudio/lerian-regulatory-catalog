@@ -1,0 +1,12 @@
+[
+  {
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "2222222",
+    "tipoConta": "6",
+    "dataAbertura": "2024-01-02",
+    "saldoInicial": "-70.00",
+    "saldoFinal": "-71.00",
+    "volumePeriodo": "200.00"
+  }
+]
