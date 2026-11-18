@@ -46,7 +46,8 @@ anterior, mesmo com documentos ou periodo corrigidos.
    `numero_agencia` (5 digitos, sem DV), `nome_agencia`, `endereco_agencia`,
    `codigo_cidade` (IBGE, 7 digitos), `codigo_uf` (IBGE, 2 digitos; SP = 35),
    `pais_agencia`, `cep_agencia`, `telefone_agencia`, `data_abertura_agencia`,
-   `data_fechamento_agencia` (agencia aberta: `9999-12-31`, que sai `31129999`).
+   `data_fechamento_agencia` (agencia aberta: `9999-12-31`, que sai `31129999`, a sentinela
+   da IN para agencia nao fechada, Anexo I, AGENCIAS campo 11).
    Os valores do exemplo sao **sinteticos** e precisam ser trocados. O cadastro e
    **fechado**: uma agencia que ele nao lista recusa a geracao, e uma conta **sem**
    `banking_details.branch` no CRM tambem. Toda agencia listada tem **todos** os
@@ -87,7 +88,8 @@ nem sentinela, o campo sai **em branco**:
   preenche para toda agencia; um binding que nao mapeia `data_abertura_agencia` a deixa em
   branco em todas.
 - Os demais campos do cadastro nao saem em branco: toda agencia listada tem todos os
-  atributos (o motor recusa valor vazio num `case`).
+  atributos (o motor recusa valor vazio num `case`). Na implantacao, a agencia fisica
+  entra com o cadastro completo, telefone inclusive; sem isso ela nao pode ser listada.
 
 ## Limitacoes desta versao
 
