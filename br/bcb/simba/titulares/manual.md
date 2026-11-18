@@ -37,8 +37,8 @@ ordem e `0` se nao.
 Depois das contas do caso vem cada **conta de contraparte**: as contas da mesma instituicao
 com que uma conta do caso transacionou no periodo, as mesmas que o CONTAS lista com o campo 7
 = `3` (a mesma consulta `contas_contraparte` nos dois bindings). Cada uma tem as mesmas linhas
-(titular `T`, cotitulares numerados, demais partes), com o campo 6 = `0` em todas, porque a
-pessoa da conta de contraparte nao e a investigada. O titular sai do cadastro do CRM pelo
+(titular `T`, cotitulares numerados, demais partes); o campo 6 diz se a PESSOA teve o sigilo afastado (IN :142): `1` se o documento esta entre os `documentos` da ordem, `0` se nao,
+como nas contas do caso. O titular sai do cadastro do CRM pelo
 `holder_id` da conta. Uma conta de contraparte que tambem e conta do caso sai uma vez so, como
 conta do caso.
 
@@ -141,8 +141,8 @@ Sem e-mail no cadastro, e sempre nas partes relacionadas, o campo 25 sai
   do template, e TAB vira espaco. **Quebra de linha (CR ou LF) dentro de um valor nao e
   retirada.**
 - **Pessoa investigada nas partes**: o campo 6 compara o documento da parte com cada
-  elemento da lista `documentos` da ordem, que vem so com digitos. Nas contas de contraparte
-  o campo 6 sai sempre `0`, mesmo que o documento esteja na ordem.
+  elemento da lista `documentos` da ordem, que vem so com digitos. Vale igual nas contas de
+  contraparte: um investigado que e procurador numa delas sai `1`.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa uma macro. A geracao nao.
 - **Uma instituicao por arquivo**: um documento entregue em base individual nao soma

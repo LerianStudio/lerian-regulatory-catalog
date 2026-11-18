@@ -285,7 +285,7 @@ datasets:
         description: Fim do vinculo da parte; ausente, o vinculo esta ativo e o campo sai em branco (campo 21, IN :157).
 
 
-  # Uma linha por conta de contraparte: a do titular (campo 5 = T, campo 6 = 0).
+  # Uma linha por conta de contraparte: a do titular (campo 5 = T; campo 6 pela pessoa, IN :142).
   - name: titulares_contraparte
     description: >-
       O titular de cada conta da mesma instituicao com que uma conta do caso transacionou no periodo (CONTAS, campo 7
@@ -405,7 +405,7 @@ datasets:
         required: false
         description: E-mail secundario, unido ao principal por ";" (campo 25, IN :161).
 
-  # Uma linha por parte relacionada de cada conta de contraparte (campo 6 = 0).
+  # Uma linha por parte relacionada de cada conta de contraparte (campo 6 pela pessoa, IN :142).
   - name: partes_contraparte
     description: As partes relacionadas de cada conta de contraparte no CRM (cotitular, representante legal, procurador, outros).
     grain: [contaId, parteId]
@@ -472,8 +472,8 @@ knownGaps:
       ate la, as pessoas dessa conta nao entram.
   - id: contas-de-contraparte
     description: >-
-      As pessoas das contas de contraparte (CONTAS campo 7 = 3) saem com o campo 6 = 0, mesmo que o documento esteja na
-      ordem. Uma conta de contraparte que tambem e do caso sai uma vez, como conta do caso. Titular de conta de
+      As pessoas das contas de contraparte (CONTAS campo 7 = 3) entram com o campo 6 pela pessoa (IN :142): 1 se o
+      documento esta na ordem, 0 se nao. Uma conta de contraparte que tambem e do caso sai uma vez, como conta do caso. Titular de conta de
       contraparte sem UF, com UF fora da tabela ou no exterior recusa a geracao, como o da conta do caso.
   - id: excluida-do-crm
     description: >-
