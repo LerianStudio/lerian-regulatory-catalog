@@ -24,8 +24,9 @@ O trecho:
   * o ISPB é completado a 8 dígitos (`%08v`): o contrato já exige o texto de 8
     dígitos, e isto só socorre um ISPB que chegue como inteiro (sem os zeros à
     esquerda); um número com casas decimais sai em notação de expoente e cai em 999;
-  * a cadeia de comparações é agrupada pelos dois primeiros dígitos, e fica em linha,
-    sem `macro`, para rodar também na pré-visualização do manager;
+  * a cadeia de comparações é agrupada pelos dois primeiros dígitos e fica em linha, no
+    ponto marcado (no ORIGEM-DESTINO, dentro da macro da contraparte; a pré-visualização
+    de template do manager recusa macros, e o manual diz isso);
   * ISPB fora da lista, ou de participante sem código (`n/a`, `0` na coluna
     Número_Código), sai 999. Participante que não está na COMPE mas tem código sai com
     o código.
