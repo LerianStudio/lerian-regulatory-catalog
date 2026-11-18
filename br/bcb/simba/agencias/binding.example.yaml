@@ -12,7 +12,8 @@
 # agencia listada tem todos os atributos (o motor nao aceita valor vazio num
 # `case`). Os valores abaixo sao SINTETICOS: "0001" e a agencia sem agencia
 # fisica, cadastrada com as sentinelas do Anexo I, e "0002" uma agencia fisica
-# ficticia. Agencia aberta: fechamento 9999-12-31 (sai 31129999).
+# ficticia. Agencia aberta: fechamento 9999-12-31, que sai 31129999, a sentinela da IN para
+# agencia nao fechada (IN BCB 636/2025, Anexo I, AGENCIAS campo 11).
 # O mesmo cadastro vai no binding do CONTAS (numero da agencia em 5 digitos).
 #
 # Campo 14 (se a instituicao possui agencia fisica, 1 ou 2) e da INSTITUICAO:
