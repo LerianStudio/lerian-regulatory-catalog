@@ -19,6 +19,10 @@ ERRO (corrigir ou gerar de novo antes de aprovar):
     não está no AGENCIAS.
 
 AVISO (listado para o aprovador, não bloqueia):
+  * documento da ordem sem nenhuma conta nos arquivos (`--documentos`): o Reporter não
+    confere o CPF/CNPJ de cada documento, então um documento digitado errado só não
+    acha conta, e o caso sai como resposta negativa para ele. O aviso diz a posição do
+    documento na lista, nunca o documento;
   * CONTAS sem conta nenhuma: confira os documentos da ordem;
   * último saldo do EXTRATO diferente do saldo final do CONTAS (lançamento
     retroativo, ou outra chave de saldo). Com as linhas dos rascunhos, o último é o
@@ -62,7 +66,7 @@ saída da conferência é lida por quem aprova, e o arquivo é sigiloso.
 
 Uso:
     python3 tools/simba_conferencia.py <pasta> <caso> [--rascunhos <pasta>]
-        [--anterior <pasta> [--justificativas <arquivo>]]
+        [--anterior <pasta> [--justificativas <arquivo>]] [--documentos <arquivo>]
 
 A pasta tem os cinco arquivos como o script de lote os nomeia:
 <caso>_AGENCIAS.txt, <caso>_CONTAS.txt, <caso>_TITULARES.txt, <caso>_EXTRATO.txt e
@@ -70,7 +74,8 @@ A pasta tem os cinco arquivos como o script de lote os nomeia:
 `/rows` de cada documento (um JSON por documento, o nome do arquivo não importa: o
 documento sai do `documentId`). `--justificativas` é um JSON com a lista
 `[{"documentId", "dataset", "key": {campo: valor}, "motivo"}]`, e só vale com
-`--anterior`.
+`--anterior`. `--documentos` é um arquivo com os documentos da ordem, um por linha, na
+ordem em que foram passados à geração.
 
 Saída: 0 sem erro e sem bloqueio; 1 com erro ou com bloqueio não justificado.
 """
@@ -254,6 +259,32 @@ def _account_balance(row: dict) -> Decimal | None:
     return available + held - used
 
 
+def check_case_documents(path: Path | None, titulares: list[list[str]], report: Report) -> None:
+    """Cada documento da ordem aparece como titular de alguma conta no TITULARES."""
+    if path is None:
+        report.warn("TITULARES: sem --documentos, o documento da ordem sem nenhuma conta NÃO foi conferido")
+        return
+    try:
+        documents = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except (OSError, UnicodeDecodeError) as problem:
+        report.error(f"--documentos: {path.name} não se lê ({problem})")
+        return
+    if not documents:
+        report.error(f"--documentos: {path.name} não traz documento nenhum")
+        return
+    # O TITULARES já escreve o documento só com dígitos (e letras, no CNPJ alfanumérico).
+    holders = {field(r, 8) for r in titulares}
+    missing = [str(i) for i, document in enumerate(documents, 1) if _digits(document) not in holders]
+    if missing:
+        report.warn(f"TITULARES: o(s) documento(s) nº {', '.join(missing)} da ordem (posição em --documentos) não "
+                    "titula(m) conta nenhuma nos arquivos; confira se foi digitado certo antes de aprovar uma "
+                    "resposta negativa")
+
+
+def _digits(text: str) -> str:
+    return "".join(c for c in text if c.isalnum()).upper()
+
+
 def check_identity(titulares: list[list[str]], report: Report) -> None:
     """Identificação e dispositivos que o TITULARES deixa em branco, contados por arquivo."""
     without_id = sum(1 for r in titulares if not field(r, 10) and not field(r, 11))
@@ -430,7 +461,7 @@ def _as_int(text: str) -> tuple[int, str]:
 
 
 def conferir(folder: Path, caso: str, drafts_folder: Path | None = None, previous_folder: Path | None = None,
-             justifications: Path | None = None) -> Report:
+             justifications: Path | None = None, documents: Path | None = None) -> Report:
     report = Report()
     files: dict[str, list[list[str]]] = {}
     for name in FILES:
@@ -449,6 +480,7 @@ def conferir(folder: Path, caso: str, drafts_folder: Path | None = None, previou
     check_balances(files["EXTRATO"], files["CONTAS"], drafts, report)
     check_generic_entries(files["EXTRATO"], files["ORIGEM_DESTINO"], report)
     check_identity(files["TITULARES"], report)
+    check_case_documents(documents, files["TITULARES"], report)
     check_entry_balances(drafts, report)
     check_overdraft_rows(drafts, report)
     if previous_folder is None:
@@ -469,9 +501,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rascunhos", type=Path, help="pasta com a resposta de /rows de cada rascunho (JSON)")
     parser.add_argument("--anterior", type=Path, help="pasta com a resposta de /rows do último envio aprovado")
     parser.add_argument("--justificativas", type=Path, help="JSON com as linhas perdidas liberadas e o motivo")
+    parser.add_argument("--documentos", type=Path, help="os documentos da ordem, um por linha")
     args = parser.parse_args(argv)
 
-    report = conferir(args.pasta, args.caso, args.rascunhos, args.anterior, args.justificativas)
+    report = conferir(args.pasta, args.caso, args.rascunhos, args.anterior, args.justificativas, args.documentos)
     for text in report.errors:
         print(f"ERRO: {text}")
     for text in report.blocks:

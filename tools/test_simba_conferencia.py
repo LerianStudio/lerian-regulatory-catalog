@@ -142,9 +142,11 @@ class Conferencia(unittest.TestCase):
             (target / f"{i}.json").write_text(json.dumps(draft), encoding="utf-8")
         return target
 
-    def run_case(self, files=None, drafts=None, previous=None, justifications=None) -> conf.Report:
+    def run_case(self, files=None, drafts=None, previous=None, justifications=None, documents=None) -> conf.Report:
         folder, drafts_folder = self.write(files or case(), drafts=coherent_drafts() if drafts is None else drafts)
-        return conf.conferir(folder, CASO, drafts_folder, previous, justifications)
+        path = self.root / "documentos.txt"
+        path.write_text("\n".join(["00000000000"] if documents is None else documents) + "\n", encoding="utf-8")
+        return conf.conferir(folder, CASO, drafts_folder, previous, justifications, path)
 
     def assert_says(self, texts: list[str], fragment: str) -> None:
         self.assertTrue(any(fragment in t for t in texts), f"nenhuma mensagem com {fragment!r}: {texts}")
@@ -306,6 +308,20 @@ class Conferencia(unittest.TestCase):
         self.assert_says(warnings, "TITULARES: 1 linha(s) sem documento de identificação (campos 10 e 11;")
         self.assert_says(warnings, "TITULARES: 1 linha(s) sem dispositivo cadastrado (campos 26 e 27;")
 
+    def test_documento_da_ordem_sem_conta_e_aviso_pela_posicao(self) -> None:
+        documento_errado = "00000000001"
+        warnings = self.run_case(documents=["000.000.000-00", documento_errado]).warnings
+        self.assert_says(warnings, "o(s) documento(s) nº 2 da ordem")
+        self.assertFalse(any(documento_errado in w for w in warnings), "o aviso ecoou o documento")
+
+    def test_sem_a_lista_da_ordem_a_conferencia_diz_o_que_nao_viu(self) -> None:
+        folder, drafts_folder = self.write(case(), drafts=coherent_drafts())
+        self.assert_says(conf.conferir(folder, CASO, drafts_folder).warnings,
+                         "sem --documentos, o documento da ordem sem nenhuma conta NÃO foi conferido")
+
+    def test_lista_da_ordem_vazia_e_erro(self) -> None:
+        self.assert_says(self.run_case(documents=[""]).errors, "não traz documento nenhum")
+
     def test_saldo_devedor_sem_movimento_e_aviso(self) -> None:
         # A conta 654321 não tem lançamento: só as linhas do rascunho mostram o sinal.
         # No arquivo, -12,50 sai 1250 (o CONTAS escreve o saldo sem sinal).
@@ -463,6 +479,11 @@ class Mutations(unittest.TestCase):
     def test_tirar_o_aviso_de_saldo_devedor_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
             "check_overdraft_rows", lambda drafts, report: None, "test_saldo_devedor_sem_movimento_e_aviso"))
+
+    def test_tirar_o_aviso_de_documento_sem_conta_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "check_case_documents", lambda path, titulares, report: None,
+            "test_documento_da_ordem_sem_conta_e_aviso_pela_posicao"))
 
     def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
