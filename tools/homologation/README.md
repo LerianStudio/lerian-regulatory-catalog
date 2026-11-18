@@ -283,6 +283,31 @@ original aprovado.
 a aprovação exige o token de uma **pessoa** (`RPT-0201` para um token de aplicação);
 a homologação roda contra um Reporter sem autenticação.
 
+## SIMBA: o arquivo gerado contra um gabarito, sem Midaz (`simba/`)
+
+Os documentos do SIMBA leem o CRM, a metadata das transações e as bases dos plugins
+Pix e TED, além do razão, e as linhas dos plugins não se criam pela API do Midaz. Por
+isso a prova deles aqui é de outra forma: o motor do Reporter recebe as linhas de cada
+conjunto **já como a extração as entrega** e gera o arquivo, que é comparado byte a
+byte com um gabarito **escrito à mão**. Prova o template e o contrato; a leitura das
+bases é dos casos E2E.
+
+```
+simba/<cenario>/
+  scenario.json                  documentos, parâmetros da geração (system) e a instituição
+  rows/<documento>/<conjunto>.json   as linhas de um conjunto do contrato (número JSON = float64, como no worker)
+  expected/<documento>.txt       o arquivo esperado: TAB, CRLF, ASCII
+```
+
+| Cenário | O que cobre |
+|---|---|
+| `a-saldo-e-contraparte` | **Sintético.** EXTRATO: saldo devedor no cheque especial (`1250 D`), saldo devedor abaixo de meio centavo (`000 C`), exatamente meio centavo (`001 D`), bloqueado somado ao disponível, saldo que o ponto flutuante não representa (0,29 ⇒ `029`), códigos 223, 125, 259, 133 e 105, a sessão de uma transação com a tarifa. ORIGEM-DESTINO: contraparte de um Pix do Banco do Brasil (ISPB `00000000` ⇒ `001`), TED sem ISPB (`999`), perna interna com o titular, tarifa com a própria instituição e a linha sem contraparte; o campo 2 é o campo 1 do EXTRATO |
+
+O teste que roda os cenários fica no Reporter (o motor), ao lado da conformidade do
+catálogo, e lê esta pasta a partir da raiz do catálogo em
+`REGULATORY_CATALOG_CONFORMANCE_DIR`. Um gabarito novo é escrito à mão a partir das
+linhas e da norma, nunca copiado da saída do motor.
+
 ## O que esta ferramenta já encontrou
 
 - **O Midaz não grava status na operação.** Os bindings filtravam
