@@ -1,0 +1,237 @@
+# Binding do SIMBA TITULARES — QUEM PREENCHE E O CLIENTE.
+#
+# Exemplo preenchido contra o Midaz (`midaz_onboarding`) e o CRM do Midaz
+# (`plugin_crm`). As contas do caso saem de `contas_do_caso`, a mesma consulta
+# (mesmo texto) nos bindings de AGENCIAS, CONTAS, EXTRATO e ORIGEM-DESTINO: trocar
+# de onde vem o conjunto de contas do caso e trocar SO essa consulta. As demais
+# leem os ids dela.
+#
+# O NUMERO DA AGENCIA (5 digitos; 00001 sem agencia fisica) sai do cadastro de
+# agencias do tenant, o MESMO `case` do binding do AGENCIAS (valores SINTETICOS
+# aqui: "0001" digital, "0002" fisica ficticia). Agencia fora do cadastro recusa.
+#
+# O TIPO DA CONTA vem de `regulatory_fields.account_type` do CRM, cujos valores o
+# proprio Midaz documenta com os codigos da IN (midaz pkg/mmodel/instrument.go:19).
+#
+# O PAPEL DE CADA PARTE RELACIONADA (campo 5) e do cliente: o CRM tem os papeis
+# PRIMARY_HOLDER, LEGAL_REPRESENTATIVE e RESPONSIBLE_PARTY, e o campo 5 tem T, 1..n,
+# R, L, P e O. PRIMARY_HOLDER e o cotitular ("C", que o template numera 1, 2... por
+# conta) e LEGAL_REPRESENTATIVE e o representante legal ("L"). O codigo de
+# RESPONSIBLE_PARTY (representante R, procurador P ou outros O) depende de como o
+# cliente cadastra: declare-o em `vinculo` abaixo. Sem a declaracao, uma parte com
+# esse papel recusa a geracao.
+#
+# A UF DO TITULAR (campo 14) converte a sigla do endereco principal no codigo IBGE,
+# com a tabela de br/bcb/simba/tabelas/uf-ibge.compute.yaml.
+#
+# Filtro encadeado `{query, column}`: grafia provisoria do motor; se
+# mudar, e `sed` nos bindings.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.simba.titulares
+contractVersion: 1.0.0
+
+queries:
+  - name: declarante
+    description: A organizacao do Midaz, que e a instituicao que responde ao caso. O CNPJ dela e o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    filters:
+      - field: deleted_at
+        operator: isNull
+
+  # As contas do caso, nesta versao so as que o documento investigado titula; o
+  # cotitular e decisao pendente. Excluida do CRM fica fora; encerrada entra.
+  - name: contas_do_caso
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: document, operator: in, values: [{parameter: documentos}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
+
+  - name: titulares_dados
+    description: As contas do caso, com agencia, tipo, datas e o cadastro do titular.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+    join:
+      - query: cadastro_titulares
+        match: {holder_id: _id}
+    # Quem junta uma consulta declara o que devolve; o documento e o nome vem do
+    # cadastro do titular, e nao do instrumento.
+    select: [account_id, holder_id, numero_agencia, tipo_conta, banking_details.account, banking_details.opening_date, banking_details.closing_date]
+
+  # O titular de uma conta do caso e um dos documentos da ordem: o cadastro dele
+  # sai pelo documento (o filtro pergunta pelo digest do documento cifrado).
+  - name: cadastro_titulares
+    description: O cadastro de titulares do CRM, das pessoas da ordem.
+    dataSource: plugin_crm
+    table: holders
+    filters:
+      - {field: document, operator: in, values: [{parameter: documentos}]}
+    compute:
+      - as: tipo_pessoa
+        case:
+          column: type
+          when:
+            NATURAL_PERSON: {constant: "1"}
+            LEGAL_PERSON: {constant: "2"}
+          otherwise: refuse
+      - as: codigo_uf
+        case:
+          column: addresses.primary.state
+          when:
+            AC: {constant: "12"}
+            AL: {constant: "27"}
+            AM: {constant: "13"}
+            AP: {constant: "16"}
+            BA: {constant: "29"}
+            CE: {constant: "23"}
+            DF: {constant: "53"}
+            ES: {constant: "32"}
+            GO: {constant: "52"}
+            MA: {constant: "21"}
+            MG: {constant: "31"}
+            MS: {constant: "50"}
+            MT: {constant: "51"}
+            PA: {constant: "15"}
+            PB: {constant: "25"}
+            PE: {constant: "26"}
+            PI: {constant: "22"}
+            PR: {constant: "41"}
+            RJ: {constant: "33"}
+            RN: {constant: "24"}
+            RO: {constant: "11"}
+            RR: {constant: "14"}
+            RS: {constant: "43"}
+            SC: {constant: "42"}
+            SE: {constant: "28"}
+            SP: {constant: "35"}
+            TO: {constant: "17"}
+          otherwise: refuse
+    select: [_id, document, name, tipo_pessoa, codigo_uf, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date]
+
+  # Uma linha por parte relacionada de cada conta do caso.
+  - name: partes_dados
+    description: As partes relacionadas de cada conta do caso, uma linha por parte.
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+      - as: vinculo
+        case:
+          column: related_parties.role
+          when:
+            PRIMARY_HOLDER: {constant: "C"}
+            LEGAL_REPRESENTATIVE: {constant: "L"}
+            # Declare aqui o codigo do papel RESPONSIBLE_PARTY neste cliente
+            # (R representante, P procurador ou O outros). Exemplo:
+            RESPONSIBLE_PARTY: {constant: "P"}
+          otherwise: refuse
+
+datasets:
+  instituicao:
+    from:
+      query: declarante
+    fields:
+      cnpj:
+        from: query
+        column: legal_document
+      compe:
+        from: manual
+        pendingReason: "o codigo Compe da instituicao, 3 digitos; 999 se ela nao tem codigo Compe"
+      nomeUnicad:
+        from: manual
+        pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
+      contratoCambio:
+        from: manual
+        pendingReason: "0 se a instituicao nao firma contrato de cambio; a que firma nao tem fonte para o 1 neste documento"
+
+  titulares:
+    from:
+      query: titulares_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      tipoPessoa: {from: query, column: tipo_pessoa}
+      documento: {from: query, column: document}
+      nome: {from: query, column: name}
+      logradouro: {from: query, column: addresses.primary.line_1}
+      complemento: {from: query, column: addresses.primary.line_2}
+      codigoUf: {from: query, column: codigo_uf}
+      pais: {from: query, column: addresses.primary.country}
+      cep: {from: query, column: addresses.primary.zip_code}
+      celular: {from: query, column: contact.mobile_phone}
+      outroTelefone: {from: query, column: contact.other_phone}
+      renda: {from: query, column: natural_person.monthly_gross_income.value}
+      dataRenda: {from: query, column: natural_person.monthly_gross_income.reference_date}
+      dataInicio: {from: query, column: banking_details.opening_date}
+      dataFim: {from: query, column: banking_details.closing_date}
+      nomeSocial: {from: query, column: natural_person.social_name}
+      emailPrincipal: {from: query, column: contact.primary_email}
+      emailSecundario: {from: query, column: contact.secondary_email}
+
+  partes:
+    from:
+      query: partes_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      parteId: {from: query, column: related_parties._id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      vinculo: {from: query, column: vinculo}
+      documento: {from: query, column: related_parties.document}
+      nome: {from: query, column: related_parties.name}
+      dataInicio: {from: query, column: related_parties.start_date}
+      dataFim: {from: query, column: related_parties.end_date}
+
+manualOverrides: []

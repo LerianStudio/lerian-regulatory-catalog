@@ -1,0 +1,330 @@
+# Contrato do arquivo III TITULARES do SIMBA (IN BCB 636/2025).
+#
+# QUEM CURA: a Lerian, a partir da transcricao oficial da IN BCB 636/2025 em
+# br/bcb/simba/normas/IN-BCB-636-2025.md ("IN :N" abaixo e a linha dessa copia).
+# Leiaute: art. 2o, III (IN :31), art. 3o (IN :57-73) e Anexo I, arquivo III
+# Titulares, campos 1 a 28 (IN :135-164).
+#
+# O QUE E: uma linha por vinculo pessoa-conta. Para cada conta do caso: uma linha
+# do titular (campo 5 = T) e uma linha por parte relacionada da conta no CRM
+# (cotitular numerado 1, 2... por conta; representante legal, procurador e
+# outros pelo codigo do campo 5).
+#
+# FORMA DO ARQUIVO (IN art. 3o): texto ASCII, sem cabecalho, colunas separadas
+# por TAB, linha terminada em CR LF, datas ddmmaaaa, valores em centavos sem
+# separador (IN :73). A forma e do template; o formato de cada campo esta aqui.
+#
+# DE ONDE VEM CADA CAMPO: conta, tipo e partes relacionadas do instrumento do CRM
+# do Midaz; dados da pessoa titular do cadastro de titulares do CRM; numero da
+# agencia do cadastro de agencias do tenant (o mesmo do AGENCIAS); CNPJ da
+# organizacao do Midaz; COMPE, nome no Unicad e contrato de cambio preenchidos
+# pelo cliente no mapeamento.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.bcb.simba.titulares
+  country: BR
+  regulator: BCB
+  document: TITULARES            # o nome do arquivo na IN 636 art. 2º (AGENCIAS, CONTAS, TITULARES, EXTRATO, ORIGEM-DESTINO)
+  family: simba
+  title: SIMBA — Titulares
+  summary: >-
+    Titulares, cotitulares, representantes e procuradores das contas investigadas, uma
+    linha por vinculo da pessoa com a conta, com cadastro, renda e datas do vinculo.
+  version: 1.0.0
+  status: draft
+  output: txt
+  timezone: America/Sao_Paulo
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  periodicity: eventual
+  layout:
+    version: "IN BCB 636/2025"
+    mandatoryFrom: "2026-12-01"
+  sourceOfTruth:
+    layoutManual: https://www.bcb.gov.br/estabilidadefinanceira/exibenormativo?tipo=Instru%C3%A7%C3%A3o%20Normativa%20BCB&numero=636
+
+parameters:
+  - name: caso
+    type: string
+    required: true
+    pattern: '^[0-9]{3}-[A-Z]{2,6}-[0-9]{6}-[0-9]{2}$'
+    description: Numero do caso SIMBA, como esta na ordem.
+  - name: documentos
+    type: string
+    multiple: true
+    required: true
+    description: CPFs e CNPJs da ordem, so digitos.
+  - name: contas
+    type: string
+    multiple: true
+    required: false
+    description: Numeros de conta da ordem, com DV, so digitos. Ausente, todas as contas dos documentos.
+  - name: inicio
+    type: date
+    required: true
+    description: Primeiro dia do afastamento do sigilo.
+  - name: fim
+    type: date
+    required: true
+    description: Ultimo dia do afastamento do sigilo.
+
+filing:
+  period: [caso]
+
+datasets:
+  # Os campos 1, 22, 23 e 28 sao da instituicao e se repetem em toda linha (IN
+  # :137, :158, :159, :164).
+  - name: instituicao
+    description: A instituicao que responde ao caso, uma linha.
+    grain: singleton
+    fields:
+      - name: compe
+        type: string
+        required: true
+        pattern: '^[0-9]{3}$'
+        description: Codigo Compe da instituicao, ou 999 quando ela nao tem (campo 1, IN :137).
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        normalize: alphanumeric
+        identifiesInstitution: true
+        pattern: '^[0-9A-Z]{14}$'
+        description: CNPJ da instituicao (campo 22, IN :158).
+      - name: nomeUnicad
+        type: string
+        required: true
+        description: Nome da instituicao como esta no Unicad (campo 23, IN :159). O template o corta em 50 posicoes.
+      - name: contratoCambio
+        type: string
+        required: true
+        domain: ["0"]
+        description: >-
+          Campo 28 (IN :164), igual para toda pessoa: 0 quando a instituicao nao firma contrato de cambio. Nenhuma
+          aplicacao Lerian registra contrato de cambio; instituicao que firma nao tem fonte para o 1 (knownGaps).
+
+  # Uma linha por conta do caso: a do titular (campo 5 = T).
+  - name: titulares
+    description: O titular de cada conta do caso, com o cadastro dele no CRM.
+    grain: [contaId]
+    consolidation:
+      key: [contaId]
+      whenKeyRepeats: refuse
+      columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
+                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, cep: first,
+                celular: first, outroTelefone: first, renda: first, dataRenda: first, dataInicio: first,
+                dataFim: first, nomeSocial: first, emailPrincipal: first, emailSecundario: first}
+    fields:
+      - name: contaId
+        type: string
+        required: true
+        description: A conta do Midaz. Nao vai ao arquivo; identifica a linha e liga as partes relacionadas.
+      - name: numeroAgencia
+        type: string
+        required: true
+        pattern: '^[0-9]{5}$'
+        description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :138).
+      - name: numeroConta
+        type: string
+        required: true
+        pattern: '^.{1,20}$'
+        description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
+      - name: tipoConta
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5", "6"]
+        description: Tipo da conta no codigo da IN (campo 4, IN :140).
+      - name: tipoPessoa
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: 1 pessoa natural, 2 pessoa juridica (campo 7, IN :143).
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ do titular, sem separadores (campo 8, IN :144).
+      - name: nome
+        type: string
+        required: true
+        description: Nome completo do titular (campo 9, IN :145). O template o corta em 80 posicoes.
+      - name: logradouro
+        type: string
+        required: false
+        description: Linha 1 do endereco principal (campo 12, IN :148). Ausente, o campo sai em branco.
+      - name: complemento
+        type: string
+        required: false
+        description: Linha 2 do endereco principal; o template a junta ao logradouro e corta em 80 (campo 12, IN :148).
+      - name: codigoUf
+        type: string
+        required: false
+        pattern: '^[0-9]{2}$'
+        description: Codigo IBGE da UF do endereco principal (campo 14, IN :150).
+      - name: pais
+        type: string
+        required: false
+        description: Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda; o template escreve Brasil para BR (campo 15, IN :151).
+      - name: cep
+        type: string
+        required: false
+        normalize: digits
+        description: CEP do endereco principal, so digitos (campo 16, IN :152).
+      - name: celular
+        type: string
+        required: false
+        description: Telefone celular do cadastro (campo 17, IN :153). Preferido ao outro telefone.
+      - name: outroTelefone
+        type: string
+        required: false
+        description: Outro telefone do cadastro, usado sem celular (campo 17, IN :153).
+      - name: renda
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Renda mensal bruta declarada pela pessoa natural, em reais (campo 18, IN :154). Pessoa juridica sai em branco (knownGaps).
+      - name: dataRenda
+        type: date
+        required: false
+        description: Data de referencia da renda declarada (campo 19, IN :155).
+      - name: dataInicio
+        type: date
+        required: false
+        description: Abertura da conta, inicio do vinculo do titular (campo 20, IN :156).
+      - name: dataFim
+        type: date
+        required: false
+        description: Encerramento da conta, fim do vinculo do titular; ausente, a conta esta aberta e o campo sai em branco (campo 21, IN :157).
+      - name: nomeSocial
+        type: string
+        required: false
+        description: Nome social da pessoa natural (campo 24, IN :160). O template o corta em 50 posicoes.
+      - name: emailPrincipal
+        type: string
+        required: false
+        description: E-mail principal (campo 25, IN :161).
+      - name: emailSecundario
+        type: string
+        required: false
+        description: E-mail secundario, unido ao principal por ";" (campo 25, IN :161).
+
+  # Uma linha por parte relacionada de cada conta do caso.
+  - name: partes
+    description: As partes relacionadas de cada conta do caso no CRM (cotitular, representante legal, procurador, outros).
+    grain: [contaId, parteId]
+    consolidation:
+      key: [contaId, parteId]
+      whenKeyRepeats: refuse
+      columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, vinculo: first, documento: first,
+                nome: first, dataInicio: first, dataFim: first}
+    fields:
+      - name: contaId
+        type: string
+        required: true
+        description: A conta do Midaz. Nao vai ao arquivo; liga a parte ao titular da conta.
+      - name: parteId
+        type: string
+        required: true
+        description: O id da parte no CRM. Nao vai ao arquivo; identifica a linha.
+      - name: numeroAgencia
+        type: string
+        required: true
+        pattern: '^[0-9]{5}$'
+        description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :138).
+      - name: numeroConta
+        type: string
+        required: true
+        pattern: '^.{1,20}$'
+        description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
+      - name: tipoConta
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5", "6"]
+        description: Tipo da conta no codigo da IN (campo 4, IN :140).
+      - name: vinculo
+        type: string
+        required: true
+        domain: ["C", "R", "L", "P", "O"]
+        description: >-
+          Papel da parte na conta (campo 5, IN :141). C e o cotitular, que o template numera 1, 2... por conta;
+          R representante, L representante legal, P procurador, O outros vao como estao.
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da parte, sem separadores (campo 8, IN :144). O tamanho da o tipo de pessoa (campo 7).
+      - name: nome
+        type: string
+        required: true
+        description: Nome da parte como esta no CRM (campo 9, IN :145). O template o corta em 80 posicoes.
+      - name: dataInicio
+        type: date
+        required: true
+        description: Inicio do vinculo da parte com a conta (campo 20, IN :156).
+      - name: dataFim
+        type: date
+        required: false
+        description: Fim do vinculo da parte; ausente, o vinculo esta ativo e o campo sai em branco (campo 21, IN :157).
+
+knownGaps:
+  - id: cotitular-pendente
+    description: >-
+      Nesta versao as contas do caso sao as que o documento investigado TITULA. A conta em que ele e so cotitular
+      depende de uma decisao pendente (o motor ainda nao executa anyOf, e o indice das partes no CRM nao tem o papel);
+      ate la, as pessoas dessa conta nao entram.
+  - id: contas-de-contraparte
+    description: >-
+      A IN pede os titulares das contas do arquivo CONTAS (art. 2o, III, IN :31), que tambem lista as contas da mesma
+      instituicao com as quais as investigadas transacionaram (campo 7 = 3). Nesta versao o TITULARES cobre so as
+      contas do caso; as pessoas das contas de contraparte nao entram.
+  - id: excluida-do-crm
+    description: >-
+      Uma conta apagada do CRM (deleted_at) nao entra. Uma conta encerrada (closing_date) entra, com a data no
+      campo 21 da linha do titular.
+  - id: documento-de-identificacao
+    description: >-
+      Campos 10 e 11 (IN :146-147) sempre em branco: o CRM guarda so CPF/CNPJ, e nenhuma aplicacao Lerian registra RG,
+      CTPS, passaporte ou o documento constitutivo da pessoa juridica. A IN nao da sentinela para esses campos.
+  - id: dispositivos-cadastrados
+    description: >-
+      Campos 26 e 27 (IN :162-163) sempre em branco: nenhuma aplicacao Lerian registra os dispositivos moveis ou os
+      computadores cadastrados do cliente. A IN nao da sentinela para esses campos.
+  - id: cidade-sem-codigo-ibge
+    description: >-
+      Campo 13 (IN :149) sempre em branco: o CRM guarda o nome da cidade, sem o codigo IBGE, e a conversao do nome nao
+      e confiavel. O codigo 0000000 e so para pessoa domiciliada no exterior, e nao e usado no lugar do codigo faltante.
+  - id: uf-fora-da-tabela
+    description: >-
+      O campo 14 converte a sigla da UF do endereco principal do titular para o codigo IBGE. Titular sem UF, com sigla
+      fora da tabela ou domiciliado no exterior recusa a geracao; corrija o cadastro antes de gerar.
+  - id: parte-sem-cadastro
+    description: >-
+      A parte relacionada no CRM tem so documento, nome, papel e datas. Para cotitular, representante e procurador
+      saem em branco os campos 12 a 19 e 24, e o campo 25 sai "e-mail nao declarado". O cadastro completo da parte
+      exigiria ligar a parte ao titular pelo documento, que o CRM guarda cifrado.
+  - id: renda-pessoa-juridica
+    description: >-
+      Campo 18 (IN :154): a renda da pessoa natural vem da renda mensal declarada no CRM. A pessoa juridica tem no CRM
+      o faturamento anual, e a regra para declara-lo (anual ou mensal) esta em aberto; ate a decisao, o campo 18 e o
+      19 da pessoa juridica saem em branco.
+  - id: ordem-dos-cotitulares
+    description: >-
+      Os cotitulares sao numerados 1, 2... na ordem em que o CRM guarda as partes da conta, que e a ordem de inclusao.
+      O motor nao ordena por data de inicio do vinculo.
+  - id: papel-do-procurador
+    description: >-
+      O CRM tem tres papeis (PRIMARY_HOLDER, LEGAL_REPRESENTATIVE, RESPONSIBLE_PARTY) e o campo 5 tem sete codigos. O
+      binding do cliente declara qual codigo cada papel recebe; papel nao declarado recusa a geracao.
+  - id: contrato-de-cambio
+    description: >-
+      Campo 28 (IN :164): nenhuma aplicacao Lerian registra contrato de cambio. O documento serve a instituicao que nao
+      firma contrato de cambio (0 para toda pessoa); a que firma nao tem fonte para o 1.
+  - id: vinculo-removido
+    description: >-
+      Uma parte removida do instrumento pela API do CRM sai da lista sem deixar data de fim. O campo 21 so registra o
+      fim do vinculo que o cadastro encerrou com a data, e o historico removido antes disso se perdeu.
