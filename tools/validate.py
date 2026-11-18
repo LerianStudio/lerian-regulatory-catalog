@@ -605,6 +605,7 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
     check_parent_match(doc_dir, contract, binding)
     check_column_survival(doc_dir, binding)
     _check_span_edges(doc_dir, contract, binding)
+    _check_filter_values(doc_dir, contract, binding)
     raw_rows = _raw_rows(example)
 
     queries = {q.get("name") for q in query_list(binding)}
@@ -1710,6 +1711,47 @@ def _check_span_edges(doc_dir: Path, contract: dict, binding: dict) -> None:
                         f"lê o {value.get('at')} do parâmetro '{name}', que nomeia um período de {span} "
                         f"meses (span); o motor ainda não corta a extração por esse período"
                     )
+
+    for query in query_list(binding):
+        qname = query.get("name", "<sem nome>")
+        walk(qname, query.get("filters"))
+        walk(qname, query.get("having"))
+
+
+def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
+    """De onde um filtro lê os seus valores, conferido em todo caminho.
+
+    Um parâmetro `multiple` é uma lista: só se lê como o conjunto de um `in` ou `nin`,
+    e nunca pela ponta (`at`) de um período, que uma lista não tem.
+
+    Como em _check_span_edges, em filters e em having, a qualquer profundidade de anyOf
+    e allOf.
+    """
+    multiple = multiple_parameters(contract)
+
+    def walk(qname: str, conditions: object) -> None:
+        if not isinstance(conditions, list):
+            return
+        for condition in conditions:
+            if not isinstance(condition, dict):
+                continue
+            walk(qname, condition.get("anyOf"))
+            walk(qname, condition.get("allOf"))
+            values = condition.get("values")
+            where = f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}'"
+            operator = condition.get("operator")
+            for value in values if isinstance(values, list) else []:
+                if not isinstance(value, dict):
+                    continue
+                name = value.get("parameter")
+                if not isinstance(name, str) or name not in multiple:
+                    continue
+                if "at" in value:
+                    fail(f"{where}: lê o {value.get('at')} do parâmetro '{name}', que é uma lista (multiple); "
+                         f"uma lista não tem ponta de período")
+                elif operator not in MULTIPLE_OPERATORS:
+                    fail(f"{where}: lê o parâmetro '{name}', que é uma lista (multiple), com {operator!r}; "
+                         f"uma lista se lê com {' ou '.join(MULTIPLE_OPERATORS)}")
 
     for query in query_list(binding):
         qname = query.get("name", "<sem nome>")
@@ -2887,6 +2929,11 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
             fail(f"{rwhere}.parameter nomeia {name!r}, que não é parâmetro deste contrato")
         elif name in period:
             fail(f"{rwhere}.parameter {name!r} também está em period; a remessa não é parte do período")
+        elif params[name].get("multiple") is True:
+            # A remessa é UM valor, o da original ou o de uma substituição; numa lista as
+            # regras de original e substituição deixariam de valer sem aviso (o motor
+            # recusa igual: refuseMultipleRemittance).
+            fail(f"{rwhere}.parameter nomeia {name!r}, que é uma lista (multiple); a remessa é um valor só")
         else:
             domain = params[name].get("domain")
             values = domain if isinstance(domain, list) else []
@@ -3109,6 +3156,8 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
         if "required" in param and not isinstance(required, bool):
             fail(f"{where} tem required {required!r}; é true ou false")
 
+        _check_multiple(where, param, ptype, default)
+
         if domain is not None and not isinstance(domain, list):
             fail(f"{where} tem domain {domain!r}; um domínio é a lista fechada de valores aceitos")
             domain = None
@@ -3179,6 +3228,75 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
                 fail(f"{where} tem allowedMonths com {month!r}; um mês é de '01' a '12', com dois dígitos")
 
     _check_parameter_relations(doc_dir, contract)
+
+
+# Um parâmetro `multiple` é uma LISTA de valores do `type`, que é o tipo de cada um.
+MULTIPLE_TYPES = ("string", "integer")
+# Quantos valores uma lista aceita (`maxItems`); ausente, o motor aceita o máximo.
+MIN_ITEMS, MAX_ITEMS = 1, 1000
+# Os operadores com que um filtro do binding lê uma lista, na grafia do motor
+# (pkg/reporter/filterval/operators.go). Não confundir com o `notIn` de `where`.
+MULTIPLE_OPERATORS = ("in", "nin")
+# O que um parâmetro `multiple` não declara, e por quê. A maior parte só vale para
+# month ou date, que uma lista não é; o motor as recusa pelo tipo
+# (model.validateListDeclaration, contract.readMultipleKeys), e aqui a combinação é
+# recusada pelo nome, para o curador ver a chave que sobra. `businessDay` e
+# `appliesTo` não são lidas em mais nenhum ponto deste validador: aqui só a
+# combinação com `multiple` é recusada.
+MULTIPLE_EXCLUDES = {
+    "allowedMonths": "os meses permitidos são de um month, e uma lista não é um mês",
+    "closed": "fechar um período é de um month ou de uma date, e uma lista não nomeia período",
+    "businessDay": "dia útil é de uma date, e uma lista não é um dia",
+    "span": "um período de meses é de um month, e uma lista não é um mês",
+    "within": "cair num período é de uma date, e uma lista não é um dia",
+    "notBefore": "vir depois de outro dia é de uma date, e uma lista não é um dia",
+    "appliesTo": "uma lista de valores não nomeia o período que fecha",
+    "pattern": "o pattern confere UM valor escrito inteiro, e uma lista traz vários",
+}
+
+
+def _check_multiple(where: str, param: dict, ptype, default) -> None:
+    """`multiple` e `maxItems` lidos sozinhos: a forma e onde valem.
+
+    `list: true` foi a primeira grafia proposta, e o formato adotou `multiple`
+    (`list` já tem outro sentido no binding). O motor não a lê, então a lista pedida viraria um parâmetro de um valor
+    só sem ninguém ver: aqui ela é recusada nomeando a chave que a substitui.
+    """
+    if "list" in param:
+        fail(f"{where} declara list, que saiu do formato; uma lista de valores é `multiple: true`")
+
+    multiple = optional_at(where, param, "multiple")
+    if multiple is not None and not isinstance(multiple, bool):
+        fail(f"{where} tem multiple {multiple!r}; é true ou false")
+    elif multiple is True:
+        if ptype is not None and ptype not in MULTIPLE_TYPES:
+            fail(f"{where} declara multiple e é do tipo {ptype!r}; uma lista é de {' ou '.join(MULTIPLE_TYPES)}, "
+                 f"e type é o tipo de cada valor")
+        if default is not None:
+            fail(f"{where} declara multiple e default; uma lista vem inteira da requisição, sem valor padrão")
+        for key, why in MULTIPLE_EXCLUDES.items():
+            if key in param:
+                fail(f"{where} declara multiple e {key}; {why}")
+
+    if "maxItems" not in param:
+        return
+    # Antes de qualquer comparação: bool é int em Python, e `maxItems: true` passaria como 1.
+    limit = optional_at(where, param, "maxItems")
+    if limit is None:
+        pass  # optional_at já reprovou a chave escrita e vazia
+    elif multiple is not True:
+        fail(f"{where} declara maxItems sem multiple: true; o limite é de quantos valores uma lista aceita")
+    elif isinstance(limit, bool) or not isinstance(limit, int) or not MIN_ITEMS <= limit <= MAX_ITEMS:
+        fail(f"{where} tem maxItems {limit!r}; é quantos valores a lista aceita, um inteiro de "
+             f"{MIN_ITEMS} a {MAX_ITEMS} (ausente, {MAX_ITEMS})")
+
+
+def multiple_parameters(contract: dict) -> set[str]:
+    """Os parâmetros que o contrato declara como lista (`multiple: true`)."""
+    return {
+        p["name"] for p in parameters_of(contract)
+        if isinstance(p, dict) and isinstance(p.get("name"), str) and p.get("multiple") is True
+    }
 
 
 # O nome que o motor reserva para os limites dos períodos (pongo.PeriodsContextKey).

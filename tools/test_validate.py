@@ -2321,6 +2321,132 @@ MUTATIONS: list[Mutation] = [
                    b[FECHADO]["binding"]["incompleteFields"].append("tipos")),
         "`incompleteFields` lista tipos",
     ),
+
+    # ------------------------------------------------- parâmetro múltiplo
+    Mutation(
+        "parametro-com-list-antigo",
+        "`list: true` saiu do formato; o motor não o lê e a lista viraria um valor só",
+        lambda b: (parameter(b[HIER]["contract"], "titularesPedidos").pop("multiple"),
+                   parameter(b[HIER]["contract"], "titularesPedidos").update({"list": True})),
+        "parâmetro 'titularesPedidos' declara list",
+    ),
+    Mutation(
+        "parametro-multiple-nao-booleano",
+        "`multiple: \"true\"` seria lido pelo motor com outra regra",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"multiple": "true"}),
+        "parâmetro 'titularesPedidos' tem multiple 'true'; é true ou false",
+    ),
+    Mutation(
+        "parametro-multiple-de-tipo-sem-lista",
+        "uma lista de datas não é o que o motor aceita como valor múltiplo",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"type": "date"}),
+        "parâmetro 'titularesPedidos' declara multiple e é do tipo 'date'",
+    ),
+    Mutation(
+        "parametro-multiple-com-default",
+        "uma lista não tem um valor padrão a assumir",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"default": "A"}),
+        "parâmetro 'titularesPedidos' declara multiple e default",
+    ),
+    Mutation(
+        "parametro-maxitems-sem-multiple",
+        "um limite de itens num parâmetro que não é lista não limita nada",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"maxItems": 10}),
+        "parâmetro 'tipoRemessa' declara maxItems sem multiple: true",
+    ),
+    Mutation(
+        "parametro-maxitems-fora-da-faixa",
+        "o motor aceita de 1 a 1000 valores numa lista",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"maxItems": 1001}),
+        "parâmetro 'titularesPedidos' tem maxItems 1001",
+    ),
+    Mutation(
+        "parametro-maxitems-booleano",
+        "`maxItems: true` é bool, e bool é int em Python: passaria como 1",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"maxItems": True}),
+        "parâmetro 'titularesPedidos' tem maxItems True",
+    ),
+    Mutation(
+        "parametro-maxitems-zero",
+        "`maxItems: 0` escrito: o motor recusa; ausente é que vale o máximo",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"maxItems": 0}),
+        "parâmetro 'titularesPedidos' tem maxItems 0",
+    ),
+    Mutation(
+        "parametro-multiple-com-allowedMonths",
+        "meses permitidos são de um month, e uma lista não é um mês",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"allowedMonths": ["06"]}),
+        "parâmetro 'titularesPedidos' declara multiple e allowedMonths",
+    ),
+    Mutation(
+        "parametro-multiple-com-closed",
+        "fechar o período é de um month ou date",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"closed": True}),
+        "parâmetro 'titularesPedidos' declara multiple e closed",
+    ),
+    Mutation(
+        "parametro-multiple-com-businessDay",
+        "dia útil é de uma date",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"businessDay": True}),
+        "parâmetro 'titularesPedidos' declara multiple e businessDay",
+    ),
+    Mutation(
+        "parametro-multiple-com-span",
+        "um período de meses é de um month",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"span": 6}),
+        "parâmetro 'titularesPedidos' declara multiple e span",
+    ),
+    Mutation(
+        "parametro-multiple-com-within",
+        "cair num período é de uma date",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"within": "dataBase"}),
+        "parâmetro 'titularesPedidos' declara multiple e within",
+    ),
+    Mutation(
+        "parametro-multiple-com-notBefore",
+        "vir depois de outro dia é de uma date",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"notBefore": "dtIni"}),
+        "parâmetro 'titularesPedidos' declara multiple e notBefore",
+    ),
+    Mutation(
+        "parametro-multiple-com-appliesTo",
+        "uma lista não nomeia o período que fecha",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"appliesTo": "dataBase"}),
+        "parâmetro 'titularesPedidos' declara multiple e appliesTo",
+    ),
+    Mutation(
+        "parametro-multiple-com-pattern",
+        "o pattern confere UM valor escrito inteiro",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"pattern": "[0-9]+"}),
+        "parâmetro 'titularesPedidos' declara multiple e pattern",
+    ),
+    Mutation(
+        "parametro-multiple-na-remessa",
+        "a remessa é UM valor, original ou substituição; uma lista não é nenhum dos dois",
+        lambda b: (parameter(b[PLANO]["contract"], "tipoRemessa").pop("default"),
+                   parameter(b[PLANO]["contract"], "tipoRemessa").update({"multiple": True})),
+        "remittance.parameter nomeia 'tipoRemessa', que é uma lista (multiple)",
+    ),
+    Mutation(
+        "parametro-multiple-com-ponta-de-periodo",
+        "uma lista de valores não tem início nem fim de período",
+        lambda b: query(b[HIER]["binding"], "base_titulares").update({"filters": [
+            {"field": "_id", "operator": "lt", "values": [{"parameter": "titularesPedidos", "at": "end"}]}]}),
+        "lê o end do parâmetro 'titularesPedidos', que é uma lista (multiple)",
+    ),
+    Mutation(
+        "parametro-multiple-com-operador-de-valor-unico",
+        "`eq` com uma lista compara a coluna com um valor só",
+        lambda b: query(b[HIER]["binding"], "base_titulares")["filters"][0].update({"operator": "eq"}),
+        "lê o parâmetro 'titularesPedidos', que é uma lista (multiple), com 'eq'",
+    ),
+    Mutation(
+        "parametro-multiple-em-having-aninhado",
+        "o mesmo uso em `having`, dentro de anyOf: o caminho gêmeo",
+        lambda b: query(b[HIER]["binding"], "por_titular")["having"][0]["anyOf"].append(
+            {"allOf": [{"field": "titular", "operator": "gte", "values": [{"parameter": "titularesPedidos"}]}]}),
+        "filtro 'titular' de 'por_titular': lê o parâmetro 'titularesPedidos', que é uma lista (multiple), com 'gte'",
+    ),
 ]
 
 
@@ -2344,6 +2470,8 @@ _NOT_CONTRACT_KEYS = {
     "rows", "masked",
     # natureza.yaml — a tabela de naturezas do elenco
     "byPrefix", "sha256",
+    # a grafia antiga do parâmetro múltiplo: lida só para ser recusada, nomeando `multiple`
+    "list",
 }
 
 
@@ -2556,6 +2684,20 @@ class ValidatorSuite(unittest.TestCase):
         code, out = _run(self._write(with_family(broken=True)))
         self.assertEqual(code, 1, f"o contrato de quatro níveis deveria ser conferido:\n{out}")
         self.assertIn(f"{familia}", out)
+
+    def test_a_list_of_integers_read_by_nin_is_valid(self) -> None:
+        """`multiple` de integer, sem `maxItems` (o motor aceita o máximo), lido por `nin`.
+
+        A fixture já prova a lista de texto com limite lida por `in`; esta é a outra
+        metade do que o motor aceita.
+        """
+        data = fixtures.bundle()
+        pedidos = parameter(data[HIER]["contract"], "titularesPedidos")
+        pedidos["type"] = "integer"
+        pedidos.pop("maxItems")
+        query(data[HIER]["binding"], "base_titulares")["filters"][0]["operator"] = "nin"
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"uma lista de inteiros lida por nin deveria validar:\n{out}")
 
     def test_fixtures_are_valid(self) -> None:
         """A base é válida — sem isso, toda mutação passaria por acidente."""
