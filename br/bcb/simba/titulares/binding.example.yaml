@@ -57,8 +57,8 @@ queries:
       - field: deleted_at
         operator: isNull
 
-  # As contas do caso, nesta versao so as que o documento investigado titula; o
-  # cotitular e decisao pendente. Excluida do CRM fica fora; encerrada entra.
+  # As contas do caso: as que o documento investigado TITULA (cotitular, representante e
+  # procurador nao entram). Excluida do CRM fica fora; encerrada entra.
   - name: contas_do_caso
     dataSource: plugin_crm
     table: aliases

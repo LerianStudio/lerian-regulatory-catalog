@@ -22,10 +22,8 @@ mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 - **Investigadas** (campo 7 = `1` com lancamento no periodo, `2` sem): as contas em que um
   documento da ordem e o **titular**. Encerradas entram, com a data de encerramento.
   Apagadas do CRM nao entram.
-- **Cotitular**: nesta versao, a conta em que o documento investigado e so cotitular nao
-  entra; a decisao esta pendente (o motor ainda nao executa "titular OU cotitular", e o
-  indice das partes no CRM nao separa o papel).
-- Procurador e representante: a conta de que o investigado e so procurador nao entra.
+- **So titular**: a conta em que o documento investigado e so cotitular, representante
+  ou procurador nao entra; o indice das partes no CRM nao separa o papel.
 - **Contas com que as investigadas transacionaram** (campo 7 = `3`): as outras pernas dos
   lancamentos das contas investigadas no periodo, quando sao conta de cliente no CRM. Uma
   conta que tambem e investigada sai uma vez so, como investigada.

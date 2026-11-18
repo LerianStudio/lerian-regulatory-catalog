@@ -42,9 +42,8 @@ como nas contas do caso. O titular sai do cadastro do CRM pelo
 `holder_id` da conta. Uma conta de contraparte que tambem e conta do caso sai uma vez so, como
 conta do caso.
 
-- **Cotitular**: nesta versao, a conta em que o documento investigado e so cotitular nao
-  entra; a decisao esta pendente (o motor ainda nao executa "titular OU cotitular", e o
-  indice das partes no CRM nao separa o papel).
+- **So titular**: a conta em que o documento investigado e so cotitular, representante
+  ou procurador nao entra; o indice das partes no CRM nao separa o papel.
 
 ## O que o tenant preenche no mapeamento (binding)
 

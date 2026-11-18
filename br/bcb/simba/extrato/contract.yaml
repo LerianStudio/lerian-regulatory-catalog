@@ -300,7 +300,7 @@ knownGaps:
     description: >-
       A hora (campo 23) sai do instante do lancamento como o motor o entrega. Instante que nao chega em UTC recusa a
       geracao (pattern do campo), em vez de sair a hora de outro fuso.
-  - id: cotitular-pendente
+  - id: so-titular
     description: >-
-      Nesta versao as contas do caso sao as que o documento investigado TITULA. A conta em que ele e cotitular
-      depende de uma decisao pendente (o motor ainda nao executa anyOf, e o indice das partes no CRM nao tem o papel).
+      As contas do caso sao as que o documento investigado TITULA. A conta em que ele e so cotitular, representante
+      ou procurador nao entra: o indice das partes no CRM nao separa o papel.
