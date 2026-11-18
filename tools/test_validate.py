@@ -2545,7 +2545,21 @@ MUTATIONS: list[Mutation] = [
         lambda b: query(b[HIER]["binding"], "por_titular")["having"][0]["anyOf"].append(
             {"allOf": [{"field": "titular", "operator": "in",
                         "values": [{"query": "sumida", "column": "titular"}]}]}),
-        "filtro 'titular' de 'por_titular': lê os valores da consulta 'sumida', que não existe",
+        "filtro 'titular' de 'por_titular': lê os valores da consulta 'sumida' em having",
+    ),
+    Mutation(
+        "valor-de-consulta-dentro-de-anyof",
+        "o motor recusa o valor de consulta combinado com outras condições: ele é uma condição própria",
+        lambda b: query(b[HIER]["binding"], "detalhado").update({"filters": [{"anyOf": [
+            {"field": "titular", "operator": "in", "values": [{"query": "por_titular", "column": "titular"}]},
+            {"field": "titular", "operator": "eq", "values": ["x"]}]}]}),
+        "filtro 'titular' de 'detalhado': lê os valores da consulta 'por_titular' dentro de anyOf ou allOf",
+    ),
+    Mutation(
+        "valor-de-consulta-de-origem-aberta",
+        "uma origem que não seleciona nem agrega não diz que colunas entrega; o motor pede o select",
+        lambda b: chained_filter(b, query="base_titulares", column="_id"),
+        "lê a coluna '_id' de 'base_titulares', que não seleciona nem agrega",
     ),
 ]
 
