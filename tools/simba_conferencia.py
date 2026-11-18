@@ -37,7 +37,9 @@ AVISO (listado para o aprovador, não bloqueia):
     não aparece no EXTRATO. Por isso a conferência lê as linhas do rascunho do CONTAS,
     como o Reporter as devolve em `GET /v1/regulatory/reports/{reportId}/rows`, onde o
     saldo tem sinal. Sem elas, o saldo devedor não é conferido, e a conferência diz isso;
-  * pelas linhas do rascunho do EXTRATO: conta que usou cheque especial no período ou
+  * pelas linhas do rascunho do EXTRATO: a parcela de cheque especial que o Midaz grava
+    em operação separada (chave overdraft), que sai como lançamento próprio e, numa
+    transferência interna, sem contraparte no ORIGEM-DESTINO; conta que usou cheque especial no período ou
     teve valor bloqueado depois de algum lançamento (o saldo final pode não mostrar
     nenhum dos dois), e lançamento sem o cheque especial usado (operação gravada antes
     de o Midaz guardar o snapshot), cujo saldo sai sem ele. Sem essas linhas, nada
@@ -107,6 +109,8 @@ CONTAS_SETS = ("contas_investigadas", "contas_contraparte")
 CONTAS_DOCUMENT = "br.bcb.simba.contas"
 EXTRATO_DOCUMENT = "br.bcb.simba.extrato"
 EXTRATO_ENTRIES = "lancamentos"
+# A chave de saldo em que o Midaz grava a parte de um saque tirada do cheque especial.
+OVERDRAFT_KEY = "overdraft"
 
 
 class Report:
@@ -240,6 +244,11 @@ def check_entry_balances(drafts: dict[str, dict] | None, report: Report) -> None
             used.add(key)
         if (_decimal(str(row.get("bloqueadoApos") or "0")) or Decimal(0)) > 0:
             held.add(key)
+    for row in entries:
+        if row.get("chaveSaldo") == OVERDRAFT_KEY:
+            report.warn(f"EXTRATO: a conta {row.get('numeroConta')} da agência {row.get('numeroAgencia')} tem uma parcela "
+                        f"de cheque especial de {row.get('valor')} em lançamento separado; revise a contraparte no "
+                        "ORIGEM-DESTINO: numa transferência interna, a parcela sai como não identificada pelo trilho")
     for key in sorted(used):
         report.warn(f"EXTRATO: a conta {key[1]} da agência {key[0]} usou cheque especial no período")
     for key in sorted(held):
