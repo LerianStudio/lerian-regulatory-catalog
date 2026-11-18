@@ -2416,6 +2416,23 @@ MUTATIONS: list[Mutation] = [
         "remittance.parameter nomeia 'tipoRemessa', que é uma lista (multiple)",
     ),
     Mutation(
+        "parametro-multiple-escrito-num-campo",
+        "uma lista é o conjunto de um filtro; escrita numa célula viraria o texto dela inteira",
+        lambda b: b[HIER]["binding"]["datasets"]["titulares"]["fields"].update(
+            {"tipo": {"from": "parameter", "parameter": "titularesPedidos"}}),
+        "titulares.tipo escreve o parâmetro 'titularesPedidos', que é uma lista (multiple)",
+    ),
+    Mutation(
+        "parametro-multiple-escrito-num-caso-de-classe",
+        "o caso de classe é o outro caminho do mesmo campo e tem a mesma conferência",
+        lambda b: (b[FECHADO]["contract"].setdefault("parameters", []).append(
+                       {"name": "pedidos", "type": "string", "required": False, "multiple": True,
+                        "description": "Lista."}),
+                   b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1].update(
+                       {"from": "parameter", "parameter": "pedidos"})),
+        "linhas.valor.byRowClass[1] escreve o parâmetro 'pedidos', que é uma lista (multiple)",
+    ),
+    Mutation(
         "parametro-multiple-com-ponta-de-periodo",
         "uma lista de valores não tem início nem fim de período",
         lambda b: query(b[HIER]["binding"], "base_titulares").update({"filters": [
