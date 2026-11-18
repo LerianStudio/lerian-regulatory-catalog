@@ -6,7 +6,8 @@ A IN entra em vigor em 01/12/2026 (art. 7o): use este documento a partir dessa d
 ## O que e
 
 Uma linha por vinculo de uma pessoa com uma conta: o titular, os cotitulares, os
-representantes e os procuradores das contas (IN art. 2o, III). E um dos cinco arquivos da
+representantes e os procuradores das contas do arquivo CONTAS (IN art. 2o, III): as contas
+do caso e as contas da mesma instituicao com que elas transacionaram no periodo. E um dos cinco arquivos da
 resposta ao caso; os outros sao AGENCIAS, CONTAS, EXTRATO e ORIGEM-DESTINO, gerados com os
 mesmos parametros.
 
@@ -33,12 +34,17 @@ entram, apagadas do CRM nao):
 Nas linhas de parte, o campo 6 sai `1` se o documento da parte esta entre os `documentos` da
 ordem e `0` se nao.
 
+Depois das contas do caso vem cada **conta de contraparte**: as contas da mesma instituicao
+com que uma conta do caso transacionou no periodo, as mesmas que o CONTAS lista com o campo 7
+= `3` (a mesma consulta `contas_contraparte` nos dois bindings). Cada uma tem as mesmas linhas
+(titular `T`, cotitulares numerados, demais partes), com o campo 6 = `0` em todas, porque a
+pessoa da conta de contraparte nao e a investigada. O titular sai do cadastro do CRM pelo
+`holder_id` da conta. Uma conta de contraparte que tambem e conta do caso sai uma vez so, como
+conta do caso.
+
 - **Cotitular**: nesta versao, a conta em que o documento investigado e so cotitular nao
   entra; a decisao esta pendente (o motor ainda nao executa "titular OU cotitular", e o
   indice das partes no CRM nao separa o papel).
-- **Contas de contraparte**: a IN pede os titulares das contas do arquivo CONTAS, que tambem
-  lista as contas da mesma instituicao com que as investigadas transacionaram (campo 7 = `3`
-  no CONTAS). Nesta versao as pessoas dessas contas nao entram.
 
 ## O que o tenant preenche no mapeamento (binding)
 
@@ -47,14 +53,18 @@ ordem e `0` se nao.
    sem `banking_details.branch` no CRM, ou com agencia fora do cadastro, recusa a geracao.
 2. **Codigo do papel** (`vinculo`): o CRM tem os papeis `PRIMARY_HOLDER` (cotitular, `C` no
    binding, numerado pelo template), `LEGAL_REPRESENTATIVE` (representante legal, `L`) e
-   `RESPONSIBLE_PARTY`. Declare o codigo que `RESPONSIBLE_PARTY` recebe no seu cadastro:
-   `R` representante, `P` procurador ou `O` outros. O exemplo usa `P`. Papel sem codigo
-   declarado recusa a geracao.
+   `RESPONSIBLE_PARTY`. O CRM nao define o que e `RESPONSIBLE_PARTY`: declare o codigo que
+   ele recebe no seu cadastro, `R` representante, `P` procurador ou `O` outros, nas duas
+   consultas de partes (`partes_dados` e `partes_contraparte_dados`). O exemplo usa `O`, o
+   unico codigo que nao afirma procuracao nem representacao; troque para `P` ou `R` se o seu
+   processo usa o papel para procurador ou representante. Papel sem codigo declarado recusa
+   a geracao.
 3. **Codigo Compe** (`compe`): 3 digitos, ou `999` se a instituicao nao tem.
 4. **Nome no Unicad** (`nomeUnicad`).
-5. **Contrato de cambio** (`contratoCambio`, campo 28): `0` se a instituicao nao firma
-   contrato de cambio. Nenhuma aplicacao Lerian registra contrato de cambio; a instituicao
-   que firma nao tem fonte para o `1` neste documento.
+5. **Contrato de cambio** (`operaCambio`, campo 28): declare na implantacao se a instituicao
+   firma contrato de cambio. Com `nao`, o campo 28 sai `0` em toda linha. Com `sim`, a geracao
+   e recusada: nenhuma aplicacao Lerian registra contrato de cambio, e nao ha fonte para o
+   `1` neste documento.
 
 O CNPJ vem da organizacao do Midaz. O tipo da conta vem do CRM
 (`regulatory_fields.account_type`: DEPOSIT 1, SAVINGS 2, INVESTMENT 3,
@@ -69,8 +79,10 @@ cadastro (`NATURAL_PERSON` 1, `LEGAL_PERSON` 2); outro valor recusa a geracao.
   `br/bcb/simba/tabelas/uf-ibge.compute.yaml`.
 - Pais (campo 15): `Brasil` para o codigo `BR` do cadastro.
 - Telefone (campo 17): o celular; sem celular, o outro telefone.
-- Renda (campo 18): a renda mensal bruta declarada pela pessoa natural, em centavos sem
-  separador (`500050` para R$ 5.000,50); data de referencia no campo 19.
+- Renda (campo 18): da pessoa natural, a renda mensal bruta declarada; da pessoa juridica, o
+  faturamento anual bruto declarado, como esta no cadastro, sem dividir por 12 (a IN pede a
+  renda declarada e nao fixa o periodo). Em centavos sem separador (`500050` para
+  R$ 5.000,50); a data de referencia de cada um no campo 19.
 - E-mail (campo 25): o principal e o secundario, separados por `;`.
 - Inicio e fim do vinculo (campos 20 e 21): abertura e encerramento da conta.
 
@@ -101,9 +113,6 @@ sai em branco:
   branco. Nenhuma aplicacao Lerian registra os dispositivos cadastrados do cliente.
 - Do titular, quando o cadastro nao tem o dado: endereco (12), CEP (16), telefone (17),
   renda e data da renda (18 e 19), nome social (24) e abertura da conta (20).
-- `VALOR_RENDA` e `DATA_ATUALIZACAO_RENDA` (campos 18 e 19) da pessoa juridica: em branco. O
-  CRM tem o faturamento anual da empresa, e a regra para declara-lo (anual ou mensal) esta
-  em aberto.
 - Das partes relacionadas: campos 12 a 19 e 24 em branco, porque a parte no CRM nao tem
   endereco, telefone, renda nem nome social.
 
@@ -113,7 +122,8 @@ Sem e-mail no cadastro, e sempre nas partes relacionadas, o campo 25 sai
 ## Limitacoes desta versao
 
 - **UF do titular**: titular sem UF no endereco principal, com sigla fora da tabela ou
-  domiciliado no exterior recusa a geracao. Corrija o cadastro antes de gerar.
+  domiciliado no exterior recusa a geracao, tambem o titular de uma conta de contraparte.
+  Corrija o cadastro antes de gerar.
 - **Titular sem cadastro**: o cadastro do titular vem do CRM pelo documento da ordem e pelo
   `holder_id` da conta. Conta do caso cujo titular nao e encontrado no cadastro (apagado, ou
   com documento diferente do da ordem) fica sem tipo de pessoa, documento e nome, e a geracao
@@ -131,7 +141,8 @@ Sem e-mail no cadastro, e sempre nas partes relacionadas, o campo 25 sai
   do template, e TAB vira espaco. **Quebra de linha (CR ou LF) dentro de um valor nao e
   retirada.**
 - **Pessoa investigada nas partes**: o campo 6 compara o documento da parte com cada
-  elemento da lista `documentos` da ordem, que vem so com digitos.
+  elemento da lista `documentos` da ordem, que vem so com digitos. Nas contas de contraparte
+  o campo 6 sai sempre `0`, mesmo que o documento esteja na ordem.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa uma macro. A geracao nao.
 - **Uma instituicao por arquivo**: um documento entregue em base individual nao soma
