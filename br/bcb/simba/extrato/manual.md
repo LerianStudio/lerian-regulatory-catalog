@@ -50,8 +50,9 @@ numero nos dois arquivos.
 
 Na ordem, a primeira regra que vale:
 
-1. **Estorno** (revert do Midaz, transacao com `parent_transaction_id`): `140` no debito,
-   `264` no credito.
+1. **Estorno** (revert do Midaz, transacao com `parent_transaction_id`): o de uma transferencia
+   (lancamento com trilho ou com dado de Pix na metadata) sai `140` no debito e `264` no credito;
+   os demais, como o de uma tarifa, `142` e `266` (estornos diversos, IN :411 e :507).
 2. **Tarifa** (operacao que o motor de tarifas do Midaz marcou com `feeLeg`): `105`.
 3. **Plugin com contrato de correlacao** (TED, Pix JD), pela metadata da transacao
    (`rail`, `flow`, `direction`; direcao vazia vale a natureza): devolucao (`REFUND`) `140`/
