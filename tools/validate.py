@@ -56,6 +56,25 @@ def warn(msg: str) -> None:
     WARNINGS.append(msg)
 
 
+# A pasta de material de curadoria de um documento. Um arquivo dentro dela nunca é
+# o contrato do documento, nem o de outro, mesmo que se chame contract.yaml.
+CURATION_DIR = "schema"
+
+
+def contract_paths(root: Path) -> list[Path]:
+    """Todo contrato do catálogo, em `<país>/<regulador>/<documento>/` ou dentro de uma
+    pasta de família (`<país>/<regulador>/<família>/<documento>/`).
+
+    A varredura era de três níveis fixos, e um documento do SIMBA (br/bcb/simba/agencias)
+    ficava de fora sem aviso: o índice o anunciava, nada do contrato era conferido. Uma
+    porta só, lida pelo validador e por tools/natureza.py, para os dois não divergirem.
+    """
+    return sorted(
+        path for path in root.rglob("contract.yaml")
+        if CURATION_DIR not in path.relative_to(root).parts[:-1]
+    )
+
+
 def load(path: Path):
     """Lê um YAML do catálogo, reprovando em vez de estourar.
 
@@ -3554,7 +3573,7 @@ def main() -> int:
 
     contracts: dict[str, dict] = {}
 
-    for path in sorted(ROOT.glob("*/*/*/contract.yaml")):
+    for path in contract_paths(ROOT):
         contract = load(path)
         if contract is None:
             continue
