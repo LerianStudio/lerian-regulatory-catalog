@@ -139,5 +139,41 @@
     "natureza": "C",
     "naturezaOposta": "D",
     "saldoApos": "0.00"
+  },
+  {
+    "operacaoId": "o10",
+    "transacaoId": "t8",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-09T13:00:00Z",
+    "horaLancamento": "2026-12-09T13:00:00Z",
+    "descricao": "Estorno de tarifa",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "1.00",
+    "natureza": "C",
+    "naturezaOposta": "D",
+    "saldoApos": "0.00"
+  },
+  {
+    "operacaoId": "o11",
+    "transacaoId": "t9",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-10T13:00:00Z",
+    "horaLancamento": "2026-12-10T13:00:00Z",
+    "descricao": "Estorno de TED",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "30.00",
+    "natureza": "C",
+    "naturezaOposta": "D",
+    "rail": "TED",
+    "fluxo": "CASH_OUT",
+    "direcao": "OUT",
+    "agregado": "A9",
+    "saldoApos": "0.00"
   }
 ]
