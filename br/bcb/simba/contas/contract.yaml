@@ -212,6 +212,11 @@ knownGaps:
       natureza (IN :129-130), ao contrario do EXTRATO. Uma conta que comeca ou termina o periodo devedora (cheque
       especial) sai com o saldo em valor absoluto: o arquivo nao distingue -12,50 de 12,50. Quem aprova confere as
       contas com saldo negativo antes de aprovar.
+  - id: reserva-aberta-na-data
+    description: >-
+      As reservas e liberacoes do Midaz (operacoes ON_HOLD e RELEASE) nao entram no saldo nem nos lancamentos: a
+      transferencia concluida sai uma vez so. Num ledger que valida rotas, uma reserva ainda aberta na data de corte
+      ja tirou o valor do disponivel, e o saldo sai sem o valor reservado.
   - id: saldo-pela-soma-dos-lancamentos
     description: >-
       O saldo e a soma, com sinal, dos lancamentos que movem saldo em BRL desde a abertura ate a data, sem a chave de

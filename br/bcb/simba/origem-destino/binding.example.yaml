@@ -58,6 +58,7 @@ queries:
     filters:
       - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
       - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
@@ -71,6 +72,7 @@ queries:
     filters:
       - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
       - {field: balance_key, operator: nin, values: ["overdraft"]}
@@ -195,6 +197,7 @@ queries:
     filters:
       - {field: transaction_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
       - {field: balance_key, operator: nin, values: ["overdraft"]}
@@ -219,6 +222,7 @@ queries:
     filters:
       - {field: transaction_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
     select: [account_id]

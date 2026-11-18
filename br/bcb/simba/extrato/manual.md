@@ -23,7 +23,9 @@ mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 ## Quais lancamentos entram
 
 As operacoes das contas do caso que movem saldo em reais (`balance_affected`, `BRL`), nao
-apagadas, do inicio do dia `inicio` ao fim do dia `fim` no calendario do Reporter. As contas
+apagadas, do inicio do dia `inicio` ao fim do dia `fim` no calendario do Reporter. As reservas e
+liberacoes do Midaz (operacoes `ON_HOLD` e `RELEASE`) ficam fora: a transferencia que passou
+por reserva sai uma vez so, com a operacao que a concluiu. As contas
 do caso sao as mesmas do CONTAS: as que um documento da ordem titula (cotitular,
 representante e procurador nao entram).
 
