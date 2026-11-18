@@ -75,6 +75,10 @@ cautelar. Revise as linhas com `125`/`218` antes de aprovar.
 
 O CNPJ vem da organizacao do Midaz; tipo da conta do CRM (`regulatory_fields.account_type`).
 
+Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter restringe
+`organization.id` a organizacao dela; sem isso a leitura traz todas, e a geracao e recusada
+(o CNPJ lido nao e o da instituicao, ou chegam duas linhas para uma) em vez de escolher uma.
+
 ## Data, hora, valores e saldo
 
 - **Data (campo 6)**: o dia civil de Brasilia do instante do lancamento (`created_at` da
