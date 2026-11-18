@@ -1572,6 +1572,16 @@ REMOVED_MEASURE_KEYS = {
     "statedIn": "a natureza é regra do contrato (`rules`, tabela `natureza`)",
 }
 PARAMETER_VALUE_KEYS = {"parameter", "at", "of", "calendar"}
+# O valor de filtro lido de OUTRA consulta do binding (o filtro encadeado): os valores
+# de uma coluna dela. Grafia da gramática do motor, ainda provisória: os nomes
+# vivem só aqui para trocar num lugar quando ela fixar.
+QUERY_VALUE_KEYS = ("query", "column")
+QUERY_VALUE_OPERATOR = "in"
+
+
+def is_query_value(value: object) -> bool:
+    """O valor de filtro que nomeia uma consulta, bem ou mal formado."""
+    return isinstance(value, dict) and QUERY_VALUE_KEYS[0] in value
 
 
 def _check_removed_grammar(doc_dir: Path, qname: str, query: dict) -> None:
@@ -1654,6 +1664,8 @@ def _check_parameter_values(doc_dir: Path, qname: str, filters: object) -> None:
         references = [v for v in values if isinstance(v, dict)]
         if not references:
             continue
+        if any(is_query_value(v) for v in references):
+            continue  # _check_filter_values confere o valor de consulta, em todo caminho
 
         where = f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}'"
         if len(values) != 1:
@@ -1724,10 +1736,46 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
     Um parâmetro `multiple` é uma lista: só se lê como o conjunto de um `in` ou `nin`,
     e nunca pela ponta (`at`) de um período, que uma lista não tem.
 
+    Um valor de consulta (`{query, column}`) é o conjunto de valores de uma coluna de
+    outra consulta, lido só por `in` e sozinho na condição. A consulta existe, não é a
+    própria, e entrega a coluna quando o conjunto dela é conhecido. Um nome trocado não
+    falharia na escrita: o `in` sairia vazio e o documento, sem linha, com cara de certo.
+
     Como em _check_span_edges, em filters e em having, a qualquer profundidade de anyOf
     e allOf.
     """
     multiple = multiple_parameters(contract)
+    queries = {q["name"]: q for q in query_list(binding) if isinstance(q.get("name"), str)}
+    # Arestas de valor de consulta, para o ciclo: a origem tem de ser extraída antes.
+    reads: dict[str, set[str]] = {}
+
+    def check_query_value(where: str, qname: str, condition: dict, values: list, value: dict) -> None:
+        if set(value) != set(QUERY_VALUE_KEYS):
+            fail(f"{where}: um valor de consulta é exatamente {' e '.join(QUERY_VALUE_KEYS)}; "
+                 f"traz {sorted(map(str, value))}")
+            return
+        source, column = (value.get(key) for key in QUERY_VALUE_KEYS)
+        for key, written in zip(QUERY_VALUE_KEYS, (source, column)):
+            if not isinstance(written, str) or not written:
+                fail(f"{where}: o valor de consulta tem {key} {written!r}; query e column são nomes, em texto")
+                return
+        if condition.get("operator") != QUERY_VALUE_OPERATOR:
+            fail(f"{where}: lê os valores de uma consulta com {condition.get('operator')!r}; "
+                 f"só {QUERY_VALUE_OPERATOR} lê um conjunto")
+        if len(values) != 1:
+            fail(f"{where}: lê os valores de uma consulta e outros valores; a condição lê uma coisa só")
+        if source == qname:
+            fail(f"{where}: lê os valores da própria consulta; um filtro lê de outra")
+            return
+        if source not in queries:
+            fail(f"{where}: lê os valores da consulta '{source}', que não existe")
+            return
+        if isinstance(qname, str):  # um name que não é texto já foi recusado; não vira chave
+            reads.setdefault(qname, set()).add(source)
+        produced = produced_columns(queries[source], queries)
+        if produced is not None and column not in produced:
+            fail(f"{where}: lê a coluna '{column}' de '{source}', que ela não entrega "
+                 f"(entrega {sorted(produced)})")
 
     def walk(qname: str, conditions: object) -> None:
         if not isinstance(conditions, list):
@@ -1743,6 +1791,9 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
             for value in values if isinstance(values, list) else []:
                 if not isinstance(value, dict):
                     continue
+                if is_query_value(value):
+                    check_query_value(where, qname, condition, values, value)
+                    continue
                 name = value.get("parameter")
                 if not isinstance(name, str) or name not in multiple:
                     continue
@@ -1757,6 +1808,40 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
         qname = query.get("name", "<sem nome>")
         walk(qname, query.get("filters"))
         walk(qname, query.get("having"))
+
+    _check_query_value_cycles(doc_dir, queries, reads)
+
+
+def _check_query_value_cycles(doc_dir: Path, queries: dict[str, dict], reads: dict[str, set[str]]) -> None:
+    """Ciclo que passa por um valor de consulta, pelas arestas de `from` e de valor.
+
+    O junte fica fora: ele não ordena a extração. Só o ciclo com ao menos uma aresta
+    de valor é dito aqui; o de `from` puro já sai, uma vez, em check_binding_queries.
+    Cada ciclo sai uma vez, por mais arestas de valor que tenha.
+    """
+    def edges(name: str) -> list[str]:
+        base = queries[name].get("from")
+        out = sorted(reads.get(name, set()))
+        return out + [base] if isinstance(base, str) and base in queries else out
+
+    reported: set[frozenset[str]] = set()
+    for reader in sorted(reads):
+        for source in sorted(reads[reader]):
+            # Um caminho de volta de `source` até `reader` fecha o ciclo.
+            paths, visited = [[source]], {source}
+            while paths:
+                path = paths.pop(0)
+                if path[-1] == reader:
+                    cycle = frozenset(path)
+                    if cycle not in reported:
+                        reported.add(cycle)
+                        fail(f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `from` e valor de "
+                             f"consulta: {' -> '.join([reader, *path])}")
+                    break
+                for nxt in edges(path[-1]):
+                    if nxt not in visited:
+                        visited.add(nxt)
+                        paths.append([*path, nxt])
 
 
 def check_binding_queries(doc_dir: Path, binding: dict) -> None:

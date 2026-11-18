@@ -126,6 +126,18 @@ def fechado_generatable(bundle: dict) -> dict:
     return bundle
 
 
+def chained_filter(bundle: dict, **value) -> dict:
+    """HIER com `detalhado` filtrado pelos titulares que `por_titular` entrega.
+
+    O filtro encadeado: os valores do `in` são uma coluna de outra consulta do binding.
+    Sem argumentos é o caso válido; `value` troca chaves do valor de consulta.
+    """
+    source = {"query": "por_titular", "column": "titular", **value}
+    query(bundle[HIER]["binding"], "detalhado")["filters"] = [
+        {"field": "titular", "operator": "in", "values": [source]}]
+    return bundle
+
+
 class Mutation:
     """Uma quebra deliberada e a reprovação que ela deve provocar.
 
@@ -2447,6 +2459,72 @@ MUTATIONS: list[Mutation] = [
             {"allOf": [{"field": "titular", "operator": "gte", "values": [{"parameter": "titularesPedidos"}]}]}),
         "filtro 'titular' de 'por_titular': lê o parâmetro 'titularesPedidos', que é uma lista (multiple), com 'gte'",
     ),
+
+    # ------------------------------------------- filtro encadeado {query, column}
+    Mutation(
+        "valor-de-consulta-com-chave-a-mais",
+        "uma chave que o motor não conhece no valor de consulta",
+        lambda b: chained_filter(b, at="end"),
+        "um valor de consulta é exatamente query e column",
+    ),
+    Mutation(
+        "valor-de-consulta-sem-coluna",
+        "column vazia: o `in` não teria de onde ler",
+        lambda b: chained_filter(b, column=""),
+        "o valor de consulta tem column ''; query e column são nomes, em texto",
+    ),
+    Mutation(
+        "valor-de-consulta-com-operador-de-valor-unico",
+        "os valores de outra consulta são um conjunto; só `in` os lê",
+        lambda b: query(chained_filter(b)[HIER]["binding"], "detalhado")["filters"][0].update({"operator": "eq"}),
+        "lê os valores de uma consulta com 'eq'; só in lê um conjunto",
+    ),
+    Mutation(
+        "valor-de-consulta-misturado-com-literal",
+        "um valor escrito ao lado dos de outra consulta",
+        lambda b: query(chained_filter(b)[HIER]["binding"], "detalhado")["filters"][0]["values"].append("X"),
+        "lê os valores de uma consulta e outros valores",
+    ),
+    Mutation(
+        "valor-de-consulta-misturado-com-parametro",
+        "um parâmetro ao lado dos valores de outra consulta",
+        lambda b: query(chained_filter(b)[HIER]["binding"], "detalhado")["filters"][0]["values"].append(
+            {"parameter": "titularesPedidos"}),
+        "lê os valores de uma consulta e outros valores",
+    ),
+    Mutation(
+        "valor-de-consulta-inexistente",
+        "nome trocado: o `in` vazio não devolveria linha nenhuma, em silêncio",
+        lambda b: chained_filter(b, query="por_titulr"),
+        "lê os valores da consulta 'por_titulr', que não existe",
+    ),
+    Mutation(
+        "valor-de-consulta-propria",
+        "a consulta não filtra pelo que ela mesma entrega",
+        lambda b: chained_filter(b, query="detalhado", column="titular"),
+        "lê os valores da própria consulta",
+    ),
+    Mutation(
+        "valor-de-consulta-em-ciclo",
+        "a base de por_titular passa a depender de por_titular",
+        lambda b: query(b[HIER]["binding"], "movimento").update({"filters": [
+            {"field": "titular", "operator": "in", "values": [{"query": "por_titular", "column": "titular"}]}]}),
+        "consultas em ciclo por `from` e valor de consulta: movimento -> por_titular -> movimento",
+    ),
+    Mutation(
+        "valor-de-consulta-coluna-que-nao-sai",
+        "a coluna lida não está entre as que a consulta de origem entrega",
+        lambda b: chained_filter(b, column="montante"),
+        "lê a coluna 'montante' de 'por_titular', que ela não entrega",
+    ),
+    Mutation(
+        "valor-de-consulta-em-having-aninhado",
+        "o mesmo valor em `having`, dentro de allOf: o caminho gêmeo",
+        lambda b: query(b[HIER]["binding"], "por_titular")["having"][0]["anyOf"].append(
+            {"allOf": [{"field": "titular", "operator": "in",
+                        "values": [{"query": "sumida", "column": "titular"}]}]}),
+        "filtro 'titular' de 'por_titular': lê os valores da consulta 'sumida', que não existe",
+    ),
 ]
 
 
@@ -2684,6 +2762,27 @@ class ValidatorSuite(unittest.TestCase):
         code, out = _run(self._write(with_family(broken=True)))
         self.assertEqual(code, 1, f"o contrato de quatro níveis deveria ser conferido:\n{out}")
         self.assertIn(f"{familia}", out)
+
+    def test_a_filter_read_from_another_query_is_valid(self) -> None:
+        """`{query, column}`: o `in` lê os valores de uma coluna de outra consulta.
+
+        É o filtro encadeado do SIMBA (as contas dos titulares pedidos). A consulta de
+        origem existe, não é a própria e entrega a coluna lida.
+        """
+        code, out = _run(self._write(chained_filter(fixtures.bundle())))
+        self.assertEqual(code, 0, f"o filtro encadeado deveria validar:\n{out}")
+
+    def test_a_cycle_through_from_alone_is_reported_once(self) -> None:
+        """O ciclo só de `from` continua com a mensagem dele, uma vez.
+
+        O ciclo que passa por um valor de consulta é outra conferência; as duas não
+        podem dizer a mesma coisa duas vezes.
+        """
+        data = fixtures.bundle()
+        query(data[HIER]["binding"], "movimento")["from"] = "por_titular"
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 1, f"o ciclo por from deveria reprovar:\n{out}")
+        self.assertEqual(1, out.count("consultas em ciclo"), out)
 
     def test_a_list_of_integers_read_by_nin_is_valid(self) -> None:
         """`multiple` de integer, sem `maxItems` (o motor aceita o máximo), lido por `nin`.
