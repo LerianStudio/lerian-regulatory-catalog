@@ -127,7 +127,10 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   cada operacao a partir de uma versao; a operacao anterior nao o tem, e o saldo dela sai sem
   o cheque especial (como se fosse zero). A conferencia lista esses lancamentos.
 - **Conta em ponto flutuante**: o template soma o saldo em ponto flutuante e arredonda ao
-  centavo; o resultado e exato bem abaixo de R$ 1e13 (medido com R$ 999.999.999.999,99).
+  centavo, meio centavo para longe do zero. Com duas casas, o resultado e exato bem abaixo de
+  R$ 1e13 (medido com R$ 999.999.999.999,99). Com mais casas (tarifa percentual sem
+  arredondamento, rateio por percentual), o meio centavo e decidido com folga de um
+  milionesimo de centavo, que vale para saldos ate cerca de R$ 1 bilhao.
 - **Codigos especificos sem marca**: Pix Saque, Pix Troco, mesma titularidade e boleto saem
   com o codigo largo (`135`/`261` no Pix, `134`/`259` na TED).
 - **Texto sem acento**: descricao e nome da instituicao passam pela conversao para ASCII do
