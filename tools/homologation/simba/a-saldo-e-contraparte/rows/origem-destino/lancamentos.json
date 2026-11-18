@@ -123,5 +123,21 @@
     "natureza": "D",
     "naturezaOposta": "C",
     "saldoApos": "0.00"
+  },
+  {
+    "operacaoId": "o9",
+    "transacaoId": "t7",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-08T13:00:00Z",
+    "horaLancamento": "2026-12-08T13:00:00Z",
+    "descricao": "Rendimento",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "0.01",
+    "natureza": "C",
+    "naturezaOposta": "D",
+    "saldoApos": "0.00"
   }
 ]
