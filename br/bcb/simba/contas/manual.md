@@ -42,6 +42,10 @@ O CNPJ vem da organizacao do Midaz. O tipo da conta vem do CRM
 OTHER_FINANCIAL_INVESTMENTS 4, NON_RESIDENT 5, PAYMENT 6); conta sem tipo recusa a geracao,
 entao preencha o tipo no CRM antes.
 
+Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter restringe
+`organization.id` a organizacao dela; sem isso a leitura traz todas, e a geracao e recusada
+(o CNPJ lido nao e o da instituicao, ou chegam duas linhas para uma) em vez de escolher uma.
+
 ## Saldos (campos 10 e 11)
 
 O periodo vai do inicio do dia `inicio` ao fim do dia `fim` no calendario do Reporter

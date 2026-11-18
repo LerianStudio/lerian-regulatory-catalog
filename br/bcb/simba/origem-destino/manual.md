@@ -17,6 +17,10 @@ Os mesmos nos cinco documentos SIMBA: `caso`, `documentos`, `contas` (opcional),
 preencher (ausente, todas as contas dos documentos), e preencher sem a ordem pedir omite
 contas do investigado.
 
+Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter restringe
+`organization.id` a organizacao dela; sem isso a leitura traz todas, e a geracao e recusada
+(o CNPJ lido nao e o da instituicao, ou chegam duas linhas para uma) em vez de escolher uma.
+
 ## Ligacao com o EXTRATO
 
 O campo 2 (`CODIGO_CHAVE_EXTRATO`) e o numero do lancamento no EXTRATO, e o campo 4 o mesmo
