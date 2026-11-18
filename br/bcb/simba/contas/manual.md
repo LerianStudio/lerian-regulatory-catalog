@@ -55,7 +55,9 @@ data).
 - **Saldo negativo**: o Anexo I nao da sinal nem natureza a estes campos, e um campo
   numerico nao admite traco (IN art. 3o VII). Uma conta que comeca ou termina devedora
   (cheque especial) faz a geracao ser RECUSADA nesta versao, com a mensagem que nomeia o
-  campo e o valor; a forma de escrever esse saldo esta em aberto.
+  campo e o valor; a forma de escrever esse saldo esta em aberto. Atencao: essa mensagem
+  de erro mostra o VALOR do saldo, que e dado sob sigilo; trate a mensagem como o
+  proprio arquivo (quem ve o erro ve o saldo).
 - Cliente com arquivo morto do Midaz (`retain`) perde o historico antigo e o saldo sai
   errado sem aviso: o SIMBA parte de cliente sem `retain`.
 
