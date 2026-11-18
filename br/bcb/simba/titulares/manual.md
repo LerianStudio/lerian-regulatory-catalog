@@ -71,6 +71,10 @@ O CNPJ vem da organizacao do Midaz. O tipo da conta vem do CRM
 OTHER_FINANCIAL_INVESTMENTS 4, NON_RESIDENT 5, PAYMENT 6). O tipo de pessoa do titular vem do
 cadastro (`NATURAL_PERSON` 1, `LEGAL_PERSON` 2); outro valor recusa a geracao.
 
+Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter restringe
+`organization.id` a organizacao dela; sem isso a leitura traz todas, e a geracao e recusada
+(o CNPJ lido nao e o da instituicao, ou chegam duas linhas para uma) em vez de escolher uma.
+
 ## De onde vem cada campo do titular
 
 - Nome, documento, endereco principal (linha 1 e linha 2, CEP, UF, pais), telefones,
