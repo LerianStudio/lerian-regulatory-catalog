@@ -3109,6 +3109,35 @@ FILING_APPROVE = ("any", "newest")
 REMITTANCE_KEYS = {"parameter", "original", "replacement", "reference"}
 
 
+def check_multiple_period(doc_dir: Path, contract: dict) -> None:
+    """Um parâmetro `multiple` nunca faz parte do período da entrega.
+
+    O período é congelado em cada relatório e repetido na leitura de quem substitui
+    quem; uma lista de até 1000 valores iria junto em cada um. O motor recusa o
+    contrato na carga quando o período tem um parâmetro `multiple`, nomeado em
+    `filing.period` ou derivado: sem `period` (com ou sem bloco `filing`), o período é
+    todo parâmetro menos o da remessa e a referência dela. `period: []` declara um
+    documento sem período.
+    """
+    filing = contract.get("filing") if isinstance(contract.get("filing"), dict) else {}
+    params = {p["name"]: p for p in parameters_of(contract)
+              if isinstance(p, dict) and isinstance(p.get("name"), str)}
+    if "period" in filing:
+        named = filing.get("period") if isinstance(filing.get("period"), list) else []
+        period = [n for n in named if isinstance(n, str)]
+        how = "filing.period nomeia"
+    else:
+        remittance = filing.get("remittance") if isinstance(filing.get("remittance"), dict) else {}
+        outside = {remittance.get("parameter"), remittance.get("reference")}
+        period = [n for n in params if n not in outside]
+        how = "sem filing.period, o período é todo parâmetro menos o da remessa, e inclui"
+    for name in period:
+        if params.get(name, {}).get("multiple") is True:
+            fail(f"{doc_dir.relative_to(ROOT)}: {how} {name!r}, que é multiple; o período é um valor por "
+                 "parâmetro, e o motor recusa a lista nele: declare filing.period só com parâmetros escalares, "
+                 "ou `period: []` para um documento sem período")
+
+
 def check_filing(doc_dir: Path, contract: dict) -> None:
     """O bloco `filing` diz o que faz duas gerações serem a MESMA entrega, nas palavras do contrato.
 
@@ -3969,6 +3998,7 @@ def main() -> int:
         check_engine_parity(doc_dir, contract)
         check_parameters(doc_dir, contract)
         check_filing(doc_dir, contract)
+        check_multiple_period(doc_dir, contract)
         check_consolidation(doc_dir, contract)
         check_structure(doc_dir, contract)
         check_template_parses(doc_dir)
