@@ -21,8 +21,9 @@ exatamente o que ela gera.
 O trecho:
   * ISPB vazio ou ausente sai 999, ANTES de completar com zeros: sem essa guarda, o
     texto vazio viraria 00000000, que é o Banco do Brasil;
-  * o ISPB é completado a 8 dígitos (`%08v`), porque um valor numérico perde os zeros
-    à esquerda;
+  * o ISPB é completado a 8 dígitos (`%08v`): o contrato já exige o texto de 8
+    dígitos, e isto só socorre um ISPB que chegue como inteiro (sem os zeros à
+    esquerda); um número com casas decimais sai em notação de expoente e cai em 999;
   * a cadeia de comparações é agrupada pelos dois primeiros dígitos, e fica em linha,
     sem `macro`, para rodar também na pré-visualização do manager;
   * ISPB fora da lista, ou de participante sem código (`n/a`, `0` na coluna
