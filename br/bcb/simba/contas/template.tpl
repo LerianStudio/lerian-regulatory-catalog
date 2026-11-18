@@ -3,8 +3,8 @@ SIMBA - arquivo II CONTAS (IN BCB 636/2025, Anexo I, campos 1 a 12; normas/IN-BC
 Comentario em bloco (comment) e nao em linhas: no .txt cada linha de comentario deixava uma quebra de linha antes do 1o registro.
 So a forma: sem cabecalho, TAB entre colunas, CR LF no fim de cada linha (IN art. 3o, :59-61).
 Formato e dominio de cada campo estao no contrato; de onde vem, no binding.
-autoescape off: sem ele o render escreve & < > aspas como entidades HTML (esqueleto EB2.2 § 7).
-Macro ascii: esqueleto EB2.2 § 4 + TAB -> espaco (§ 7). CR/LF dentro do valor nao sai: limitacao do manual.
+autoescape off: sem ele o render escreve & < > aspas como entidades HTML.
+Macro ascii: tira acentos (texto em ASCII) e troca TAB por espaco. CR/LF dentro do valor nao sai: limitacao do manual.
 Campo 7: 1 com lancamento no periodo, 2 sem (contas do caso); 3 conta que transacionou com uma do caso (IN :126).
 Campos 10 e 11: centavos sem separador (IN :73); o contrato escreve 2 casas e aqui sai o ponto. Sem lancamento ate a data: 000.
 Campo 12: sempre em branco, conta nativa (IN :132); nenhuma aplicacao registra sucessao.
