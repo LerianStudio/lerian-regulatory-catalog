@@ -75,6 +75,12 @@ BACEN diz quais são retificadoras, então ela é publicada ao lado de cada cont
 `tools/natureza.py` — nunca escrita à mão. O validador confere que cada cópia traz
 o sha256 do elenco publicado e que todas são iguais.
 
+A **lista de participantes do STR** é outra: o ORIGEM-DESTINO do SIMBA troca o
+ISPB da contraparte pelo código COMPE dela. A cópia do Banco Central fica em
+`br/bcb/simba/tabelas/`, e o trecho de template que faz a troca é gerado dela por
+`tools/ispb_compe.py`. O validador confere que o trecho do template é exatamente o
+gerado.
+
 **Garantia sobre razões que não sejam o Midaz.** Os bindings de exemplo são
 escritos contra o Midaz, e é contra o Midaz que a geração é homologada. Eles são
 exemplos justamente porque o binding é do cliente: apontá-los para outro razão é
