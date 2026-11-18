@@ -165,3 +165,19 @@ documents:
     summary: >-
       Remessa mensal ao SCR com cada cliente, as operações dele, os vencimentos, as garantias e as
       informações adicionais de aquisição e reestruturação, a partir do dataset que o Lender publica.
+
+  - id: br.bcb.simba.agencias
+    path: br/bcb/simba/agencias
+    country: BR
+    regulator: BCB
+    document: AGENCIAS
+    family: simba
+    title: SIMBA — Agencias
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Agencias das contas investigadas e das contas da mesma instituicao com as quais
+      elas transacionaram no periodo do afastamento do sigilo, uma linha por agencia.
