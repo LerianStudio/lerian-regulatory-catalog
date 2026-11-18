@@ -2440,6 +2440,15 @@ MUTATIONS: list[Mutation] = [
         "titulares.tipo resolve por parameter com parameter ['titularesPedidos']",
     ),
     Mutation(
+        "valor-de-consulta-derivada-da-propria-origem-que-seleciona",
+        "o select fecha o que a origem entrega antes das derivadas dela, como no motor",
+        lambda b: (b[HIER]["binding"]["queries"].append(
+                       {"name": "selecionada", "dataSource": "crm", "table": "holders", "select": ["_id"],
+                        "derive": [{"as": "dia_sel", "from": "criado_em", "apply": "date"}]}),
+                   chained_filter(b, query="selecionada", column="dia_sel")),
+        "lê a coluna 'dia_sel' de 'selecionada', que ela não entrega antes do junte",
+    ),
+    Mutation(
         "parametro-de-caso-de-classe-que-nao-e-nome",
         "o caso de classe é o outro caminho do mesmo campo e tem a mesma conferência de forma",
         lambda b: b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1].update(
