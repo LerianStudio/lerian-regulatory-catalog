@@ -74,13 +74,19 @@ queries:
             NON_RESIDENT: {constant: "5"}
             PAYMENT: {constant: "6"}
           otherwise: refuse
+    # Quem junta outra consulta diz o que entrega: o motor recusa o junte de consulta aberta.
+    # O junte de consulta traz tambem a coluna pela qual a parceira agrupa, com o nome
+    # dela: duas parceiras agrupadas por `account_id` dariam dois valores a um nome.
+    # So a primeira agrupa por `account_id`; as outras agrupam por uma copia dele com
+    # nome proprio (`conta_saldo_final`, `conta_movimento`).
+    select: [account_id, banking_details.account, banking_details.opening_date, banking_details.closing_date, numero_agencia, tipo_conta]
     join:
       - query: saldo_inicial_caso
         match: {account_id: account_id}
       - query: saldo_final_caso
-        match: {account_id: account_id}
+        match: {account_id: conta_saldo_final}
       - query: movimento_caso
-        match: {account_id: account_id}
+        match: {account_id: conta_movimento}
 
   - name: saldo_inicial_caso
     description: Saldo de cada conta do caso antes do primeiro dia do afastamento.
@@ -127,8 +133,15 @@ queries:
             credit: {column: amount}
             debit: {negate: amount}
           otherwise: refuse
+      # A conta do lancamento sob outro nome (o filtro ja fixa BRL), para o junte.
+      - as: conta_saldo_final
+        case:
+          column: asset_code
+          when:
+            BRL: {column: account_id}
+          otherwise: refuse
     aggregate:
-      groupBy: [account_id]
+      groupBy: [conta_saldo_final]
       measures:
         - as: saldo_final
           fn: sum
@@ -155,8 +168,15 @@ queries:
             credit: {column: amount}
             debit: {column: amount}
           otherwise: refuse
+      # A conta do lancamento sob outro nome (o filtro ja fixa BRL), para o junte.
+      - as: conta_movimento
+        case:
+          column: asset_code
+          when:
+            BRL: {column: account_id}
+          otherwise: refuse
     aggregate:
-      groupBy: [account_id]
+      groupBy: [conta_movimento]
       measures:
         - as: volume_periodo
           fn: sum
@@ -227,11 +247,15 @@ queries:
             NON_RESIDENT: {constant: "5"}
             PAYMENT: {constant: "6"}
           otherwise: refuse
+    # Quem junta outra consulta diz o que entrega: o motor recusa o junte de consulta aberta.
+    # A segunda parceira agrupa por uma copia de `account_id` com nome proprio, como
+    # em `contas_investigadas_dados`.
+    select: [account_id, banking_details.account, banking_details.opening_date, banking_details.closing_date, numero_agencia, tipo_conta]
     join:
       - query: saldo_inicial_contraparte
         match: {account_id: account_id}
       - query: saldo_final_contraparte
-        match: {account_id: account_id}
+        match: {account_id: conta_saldo_final}
 
   - name: saldo_inicial_contraparte
     description: Saldo de cada conta das outras pernas antes do primeiro dia do afastamento.
@@ -278,8 +302,15 @@ queries:
             credit: {column: amount}
             debit: {negate: amount}
           otherwise: refuse
+      # A conta do lancamento sob outro nome (o filtro ja fixa BRL), para o junte.
+      - as: conta_saldo_final
+        case:
+          column: asset_code
+          when:
+            BRL: {column: account_id}
+          otherwise: refuse
     aggregate:
-      groupBy: [account_id]
+      groupBy: [conta_saldo_final]
       measures:
         - as: saldo_final
           fn: sum
