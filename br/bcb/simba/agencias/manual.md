@@ -43,26 +43,35 @@ anterior, mesmo com documentos ou periodo corrigidos.
 1. **Cadastro de agencias**, uma vez na implantacao. Agencia nao existe como entidade no
    Midaz nem no CRM: o CRM guarda so o numero da agencia de cada conta
    (`banking_details.branch`). Cada atributo e um `case` por esse numero:
-   `numero_agencia` (5 digitos, sem DV), `possui_agencia_fisica` (1 possui, 2 nao possui),
-   `nome_agencia`, `endereco_agencia`, `codigo_cidade` (IBGE, 7 digitos),
-   `codigo_uf` (IBGE, 2 digitos; SP = 35), `pais_agencia`, `cep_agencia`,
-   `telefone_agencia`, `data_abertura_agencia`, `data_fechamento_agencia`.
-   Os valores do exemplo sao **sinteticos** e precisam ser trocados. Uma agencia que o
-   cadastro nao lista recusa a geracao, e uma conta **sem** `banking_details.branch` no CRM
-   tambem: preencha o numero da agencia de toda conta (instituicao digital: o numero que
-   o cadastro mapeia para `00001`). O mesmo `numero_agencia` vai no binding do CONTAS.
+   `numero_agencia` (5 digitos, sem DV), `nome_agencia`, `endereco_agencia`,
+   `codigo_cidade` (IBGE, 7 digitos), `codigo_uf` (IBGE, 2 digitos; SP = 35),
+   `pais_agencia`, `cep_agencia`, `telefone_agencia`, `data_abertura_agencia`,
+   `data_fechamento_agencia` (agencia aberta: `9999-12-31`, que sai `31129999`).
+   Os valores do exemplo sao **sinteticos** e precisam ser trocados. O cadastro e
+   **fechado**: uma agencia que ele nao lista recusa a geracao, e uma conta **sem**
+   `banking_details.branch` no CRM tambem. Toda agencia listada tem **todos** os
+   atributos: o motor nao aceita valor vazio num `case`. A agencia sem agencia fisica
+   (instituicao digital: o numero que o cadastro mapeia para `00001`) e cadastrada com as
+   sentinelas do Anexo I (ver abaixo). O mesmo `numero_agencia` vai no binding do CONTAS.
 2. **Codigo Compe** da instituicao (`compe`): 3 digitos, ou `999` se ela nao tem.
 3. **Nome no Unicad** (`nomeUnicad`): exatamente como esta no cadastro do Banco Central.
+4. **Se a instituicao possui agencia fisica** (`possuiAgenciaFisica`, campo 14): `1`
+   possui, `2` nao possui. E um valor da instituicao, nao de cada agencia.
 
 O CNPJ vem da organizacao do Midaz.
 
 ## Instituicao sem agencia fisica
 
-Com `possui_agencia_fisica = 2`, o arquivo sai com as sentinelas do Anexo I, sem acento:
-agencia `00001` (preencha `numero_agencia: "00001"`), nome e endereco
-`nao possui agencia fisica`, cidade `0000000`, UF `00`, CEP `00000000`, telefone
-`0000000000`. A data de abertura nao tem sentinela: informe a data de inicio de operacao
-da instituicao, ou ela sai em branco. Sem data de fechamento, sai `31129999`.
+Com `possuiAgenciaFisica = 2`, toda linha sai com as sentinelas do Anexo I, sem acento,
+qualquer que seja o cadastro: nome e endereco `nao possui agencia fisica`, cidade
+`0000000`, UF `00`, CEP `00000000`, telefone `0000000000`. O numero da agencia vem do
+cadastro: preencha `numero_agencia: "00001"`. A data de abertura nao tem sentinela:
+informe a data de inicio de operacao da instituicao. Agencia aberta: fechamento
+`9999-12-31`, que sai `31129999`.
+
+Com `possuiAgenciaFisica = 1`, os campos saem do cadastro. Uma agencia sem agencia
+fisica nessa instituicao (a agencia `00001`) e cadastrada com as mesmas sentinelas,
+como no exemplo.
 
 ## Periodo
 
@@ -74,9 +83,11 @@ O periodo vai do inicio do dia `inicio` ao fim do dia `fim` no calendario do Rep
 A IN manda informar o campo, ou a sentinela quando a propria IN da uma. Onde nao ha dado
 nem sentinela, o campo sai **em branco**:
 
-- `DATA_ABERTURA_AGENCIA` (campo 10): a IN nao da sentinela; sem data no cadastro, branco.
-- `CODIGO_CIDADE`, `CODIGO_UF`, `ENDERECO_CEP` e `TELEFONE_AGENCIA` de agencia fisica sem o
-  dado no cadastro: branco.
+- `DATA_ABERTURA_AGENCIA` (campo 10): a IN nao da sentinela. O cadastro do exemplo a
+  preenche para toda agencia; um binding que nao mapeia `data_abertura_agencia` a deixa em
+  branco em todas.
+- Os demais campos do cadastro nao saem em branco: toda agencia listada tem todos os
+  atributos (o motor recusa valor vazio num `case`).
 
 ## Limitacoes desta versao
 

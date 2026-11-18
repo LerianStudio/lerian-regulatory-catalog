@@ -7,11 +7,17 @@
 #
 # O CADASTRO DE AGENCIAS E DO TENANT. Agencia nao e entidade no Midaz nem no CRM:
 # o CRM guarda so o numero (`banking_details.branch`, texto livre). Cada atributo
-# da agencia e um `case` por esse numero, preenchido UMA vez na implantacao. Os
-# valores abaixo sao SINTETICOS: "0001" e uma agencia digital (a instituicao nao
-# tem agencia fisica, campo 14 = 2) e "0002" uma agencia fisica ficticia. Uma
-# agencia que `possui_agencia_fisica` nao lista recusa a geracao: cadastre todas.
+# da agencia e um `case` por esse numero, preenchido UMA vez na implantacao. O
+# cadastro e fechado: agencia que um `case` nao lista recusa a geracao, e toda
+# agencia listada tem todos os atributos (o motor nao aceita valor vazio num
+# `case`). Os valores abaixo sao SINTETICOS: "0001" e a agencia sem agencia
+# fisica, cadastrada com as sentinelas do Anexo I, e "0002" uma agencia fisica
+# ficticia. Agencia aberta: fechamento 9999-12-31 (sai 31129999).
 # O mesmo cadastro vai no binding do CONTAS (numero da agencia em 5 digitos).
+#
+# Campo 14 (se a instituicao possui agencia fisica, 1 ou 2) e da INSTITUICAO:
+# `possuiAgenciaFisica` em `instituicao`. Com 2, o template escreve as
+# sentinelas do Anexo I em toda linha, qualquer que seja o cadastro.
 #
 # Filtro encadeado `{query, column}`: grafia provisoria do motor; se
 # mudar, e `sed` nos bindings.
@@ -58,37 +64,34 @@ queries:
             "0001": {constant: "00001"}
             "0002": {constant: "00002"}
           otherwise: refuse
-      - as: possui_agencia_fisica
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "2"}
-            "0002": {constant: "1"}
-          otherwise: refuse
       - as: nome_agencia
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "nao possui agencia fisica"}
             "0002": {constant: "AGENCIA EXEMPLO"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: endereco_agencia
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "nao possui agencia fisica"}
             "0002": {constant: "RUA EXEMPLO, 100, SALA 1"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: codigo_cidade
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "0000000"}
             "0002": {constant: "3550308"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: codigo_uf
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "00"}
             "0002": {constant: "35"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: pais_agencia
         case:
           column: banking_details.branch
@@ -100,27 +103,30 @@ queries:
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "00000000"}
             "0002": {constant: "01000000"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: telefone_agencia
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "0000000000"}
             "0002": {constant: "1100000000"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: data_abertura_agencia
         case:
           column: banking_details.branch
           when:
             "0001": {constant: "2020-01-01"}
             "0002": {constant: "2020-01-01"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: data_fechamento_agencia
         case:
           column: banking_details.branch
           when:
-            "0002": {constant: ""}
-          otherwise: {constant: ""}
+            "0001": {constant: "9999-12-31"}
+            "0002": {constant: "9999-12-31"}
+          otherwise: refuse
 
   # Os lancamentos das contas do caso no periodo do afastamento, para achar as
   # outras pernas (contas com que elas transacionaram, IN art. 2o, I, :27).
@@ -167,37 +173,34 @@ queries:
             "0001": {constant: "00001"}
             "0002": {constant: "00002"}
           otherwise: refuse
-      - as: possui_agencia_fisica
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "2"}
-            "0002": {constant: "1"}
-          otherwise: refuse
       - as: nome_agencia
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "nao possui agencia fisica"}
             "0002": {constant: "AGENCIA EXEMPLO"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: endereco_agencia
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "nao possui agencia fisica"}
             "0002": {constant: "RUA EXEMPLO, 100, SALA 1"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: codigo_cidade
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "0000000"}
             "0002": {constant: "3550308"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: codigo_uf
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "00"}
             "0002": {constant: "35"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: pais_agencia
         case:
           column: banking_details.branch
@@ -209,27 +212,30 @@ queries:
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "00000000"}
             "0002": {constant: "01000000"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: telefone_agencia
         case:
           column: banking_details.branch
           when:
+            "0001": {constant: "0000000000"}
             "0002": {constant: "1100000000"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: data_abertura_agencia
         case:
           column: banking_details.branch
           when:
             "0001": {constant: "2020-01-01"}
             "0002": {constant: "2020-01-01"}
-          otherwise: {constant: ""}
+          otherwise: refuse
       - as: data_fechamento_agencia
         case:
           column: banking_details.branch
           when:
-            "0002": {constant: ""}
-          otherwise: {constant: ""}
+            "0001": {constant: "9999-12-31"}
+            "0002": {constant: "9999-12-31"}
+          otherwise: refuse
 
 datasets:
   instituicao:
@@ -245,6 +251,9 @@ datasets:
       nomeUnicad:
         from: manual
         pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
+      possuiAgenciaFisica:
+        from: constant
+        value: "1"
 
   agencias_do_caso:
     from:
@@ -252,7 +261,6 @@ datasets:
     fields:
       contaId: {from: query, column: account_id}
       numeroAgencia: {from: query, column: numero_agencia}
-      possuiAgenciaFisica: {from: query, column: possui_agencia_fisica}
       nomeAgencia: {from: query, column: nome_agencia}
       endereco: {from: query, column: endereco_agencia}
       codigoCidade: {from: query, column: codigo_cidade}
@@ -269,7 +277,6 @@ datasets:
     fields:
       contaId: {from: query, column: account_id}
       numeroAgencia: {from: query, column: numero_agencia}
-      possuiAgenciaFisica: {from: query, column: possui_agencia_fisica}
       nomeAgencia: {from: query, column: nome_agencia}
       endereco: {from: query, column: endereco_agencia}
       codigoCidade: {from: query, column: codigo_cidade}

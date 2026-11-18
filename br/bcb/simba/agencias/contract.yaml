@@ -15,10 +15,11 @@
 # por TAB, linha terminada em CR LF, datas ddmmaaaa. A forma e do template; o
 # formato de cada campo esta aqui.
 #
-# DE ONDE VEM CADA CAMPO: o cadastro de agencias e do tenant (nome, endereco,
-# cidade, UF, CEP, telefone, datas e se a agencia e fisica), escrito no binding
-# num `case` pelo numero da agencia. O CNPJ vem da organizacao do Midaz. O COMPE e
-# o nome no Unicad sao preenchidos pelo cliente no mapeamento.
+# DE ONDE VEM CADA CAMPO: o cadastro de agencias e do tenant (numero, nome,
+# endereco, cidade, UF, pais, CEP, telefone e datas), escrito no binding num `case`
+# pelo numero da agencia. O CNPJ vem da organizacao do Midaz. O COMPE, o nome no
+# Unicad e se a instituicao possui agencia fisica (campo 14) sao da instituicao,
+# preenchidos pelo cliente no mapeamento.
 
 apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentContract
@@ -75,8 +76,8 @@ filing:
   period: [caso]
 
 datasets:
-  # Os campos 1, 12 e 13 sao da instituicao e se repetem em toda linha (IN :99,
-  # :112, :113).
+  # Os campos 1, 12, 13 e 14 sao da instituicao e se repetem em toda linha (IN :99,
+  # :112, :113, :114).
   - name: instituicao
     description: A instituicao que responde ao caso, uma linha.
     grain: singleton
@@ -98,6 +99,13 @@ datasets:
         type: string
         required: true
         description: Nome da instituicao como esta no Unicad (campo 13, IN :113). O template o corta em 50 posicoes.
+      - name: possuiAgenciaFisica
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: >-
+          1 a instituicao possui agencia fisica, 2 nao possui (campo 14, IN :114). Com 2, o template escreve as
+          sentinelas do Anexo I nos campos 3 a 6, 8 e 9 de toda linha.
 
   # Uma linha por CONTA, com a agencia dela; o template escreve cada agencia uma vez
   # so (IN :27 pede as agencias, nao as contas). Dois conjuntos porque o motor nao
@@ -109,7 +117,7 @@ datasets:
     consolidation:
       key: [contaId]
       whenKeyRepeats: refuse
-      columns: {numeroAgencia: first, possuiAgenciaFisica: first, nomeAgencia: first, endereco: first,
+      columns: {numeroAgencia: first, nomeAgencia: first, endereco: first,
                 codigoCidade: first, codigoUf: first, pais: first, cep: first, telefone: first,
                 dataAbertura: first, dataFechamento: first}
     fields:
@@ -122,11 +130,6 @@ datasets:
         required: true
         pattern: '^[0-9]{5}$'
         description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :100).
-      - name: possuiAgenciaFisica
-        type: string
-        required: true
-        domain: ["1", "2"]
-        description: 1 a instituicao possui agencia fisica, 2 nao possui (campo 14, IN :114).
       - name: nomeAgencia
         type: string
         required: false
@@ -165,7 +168,9 @@ datasets:
       - name: dataFechamento
         type: date
         required: false
-        description: Data de fechamento da agencia; ausente, a agencia esta aberta e sai 31129999 (campo 11, IN :111).
+        description: >-
+          Data de fechamento da agencia (campo 11, IN :111). Agencia aberta: 9999-12-31, ou ausente; sai 31129999,
+          a sentinela da IN.
 
   - name: agencias_contraparte
     description: A agencia de cada conta da mesma instituicao com que uma conta investigada transacionou no periodo.
@@ -173,7 +178,7 @@ datasets:
     consolidation:
       key: [contaId]
       whenKeyRepeats: refuse
-      columns: {numeroAgencia: first, possuiAgenciaFisica: first, nomeAgencia: first, endereco: first,
+      columns: {numeroAgencia: first, nomeAgencia: first, endereco: first,
                 codigoCidade: first, codigoUf: first, pais: first, cep: first, telefone: first,
                 dataAbertura: first, dataFechamento: first}
     fields:
@@ -186,11 +191,6 @@ datasets:
         required: true
         pattern: '^[0-9]{5}$'
         description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :100).
-      - name: possuiAgenciaFisica
-        type: string
-        required: true
-        domain: ["1", "2"]
-        description: 1 a instituicao possui agencia fisica, 2 nao possui (campo 14, IN :114).
       - name: nomeAgencia
         type: string
         required: false
@@ -229,7 +229,9 @@ datasets:
       - name: dataFechamento
         type: date
         required: false
-        description: Data de fechamento da agencia; ausente, a agencia esta aberta e sai 31129999 (campo 11, IN :111).
+        description: >-
+          Data de fechamento da agencia (campo 11, IN :111). Agencia aberta: 9999-12-31, ou ausente; sai 31129999,
+          a sentinela da IN.
 
 knownGaps:
   - id: agencia-da-transacao
@@ -238,9 +240,10 @@ knownGaps:
       registra em que agencia um lancamento foi feito; o arquivo leva so as agencias das contas.
   - id: cadastro-de-agencias-no-binding
     description: >-
-      Agencia nao e entidade em nenhuma aplicacao Lerian. O cadastro (nome, endereco, cidade, UF, CEP, telefone,
-      datas, se e fisica) e do tenant e vive no binding, num case pelo numero da agencia gravado no CRM. Uma agencia
-      que o cadastro nao lista recusa a geracao.
+      Agencia nao e entidade em nenhuma aplicacao Lerian. O cadastro (numero, nome, endereco, cidade, UF, pais, CEP,
+      telefone, datas) e do tenant e vive no binding, num case pelo numero da agencia gravado no CRM. Uma agencia
+      que o cadastro nao lista recusa a geracao, e toda agencia listada tem todos os atributos: o motor nao aceita
+      valor vazio num case. A agencia sem agencia fisica e cadastrada com as sentinelas do Anexo I.
   - id: uf-pelo-cadastro
     description: >-
       O codigo IBGE da UF vem pronto do cadastro do tenant. O bloco uf-ibge.compute.yaml (sigla para codigo) nao se
