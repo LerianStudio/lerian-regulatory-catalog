@@ -204,6 +204,19 @@ MUTATIONS: list[Mutation] = [
         lambda b: _mutate_template(b, HIER, "for d in r.detalhes", "for d in t.detalhes"),
         "não resolve para nenhum conjunto",
     ),
+    Mutation(
+        "template-campo-inexistente-numa-condicao",
+        "um campo posto numa condição é lido como o de um `{{ }}`: nome trocado ali não passa calado",
+        lambda b: _mutate_template(b, HIER, "|R|{{ r.codTitular }}|",
+                                   "|R|{% if r.campoFantasma %}{{ r.codTitular }}{% endif %}|"),
+        "template usa resumos.campoFantasma, que o contrato não declara",
+    ),
+    Mutation(
+        "template-campo-inexistente-num-argumento-de-macro",
+        "o campo passado a uma macro (`{{ ascii(r.x) }}`) é posicionado por ela; nome trocado ali não passa",
+        lambda b: _mutate_template(b, HIER, "{{ r.total }}", "{{ fmt(r.totalFantasma) }}"),
+        "template usa resumos.totalFantasma, que o contrato não declara",
+    ),
 
     # ------------------------------------------------- separação de camadas
     Mutation(
