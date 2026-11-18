@@ -1,0 +1,119 @@
+[
+  {
+    "name": "sinal do cheque especial",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "-l.chequeEspecialApos|default:\"0\"|float",
+    "new": "+l.chequeEspecialApos|default:\"0\"|float",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 2,
+      "field": 13
+    }
+  },
+  {
+    "name": "saldo sem o bloqueado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "+l.bloqueadoApos|default:\"0\"|float",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 4,
+      "field": 12
+    }
+  },
+  {
+    "name": "truncamento no saldo devedor",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% with sm=sc*100+0.500001 %}",
+    "new": "{% with sm=sc*100 %}",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 7,
+      "field": 12
+    }
+  },
+  {
+    "name": "truncamento no saldo credor",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% with sm=st*100+0.500001 %}",
+    "new": "{% with sm=st*100 %}",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 6,
+      "field": 12
+    }
+  },
+  {
+    "name": "meio centavo sem a folga do ponto flutuante",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "+0.500001 %}",
+    "new": "+0.5 %}",
+    "count": 4,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 8,
+      "field": 12
+    }
+  },
+  {
+    "name": "EXTRATO pula o primeiro lancamento",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- for l in lancamentos %}",
+    "new": "{%- for l in lancamentos|slice:\"1:\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 1,
+      "field": 6
+    }
+  },
+  {
+    "name": "ORIGEM-DESTINO pula o primeiro lancamento",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{%- for l in lancamentos %}",
+    "new": "{%- for l in lancamentos|slice:\"1:\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 3
+    }
+  },
+  {
+    "name": "ISPB vazio sem a guarda",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if ispb == None or ispb == \"\" %}999{% else %}",
+    "new": "{% if false %}999{% else %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
+      "field": 5
+    }
+  },
+  {
+    "name": "todo estorno como estorno de transferencia",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- if (rail or pagamento or envio or recebimento) and not taxa -%}{%- if natureza == \"D\" -%}140{%- else -%}264{%- endif -%}{%- elif natureza == \"D\" -%}142{%- else -%}266{%- endif -%}",
+    "new": "{%- if natureza == \"D\" -%}140{%- else -%}264{%- endif -%}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 9,
+      "field": 9
+    }
+  }
+]

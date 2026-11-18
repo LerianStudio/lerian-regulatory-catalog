@@ -1,9 +1,9 @@
 {
   "description": "Sintetico. Cheque especial: o Midaz grava a parte coberta pelo disponivel numa operacao e a parte tirada (ou paga) do cheque especial em outra, na chave overdraft. Pix recebido que paga 70 de divida, Pix enviado de 100 com 30 disponiveis e a tarifa da mesma transacao, toda no cheque especial. CONTAS com saldo devedor no inicio e no fim.",
   "documents": [
-    "extrato",
-    "origem-destino",
-    "contas"
+    "br/bcb/simba/extrato",
+    "br/bcb/simba/origem-destino",
+    "br/bcb/simba/contas"
   ],
   "system": {
     "caso": "001-XYZ-000002-01",
