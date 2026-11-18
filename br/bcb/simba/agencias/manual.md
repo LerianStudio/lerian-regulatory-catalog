@@ -17,8 +17,9 @@ Os mesmos nos cinco documentos SIMBA:
 
 - `caso`: o numero do caso, como esta na ordem (`001-MPF-000001-01`).
 - `documentos`: os CPFs e CNPJs da ordem, so digitos.
-- `contas`: os numeros de conta da ordem, com DV, so digitos. Ausente, entram todas as
-  contas dos documentos.
+- `contas`: os numeros de conta da ordem, com DV, so digitos. Preencher so quando o oficio
+  restringir a contas especificas; o normal e nao preencher, e ausente entram todas as contas
+  dos documentos. Preencher sem a ordem pedir omite contas do investigado.
 - `inicio` e `fim`: o primeiro e o ultimo dia do afastamento do sigilo.
 
 Duas geracoes do mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho
@@ -90,6 +91,11 @@ nem sentinela, o campo sai **em branco**:
 
 ## Limitacoes desta versao
 
+- **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada
+  investigado, e esta versao tem um so `inicio`/`fim` por caso (a geracao mais nova do
+  mesmo `caso` substitui a anterior, entao o caso nao se divide em duas). Nao suportado
+  nesta versao; tratar fora do Reporter. Gerar com o periodo mais amplo poria no arquivo
+  movimento fora do afastamento.
 - **Agencia onde ocorreu a transacao**: a IN pede tambem a agencia na qual ocorreram
   transacoes. Nenhuma aplicacao Lerian registra isso; o arquivo leva so as agencias das
   contas.
