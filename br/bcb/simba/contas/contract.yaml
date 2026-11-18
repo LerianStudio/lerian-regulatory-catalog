@@ -54,7 +54,9 @@ parameters:
     type: string
     multiple: true
     required: true
-    description: CPFs e CNPJs da ordem, so digitos.
+    description: >-
+      CPFs e CNPJs da ordem, somente digitos, sem pontos, tracos ou barras: o documento formatado nao encontra
+      contas, e o caso sai como resposta vazia para ele, sem erro.
   - name: contas
     type: string
     multiple: true

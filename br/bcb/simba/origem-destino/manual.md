@@ -13,7 +13,9 @@ resposta ao caso, gerado com os mesmos parametros dos outros.
 
 Os mesmos nos cinco documentos SIMBA: `caso`, `documentos`, `contas` (opcional), `inicio` e
 `fim`. Duas geracoes do mesmo `caso` sao a mesma entrega: a mais nova substitui a anterior.
-`contas` se preenche so quando o oficio restringir a contas especificas; o normal e nao
+`documentos` leva somente digitos, sem pontos, tracos ou barras: o documento formatado nao
+encontra contas, e o caso sai como resposta vazia para ele, sem erro; a conferencia antes da
+aprovacao avisa o documento sem conta. `contas` se preenche so quando o oficio restringir a contas especificas; o normal e nao
 preencher (ausente, todas as contas dos documentos), e preencher sem a ordem pedir omite
 contas do investigado.
 
