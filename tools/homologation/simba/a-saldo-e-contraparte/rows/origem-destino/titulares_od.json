@@ -1,0 +1,14 @@
+[
+  {
+    "titularId": "h1",
+    "tipoPessoa": "1",
+    "documento": "12345678909",
+    "nome": "Investigado Exemplo"
+  },
+  {
+    "titularId": "h2",
+    "tipoPessoa": "1",
+    "documento": "98765432100",
+    "nome": "Recebedor Exemplo"
+  }
+]

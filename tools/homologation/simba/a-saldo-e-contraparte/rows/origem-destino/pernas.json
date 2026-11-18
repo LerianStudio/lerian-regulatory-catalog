@@ -1,0 +1,35 @@
+[
+  {
+    "operacaoId": "o5",
+    "transacaoId": "t5",
+    "contaId": "c1",
+    "valor": "30.00",
+    "natureza": "D",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "titularId": "h1"
+  },
+  {
+    "operacaoId": "o6",
+    "transacaoId": "t5",
+    "contaId": "k2",
+    "valor": "30.00",
+    "natureza": "C",
+    "numeroAgencia": "00001",
+    "numeroConta": "7654321",
+    "tipoConta": "6",
+    "titularId": "h2"
+  },
+  {
+    "operacaoId": "o7",
+    "transacaoId": "t5",
+    "contaId": "c1",
+    "valor": "1.00",
+    "natureza": "D",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "titularId": "h1"
+  }
+]

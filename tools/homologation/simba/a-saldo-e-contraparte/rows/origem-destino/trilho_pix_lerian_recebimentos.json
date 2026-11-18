@@ -1,0 +1,13 @@
+[
+  {
+    "referencia": "E00000000202612021300EXEMPLO0001",
+    "ispb": "00000000",
+    "agencia": "1",
+    "conta": "12345",
+    "documento": "11122233344",
+    "nome": "Pagador Exemplo",
+    "comentario": "pagamento exemplo",
+    "txid": "",
+    "e2e": "E00000000202612021300EXEMPLO0001"
+  }
+]
