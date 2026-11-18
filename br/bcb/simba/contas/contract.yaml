@@ -219,8 +219,9 @@ knownGaps:
       ja tirou o valor do disponivel, e o saldo sai sem o valor reservado.
   - id: saldo-pela-soma-dos-lancamentos
     description: >-
-      O saldo e a soma, com sinal, dos lancamentos que movem saldo em BRL desde a abertura ate a data, sem a chave de
-      sistema overdraft. Le o mesmo razao que o Midaz por SQL: cliente com arquivo morto (retain) perde o historico e
+      O saldo e a soma, com sinal, dos lancamentos que movem saldo em BRL desde a abertura ate a data, inclusive na
+      chave de sistema overdraft, onde fica a parte do saque tirada do cheque especial (e a parte do credito que o
+      paga), sem as reservas e liberacoes. Le o mesmo razao que o Midaz por SQL: cliente com arquivo morto (retain) perde o historico e
       o saldo sai errado sem aviso.
   - id: conta-de-outra-perna-sem-crm
     description: >-
