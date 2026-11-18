@@ -16,7 +16,9 @@ parametros.
 Os mesmos nos cinco documentos SIMBA:
 
 - `caso`: o numero do caso, como esta na ordem (`001-MPF-000001-01`).
-- `documentos`: os CPFs e CNPJs da ordem, so digitos.
+- `documentos`: os CPFs e CNPJs da ordem, somente digitos, sem pontos, tracos ou barras. O
+  documento formatado nao encontra contas, e o caso sai como resposta vazia para ele, sem
+  erro; a conferencia antes da aprovacao avisa o documento sem conta.
 - `contas`: os numeros de conta da ordem, com DV, so digitos. Preencher so quando o oficio
   restringir a contas especificas; o normal e nao preencher, e ausente entram todas as contas
   dos documentos. Preencher sem a ordem pedir omite contas do investigado.

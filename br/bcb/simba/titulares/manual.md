@@ -13,8 +13,10 @@ mesmos parametros.
 
 ## Parametros da geracao
 
-Os mesmos nos cinco documentos SIMBA: `caso`, `documentos` (CPFs e CNPJs da ordem, so
-digitos), `contas` (numeros de conta da ordem com DV, so digitos; preencher so quando o oficio
+Os mesmos nos cinco documentos SIMBA: `caso`, `documentos` (CPFs e CNPJs da ordem, somente
+digitos, sem pontos, tracos ou barras: o documento formatado nao encontra contas e o caso sai
+como resposta vazia para ele, sem erro; a conferencia antes da aprovacao avisa o documento sem
+conta), `contas` (numeros de conta da ordem com DV, so digitos; preencher so quando o oficio
 restringir a contas especificas: o normal e nao preencher, e ausente entram todas as contas
 dos documentos; preencher sem a ordem pedir omite contas do investigado), `inicio` e `fim` (primeiro e ultimo dia do afastamento). Duas geracoes do
 mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
