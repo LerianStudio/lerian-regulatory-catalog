@@ -278,6 +278,13 @@ class Conferencia(unittest.TestCase):
                                        ("123456", "2026-12-01T10:00:02Z", "40.00", "0", "0"))]
         self.assert_says(self.run_case(drafts=drafts).warnings, "a conta 123456 da agência 0001 usou cheque especial")
 
+    def test_parcela_de_cheque_especial_e_aviso_com_o_valor(self) -> None:
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "0", "0", "70.00"),
+                                       ("123456", "2026-12-01T10:00:01Z", "70.00", "0", "70.00"))]
+        drafts[1]["datasets"]["lancamentos"][1].update({"chaveSaldo": "overdraft", "valor": "70.00"})
+        self.assert_says(self.run_case(drafts=drafts).warnings,
+                         "a conta 123456 da agência 0001 tem uma parcela de cheque especial de 70.00")
+
     def test_valor_bloqueado_no_periodo_e_aviso(self) -> None:
         drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "20.00", "20.00", "0"))]
         self.assert_says(self.run_case(drafts=drafts).warnings, "a conta 123456 da agência 0001 teve valor bloqueado")
