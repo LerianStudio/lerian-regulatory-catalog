@@ -108,6 +108,12 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
 
 ## Limitacoes desta versao
 
+- **Cheque especial em duas linhas**: quando um saque passa do saldo disponivel, o Midaz
+  grava a parte coberta pelo disponivel numa operacao e a parte tirada do cheque especial
+  em outra (chave `overdraft`); um credito que paga o cheque especial tambem se divide. O
+  arquivo traz as duas linhas, na mesma sessao (campo 27) e com o mesmo codigo, cada uma com
+  o seu valor: o lancamento de R$ 100,00 com R$ 30,00 disponiveis sai como 30,00 e 70,00. A
+  conferencia antes da aprovacao lista essas transacoes.
 - **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada
   investigado, e esta versao tem um so `inicio`/`fim` por caso (a geracao mais nova do
   mesmo `caso` substitui a anterior, entao o caso nao se divide em duas). Nao suportado
