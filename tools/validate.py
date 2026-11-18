@@ -2188,7 +2188,6 @@ def own_columns(query: dict, queries: dict[str, dict]) -> set[str] | None:
         names = _as_names(cursor.get("derive"))
         if names is None:
             return None
-        derived |= names
 
         aggregate = _aggregation(cursor)
         if aggregate:
@@ -2196,11 +2195,15 @@ def own_columns(query: dict, queries: dict[str, dict]) -> set[str] | None:
             measures = _as_names(aggregate.get("measures"))
             if not isinstance(group, list) or measures is None:
                 return None
-            return {g for g in group if isinstance(g, str)} | measures | derived
+            return {g for g in group if isinstance(g, str)} | measures | names | derived
 
+        # O `select` fecha o que a consulta entrega antes das derivadas dela: as que
+        # contam são as das consultas de cima, que compõem sobre esta (resolveSelected).
         select = cursor.get("select")
         if isinstance(select, list) and select:
             return {c for c in select if isinstance(c, str)} | derived
+
+        derived |= names
 
         base = cursor.get("from")
         if not isinstance(base, str) or base not in queries:
