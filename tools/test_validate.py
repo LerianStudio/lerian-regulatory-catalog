@@ -169,6 +169,16 @@ def _mutate_template(bundle: dict, doc: str, old: str, new: str) -> None:
     bundle[doc]["template"] = text.replace(old, new, 1)
 
 
+def _ispb_block_without_guard() -> str:
+    """O trecho ISPB→COMPE gerado, com a guarda de ISPB vazio tirada à mão."""
+    import ispb_compe
+
+    block = ispb_compe.render_block("ispb", ispb_compe.read_codes())
+    guard = '{% if ispb == None or ispb == "" %}999{% else %}'
+    assert block.startswith(guard) and block.endswith("{% endif %}")
+    return "{# ISPB_COMPE_BLOCK: ispb #}" + block[len(guard):-len("{% endif %}")] + ispb_compe.END
+
+
 MUTATIONS: list[Mutation] = [
     # ---------------------------------------------------------------- template
     Mutation(
@@ -1008,6 +1018,19 @@ MUTATIONS: list[Mutation] = [
         "uma chave que o motor não lê é regra que o curador acha que existe e não existe",
         lambda b: b[PLANO]["contract"]["filing"].update({"periodo": ["dataBase"]}),
         "que o motor não conhece",
+    ),
+    # ---------------------------------------------------------------- ISPB→COMPE
+    Mutation(
+        "ispb-compe-marca-sem-trecho",
+        "a marca sem o trecho gerado escreve o campo em branco",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + "{# ISPB_COMPE_BLOCK: ispb #}"}),
+        "não é o que tools/ispb_compe.py",
+    ),
+    Mutation(
+        "ispb-compe-sem-guarda",
+        "sem a guarda, o ISPB vazio é completado a 00000000 e sai como Banco do Brasil",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + _ispb_block_without_guard()}),
+        "não é o que tools/ispb_compe.py",
     ),
     Mutation(
         "filing-approve-maiusculo",
