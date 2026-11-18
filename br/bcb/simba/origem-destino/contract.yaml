@@ -72,6 +72,10 @@ parameters:
 
 filing:
   period: [caso]
+  # Uma ordem pode ser gerada de novo (dado corrigido, cadastro completado). So a
+  # geracao mais nova do mesmo caso pode ser aprovada: aprovar uma anterior
+  # entregaria ao orgao o arquivo que a correcao ja substituiu.
+  approve: newest
 
 datasets:
   # A instituicao: contraparte da perna de tarifa e da outra perna interna (campos 5,
