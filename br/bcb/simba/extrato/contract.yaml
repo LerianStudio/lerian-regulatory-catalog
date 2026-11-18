@@ -322,7 +322,10 @@ knownGaps:
   - id: chave-e-txid-pix
     description: >-
       Os campos 24 e 25 (chave Pix) saem em branco: a chave nao esta na metadata da transacao. O campo 26 sai com o
-      EndToEndId gravado na metadata; o txid de QR Code so aparece no ORIGEM-DESTINO, que le o plugin.
+      EndToEndId gravado na metadata; o txid de QR Code so aparece no ORIGEM-DESTINO, que le o plugin. A IN descreve
+      os dois campos (EXTRATO 26, ORIGEM-DESTINO 28) do mesmo jeito, e o mesmo Pix por QR Code sai com valores
+      diferentes nos dois. No Pix JD de chave digitada, a metadata fica sem o EndToEndId: o campo 26 sai em branco, e
+      o ORIGEM-DESTINO traz o do plugin.
   - id: instante-em-utc
     description: >-
       A hora (campo 23) sai do instante do lancamento como o motor o entrega. Instante que nao chega em UTC recusa a
