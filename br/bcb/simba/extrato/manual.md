@@ -83,8 +83,11 @@ O CNPJ vem da organizacao do Midaz; tipo da conta do CRM (`regulatory_fields.acc
   em UTC; se chegar em outro fuso, a geracao e recusada (nao sai a hora errada).
 - **Valor (campo 10)**: centavos, sem separador e sem sinal (`10000` para R$ 100,00).
 - **Natureza (campo 11)**: `C` credito, `D` debito; operacao sem direcao recusa a geracao.
-- **Saldo (campos 12 e 13)**: o saldo disponivel que o Midaz gravou na operacao, em centavos,
-  sem sinal; o campo 13 sai `D` se o saldo for negativo e `C` nos demais.
+- **Saldo (campos 12 e 13)**: o saldo da conta depois do lancamento, como a IN pede: o
+  disponivel que o Midaz gravou na operacao, mais o bloqueado (`on_hold`), menos o cheque
+  especial usado (gravado no `snapshot` da operacao). Em centavos, sem sinal; o campo 13 sai
+  `D` se o saldo for devedor e `C` nos demais. A conta no cheque especial sai devedora
+  (`1250` e `D` com R$ 12,50 usados).
 
 ## Campos que saem em branco ou com sentinela, e por que
 
@@ -102,11 +105,15 @@ O CNPJ vem da organizacao do Midaz; tipo da conta do CRM (`regulatory_fields.acc
   mesmo `caso` substitui a anterior, entao o caso nao se divide em duas). Nao suportado
   nesta versao; tratar fora do Reporter. Gerar com o periodo mais amplo poria no arquivo
   movimento fora do afastamento.
-- **Saldo do Midaz, nao soma corrida**: o campo 12 e o saldo disponivel gravado pelo Midaz, na
-  ordem em que gravou. Com lancamento retroativo, ou conta com mais de uma chave de saldo, a
-  linha nao fecha com o saldo do CONTAS. O saldo disponivel nao fica abaixo de zero: conta no
-  cheque especial sai com `000` e `C`, e o valor bloqueado fica fora. O motor nao tem soma
+- **Saldo gravado por operacao, nao soma corrida**: o campo 12 sai dos saldos que o Midaz
+  gravou em cada operacao, na ordem em que gravou. Com lancamento retroativo, ou conta com
+  mais de uma chave de saldo, a linha nao fecha com o saldo do CONTAS. O motor nao tem soma
   corrida.
+- **Operacao gravada antes do snapshot**: o Midaz passou a guardar o cheque especial usado em
+  cada operacao a partir de uma versao; a operacao anterior nao o tem, e o saldo dela sai sem
+  o cheque especial (como se fosse zero). A conferencia lista esses lancamentos.
+- **Conta em ponto flutuante**: o template soma o saldo em ponto flutuante e arredonda ao
+  centavo; o resultado e exato bem abaixo de R$ 1e13 (medido com R$ 999.999.999.999,99).
 - **Codigos especificos sem marca**: Pix Saque, Pix Troco, mesma titularidade e boleto saem
   com o codigo largo (`135`/`261` no Pix, `134`/`259` na TED).
 - **Texto sem acento**: descricao e nome da instituicao passam pela conversao para ASCII do

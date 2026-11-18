@@ -130,7 +130,11 @@ queries:
       - table: transaction
         match: {transaction_id: id}
         columns: {descricao_transacao: description}
-    select: [id, description, descricao_transacao]
+    # O saldo bloqueado e o cheque especial usado depois do lancamento entram no saldo
+    # da conta (EXTRATO 12 e 13): o disponivel do Midaz nao fica abaixo de zero nem conta
+    # o bloqueado. O cheque especial usado fica no snapshot da operacao, ausente em
+    # operacao gravada antes de o Midaz guardar o snapshot.
+    select: [id, description, descricao_transacao, on_hold_balance_after, snapshot.overdraftUsedAfter]
 
   - name: contas_lancamento
     description: Agencia, numero e tipo de cada conta do caso.
@@ -234,6 +238,8 @@ datasets:
       natureza: {from: query, column: natureza}
       naturezaOposta: {from: query, column: natureza_oposta}
       saldoApos: {from: query, column: available_balance_after}
+      bloqueadoApos: {from: query, column: on_hold_balance_after}
+      chequeEspecialApos: {from: query, column: snapshot.overdraftUsedAfter}
       rail: {from: query, column: metadata.rail}
       fluxo: {from: query, column: metadata.flow}
       direcao: {from: query, column: metadata.direction}
