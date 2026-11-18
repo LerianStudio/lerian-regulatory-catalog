@@ -21,8 +21,8 @@ mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 
 As operacoes das contas do caso que movem saldo em reais (`balance_affected`, `BRL`), nao
 apagadas, do inicio do dia `inicio` ao fim do dia `fim` no calendario do Reporter. As contas
-do caso sao as mesmas do CONTAS: as que um documento da ordem titula (cotitular: decisao
-pendente).
+do caso sao as mesmas do CONTAS: as que um documento da ordem titula (cotitular,
+representante e procurador nao entram).
 
 ## Numero do lancamento e o ORIGEM-DESTINO
 
