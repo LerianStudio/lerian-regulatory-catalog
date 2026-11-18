@@ -327,9 +327,9 @@ datasets:
       - name: documento
         type: string
         required: false
-        normalize: digits
-        pattern: '^([0-9]{11}|[0-9]{14})$'
-        description: CPF ou CNPJ do titular, so digitos (campo 10, IN :211).
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ do titular, so digitos e, no CNPJ alfanumerico, letras maiusculas (campo 10, IN :211).
       - name: nome
         type: string
         required: false
@@ -371,9 +371,9 @@ datasets:
       - name: documento
         type: string
         required: false
-        normalize: digits
-        pattern: '^([0-9]{11}|[0-9]{14})$'
-        description: CPF ou CNPJ da contraparte, so digitos (campo 10, IN :211). O tamanho decide o campo 9.
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da contraparte, so digitos e, no CNPJ alfanumerico, letras maiusculas (campo 10, IN :211). O tamanho decide o campo 9.
       - name: nome
         type: string
         required: false
@@ -423,9 +423,9 @@ datasets:
       - name: documento
         type: string
         required: false
-        normalize: digits
-        pattern: '^([0-9]{11}|[0-9]{14})$'
-        description: CPF ou CNPJ da contraparte, so digitos (campo 10, IN :211). O tamanho decide o campo 9.
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da contraparte, so digitos e, no CNPJ alfanumerico, letras maiusculas (campo 10, IN :211). O tamanho decide o campo 9.
       - name: nome
         type: string
         required: false
@@ -481,9 +481,9 @@ datasets:
       - name: documento
         type: string
         required: false
-        normalize: digits
-        pattern: '^([0-9]{11}|[0-9]{14})$'
-        description: CPF ou CNPJ da contraparte, so digitos (campo 10, IN :211). O tamanho decide o campo 9.
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da contraparte, so digitos e, no CNPJ alfanumerico, letras maiusculas (campo 10, IN :211). O tamanho decide o campo 9.
       - name: nome
         type: string
         required: false
@@ -539,9 +539,9 @@ datasets:
       - name: documento
         type: string
         required: false
-        normalize: digits
-        pattern: '^([0-9]{11}|[0-9]{14})$'
-        description: CPF ou CNPJ da contraparte, so digitos (campo 10, IN :211). O tamanho decide o campo 9.
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da contraparte, so digitos e, no CNPJ alfanumerico, letras maiusculas (campo 10, IN :211). O tamanho decide o campo 9.
       - name: nome
         type: string
         required: false
