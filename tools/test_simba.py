@@ -11,6 +11,9 @@ conferências que o validador, documento a documento, não faz:
   * a mesma consulta tem o mesmo texto em todo binding do SIMBA que a declara — a
     `contas_do_caso` reescrita num deles, com um filtro a menos, faz um arquivo falar
     de outras contas sem erro nenhum;
+  * o conjunto `lancamentos` do EXTRATO e o do ORIGEM-DESTINO têm o mesmo grão, e todo
+    campo do ORIGEM-DESTINO existe no EXTRATO com o mesmo tipo — os dois numeram os
+    lançamentos igual (o campo 2 do ORIGEM-DESTINO é o campo 1 do EXTRATO);
   * toda consulta alcança o parâmetro `documentos`, direto ou pela cadeia de valores
     de consulta e de `from` — sem isso, uma lista opcional ausente (`contas`) deixa uma
     consulta ler todas as contas da instituição. A exceção é a que lê a própria
@@ -45,6 +48,39 @@ def bindings(root: Path) -> dict[str, dict]:
     for path in sorted((root / FAMILY).glob("*/binding.example.yaml")):
         found[path.parent.name] = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return found
+
+
+ENTRIES = "lancamentos"
+
+
+def contracts(root: Path) -> dict[str, dict]:
+    """O contrato de cada documento do SIMBA, pelo nome da pasta."""
+    found = {}
+    for path in sorted((root / FAMILY).glob("*/contract.yaml")):
+        found[path.parent.name] = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return found
+
+
+def entries_mismatch(found: dict[str, dict]) -> list[str]:
+    """Onde o `lancamentos` do ORIGEM-DESTINO deixa de ser o do EXTRATO."""
+    def dataset(document: str) -> dict:
+        for d in found.get(document, {}).get("datasets") or []:
+            if isinstance(d, dict) and d.get("name") == ENTRIES:
+                return d
+        return {}
+
+    extrato, od = dataset("extrato"), dataset("origem-destino")
+    if not extrato or not od:
+        return [f"{ENTRIES}: falta no EXTRATO ou no ORIGEM-DESTINO"]
+    problems = []
+    if extrato.get("grain") != od.get("grain"):
+        problems.append(f"{ENTRIES}: grão {extrato.get('grain')} no EXTRATO e {od.get('grain')} no ORIGEM-DESTINO")
+    types = {f.get("name"): f.get("type") for f in extrato.get("fields") or []}
+    for f in od.get("fields") or []:
+        if types.get(f.get("name")) != f.get("type"):
+            problems.append(f"{ENTRIES}.{f.get('name')}: {f.get('type')} no ORIGEM-DESTINO e "
+                            f"{types.get(f.get('name'))} no EXTRATO")
+    return problems
 
 
 def queries_of(binding: dict) -> dict[str, dict]:
@@ -119,6 +155,9 @@ class SimbaBindings(unittest.TestCase):
     def test_toda_consulta_de_cliente_chega_aos_investigados(self) -> None:
         self.assertEqual([], unscoped_queries(bindings(ROOT)))
 
+    def test_os_lancamentos_do_od_sao_os_do_extrato(self) -> None:
+        self.assertEqual([], entries_mismatch(contracts(ROOT)))
+
 
 class Mutations(unittest.TestCase):
     """Cada conferência acima, vista recusando: uma quebra deliberada numa cópia."""
@@ -137,6 +176,20 @@ class Mutations(unittest.TestCase):
         found = copy.deepcopy(self.found)
         found["contas"]["queries"] = [q for q in found["contas"]["queries"] if q.get("name") != CASE_ACCOUNTS]
         self.assertIn("contas", missing_case_accounts(found))
+
+    def test_um_campo_do_od_que_o_extrato_nao_tem_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["origem-destino"]["datasets"]:
+            if d["name"] == ENTRIES:
+                d["fields"].append({"name": "campoSoDoOd", "type": "string"})
+        self.assertTrue(any("campoSoDoOd" in p for p in entries_mismatch(found)))
+
+    def test_grao_diferente_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["origem-destino"]["datasets"]:
+            if d["name"] == ENTRIES:
+                d["grain"] = ["transacaoId"]
+        self.assertTrue(any("grão" in p for p in entries_mismatch(found)))
 
     def test_consulta_sem_os_investigados_e_pega(self) -> None:
         found = copy.deepcopy(self.found)
