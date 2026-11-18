@@ -252,8 +252,8 @@ datasets:
         from: manual
         pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
       possuiAgenciaFisica:
-        from: constant
-        value: "1"
+        from: manual
+        pendingReason: "1 se a instituicao possui agencia fisica, 2 se nao possui (campo 14)"
 
   agencias_do_caso:
     from:
