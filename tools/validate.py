@@ -59,6 +59,10 @@ def warn(msg: str) -> None:
 # A pasta de material de curadoria de um documento. Um arquivo dentro dela nunca é
 # o contrato do documento, nem o de outro, mesmo que se chame contract.yaml.
 CURATION_DIR = "schema"
+# As profundidades de um contract.yaml, contando o próprio arquivo: sem e com a pasta
+# de família. Um contrato mais fundo não é documento: o Reporter monta o caminho pelo
+# id e lê só estes dois níveis.
+CONTRACT_DEPTHS = (4, 5)
 
 
 def contract_paths(root: Path) -> list[Path]:
@@ -71,7 +75,8 @@ def contract_paths(root: Path) -> list[Path]:
     """
     return sorted(
         path for path in root.rglob("contract.yaml")
-        if CURATION_DIR not in path.relative_to(root).parts[:-1]
+        if len(path.relative_to(root).parts) in CONTRACT_DEPTHS
+        and CURATION_DIR not in path.relative_to(root).parts[:-1]
     )
 
 
