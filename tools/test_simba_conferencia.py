@@ -44,7 +44,8 @@ def conta(agencia: str, numero: str, movimento: str, inicial: str, final: str) -
 
 def titular(agencia: str, numero: str) -> list[str]:
     row = [""] * 28
-    row[:9] = ["999", agencia, numero, "6", "T", "1", "1", "00000000000", "PESSOA EXEMPLO"]
+    row[:11] = ["999", agencia, numero, "6", "T", "1", "1", "00000000000", "PESSOA EXEMPLO", "RG", "000000"]
+    row[25:27] = ["DISPOSITIVO EXEMPLO", "COMPUTADOR EXEMPLO"]
     row[27] = "0"
     return row
 
@@ -265,6 +266,14 @@ class Conferencia(unittest.TestCase):
         for instante in ("ontem", "2026-12-01T10:00:01"):
             drafts = [rows(), extrato_rows(("123456", instante, "40.00"))]
             self.assert_says(self.run_case(drafts=drafts).errors, "não tem instante legível")
+
+    def test_titulares_sem_identificacao_nem_dispositivo_e_aviso(self) -> None:
+        files = case()
+        files["TITULARES"][0][9:11] = ["", ""]
+        files["TITULARES"][1][25:27] = ["", ""]
+        warnings = self.run_case(files).warnings
+        self.assert_says(warnings, "TITULARES: 1 linha(s) sem documento de identificação (campos 10 e 11)")
+        self.assert_says(warnings, "TITULARES: 1 linha(s) sem dispositivo cadastrado (campos 26 e 27)")
 
     def test_saldo_devedor_sem_movimento_e_aviso(self) -> None:
         # A conta 654321 não tem lançamento: só as linhas do rascunho mostram o sinal.

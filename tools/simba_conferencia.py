@@ -34,7 +34,9 @@ AVISO (listado para o aprovador, não bloqueia):
     como o Reporter as devolve em `GET /v1/regulatory/reports/{reportId}/rows`, onde o
     saldo tem sinal. Sem elas, o saldo devedor não é conferido, e a conferência diz isso;
   * lançamento sem o cheque especial usado (operação gravada antes de o Midaz guardar o
-    snapshot): o saldo dele no EXTRATO sai sem o cheque especial.
+    snapshot): o saldo dele no EXTRATO sai sem o cheque especial;
+  * TITULARES sem documento de identificação (campos 10 e 11) ou sem dispositivo
+    cadastrado (26 e 27): nenhuma aplicação Lerian registra esses dados.
 
 BLOQUEIO (completude do reenvio): com `--anterior`, as linhas de cada rascunho são
 comparadas com as do último envio aprovado (Final) do mesmo caso, conjunto a
@@ -227,6 +229,16 @@ def _account_balance(row: dict) -> Decimal | None:
     return available + held - used
 
 
+def check_identity(titulares: list[list[str]], report: Report) -> None:
+    """Identificação e dispositivos que o TITULARES deixa em branco, contados por arquivo."""
+    without_id = sum(1 for r in titulares if not field(r, 10) and not field(r, 11))
+    without_device = sum(1 for r in titulares if not field(r, 26) and not field(r, 27))
+    if without_id:
+        report.warn(f"TITULARES: {without_id} linha(s) sem documento de identificação (campos 10 e 11)")
+    if without_device:
+        report.warn(f"TITULARES: {without_device} linha(s) sem dispositivo cadastrado (campos 26 e 27)")
+
+
 def check_generic_entries(extrato: list[list[str]], od: list[list[str]], report: Report) -> None:
     for line, row in enumerate(extrato, 1):
         if field(row, 9) in GENERIC_CODES:
@@ -409,6 +421,7 @@ def conferir(folder: Path, caso: str, drafts_folder: Path | None = None, previou
     check_membership(files, report)
     check_balances(files["EXTRATO"], files["CONTAS"], drafts, report)
     check_generic_entries(files["EXTRATO"], files["ORIGEM_DESTINO"], report)
+    check_identity(files["TITULARES"], report)
     check_overdraft_rows(drafts, report)
     if previous_folder is None:
         if justifications is not None:
