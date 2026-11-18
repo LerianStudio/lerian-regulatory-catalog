@@ -13,8 +13,9 @@ TITULARES e ORIGEM-DESTINO, gerados com os mesmos parametros.
 ## Parametros da geracao
 
 Os mesmos nos cinco documentos SIMBA: `caso`, `documentos` (CPFs e CNPJs da ordem, so
-digitos), `contas` (numeros de conta da ordem com DV, so digitos; ausente, todas as contas
-dos documentos), `inicio` e `fim` (primeiro e ultimo dia do afastamento). Duas geracoes do
+digitos), `contas` (numeros de conta da ordem com DV, so digitos; preencher so quando o oficio
+restringir a contas especificas: o normal e nao preencher, e ausente entram todas as contas
+dos documentos; preencher sem a ordem pedir omite contas do investigado), `inicio` e `fim` (primeiro e ultimo dia do afastamento). Duas geracoes do
 mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 
 ## Quais lancamentos entram
@@ -96,6 +97,11 @@ O CNPJ vem da organizacao do Midaz; tipo da conta do CRM (`regulatory_fields.acc
 
 ## Limitacoes desta versao
 
+- **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada
+  investigado, e esta versao tem um so `inicio`/`fim` por caso (a geracao mais nova do
+  mesmo `caso` substitui a anterior, entao o caso nao se divide em duas). Nao suportado
+  nesta versao; tratar fora do Reporter. Gerar com o periodo mais amplo poria no arquivo
+  movimento fora do afastamento.
 - **Saldo do Midaz, nao soma corrida**: o campo 12 e o saldo disponivel gravado pelo Midaz, na
   ordem em que gravou. Com lancamento retroativo, ou conta com mais de uma chave de saldo, a
   linha nao fecha com o saldo do CONTAS. O saldo disponivel nao fica abaixo de zero: conta no

@@ -13,8 +13,9 @@ ORIGEM-DESTINO, gerados com os mesmos parametros.
 ## Parametros da geracao
 
 Os mesmos nos cinco documentos SIMBA: `caso`, `documentos` (CPFs e CNPJs da ordem, so
-digitos), `contas` (numeros de conta da ordem com DV, so digitos; ausente, todas as contas
-dos documentos), `inicio` e `fim` (primeiro e ultimo dia do afastamento). Duas geracoes do
+digitos), `contas` (numeros de conta da ordem com DV, so digitos; preencher so quando o oficio
+restringir a contas especificas: o normal e nao preencher, e ausente entram todas as contas
+dos documentos; preencher sem a ordem pedir omite contas do investigado), `inicio` e `fim` (primeiro e ultimo dia do afastamento). Duas geracoes do
 mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 
 ## Quais contas entram
@@ -70,6 +71,11 @@ Sem data de encerramento, o campo 6 sai `31129999`, a sentinela da IN.
 
 ## Limitacoes desta versao
 
+- **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada
+  investigado, e esta versao tem um so `inicio`/`fim` por caso (a geracao mais nova do
+  mesmo `caso` substitui a anterior, entao o caso nao se divide em duas). Nao suportado
+  nesta versao; tratar fora do Reporter. Gerar com o periodo mais amplo poria no arquivo
+  movimento fora do afastamento.
 - **Numero da conta**: sai como o CRM o guarda (`banking_details.account`), ate 20 posicoes;
   confira que o valor cadastrado inclui o DV.
 - **Texto sem acento**: o nome da instituicao passa pela conversao para ASCII do template, e

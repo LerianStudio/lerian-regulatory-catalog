@@ -63,7 +63,10 @@ parameters:
     type: string
     multiple: true
     required: false
-    description: Numeros de conta da ordem, com DV, so digitos. Ausente, todas as contas dos documentos.
+    description: >-
+      Numeros de conta da ordem, com DV, so digitos. Preencher so quando o oficio restringir a contas especificas; o
+      normal e nao preencher (ausente, todas as contas dos documentos). Preencher sem a ordem pedir omite contas do
+      investigado.
   - name: inicio
     type: date
     required: true
