@@ -3016,8 +3016,7 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
             fail(f"{rwhere}.parameter {name!r} também está em period; a remessa não é parte do período")
         elif params[name].get("multiple") is True:
             # A remessa é UM valor, o da original ou o de uma substituição; numa lista as
-            # regras de original e substituição deixariam de valer sem aviso (o motor
-            # recusa igual: refuseMultipleRemittance).
+            # regras de original e substituição deixariam de valer sem aviso.
             fail(f"{rwhere}.parameter nomeia {name!r}, que é uma lista (multiple); a remessa é um valor só")
         else:
             domain = params[name].get("domain")
@@ -3322,19 +3321,14 @@ MIN_ITEMS, MAX_ITEMS = 1, 1000
 # Os operadores com que um filtro do binding lê uma lista, na grafia do motor
 # (pkg/reporter/filterval/operators.go). Não confundir com o `notIn` de `where`.
 MULTIPLE_OPERATORS = ("in", "nin")
-# O que um parâmetro `multiple` não declara, e por quê. A maior parte só vale para
-# month ou date, que uma lista não é; o motor as recusa pelo tipo
-# (model.validateListDeclaration, contract.readMultipleKeys), e aqui a combinação é
-# recusada pelo nome, para o curador ver a chave que sobra. `businessDay` e
-# `appliesTo` não são lidas em mais nenhum ponto deste validador: aqui só a
-# combinação com `multiple` é recusada.
+# O que um parâmetro `multiple` não declara, e por quê. `allowedMonths`, `span`,
+# `within` e `notBefore` não estão aqui: o tipo de uma lista é string ou integer, e
+# cada uma delas já é recusada fora de month ou date. `closed` está, porque
+# `closed: false` passa pela regra de tipo. `businessDay` e `appliesTo` não são lidas
+# em mais nenhum ponto deste validador: aqui só a combinação com `multiple` é recusada.
 MULTIPLE_EXCLUDES = {
-    "allowedMonths": "os meses permitidos são de um month, e uma lista não é um mês",
     "closed": "fechar um período é de um month ou de uma date, e uma lista não nomeia período",
     "businessDay": "dia útil é de uma date, e uma lista não é um dia",
-    "span": "um período de meses é de um month, e uma lista não é um mês",
-    "within": "cair num período é de uma date, e uma lista não é um dia",
-    "notBefore": "vir depois de outro dia é de uma date, e uma lista não é um dia",
     "appliesTo": "uma lista de valores não nomeia o período que fecha",
     "pattern": "o pattern confere UM valor escrito inteiro, e uma lista traz vários",
 }
