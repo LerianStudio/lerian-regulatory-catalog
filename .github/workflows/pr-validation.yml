@@ -66,4 +66,5 @@ jobs:
       - run: python3 tools/test_tabelas_receita.py
       - run: python3 tools/test_simba.py
       - run: python3 tools/test_simba_conferencia.py
+      - run: python3 tools/test_ispb_compe.py
       - run: python3 tools/validate.py
