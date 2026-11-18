@@ -450,6 +450,31 @@ def check_template(doc_dir: Path, contract: dict) -> None:
 
     refs = set(re.findall(r"\{\{\s*([A-Za-z_]\w*)\.(\w+)", body))
 
+    # Um campo também é posicionado DENTRO de uma expressão: argumento de macro
+    # (`{{ ascii(t.nome) }}`), condição (`{% if t.dataFim %}`) ou `with`. Só o começo
+    # do `{{` contava, e o campo posto assim aparecia como "nenhum template o
+    # posiciona" — e um nome trocado ali passava calado. Strings saem antes (um
+    # `"a.b"` não é campo), e a tag `for` só liga nomes (o iterável é conjunto, não
+    # campo). Numa tag `{% %}` uma cabeça que não é laço sobre conjunto (forloop, um
+    # nome do `with`) é ignorada; num `{{ }}` ela é conferida como sempre.
+    tag_refs: set[tuple[str, str]] = set()
+    for opener, inner in re.findall(r"(\{\{|\{%)-?(.*?)-?(?:\}\}|%\})", body, flags=re.DOTALL):
+        expr = re.sub(r"\"[^\"]*\"|'[^']*'", "", inner)
+        if opener == "{%" and re.match(r"\s*(for|endfor|macro|endmacro)\b", expr):
+            continue
+        for head, field in re.findall(r"(?<![\w.])([A-Za-z_]\w*)\.([A-Za-z_]\w*)", expr):
+            if head in ("forloop", "parentloop"):
+                continue
+            if opener == "{{":
+                refs.add((head, field))
+            else:
+                tag_refs.add((head, field))
+    for head, field in tag_refs - refs:
+        # `{% if Op.Venc %}` pergunta se o conjunto filho tem linha: Venc é conjunto,
+        # não campo de Op.
+        if head != "system" and field not in datasets and dataset_of(head) is not None:
+            refs.add((head, field))
+
     # As pontas de um período (`span`) chegam ao template como
     # system.periods.<parâmetro>.start/.end (o motor publica `periods` em `system`, e
     # por isso o nome é reservado). Só um parâmetro que declara span tem período: um
