@@ -73,7 +73,8 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
 Com `possuiAgenciaFisica = 2`, toda linha sai com as sentinelas do Anexo I, sem acento,
 qualquer que seja o cadastro: nome e endereco `nao possui agencia fisica`, cidade
 `0000000`, UF `00`, CEP `00000000`, telefone `0000000000`. O numero da agencia vem do
-cadastro: preencha `numero_agencia: "00001"`. A data de abertura nao tem sentinela:
+cadastro: preencha `numero_agencia: "00001"`, que e o numero que a IN pede (IN :100); com outro
+numero, a linha sai com ele. A data de abertura nao tem sentinela:
 informe a data de inicio de operacao da instituicao. Agencia aberta: fechamento
 `9999-12-31`, que sai `31129999`.
 
