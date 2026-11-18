@@ -56,6 +56,7 @@ NO_CODE = {"n/a", "0"}
 
 BEGIN = re.compile(r"\{# ISPB_COMPE_BLOCK: ([A-Za-z_][A-Za-z0-9_.]*) #\}")
 END = "{# /ISPB_COMPE_BLOCK #}"
+TOKEN = "ISPB_COMPE_BLOCK"
 
 
 class TableError(Exception):
@@ -122,6 +123,16 @@ def expected_template(text: str, codes: dict[str, str]) -> str:
             at = begin.end()
     out.append(text[at:])
     return "".join(out)
+
+
+def malformed_markers(text: str) -> int:
+    """Quantas menções à marca não são uma marca de início ou de fim bem escrita.
+
+    Uma marca escrita diferente (sem o espaço, com outra expressão) não é achada pelo
+    gerador nem conferida pelo validador: o trecho ao lado dela passaria sem conferência.
+    """
+    wellformed = len(BEGIN.findall(text)) + text.count(END)
+    return text.count(TOKEN) - wellformed
 
 
 def marked_templates() -> list[Path]:

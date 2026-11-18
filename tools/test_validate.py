@@ -1027,6 +1027,12 @@ MUTATIONS: list[Mutation] = [
         "não é o que tools/ispb_compe.py",
     ),
     Mutation(
+        "ispb-compe-marca-malformada",
+        "uma marca escrita sem o espaco nao e achada, e o trecho ao lado passaria sem conferencia",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + "{# ISPB_COMPE_BLOCK:ispb #}999"}),
+        "fora de uma marca bem escrita",
+    ),
+    Mutation(
         "ispb-compe-sem-guarda",
         "sem a guarda, o ISPB vazio é completado a 00000000 e sai como Banco do Brasil",
         lambda b: b[PLANO].update({"template": b[PLANO]["template"] + _ispb_block_without_guard()}),
