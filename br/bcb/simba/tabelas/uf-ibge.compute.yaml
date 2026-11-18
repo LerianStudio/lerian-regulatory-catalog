@@ -2,7 +2,7 @@
 # de uma consulta do binding (forma de tools/validate.py _check_computes).
 # Os valores sao os de uf-ibge.yaml (mesma origem, sha256 do uf.txt
 # 5816106201212a3ba1a17b787f278b7de6491342184f47ca5de041ccb66983ef).
-# Na EB2.2 troque os marcadores:
+# No binding de cada documento, troque os marcadores:
 #   as:     <NOME_DA_COLUNA_CALCULADA>  ex.: codigo_uf
 #   column: <COLUNA_COM_A_SIGLA_DA_UF>  ex.: address_state
 # Exterior / sem agencia fisica = "00" (IN BCB 636 Anexo I, Agencias campo 6,
