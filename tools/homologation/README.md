@@ -302,6 +302,7 @@ simba/<cenario>/
 | Cenário | O que cobre |
 |---|---|
 | `a-saldo-e-contraparte` | **Sintético.** EXTRATO: saldo devedor no cheque especial (`1250 D`), saldo devedor abaixo de meio centavo (`000 C`), exatamente meio centavo (`001 D`), bloqueado somado ao disponível, saldo que o ponto flutuante não representa (0,29 ⇒ `029`), códigos 223, 125, 259, 133 e 105, a sessão de uma transação com a tarifa. ORIGEM-DESTINO: contraparte de um Pix do Banco do Brasil (ISPB `00000000` ⇒ `001`), TED sem ISPB (`999`), perna interna com o titular, tarifa com a própria instituição e a linha sem contraparte; o campo 2 é o campo 1 do EXTRATO |
+| `b-cheque-especial` | **Sintético.** O Midaz grava a parte coberta pelo disponível numa operação e a parte tirada (ou paga) do cheque especial em outra, na chave `overdraft`: Pix recebido que paga 70 de dívida (70 + 30), Pix enviado de 100 com 30 disponíveis (30 + 70) e a tarifa da mesma transação toda no cheque especial (0,00 + 1,00). EXTRATO com as duas linhas de cada operação, na mesma sessão, o saldo da linha `overdraft` = menos a dívida (`7000 D`, `7100 D`); ORIGEM-DESTINO com a contraparte do Pix nas duas linhas (Bradesco `237`, Banco do Brasil `001`, CNPJ alfanumérico) e a tarifa com a instituição; CONTAS com saldo devedor no início e no fim (`7000`, `7100`) |
 
 O teste que roda os cenários fica no Reporter (o motor), ao lado da conformidade do
 catálogo, e lê esta pasta a partir da raiz do catálogo em
