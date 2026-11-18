@@ -2440,6 +2440,13 @@ MUTATIONS: list[Mutation] = [
         "titulares.tipo resolve por parameter com parameter ['titularesPedidos']",
     ),
     Mutation(
+        "parametro-de-campo-vazio",
+        "um nome vazio não nomeia parâmetro nenhum; o motor o recusa na carga",
+        lambda b: b[HIER]["binding"]["datasets"]["titulares"]["fields"].update(
+            {"tipo": {"from": "parameter", "parameter": ""}}),
+        "titulares.tipo resolve por parameter com parameter ''",
+    ),
+    Mutation(
         "valor-de-consulta-derivada-da-propria-origem-que-seleciona",
         "o select fecha o que a origem entrega antes das derivadas dela, como no motor",
         lambda b: (b[HIER]["binding"]["queries"].append(
