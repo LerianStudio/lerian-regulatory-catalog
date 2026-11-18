@@ -181,3 +181,19 @@ documents:
     summary: >-
       Agencias das contas investigadas e das contas da mesma instituicao com as quais
       elas transacionaram no periodo do afastamento do sigilo, uma linha por agencia.
+
+  - id: br.bcb.simba.contas
+    path: br/bcb/simba/contas
+    country: BR
+    regulator: BCB
+    document: CONTAS
+    family: simba
+    title: SIMBA — Contas
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Contas investigadas e contas da mesma instituicao com as quais elas transacionaram
+      no periodo do afastamento do sigilo, com abertura, encerramento e saldos.
