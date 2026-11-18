@@ -785,16 +785,13 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                             f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
                             f"resolve por {case.get('from')!r}; use {', '.join(sorted(valid))}"
                         )
+                    if case.get("from") == "parameter":
+                        _check_field_parameter(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}]",
+                                               case.get("parameter"), multiple)
                     # A MESMA precondição do caminho direto: `rowSet` só significa
                     # algo se o conjunto declarar rowSet no contrato. Aplicá-la num
                     # caminho e não no outro é o furo de sempre — a origem existe em
                     # dois lugares, a conferência tem de existir nos dois.
-                    if case.get("from") == "parameter" and case.get("parameter") in multiple:
-                        fail(
-                            f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
-                            f"escreve o parâmetro '{case.get('parameter')}', que é uma lista (multiple); "
-                            f"um campo recebe um valor só"
-                        )
                     if case.get("from") == "rowSet" and not contract_row_sets.get(dataset):
                         fail(
                             f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
@@ -829,14 +826,10 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                     f"{how!r}; use query, constant, parameter, manual, rowSet ou byRowClass"
                 )
 
-            # Uma lista (`multiple`) é o conjunto de um filtro, nunca o valor de um campo:
-            # escrita numa célula, viraria o texto da lista inteira. Mesma conferência
-            # do caso de classe acima: a origem existe nos dois caminhos.
-            if how == "parameter" and spec.get("parameter") in multiple:
-                fail(
-                    f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} escreve o parâmetro "
-                    f"'{spec.get('parameter')}', que é uma lista (multiple); um campo recebe um valor só"
-                )
+            # Mesma conferência do caso de classe acima: a origem existe nos dois caminhos.
+            if how == "parameter":
+                _check_field_parameter(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}",
+                                       spec.get("parameter"), multiple)
 
             # `rowSet` só significa algo se o CONJUNTO declarar rowSet no contrato:
             # aceitar o nome da origem sem conferir a precondição deixa o campo
@@ -2125,6 +2118,19 @@ def _aggregation(query: object) -> dict | None:
     aggregate = query.get("aggregate")
 
     return aggregate if isinstance(aggregate, dict) else None
+
+
+def _check_field_parameter(where: str, name: object, multiple: set[str]) -> None:
+    """Um campo `from: parameter` nomeia UM parâmetro, e ele não é uma lista.
+
+    Uma lista (`multiple`) é o conjunto de um filtro, nunca o valor de um campo:
+    escrita numa célula, viraria o texto da lista inteira. A forma vem antes: um
+    nome que não é texto não pode nem ser procurado entre as listas.
+    """
+    if not isinstance(name, str) or not name:
+        fail(f"{where} resolve por parameter com parameter {name!r}; parameter é o nome de um parâmetro, em texto")
+    elif name in multiple:
+        fail(f"{where} escreve o parâmetro '{name}', que é uma lista (multiple); um campo recebe um valor só")
 
 
 def own_columns(query: dict) -> set[str] | None:
