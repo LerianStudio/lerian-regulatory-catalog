@@ -2731,8 +2731,13 @@ class ValidatorSuite(unittest.TestCase):
         root = self._write(with_family(broken=False))
         stray = root / PLANO / "schema" / "contract.yaml"
         stray.write_text(yaml.safe_dump({"metadata": {"id": "zz.fixture.rascunho"}}), encoding="utf-8")
+        # Mais fundo que a pasta de família não é documento: o Reporter não o lê.
+        deep = root / familia / "anexo" / "contract.yaml"
+        deep.parent.mkdir(parents=True)
+        deep.write_text(yaml.safe_dump({"metadata": {"id": "zz.fixture.fundo"}}), encoding="utf-8")
         code, out = _run(root)
-        self.assertEqual(code, 0, f"o documento de quatro níveis deveria validar e o schema/ ficar de fora:\n{out}")
+        self.assertEqual(code, 0, f"o documento de quatro níveis deveria validar e o schema/ e o "
+                                  f"contrato de cinco níveis ficar de fora:\n{out}")
         self.assertIn("5 documento(s) conferido(s)", out)
 
         code, out = _run(self._write(with_family(broken=True)))
