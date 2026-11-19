@@ -172,7 +172,8 @@
     "naturezaOposta": "D",
     "saldoApos": "2.00",
     "bloqueadoApos": "0",
-    "chequeEspecialApos": "0"
+    "chequeEspecialApos": "0",
+    "rail": "PIX"
   },
   {
     "operacaoId": "o11",
