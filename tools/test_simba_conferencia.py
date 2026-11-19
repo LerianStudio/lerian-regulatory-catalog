@@ -287,6 +287,15 @@ class Conferencia(unittest.TestCase):
         self.assert_says(self.run_case(drafts=drafts).warnings,
                          "ela traz o saldo da chave de cheque especial, e a linha principal, o saldo real")
 
+    def test_parcela_de_cheque_especial_por_ultimo_nao_e_o_saldo_da_conta(self) -> None:
+        # A principal deixa a conta em 40,00 (o CONTAS); a parcela, no mesmo instante e depois
+        # dela, traz o saldo da chave de cheque especial e não entra na comparação.
+        drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "40.00", "0", "0"),
+                                       ("123456", "2026-12-01T10:00:01Z", "0", "0", "20.00"))]
+        drafts[1]["datasets"]["lancamentos"][1].update({"chaveSaldo": "overdraft", "valor": "20.00"})
+        report = self.run_case(drafts=drafts)
+        self.assertFalse(any("o saldo após o último lançamento" in w for w in report.warnings), report.warnings)
+
     def test_valor_bloqueado_no_periodo_e_aviso(self) -> None:
         drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "20.00", "20.00", "0"))]
         self.assert_says(self.run_case(drafts=drafts).warnings, "a conta 123456 da agência 0001 teve valor bloqueado")
@@ -532,6 +541,11 @@ class Mutations(unittest.TestCase):
                 unittest.defaultTestLoader.loadTestsFromName(
                     "test_a_transacao_com_tarifa_e_cheque_especial_tem_o_aviso", GabaritoChequeEspecial))
         self.assertEqual(1, len(result.failures))
+
+    def test_ler_a_parcela_como_saldo_da_conta_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "_carries_the_account_balance", lambda row: True,
+            "test_parcela_de_cheque_especial_por_ultimo_nao_e_o_saldo_da_conta"))
 
     def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
