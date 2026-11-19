@@ -208,19 +208,6 @@
     }
   },
   {
-    "name": "TED de conta garantida sem o motivo",
-    "document": "br/bcb/simba/origem-destino",
-    "file": "template.tpl",
-    "old": "; tipo de conta do remetente CG sem codigo correspondente na IN\"",
-    "new": "\"",
-    "count": 1,
-    "expect": {
-      "document": "br/bcb/simba/origem-destino",
-      "line": 3,
-      "field": 18
-    }
-  },
-  {
     "name": "Pix de conta corrente sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
@@ -234,11 +221,11 @@
     }
   },
   {
-    "name": "Pix de conta de pagamento sem o motivo",
+    "name": "Pix de conta de pagamento dito fora do dominio",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"tipo de conta do pagador TRAN sem codigo unico na IN\"",
-    "new": "\"\"",
+    "old": "{% elif pb.tipoConta == \"TRAN\" %}",
+    "new": "{% elif false %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -247,11 +234,11 @@
     }
   },
   {
-    "name": "Pix de conta PI sem o codigo no motivo",
+    "name": "Pix de conta PI dito fora do dominio",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"tipo de conta do pagador \"|add:tc|add:",
-    "new": "\"tipo de conta do pagador \"|add:",
+    "old": "{% elif pb.tipoConta == \"SLRY\" or pb.tipoConta == \"OTHR\" %}",
+    "new": "{% elif false %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -273,16 +260,68 @@
     }
   },
   {
-    "name": "Pix JD on-us dito nao informado",
+    "name": "TED de conta garantida sem o codigo no motivo",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{% if pd.tipoConta == \"JDPI\" %}",
-    "new": "{% if false %}",
+    "old": "remetente \"|add:tc|add:\" sem codigo correspondente na IN\"",
+    "new": "remetente \"|add:\" sem codigo correspondente na IN\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix JD de conta corrente sem o codigo do tipo de conta",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"\", pd.tipoConta) }}",
+    "new": "\"\", \"\") }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
       "line": 18,
+      "field": 8
+    }
+  },
+  {
+    "name": "TED enviada de conta de pagamento sem o codigo no motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "recebedor \"|add:tc|add:\" sem codigo unico na IN\"",
+    "new": "recebedor \"|add:\" sem codigo unico na IN\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 19,
       "field": 18
+    }
+  },
+  {
+    "name": "TED enviada de conta corrente sem o codigo do tipo de conta",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"\", pf.tipoConta) }}",
+    "new": "\"\", \"\") }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 20,
+      "field": 8
+    }
+  },
+  {
+    "name": "tarifa com a agencia fixa em 00001",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ l.numeroAgencia }}\t\t\t2\t",
+    "new": "00001\t\t\t2\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 21,
+      "field": 6
     }
   }
 ]

@@ -52,16 +52,16 @@
     }
   },
   {
-    "name": "Pix JD de outra instituicao dito do fornecedor",
+    "name": "Pix JD de outra instituicao com tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{% if pc.tipoConta == \"JDPI\" %}",
+    "old": "{% if pc.tipoConta == \"1\" or pc.tipoConta == \"2\" %}",
     "new": "{% if true %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
       "line": 3,
-      "field": 18
+      "field": 8
     }
   },
   {

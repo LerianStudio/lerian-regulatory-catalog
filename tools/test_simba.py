@@ -222,13 +222,17 @@ def empty_case_rules_off(found: dict[str, dict]) -> list[str]:
 
 # TpCt do STR -> código do campo 8 do ORIGEM-DESTINO (IN :209), só os casamentos literais;
 # o domínio sem código na IN fica com o próprio código, para o motivo no campo 18.
-TED_ACCOUNT_TYPES = {"CC": "1", "PP": "2", "CI": "3", "PG": "PG", "CD": "CD", "CG": "CG"}
+TED_ACCOUNT_TYPES = {"CACC": "1", "SVGS": "2", "PP": "2", "CI": "3", "CPAY": "CPAY", "PG": "CPAY", "PAYMENT": "CPAY",
+                     "TRAN": "CPAY", "4": "CPAY", "CD": "CD", "CG": "CG", "SLRY": "SLRY"}
+TED_ACCOUNT_QUERIES = {"ted_recebidas": ("sender_account_type", "tipo_conta_pagador"),
+                       "ted_enviadas": ("recipient_details.accountType", "tipo_conta_recebedor")}
 
 
 # Domínio do tipo de conta do SPI -> código do campo 8, só os casamentos literais.
 PIX_LERIAN_ACCOUNT_TYPES = {"CACC": "1", "SVGS": "2", "TRAN": "TRAN", "SLRY": "SLRY", "OTHR": "OTHR"}
-# O tpConta da JDPI (0 a 4) é do fornecedor: só marca que há tipo.
-PIX_JD_ACCOUNT_TYPES = {str(n): "JDPI" for n in range(5)}
+# O tpConta da JDPI (ListaAPIs 5.5.0) tem as descrições do domínio do SPI: 0 e 2 viram 1 e 2,
+# e 1, 3 e 4 ficam com o código SPI equivalente.
+PIX_JD_ACCOUNT_TYPES = {"0": "1", "1": "SLRY", "2": "2", "3": "TRAN", "4": "OTHR"}
 PIX_ACCOUNT_QUERIES = {
     "pix_lerian_envios": ("destination_account_type", PIX_LERIAN_ACCOUNT_TYPES),
     "pix_lerian_recebimentos": ("source_account_type", PIX_LERIAN_ACCOUNT_TYPES),
@@ -251,18 +255,20 @@ def pix_account_type_off(found: dict[str, dict]) -> list[str]:
 
 def ted_account_type_off(found: dict[str, dict]) -> list[str]:
     """Onde a tradução do tipo de conta do pagador da TED recebida deixa de ser a decidida."""
-    query = queries_of(found.get("origem-destino", {})).get("ted_recebidas")
-    if query is None:
-        return ["origem-destino: a consulta 'ted_recebidas' não existe"]
-    case = _compute(query, "tipo_conta_pagador").get("case") or {}
     problems = []
-    if case.get("column") != "sender_account_type":
-        problems.append("origem-destino: 'ted_recebidas' não traduz sender_account_type em tipo_conta_pagador")
-    when = {k: (v or {}).get("constant") for k, v in (case.get("when") or {}).items()}
-    if when != TED_ACCOUNT_TYPES:
-        problems.append(f"origem-destino: o tipo de conta da TED recebida traduz {when}, e a decisão é {TED_ACCOUNT_TYPES}")
-    if case.get("otherwise") != {"constant": "-"}:
-        problems.append("origem-destino: o tipo de conta da TED recebida fora do domínio não vira '-'")
+    for name, (column, computed) in sorted(TED_ACCOUNT_QUERIES.items()):
+        query = queries_of(found.get("origem-destino", {})).get(name)
+        if query is None:
+            problems.append(f"origem-destino: a consulta '{name}' não existe")
+            continue
+        case = _compute(query, computed).get("case") or {}
+        if case.get("column") != column:
+            problems.append(f"origem-destino: '{name}' não traduz {column} em {computed}")
+        when = {str(k): (v or {}).get("constant") for k, v in (case.get("when") or {}).items()}
+        if when != TED_ACCOUNT_TYPES:
+            problems.append(f"origem-destino: '{name}' traduz o tipo de conta como {when}, e a decisão é {TED_ACCOUNT_TYPES}")
+        if case.get("otherwise") != {"constant": "-"}:
+            problems.append(f"origem-destino: '{name}' não marca o tipo de conta fora do domínio com '-'")
     return problems
 
 
@@ -539,9 +545,9 @@ class Mutations(unittest.TestCase):
 
     def test_pg_traduzido_por_interpretacao_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
-        _compute(queries_of(found["origem-destino"])["ted_recebidas"], "tipo_conta_pagador")["case"]["when"]["PG"] = {
+        _compute(queries_of(found["origem-destino"])["ted_enviadas"], "tipo_conta_recebedor")["case"]["when"]["CPAY"] = {
             "constant": "6"}
-        self.assertTrue(any("a decisão é" in p for p in ted_account_type_off(found)))
+        self.assertTrue(any("'ted_enviadas'" in p and "a decisão é" in p for p in ted_account_type_off(found)))
 
     def test_tran_traduzido_por_interpretacao_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
@@ -549,10 +555,10 @@ class Mutations(unittest.TestCase):
             "constant": "6"}
         self.assertTrue(any("'pix_lerian_recebimentos'" in p for p in pix_account_type_off(found)))
 
-    def test_tipo_do_fornecedor_traduzido_e_pego(self) -> None:
+    def test_conta_de_pagamento_do_fornecedor_traduzida_e_pega(self) -> None:
         found = copy.deepcopy(self.found)
-        _compute(queries_of(found["origem-destino"])["pix_jd_envios"], "tipo_conta_od")["case"]["when"]["0"] = {
-            "constant": "1"}
+        _compute(queries_of(found["origem-destino"])["pix_jd_envios"], "tipo_conta_od")["case"]["when"]["3"] = {
+            "constant": "6"}
         self.assertTrue(any("'pix_jd_envios'" in p for p in pix_account_type_off(found)))
 
     def test_extrato_com_nonempty_e_pego(self) -> None:

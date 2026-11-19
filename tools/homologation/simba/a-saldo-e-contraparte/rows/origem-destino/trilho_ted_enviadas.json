@@ -4,6 +4,25 @@
     "ispb": "60746948",
     "agencia": "4321",
     "conta": "555666",
-    "nome": "Recebedor TED Exemplo"
+    "nome": "Recebedor TED Exemplo",
+    "tipoConta": "-"
+  },
+  {
+    "referencia": "A20",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoConta": "CPAY",
+    "tipoContaInformado": "CPAY"
+  },
+  {
+    "referencia": "A21",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoConta": "1",
+    "tipoContaInformado": "CACC"
   }
 ]
