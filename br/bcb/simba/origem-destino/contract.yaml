@@ -192,8 +192,9 @@ datasets:
         type: string
         required: true
         description: >-
-          O tipo da operacao no Midaz (operation.type): DEBIT, CREDIT, OVERDRAFT (a parcela do cheque especial) ou, na
-          cobranca de divida de tarifa, FEE_SETTLEMENT e FEE_REFUND, que o motor grava sem feeLeg e sao perna de tarifa.
+          O tipo da operacao no Midaz (operation.type): DEBIT, CREDIT, OVERDRAFT (a parcela do cheque especial), BLOCK e
+          UNBLOCK (bloqueio e desbloqueio judicial) ou, na cobranca de divida de tarifa, FEE_SETTLEMENT e FEE_REFUND, que o
+          motor grava sem feeLeg e sao perna de tarifa.
       - name: saldoApos
         type: decimal
         required: true

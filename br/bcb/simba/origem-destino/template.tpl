@@ -11,7 +11,7 @@ Todo lancamento tem pelo menos uma linha (IN :170). O registro de envio do plugi
 o estorno de um envio (credito) nao herda o beneficiario original. A excecao e a TED recebida, nos dois sentidos: o
 debito com a metadata dela devolve o dinheiro a quem a enviou (a devolucao, um revert do Midaz, e o estorno pedido pelo
 banco remetente, um lancamento novo com a mesma metadata); a cobranca de divida de tarifa da mesma transacao sai antes,
-como tarifa. A parcela de cheque especial (chave overdraft) segue a mesma regra:
+como tarifa. Bloqueio e desbloqueio judicial (BLOCK/UNBLOCK) nao tem trilho: outra perna do CRM ou a linha vazia. A parcela de cheque especial (chave overdraft) segue a mesma regra:
 ela compartilha a metadata da transacao e acha o registro do plugin pela mesma referencia. A contraparte, nesta ordem: perna de tarifa (feeLeg, ou operacao
 FEE_SETTLEMENT/FEE_REFUND, a cobranca de divida de tarifa que o Midaz grava sem feeLeg na mesma transacao) = a propria
 instituicao; a linha do plugin da transacao (macro trilho; uma referencia acha no maximo uma linha); a outra perna da
