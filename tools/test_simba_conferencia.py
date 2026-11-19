@@ -489,9 +489,10 @@ class Conferencia(unittest.TestCase):
 class GabaritoChequeEspecial(unittest.TestCase):
     """O aviso que acompanha a limitação fixada no gabarito de cheque especial.
 
-    No cenário b-cheque-especial, a parcela de cheque especial da tarifa sai com o código e a
-    contraparte do Pix da mesma transação: é limitação declarada, não a resposta certa. Ela só
-    vale com o aviso para essa transação, lido aqui das próprias linhas do cenário.
+    No cenário b-cheque-especial, as linhas das parcelas de cheque especial trazem o saldo da
+    chave de cheque especial, e a parcela da tarifa sai com o código e a contraparte do Pix da
+    mesma transação: são limitações declaradas, não a resposta certa. Elas só valem com o aviso
+    de cada parcela e da transação, lido aqui das próprias linhas do cenário.
     """
 
     SCENARIO = conf.ROOT / "tools" / "homologation" / "simba" / "b-cheque-especial"
@@ -500,6 +501,16 @@ class GabaritoChequeEspecial(unittest.TestCase):
         rows = self.SCENARIO / "rows" / "extrato"
         datasets = {f.stem: json.loads(f.read_text(encoding="utf-8")) for f in rows.glob("*.json")}
         return {conf.EXTRATO_DOCUMENT: datasets}
+
+    def test_cada_parcela_de_cheque_especial_tem_o_aviso(self) -> None:
+        report = conf.Report()
+        conf.check_entry_balances(self.drafts(), report)
+        parcelas = sorted(w.split(" tem uma parcela de cheque especial de ")[0].split("a conta ")[1].split(" ")[0]
+                          + " " + w.split(" tem uma parcela de cheque especial de ")[1].split(" ")[0]
+                          for w in report.warnings if " tem uma parcela de cheque especial de " in w)
+        # As linhas 1, 4, 6 e 8 do esperado: 70,00 (crédito que quita a dívida), 70,00 (Pix),
+        # 1,00 (tarifa) e 20,00 (Pix com bloqueio).
+        self.assertEqual(["2222222 1.00", "2222222 70.00", "2222222 70.00", "2222223 20.00"], parcelas)
 
     def test_a_transacao_com_tarifa_e_cheque_especial_tem_o_aviso(self) -> None:
         report = conf.Report()
@@ -592,6 +603,19 @@ class Mutations(unittest.TestCase):
         self.assertEqual(1, self.failures_with(
             "check_movement_files", lambda files, missing, folder, report: None,
             "test_conta_movimentada_com_extrato_vazio_e_erro"))
+
+    def test_tirar_o_aviso_da_parcela_reprova_o_gabarito(self) -> None:
+        silenciado = conf.check_entry_balances
+
+        def sem_o_aviso(drafts, report):
+            silenciado(drafts, report)
+            report.warnings[:] = [w for w in report.warnings if "tem uma parcela de cheque especial de" not in w]
+
+        with mock.patch.object(conf, "check_entry_balances", sem_o_aviso):
+            result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(
+                unittest.defaultTestLoader.loadTestsFromName(
+                    "test_cada_parcela_de_cheque_especial_tem_o_aviso", GabaritoChequeEspecial))
+        self.assertEqual(1, len(result.failures))
 
     def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
