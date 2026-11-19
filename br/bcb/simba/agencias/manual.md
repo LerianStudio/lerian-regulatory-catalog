@@ -105,7 +105,9 @@ Quando nenhum documento da ordem tem conta na instituicao, nao ha arquivo a gera
 arquivos do SIMBA sao das contas (IN art. 1o, :23) e nao tem cabecalho (art. 3o, I, :59).
 A geracao deste arquivo e recusada antes de montar o arquivo (erro RPT-0195), dizendo
 quantas linhas cada consulta leu. Responda a requisicao sem arquivo, pelo atendimento:
-CCS0012 com a situacao 03, relacionamento inexistente.
+CCS0012 com a situacao 03, relacionamento inexistente (Catalogo de Servicos do SFN,
+Volume III, evento CCS0012; Dicionario de Dominios do Banco Central, dominio
+SitAtedmntReq).
 
 Quando a ordem tem mais de um investigado e so parte deles tem conta, os arquivos saem com
 as contas de quem tem; quem nao tem e declarado sem relacionamento no atendimento da
