@@ -1,0 +1,20 @@
+{
+  "description": "Sintetico. Endereco principal de quem mora no exterior (IN BCB 636/2025, TITULARES campos 13 a 15): pais diferente de BR sai com 0000000 na cidade, 00 na UF e o nome do pais da tabela da Receita, mesmo quando o cadastro traz uma sigla igual a de uma UF (provincia SC, que no Brasil seria 42). Quem tem pais BR sai com o codigo IBGE da UF e Brasil; quem nao tem pais e tratado como no Brasil, com o pais em branco. O nome do pais da contraparte passa pela troca de acentos e e cortado em 40 caracteres. As linhas sao o que as consultas entregam: codigoUf e nomePais ja convertidos pelo case do binding. A recusa de quem mora no Brasil sem UF e a do pais fora da tabela sao regras do contrato, conferidas no test_simba.",
+  "documents": [
+    "br/bcb/simba/titulares"
+  ],
+  "system": {
+    "caso": "001-XYZ-000003-01",
+    "inicio": "2026-12-01",
+    "fim": "2026-12-31",
+    "documentos": [
+      "12345678909",
+      "98765432100",
+      "11144477735"
+    ]
+  },
+  "institution": {
+    "name": "Instituicao Exemplo",
+    "identifier": "11222333000181"
+  }
+}

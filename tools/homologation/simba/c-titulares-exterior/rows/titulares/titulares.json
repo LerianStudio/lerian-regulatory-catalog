@@ -1,0 +1,48 @@
+[
+  {
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333331",
+    "tipoConta": "1",
+    "tipoPessoa": "1",
+    "documento": "12345678909",
+    "nome": "Maria Exemplo",
+    "logradouro": "Rua Um 100",
+    "codigoUf": "35",
+    "pais": "BR",
+    "nomePais": "Brasil",
+    "cep": "01001000",
+    "celular": "11999990000",
+    "dataInicio": "2024-01-02",
+    "emailPrincipal": "maria@example.com"
+  },
+  {
+    "contaId": "c2",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333332",
+    "tipoConta": "1",
+    "tipoPessoa": "1",
+    "documento": "98765432100",
+    "nome": "Juan Ejemplo",
+    "logradouro": "Calle Falsa 123",
+    "codigoUf": "42",
+    "pais": "AR",
+    "nomePais": "Argentina",
+    "dataInicio": "2024-03-04",
+    "emailPrincipal": "juan@example.com"
+  },
+  {
+    "contaId": "c3",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333333",
+    "tipoConta": "1",
+    "tipoPessoa": "1",
+    "documento": "11144477735",
+    "nome": "Jose Sem Pais",
+    "logradouro": "Rua Dois 200",
+    "codigoUf": "33",
+    "nomePais": "-",
+    "cep": "20040002",
+    "dataInicio": "2025-05-06"
+  }
+]
