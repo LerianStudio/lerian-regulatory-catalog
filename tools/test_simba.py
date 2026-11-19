@@ -17,6 +17,11 @@ conferências que o validador, documento a documento, não faz:
   * todo cenário de gabarito do SIMBA (tools/homologation/simba/<cenário>/) traz o
     `mutants.json`: o teste do motor que lê os cenários pula as quebras quando o
     arquivo falta, e o gabarito passaria sem provar que pega alguma coisa;
+  * toda consulta de lançamentos ou de saldo do razão deixa de fora as reservas e
+    liberações do Midaz (ON_HOLD, RELEASE): a transferência que passou por reserva sai uma
+    vez só, e o saldo não conta a reserva como débito;
+  * as somas de saldo do CONTAS contam a chave de sistema overdraft, onde o Midaz grava a
+    parte de um saque tirada do cheque especial: sem ela, a conta nunca sai devedora;
   * toda consulta alcança o parâmetro `documentos`, direto ou pela cadeia de valores
     de consulta e de `from` — sem isso, uma lista opcional ausente (`contas`) deixa uma
     consulta ler todas as contas da instituição. A exceção é a que lê a própria
@@ -57,6 +62,39 @@ def bindings(root: Path) -> dict[str, dict]:
 
 ENTRIES = "lancamentos"
 GOLDEN = Path("tools") / "homologation" / "simba"
+LEDGER = ("midaz_transaction", "operation")
+HOLD_TYPES = {"ON_HOLD", "RELEASE"}
+# Lida pelo id de uma entrada que já passou pelo filtro: não lista nem soma nada.
+LOOKUP_QUERIES = {"lancamentos_descricao"}
+# As somas de saldo do CONTAS.
+BALANCE_QUERIES = {"saldo_inicial_caso", "saldo_final_caso", "saldo_inicial_contraparte", "saldo_final_contraparte"}
+
+
+def _filters(query: dict) -> list[dict]:
+    return [c for c in query.get("filters") or [] if isinstance(c, dict)]
+
+
+def holds_not_excluded(found: dict[str, dict]) -> list[str]:
+    """As consultas do razão que listam ou somam sem tirar as reservas e liberações."""
+    problems = []
+    for document, binding in found.items():
+        for name, query in queries_of(binding).items():
+            if (query.get("dataSource"), query.get("table")) != LEDGER or name in LOOKUP_QUERIES:
+                continue
+            if not any(c.get("field") == "type" and c.get("operator") == "nin" and HOLD_TYPES <= set(c.get("values") or [])
+                       for c in _filters(query)):
+                problems.append(f"{document}: a consulta '{name}' não tira ON_HOLD e RELEASE")
+    return problems
+
+
+def overdraft_left_out(found: dict[str, dict]) -> list[str]:
+    """As somas de saldo do CONTAS que deixam de fora a chave overdraft."""
+    queries = queries_of(found.get("contas", {}))
+    problems = [f"contas: a soma '{name}' não existe" for name in sorted(BALANCE_QUERIES - set(queries))]
+    for name in sorted(BALANCE_QUERIES & set(queries)):
+        if any(c.get("field") == "balance_key" for c in _filters(queries[name])):
+            problems.append(f"contas: a soma '{name}' filtra a chave de saldo; a chave overdraft entra no saldo")
+    return problems
 
 
 def scenarios_without_mutants(root: Path) -> list[str]:
@@ -167,6 +205,12 @@ class SimbaBindings(unittest.TestCase):
     def test_toda_consulta_de_cliente_chega_aos_investigados(self) -> None:
         self.assertEqual([], unscoped_queries(bindings(ROOT)))
 
+    def test_reservas_e_liberacoes_ficam_fora(self) -> None:
+        self.assertEqual([], holds_not_excluded(bindings(ROOT)))
+
+    def test_o_saldo_do_contas_conta_o_cheque_especial(self) -> None:
+        self.assertEqual([], overdraft_left_out(bindings(ROOT)))
+
     def test_todo_cenario_de_gabarito_traz_as_quebras(self) -> None:
         self.assertTrue(any((ROOT / GOLDEN).glob("*/scenario.json")), "nenhum cenário de gabarito")
         self.assertEqual([], scenarios_without_mutants(ROOT))
@@ -203,6 +247,18 @@ class Mutations(unittest.TestCase):
                 if isinstance(value, dict) and value.get("query") == CASE_ACCOUNTS:
                     value["query"] = "declarante"
         self.assertTrue(any("'lancamentos'" in p for p in unscoped_queries(found)))
+
+    def test_consulta_que_volta_a_ler_reservas_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        query = queries_of(found["extrato"])["lancamentos_dados"]
+        query["filters"] = [c for c in query["filters"] if c.get("field") != "type"]
+        self.assertTrue(any("'lancamentos_dados'" in p for p in holds_not_excluded(found)))
+
+    def test_soma_que_volta_a_tirar_o_cheque_especial_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        queries_of(found["contas"])["saldo_final_caso"]["filters"].append(
+            {"field": "balance_key", "operator": "nin", "values": ["overdraft"]})
+        self.assertTrue(any("'saldo_final_caso'" in p for p in overdraft_left_out(found)))
 
     def test_cenario_sem_as_quebras_e_pego(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
