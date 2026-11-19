@@ -284,6 +284,8 @@ class Conferencia(unittest.TestCase):
         drafts[1]["datasets"]["lancamentos"][1].update({"chaveSaldo": "overdraft", "valor": "70.00"})
         self.assert_says(self.run_case(drafts=drafts).warnings,
                          "a conta 123456 da agência 0001 tem uma parcela de cheque especial de 70.00")
+        self.assert_says(self.run_case(drafts=drafts).warnings,
+                         "com bloqueio aberto, o saldo da parcela não inclui o bloqueado")
 
     def test_valor_bloqueado_no_periodo_e_aviso(self) -> None:
         drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "20.00", "20.00", "0"))]

@@ -248,7 +248,8 @@ def check_entry_balances(drafts: dict[str, dict] | None, report: Report) -> None
         if row.get("chaveSaldo") == OVERDRAFT_KEY:
             report.warn(f"EXTRATO: a conta {row.get('numeroConta')} da agência {row.get('numeroAgencia')} tem uma parcela "
                         f"de cheque especial de {row.get('valor')} em lançamento separado; revise a contraparte no "
-                        "ORIGEM-DESTINO: numa transferência interna, a parcela sai como não identificada pelo trilho")
+                        "ORIGEM-DESTINO, onde a parcela sai como não identificada pelo trilho; com bloqueio aberto, o saldo da "
+                        "parcela não inclui o bloqueado")
     for key in sorted(used):
         report.warn(f"EXTRATO: a conta {key[1]} da agência {key[0]} usou cheque especial no período")
     for key in sorted(held):
