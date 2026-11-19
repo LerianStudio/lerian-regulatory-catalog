@@ -700,6 +700,8 @@ knownGaps:
     description: >-
       Devolucao e estorno nao herdam a contraparte da transacao original, e as linhas de devolucao dos plugins nao
       sao lidas nesta versao: a devolucao e o revert do Midaz saem com a outra perna interna ou com a linha vazia.
+      Excecao: o revert do Midaz que devolve uma TED recebida e um debito com a metadata dela, e sai com o remetente
+      da TED recebida (banco, e o mesmo motivo dos dados cifrados), porque o dinheiro volta a ele.
   - id: tipo-de-conta-do-trilho
     description: >-
       O tipo da conta da contraparte de outra instituicao (campo 8, IN :209) so sai com codigo onde o tipo que o plugin

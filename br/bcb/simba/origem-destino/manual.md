@@ -161,7 +161,9 @@ o contrato na carga.
   Midaz, ver Devolucao e estorno).
 - **Devolucao e estorno**: nao herdam a contraparte da transacao original, e as linhas de
   devolucao dos plugins nao sao lidas: a devolucao e o revert do Midaz saem com a outra
-  perna interna ou com a linha vazia.
+  perna interna ou com a linha vazia. Excecao: a devolucao de uma TED recebida e um revert
+  do Midaz com a metadata dela; esse debito sai com o remetente da TED recebida (o banco, e
+  no campo 18 o mesmo motivo dos dados cifrados), porque o dinheiro volta a ele.
 - **Credito cross-ledger do Pix JD**: o plugin grava um id derivado do E2E em vez do id da
   linha; a contraparte desse credito sai pela outra perna ou vazia.
 - **Provedor de outra empresa**: contraparte liquidada fora dos plugins Lerian nao e lida.
