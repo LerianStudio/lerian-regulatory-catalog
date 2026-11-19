@@ -49,7 +49,7 @@ Na ordem, a primeira que existe:
    - Pix JD: o pagador do Pix recebido e o recebedor do Pix enviado (idem; a conta sai com o
      digito);
    - TED: na TED enviada, banco, agencia, conta e nome do recebedor; na TED recebida, so o
-     banco do pagador.
+     banco do pagador, e o motivo da agencia e da conta em branco no campo 18.
 3. **A outra perna da mesma transacao**, quando e conta de cliente da instituicao no CRM
    (transferencia entre clientes), tem a natureza oposta e o MESMO valor do lancamento:
    agencia, conta, tipo, titular, com o Compe e o CNPJ da propria instituicao. A perna de
@@ -130,7 +130,10 @@ o contrato na carga.
   nesta versao; tratar fora do Reporter. Gerar com o periodo mais amplo poria no arquivo
   movimento fora do afastamento.
 - **TED cifrada**: o documento do recebedor da TED enviada e os dados do pagador da TED
-  recebida (exceto o banco) sao gravados cifrados pelo plugin e saem em branco.
+  recebida (exceto o banco) sao gravados cifrados pelo plugin e saem em branco. Na TED
+  recebida, a agencia e a conta do pagador (campos 6 e 7) ficam em branco com o motivo no
+  campo 18 (OBSERVACAO); o `00001` do campo 6 nao e usado, porque ele diz que nao ha
+  agencia fisica (IN :207).
 - **Devolucao e estorno**: nao herdam a contraparte da transacao original, e as linhas de
   devolucao dos plugins nao sao lidas: a devolucao e o revert do Midaz saem com a outra
   perna interna ou com a linha vazia.

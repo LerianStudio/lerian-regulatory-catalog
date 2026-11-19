@@ -141,5 +141,18 @@
       "line": 9,
       "field": 9
     }
+  },
+  {
+    "name": "TED recebida sem o motivo da agencia em branco",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"agencia e conta do remetente nao informadas: o plugin de TED as grava cifradas\"",
+    "new": "\"\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
+      "field": 18
+    }
   }
 ]

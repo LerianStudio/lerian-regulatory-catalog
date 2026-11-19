@@ -625,7 +625,8 @@ knownGaps:
     description: >-
       O plugin de TED grava cifrados o documento do recebedor e os dados do pagador da TED recebida. Na TED enviada
       saem banco, agencia, conta e nome; o CPF/CNPJ (campo 10) e o tipo de pessoa (campo 9) em branco. Na TED
-      recebida sai so o banco (campo 5).
+      recebida sai so o banco (campo 5); agencia e conta (campos 6 e 7) em branco, com o motivo no campo 18
+      (OBSERVACAO), e nao o 00001, que diz que nao ha agencia fisica (IN :207).
   - id: devolucao-e-estorno
     description: >-
       Devolucao e estorno nao herdam a contraparte da transacao original, e as linhas de devolucao dos plugins nao
