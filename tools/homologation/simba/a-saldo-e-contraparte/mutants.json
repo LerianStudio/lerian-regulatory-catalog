@@ -128,5 +128,18 @@
       "line": 10,
       "field": 1
     }
+  },
+  {
+    "name": "estorno de tarifa com trilho como estorno de transferencia",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "(rail or pagamento or envio or recebimento) and not taxa",
+    "new": "(rail or pagamento or envio or recebimento)",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 9,
+      "field": 9
+    }
   }
 ]

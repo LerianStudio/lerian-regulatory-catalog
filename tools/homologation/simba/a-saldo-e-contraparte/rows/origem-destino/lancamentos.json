@@ -154,7 +154,8 @@
     "valor": "1.00",
     "natureza": "C",
     "naturezaOposta": "D",
-    "saldoApos": "0.00"
+    "saldoApos": "0.00",
+    "rail": "PIX"
   },
   {
     "operacaoId": "o11",
