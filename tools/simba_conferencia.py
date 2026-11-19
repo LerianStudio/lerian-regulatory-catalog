@@ -206,9 +206,20 @@ def check_balances(extrato: list[list[str]], contas: list[list[str]], drafts: di
                         "o último é a última linha do arquivo)")
 
 
+def _carries_the_account_balance(row: dict) -> bool:
+    """A linha cujo saldo é o da conta: a parcela de cheque especial traz o da chave overdraft.
+
+    A parcela tem o mesmo instante da linha principal e vem depois dela; lida como a última,
+    ela daria um saldo que não está em arquivo nenhum.
+    """
+    return row.get("chaveSaldo") != OVERDRAFT_KEY
+
+
 def _check_balances_by_instant(entries: list[dict], accounts: dict, report: Report) -> None:
     last: dict[tuple[str, str], tuple[datetime, Decimal | None]] = {}
     for row in entries:
+        if not _carries_the_account_balance(row):
+            continue
         key = (str(row.get("numeroAgencia")), str(row.get("numeroConta")))
         instant = _instant(row.get("horaLancamento"))
         if instant is None:
