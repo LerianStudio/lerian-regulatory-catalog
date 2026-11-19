@@ -494,6 +494,58 @@
     }
   },
   {
+    "name": "CNPJ da contraparte trocado na lista",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "cnpj_k == \"60746948\" %}60746948000112{% elif",
+    "new": "cnpj_k == \"60746948\" %}60746948000113{% elif",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 19,
+      "field": 19
+    }
+  },
+  {
+    "name": "ISPB vazio sem o separador antes do motivo do CNPJ",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if ispb == None or ispb == \"\" %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes do Pix",
+    "new": "{% if ispb == None or ispb == \"\" %}{% if observacao %}{% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes do Pix",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
+      "field": 18
+    }
+  },
+  {
+    "name": "ISPB fora da lista sem o motivo do CNPJ",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "cnpj_k == \"00997185\" %}{% else %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes do Pix{% endif %}",
+    "new": "cnpj_k == \"00997185\" %}{% else %}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 22,
+      "field": 18
+    }
+  },
+  {
+    "name": "ISPB da lista com o motivo do CNPJ",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "cnpj_k == \"60746948\" %}{% elif",
+    "new": "cnpj_k == \"60746948\" %}; CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes do Pix{% elif",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 19,
+      "field": 18
+    }
+  },
+  {
     "name": "devolucao de TED recebida sem o remetente",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",

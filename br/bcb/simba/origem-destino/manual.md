@@ -83,6 +83,19 @@ Na tarifa e na contraparte interna, o Compe da propria instituicao. Na tarifa, o
 e a agencia da conta investigada, como no cadastro de agencias do AGENCIAS: a agencia
 fisica, ou `00001` na instituicao sem agencia fisica (IN :100, :207).
 
+## CNPJ da instituicao da contraparte (campo 19)
+
+Na contraparte de outra instituicao, o template converte o ISPB gravado pelo plugin no CNPJ
+que a lista de participantes do Pix publicada pelo Banco Central da
+(`br/bcb/simba/tabelas/ParticipantesPix.csv`, so a secao dos participantes ativos); e a
+unica lista do Banco Central que liga ISPB a CNPJ. O trecho do template que faz a conversao
+e gerado da lista por `tools/ispb_cnpj.py`, e o validador do catalogo recusa o template se
+o trecho nao for o gerado. ISPB vazio ou ausente, ou fora da lista (uma TED com banco que so
+participa do STR, por exemplo), deixa o campo em branco e acrescenta ao campo 18, depois de
+`; ` quando ele ja tem texto, o motivo `CNPJ da instituicao da contraparte nao informado:
+ISPB ausente ou fora da lista de participantes do Pix`.
+Na tarifa e na contraparte interna, o CNPJ da propria instituicao.
+
 ## O que o tenant preenche no mapeamento (binding)
 
 1. **Numero da agencia** (`numero_agencia`): o mesmo cadastro de agencias do AGENCIAS.
@@ -98,12 +111,11 @@ fisica, ou `00001` na instituicao sem agencia fisica (IN :100, :207).
   investimento); conta de pagamento, de deposito, garantida, salario e PI, e o tipo ausente
   ou fora do dominio, saem em branco, com o motivo no campo 18 (ver De onde vem a
   contraparte).
-- 19 (CNPJ da instituicao) da contraparte de outra instituicao: os plugins gravam so o
-  ISPB, e a lista de participantes do STR nao traz o CNPJ.
+- 19 (CNPJ da instituicao) da contraparte de outra instituicao: sai em branco quando o
+  plugin nao grava o ISPB ou a instituicao nao e participante ativa do Pix, com o motivo
+  no campo 18 (ver CNPJ da instituicao da contraparte).
 - 12 e 13 (documento de identificacao): nao existe em nenhuma aplicacao.
 - 14 a 16 e 20 a 24 (boleto e cheque): nao existem como produto.
-- 19 (CNPJ da instituicao da contraparte): sai na tarifa e na contraparte interna; na de
-  outra instituicao fica em branco, porque o plugin grava so o ISPB.
 - 25 e 26 (chave Pix da contraparte): a chave fica em outra tabela do Pix lerian, e o tipo
   da chave no Pix JD e um codigo do plugin sem de-para definido.
 - 27 e 28 fora do Pix.
