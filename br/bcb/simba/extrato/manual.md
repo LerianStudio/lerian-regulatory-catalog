@@ -125,9 +125,10 @@ as contas de quem tem; quem nao tem e declarado sem relacionamento no atendiment
 requisicao.
 
 Uma conta do caso sem lancamento no periodo sai no CONTAS com o campo 7 = 2 (IN :126) e nao
-tem linha aqui. Quando nenhuma conta do caso tem lancamento, este arquivo fica sem linha
-nenhuma, e esta versao do Reporter recusa o arquivo vazio depois de monta-lo (erro
-RPT-0153).
+tem linha aqui. Quando nenhuma conta do caso tem lancamento, este arquivo sai vazio (0
+byte, sem cabecalho, IN art. 3o, I) e e aprovado e entregue assim, com os outros quatro.
+O contrato declara isso (`filing.allowEmpty`); um Reporter anterior a esse recurso recusa
+o contrato na carga.
 
 ## Limitacoes desta versao
 
