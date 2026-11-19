@@ -1070,6 +1070,12 @@ MUTATIONS: list[Mutation] = [
         "aceita ['any', 'newest']",
     ),
     Mutation(
+        "filing-allow-empty-texto",
+        "allowEmpty escrito como texto parece ligar o arquivo vazio, e o motor o recusa na carga",
+        lambda b: b[PLANO]["contract"]["filing"].update({"allowEmpty": "true"}),
+        "allowEmpty é 'true'; é true ou false",
+    ),
+    Mutation(
         "filing-period-vazio",
         "period sem lista não diz se o documento tem período ou não",
         lambda b: b[PLANO]["contract"]["filing"].update({"period": None}),
@@ -2927,6 +2933,13 @@ class ValidatorSuite(unittest.TestCase):
         query(data[HIER]["binding"], "base_titulares")["filters"][0]["operator"] = "nin"
         code, out = _run(self._write(data))
         self.assertEqual(code, 0, f"uma lista de inteiros lida por nin deveria validar:\n{out}")
+
+    def test_filing_allow_empty_is_valid(self) -> None:
+        """`filing.allowEmpty: true`: o documento que, num caso legítimo, sai sem linha (0 byte)."""
+        data = fixtures.bundle()
+        data[PLANO]["contract"]["filing"]["allowEmpty"] = True
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"filing.allowEmpty booleano deveria validar:\n{out}")
 
     def test_fixtures_are_valid(self) -> None:
         """A base é válida — sem isso, toda mutação passaria por acidente."""

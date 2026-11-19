@@ -65,7 +65,7 @@ PLANO_CONTRACT = {
         {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S"],
          "description": "Remessa."},
     ],
-    "filing": {"period": ["dataBase"], "approve": "newest",
+    "filing": {"period": ["dataBase"], "approve": "newest", "allowEmpty": False,
                "remittance": {"parameter": "tipoRemessa", "original": "I", "replacement": "S"}},
     "datasets": [
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
