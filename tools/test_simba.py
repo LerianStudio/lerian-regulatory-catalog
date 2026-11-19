@@ -331,6 +331,24 @@ def entries_mismatch(found: dict[str, dict]) -> list[str]:
     return problems
 
 
+
+# Campos que o template trata como sempre presentes: sem eles a linha cai num ramo errado
+# (a TED enviada sem tipo no motivo de fora do domínio; o débito sem tipo de operação fora da
+# devolução da TED recebida e a cobrança de dívida de tarifa fora da tarifa), e não na recusa.
+REQUIRED_FIELDS = {("origem-destino", "trilho_ted_enviadas", "tipoContaInformado"),
+                   ("origem-destino", ENTRIES, "tipoOperacao"), ("extrato", ENTRIES, "tipoOperacao")}
+
+
+def required_fields_off(found: dict[str, dict]) -> list[str]:
+    """Os campos de REQUIRED_FIELDS que o contrato não declara `required: true`."""
+    problems = []
+    for document, dataset, field in sorted(REQUIRED_FIELDS):
+        fields = {f.get("name"): f for d in found.get(document, {}).get("datasets") or []
+                  if isinstance(d, dict) and d.get("name") == dataset for f in d.get("fields") or []}
+        if fields.get(field, {}).get("required") is not True:
+            problems.append(f"{document}: '{dataset}.{field}' não é required: true")
+    return problems
+
 def queries_of(binding: dict) -> dict[str, dict]:
     return {q["name"]: q for q in binding.get("queries") or []
             if isinstance(q, dict) and isinstance(q.get("name"), str)}
@@ -437,6 +455,9 @@ class SimbaBindings(unittest.TestCase):
     def test_os_lancamentos_do_od_sao_os_do_extrato(self) -> None:
         self.assertEqual([], entries_mismatch(contracts(ROOT)))
 
+    def test_campos_que_o_template_supoe_presentes_sao_obrigatorios(self) -> None:
+        self.assertEqual([], required_fields_off(contracts(ROOT)))
+
 
 class Mutations(unittest.TestCase):
     """Cada conferência acima, vista recusando: uma quebra deliberada numa cópia."""
@@ -498,6 +519,16 @@ class Mutations(unittest.TestCase):
             if d["name"] == ENTRIES:
                 d["fields"].append({"name": "campoSoDoOd", "type": "string"})
         self.assertTrue(any("campoSoDoOd" in p for p in entries_mismatch(found)))
+
+    def test_campo_obrigatorio_que_vira_opcional_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["origem-destino"]["datasets"]:
+            for f in d.get("fields") or []:
+                if (d["name"], f["name"]) in {("trilho_ted_enviadas", "tipoContaInformado"), (ENTRIES, "tipoOperacao")}:
+                    f["required"] = False
+        self.assertEqual(["origem-destino: 'lancamentos.tipoOperacao' não é required: true",
+                          "origem-destino: 'trilho_ted_enviadas.tipoContaInformado' não é required: true"],
+                         required_fields_off(found))
 
     def test_grao_diferente_e_pego(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
