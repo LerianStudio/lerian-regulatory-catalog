@@ -76,5 +76,31 @@
       "line": 4,
       "field": 13
     }
+  },
+  {
+    "name": "UF da contraparte no exterior pela sigla",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}00{% else %}{{ u.codigoUf }}{% endif %}",
+    "new": "{{ u.codigoUf }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 5,
+      "field": 14
+    }
+  },
+  {
+    "name": "contraparte no exterior sem a cidade 0000000",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}0000000{% endif %}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 5,
+      "field": 13
+    }
   }
 ]
