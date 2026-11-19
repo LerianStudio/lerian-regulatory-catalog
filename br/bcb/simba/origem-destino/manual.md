@@ -48,6 +48,12 @@ Na ordem, a primeira que existe:
      CPF/CNPJ, nome, mensagem e txid; sem txid, o EndToEndId);
    - Pix JD: o pagador do Pix recebido e o recebedor do Pix enviado (idem; a conta sai com o
      digito);
+   - tipo de conta (campo 8, IN :209): no Pix lerian, pelo dominio do SPI (catalogo de
+     mensagens do SPI, tabela de dominios do pacs.008), conta corrente de cliente sai `1` e
+     conta de poupanca `2`; conta de pagamento (6 so quando pre-paga), conta-salario e conta
+     PI saem em branco, com o motivo no campo 18, como o tipo ausente ou fora do dominio. No
+     Pix JD, o plugin so guarda o tipo no Pix entre contas da propria instituicao, e no
+     codigo do fornecedor: o campo 8 sai em branco, com o motivo no campo 18;
    - TED: na TED enviada, banco, agencia, conta e nome do recebedor; na TED recebida, so o
      banco do pagador, e o motivo dos dados do pagador em branco no campo 18.
 3. **A outra perna da mesma transacao**, quando e conta de cliente da instituicao no CRM

@@ -350,7 +350,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, e2e: first}
+      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -395,6 +395,18 @@ datasets:
         type: string
         required: false
         description: EndToEndId do Pix (campo 28 quando nao ha txid).
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^([12]|TRAN|SLRY|OTHR|-)$'
+        description: >-
+          Tipo de conta da contraparte no codigo do campo 8 (IN :209): 1 para CACC e 2 para SVGS do dominio do SPI.
+          TRAN, SLRY e OTHR nao tem codigo literal na IN e ficam com o proprio codigo; "-" para tipo ausente ou fora do
+          dominio. Nos tres ultimos casos o campo 8 sai em branco e o campo 18 diz por que.
+      - name: tipoContaInformado
+        type: string
+        required: false
+        description: O tipo de conta como o plugin o grava. So distingue o tipo ausente do fora do dominio; nao vai ao arquivo.
 
   - name: trilho_pix_lerian_recebimentos
     description: Os Pix recebidos pelo Pix lerian; a contraparte e a origem.
@@ -402,7 +414,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, e2e: first}
+      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -447,6 +459,18 @@ datasets:
         type: string
         required: false
         description: EndToEndId do Pix (campo 28 quando nao ha txid).
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^([12]|TRAN|SLRY|OTHR|-)$'
+        description: >-
+          Tipo de conta da contraparte no codigo do campo 8 (IN :209): 1 para CACC e 2 para SVGS do dominio do SPI.
+          TRAN, SLRY e OTHR nao tem codigo literal na IN e ficam com o proprio codigo; "-" para tipo ausente ou fora do
+          dominio. Nos tres ultimos casos o campo 8 sai em branco e o campo 18 diz por que.
+      - name: tipoContaInformado
+        type: string
+        required: false
+        description: O tipo de conta como o plugin o grava. So distingue o tipo ausente do fora do dominio; nao vai ao arquivo.
 
   - name: trilho_pix_jd_envios
     description: Os Pix enviados pelo Pix JD; a contraparte e o recebedor (payee).
@@ -454,7 +478,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, e2e: first}
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first}
     fields:
       - name: referencia
         type: string
@@ -505,6 +529,13 @@ datasets:
         type: string
         required: false
         description: EndToEndId do Pix (campo 28 quando nao ha txid).
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^(JDPI|-)$'
+        description: >-
+          "JDPI" quando o plugin gravou o tipo de conta da contraparte no codigo do fornecedor (so no Pix entre contas da
+          propria instituicao), "-" quando nao gravou. O campo 8 sai em branco e o campo 18 diz por que.
 
   - name: trilho_pix_jd_recebimentos
     description: Os Pix recebidos pelo Pix JD; a contraparte e o pagador (payer).
@@ -512,7 +543,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, e2e: first}
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first}
     fields:
       - name: referencia
         type: string
@@ -563,6 +594,13 @@ datasets:
         type: string
         required: false
         description: EndToEndId do Pix (campo 28 quando nao ha txid).
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^(JDPI|-)$'
+        description: >-
+          "JDPI" quando o plugin gravou o tipo de conta da contraparte no codigo do fornecedor (so no Pix entre contas da
+          propria instituicao), "-" quando nao gravou. O campo 8 sai em branco e o campo 18 diz por que.
 
   - name: trilho_ted_enviadas
     description: O recebedor das TEDs enviadas (o documento, cifrado no plugin, fica fora).
@@ -640,7 +678,10 @@ knownGaps:
       recebida sai so o banco (campo 5); agencia, conta, tipo de pessoa, CPF/CNPJ e nome (campos 6, 7, 9, 10 e
       11) em branco, com o motivo no campo 18 (OBSERVACAO), e nao o 00001, que diz que nao ha agencia fisica (IN
       :207). O tipo de conta do pagador (campo 8, IN :209) sai so para CC, PP e CI do dominio TpCt do STR (1, 2 e 3);
-      PG, CD e CG, o tipo ausente e o fora do dominio saem em branco, com o motivo no campo 18.
+      PG e CD (mais de um codigo possivel na IN), CG, o tipo ausente e o fora do dominio saem em branco, com o motivo
+      no campo 18. No Pix o campo 8 segue a mesma regra: Pix lerian CACC 1 e SVGS 2 (dominio do SPI), TRAN, SLRY,
+      OTHR, ausente e fora do dominio em branco com motivo; Pix JD sempre em branco com motivo (o plugin so guarda o
+      tipo no on-us, no codigo do fornecedor).
   - id: devolucao-e-estorno
     description: >-
       Devolucao e estorno nao herdam a contraparte da transacao original, e as linhas de devolucao dos plugins nao
