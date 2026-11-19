@@ -2098,6 +2098,41 @@ def check_ispb_block(doc_dir: Path) -> None:
              "gera da tabela do STR; regere")
 
 
+def check_cnpj_block(doc_dir: Path) -> None:
+    """Os trechos que trocam ISPB pelo CNPJ da instituição (campo 19) e escrevem o motivo do
+    CNPJ em branco (campo 18) são EXATAMENTE o que tools/ispb_cnpj.py gera da lista de
+    participantes do Pix publicada em br/bcb/simba/tabelas/.
+
+    Escrito ou retocado à mão, o trecho erra em silêncio: um CNPJ trocado põe a contraparte
+    em outra instituição, e um ISPB fora da lista sairia em branco sem o motivo.
+    """
+    path = doc_dir / "template.tpl"
+    if not path.is_file():
+        return
+    with path.open(encoding="utf-8", newline="") as handle:
+        text = handle.read()
+
+    import ispb_cnpj
+
+    if not any(token in text for token in ispb_cnpj.TOKENS):
+        return
+    if ispb_cnpj.malformed_markers(text):
+        fail(f"{doc_dir.relative_to(ROOT)}: o template menciona ISPB_CNPJ_BLOCK ou ISPB_CNPJ_REASON fora de uma marca "
+             f"bem escrita (`{{# ISPB_CNPJ_BLOCK: <expressao> #}}` ... `{ispb_cnpj.END}`, "
+             f"`{{# ISPB_CNPJ_REASON: <expressao> <observacao> #}}` ... `{ispb_cnpj.END_REASON}`); "
+             "o trecho ao lado nao seria conferido")
+        return
+
+    try:
+        expected = ispb_cnpj.expected_template(text, ispb_cnpj.read_cnpjs())
+    except (OSError, ispb_cnpj.TableError) as problem:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→CNPJ não pôde ser conferido contra a lista do Pix: {problem}")
+        return
+    if text != expected:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→CNPJ do template não é o que tools/ispb_cnpj.py "
+             "gera da lista de participantes do Pix; regere")
+
+
 def check_template_parses(doc_dir: Path) -> None:
     """Regras do MOTOR de template que uma leitura por regex não pega.
 
@@ -4009,6 +4044,7 @@ def main() -> int:
         check_structure(doc_dir, contract)
         check_template_parses(doc_dir)
         check_ispb_block(doc_dir)
+        check_cnpj_block(doc_dir)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_tables(doc_dir, contract)
