@@ -133,6 +133,18 @@ sai em branco:
 Sem e-mail no cadastro, e sempre nas partes relacionadas, o campo 25 sai
 `e-mail nao declarado`, o codigo da IN, sem acento.
 
+## Investigado sem conta
+
+Quando nenhum documento da ordem tem conta na instituicao, nao ha arquivo a gerar: os
+arquivos do SIMBA sao das contas (IN art. 1o, :23) e nao tem cabecalho (art. 3o, I, :59).
+A geracao deste arquivo e recusada antes de montar o arquivo (erro RPT-0195), dizendo
+quantas linhas cada consulta leu. Responda a requisicao sem arquivo, pelo atendimento:
+CCS0012 com a situacao 03, relacionamento inexistente.
+
+Quando a ordem tem mais de um investigado e so parte deles tem conta, os arquivos saem com
+as contas de quem tem; quem nao tem e declarado sem relacionamento no atendimento da
+requisicao.
+
 ## Limitacoes desta versao
 
 - **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada

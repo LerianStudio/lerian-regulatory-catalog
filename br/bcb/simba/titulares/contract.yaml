@@ -121,6 +121,10 @@ datasets:
   - name: titulares
     description: O titular de cada conta do caso, com o cadastro dele no CRM.
     grain: [contaId]
+    # Investigado sem conta na instituicao: nao ha arquivo a gerar (os arquivos sao das contas, IN art. 1o, :23, e
+    # nao tem cabecalho, art. 3o, I, :59). Sem linha nenhuma a geracao e recusada antes de montar o arquivo, dizendo
+    # o que cada consulta leu; a resposta negativa vai pelo atendimento da requisicao (CCS0012, situacao 03).
+    nonEmpty: true
     consolidation:
       key: [contaId]
       whenKeyRepeats: refuse
