@@ -33,5 +33,11 @@
     "ispb": "",
     "tipoConta": "SLRY",
     "tipoContaInformado": "SLRY"
+  },
+  {
+    "referencia": "A35",
+    "ispb": "60746948",
+    "tipoConta": "1",
+    "tipoContaInformado": "CACC"
   }
 ]
