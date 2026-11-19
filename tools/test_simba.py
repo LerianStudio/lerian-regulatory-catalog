@@ -28,7 +28,15 @@ conferências que o validador, documento a documento, não faz:
   * toda consulta alcança o parâmetro `documentos`, direto ou pela cadeia de valores
     de consulta e de `from` — sem isso, uma lista opcional ausente (`contas`) deixa uma
     consulta ler todas as contas da instituição. A exceção é a que lê a própria
-    instituição (a organização do Midaz), que não é dado de cliente.
+    instituição (a organização do Midaz), que não é dado de cliente;
+  * o TITULARES escreve o nome do país (campo 15) pela tabela de países da Receita, e
+    as duas consultas de titular traduzem o código ISO com o mesmo `case`, igual à
+    tabela; sigla de UF ou país sem tradução viram um marcador ("00", "-"), não uma
+    recusa, porque quem mora no exterior não tem UF nossa e quem não tem país mora no
+    Brasil;
+  * o contrato do TITULARES recusa, nos dois conjuntos de titular, quem mora no Brasil
+    sem UF da tabela (a IN só dá o 00 para o exterior) e o país informado que a tabela
+    não tem.
 
 Só a biblioteca padrão e o pyyaml do validador:
 
@@ -38,12 +46,15 @@ Só a biblioteca padrão e o pyyaml do validador:
 from __future__ import annotations
 
 import copy
+import datetime
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
+
+import tabelas_receita
 
 ROOT = Path(__file__).resolve().parent.parent
 FAMILY = Path("br") / "bcb" / "simba"
@@ -111,6 +122,65 @@ def overdraft_left_out(found: dict[str, dict]) -> list[str]:
     for name in sorted(BALANCE_QUERIES & set(queries)):
         if any(c.get("field") == "balance_key" for c in _filters(queries[name])):
             problems.append(f"contas: a soma '{name}' filtra a chave de saldo; a chave overdraft entra no saldo")
+    return problems
+
+
+HOLDER_QUERIES = ("cadastro_titulares", "cadastro_contraparte")
+HOLDER_SETS = ("titulares", "titulares_contraparte")
+# A data em que o binding leu as linhas vigentes da tabela de países (o comentário dele diz).
+COUNTRIES_READ_ON = datetime.date(2026, 11, 19)
+NO_UF, NO_COUNTRY = "00", "-"
+LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)]
+
+
+def _compute(query: dict, name: str) -> dict:
+    return next((c for c in query.get("compute") or [] if isinstance(c, dict) and c.get("as") == name), {})
+
+
+def country_names_mismatch(found: dict[str, dict]) -> list[str]:
+    """Onde as consultas de titular deixam de traduzir país e UF como a tabela e o contrato esperam."""
+    expected = {code: {"constant": name} for code, name in
+                tabelas_receita.load("paises.txt", COUNTRIES_READ_ON).items()}
+    queries = queries_of(found.get("titulares", {}))
+    problems = []
+    for name in HOLDER_QUERIES:
+        if name not in queries:
+            problems.append(f"titulares: a consulta '{name}' não existe")
+            continue
+        country = _compute(queries[name], "nome_pais").get("case") or {}
+        if country.get("column") != "addresses.primary.country":
+            problems.append(f"titulares: '{name}' não traduz addresses.primary.country em nome_pais")
+        when = country.get("when") or {}
+        for code in sorted(set(expected) ^ set(when)):
+            problems.append(f"titulares: '{name}' traduz o país {code!r}, que a tabela da Receita "
+                            + ("não tem" if code in when else "tem e a consulta não"))
+        for code in sorted(set(expected) & set(when)):
+            if when[code] != expected[code]:
+                problems.append(f"titulares: '{name}' escreve {when[code]} para {code}, e a tabela, {expected[code]}")
+        if country.get("otherwise") != {"constant": NO_COUNTRY}:
+            problems.append(f"titulares: '{name}' não marca o país sem tradução com {NO_COUNTRY!r}")
+        uf = _compute(queries[name], "codigo_uf").get("case") or {}
+        if uf.get("otherwise") != {"constant": NO_UF}:
+            problems.append(f"titulares: '{name}' não marca a UF sem tradução com {NO_UF!r}")
+    return problems
+
+
+def domicile_rules_missing(found: dict[str, dict]) -> list[str]:
+    """Os conjuntos de titular sem as recusas da UF de quem mora no Brasil e do país fora da tabela."""
+    rules = [r for r in found.get("titulares", {}).get("rules") or [] if isinstance(r, dict)]
+
+    def has(target: str, where: dict, field: str, values: list[str]) -> bool:
+        return any(r.get("appliesTo") == target and r.get("severity") == "error"
+                   and r.get("where") == where
+                   and (r.get("check") or {}).get("notStartsWith") == {"field": field, "values": values}
+                   for r in rules)
+
+    problems = []
+    for target in HOLDER_SETS:
+        if not has(target, {"field": "nomePais", "in": ["Brasil", NO_COUNTRY]}, "codigoUf", ["0"]):
+            problems.append(f"titulares: '{target}' não recusa quem mora no Brasil com a UF {NO_UF!r}")
+        if not has(target, {"field": "nomePais", "equals": NO_COUNTRY}, "pais", LETTERS):
+            problems.append(f"titulares: '{target}' não recusa o país informado que a tabela não tem")
     return problems
 
 
@@ -235,6 +305,12 @@ class SimbaBindings(unittest.TestCase):
         self.assertTrue(any((ROOT / GOLDEN).glob("*/scenario.json")), "nenhum cenário de gabarito")
         self.assertEqual([], scenarios_without_mutants(ROOT))
 
+    def test_pais_e_uf_do_titular_seguem_a_tabela(self) -> None:
+        self.assertEqual([], country_names_mismatch(bindings(ROOT)))
+
+    def test_o_contrato_recusa_uf_e_pais_sem_traducao(self) -> None:
+        self.assertEqual([], domicile_rules_missing(contracts(ROOT)))
+
     def test_os_lancamentos_do_od_sao_os_do_extrato(self) -> None:
         self.assertEqual([], entries_mismatch(contracts(ROOT)))
 
@@ -314,6 +390,37 @@ class Mutations(unittest.TestCase):
                             if not any(isinstance(v, dict) and v.get("parameter") == INVESTIGATED
                                        for v in c.get("values") or [])]
         self.assertTrue(any(f"'{CASE_ACCOUNTS}'" in p for p in unscoped_queries(found)))
+
+    def test_nome_de_pais_diferente_da_tabela_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        _compute(queries_of(found["titulares"])["cadastro_contraparte"], "nome_pais")["case"]["when"]["AR"] = {
+            "constant": "Argentinia"}
+        self.assertTrue(any("'cadastro_contraparte'" in p and "AR" in p for p in country_names_mismatch(found)))
+
+    def test_pais_sem_traducao_que_recusa_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        _compute(queries_of(found["titulares"])["cadastro_titulares"], "nome_pais")["case"]["otherwise"] = "refuse"
+        self.assertTrue(any("marca o país" in p for p in country_names_mismatch(found)))
+
+    def test_uf_sem_traducao_que_recusa_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        _compute(queries_of(found["titulares"])["cadastro_contraparte"], "codigo_uf")["case"]["otherwise"] = "refuse"
+        self.assertTrue(any("marca a UF" in p for p in country_names_mismatch(found)))
+
+    def test_conjunto_sem_a_recusa_da_uf_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        found["titulares"]["rules"] = [r for r in found["titulares"]["rules"]
+                                       if not (r["appliesTo"] == "titulares_contraparte" and r["where"].get("in"))]
+        self.assertEqual(["titulares: 'titulares_contraparte' não recusa quem mora no Brasil com a UF '00'"],
+                         domicile_rules_missing(found))
+
+    def test_recusa_de_pais_que_esquece_uma_letra_e_pega(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for r in found["titulares"]["rules"]:
+            if r["appliesTo"] == "titulares" and r["where"].get("equals"):
+                r["check"]["notStartsWith"]["values"].remove("Z")
+        self.assertEqual(["titulares: 'titulares' não recusa o país informado que a tabela não tem"],
+                         domicile_rules_missing(found))
 
 
 if __name__ == "__main__":
