@@ -52,8 +52,9 @@ Na ordem, a primeira que existe:
      mensagens do SPI, tabela de dominios do pacs.008), conta corrente de cliente sai `1` e
      conta de poupanca `2`; conta de pagamento (6 so quando pre-paga), conta-salario e conta
      PI saem em branco, com o motivo no campo 18, como o tipo ausente ou fora do dominio. No
-     Pix JD, o plugin so guarda o tipo no Pix entre contas da propria instituicao, e no
-     codigo do fornecedor: o campo 8 sai em branco, com o motivo no campo 18;
+     Pix JD, o plugin so guarda o tipo no Pix entre contas da propria instituicao, no codigo
+     do fornecedor, que tem as mesmas descricoes do SPI: conta corrente de cliente sai `1` e
+     conta poupanca `2`, e o resto sai em branco com o motivo, como o Pix sem tipo gravado;
    - TED: na TED enviada, banco, agencia, conta e nome do recebedor; na TED recebida, so o
      banco do pagador, e o motivo dos dados do pagador em branco no campo 18.
 3. **A outra perna da mesma transacao**, quando e conta de cliente da instituicao no CRM
@@ -142,12 +143,14 @@ o contrato na carga.
   recebida, a agencia, a conta, o tipo de pessoa, o CPF/CNPJ e o nome do pagador (campos 6,
   7, 9, 10 e 11) ficam em branco com o motivo no campo 18 (OBSERVACAO); o `00001` do campo
   6 nao e usado, porque ele diz que nao ha agencia fisica (IN :207). O tipo de conta do
-  pagador (campo 8) vem do tipo que o STR informa (dominio TpCt do Dicionario de Dominios
-  do Banco Central): conta corrente sai `1`, poupanca `2` e conta de investimento `3`
-  (IN :209). Conta de pagamento e conta de deposito podem corresponder a mais de um codigo
-  da IN (a de pagamento e `6` so quando pre-paga), e conta garantida nao tem codigo: as
-  tres saem em branco, com o motivo acrescentado ao campo 18; tambem o tipo ausente na
-  mensagem ou fora do dominio.
+  pagador (campo 8) e o tipo que o STR informa, como o plugin o grava (conta corrente
+  como `CACC`, poupanca como `SVGS`, conta de pagamento como `CPAY`, conta-salario como
+  `SLRY`): conta corrente sai `1`, poupanca `2` e conta de investimento `3` (IN :209). Conta
+  de pagamento e conta de deposito podem corresponder a mais de um codigo da IN (a de
+  pagamento e `6` so quando pre-paga), e conta garantida e conta-salario nao tem codigo:
+  saem em branco, com o motivo acrescentado ao campo 18; tambem o tipo ausente na mensagem
+  ou fora do dominio. Na TED enviada, o tipo de conta do recebedor segue a mesma regra, com
+  o motivo no campo 18.
 - **Devolucao e estorno**: nao herdam a contraparte da transacao original, e as linhas de
   devolucao dos plugins nao sao lidas: a devolucao e o revert do Midaz saem com a outra
   perna interna ou com a linha vazia.

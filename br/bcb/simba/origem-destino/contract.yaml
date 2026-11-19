@@ -532,10 +532,11 @@ datasets:
       - name: tipoConta
         type: string
         required: true
-        pattern: '^(JDPI|-)$'
+        pattern: '^([12]|TRAN|SLRY|OTHR|-)$'
         description: >-
-          "JDPI" quando o plugin gravou o tipo de conta da contraparte no codigo do fornecedor (so no Pix entre contas da
-          propria instituicao), "-" quando nao gravou. O campo 8 sai em branco e o campo 18 diz por que.
+          Tipo de conta da contraparte no codigo do campo 8 (IN :209): 1 e 2 para o tpConta 0 e 2 da JDPI (conta corrente
+          de cliente, conta poupanca); TRAN, SLRY e OTHR para 3, 1 e 4; "-" quando o plugin nao gravou o tipo (fora do Pix
+          entre contas da propria instituicao). Sem codigo, o campo 8 sai em branco e o campo 18 diz por que.
 
   - name: trilho_pix_jd_recebimentos
     description: Os Pix recebidos pelo Pix JD; a contraparte e o pagador (payer).
@@ -597,10 +598,11 @@ datasets:
       - name: tipoConta
         type: string
         required: true
-        pattern: '^(JDPI|-)$'
+        pattern: '^([12]|TRAN|SLRY|OTHR|-)$'
         description: >-
-          "JDPI" quando o plugin gravou o tipo de conta da contraparte no codigo do fornecedor (so no Pix entre contas da
-          propria instituicao), "-" quando nao gravou. O campo 8 sai em branco e o campo 18 diz por que.
+          Tipo de conta da contraparte no codigo do campo 8 (IN :209): 1 e 2 para o tpConta 0 e 2 da JDPI (conta corrente
+          de cliente, conta poupanca); TRAN, SLRY e OTHR para 3, 1 e 4; "-" quando o plugin nao gravou o tipo (fora do Pix
+          entre contas da propria instituicao). Sem codigo, o campo 8 sai em branco e o campo 18 diz por que.
 
   - name: trilho_ted_enviadas
     description: O recebedor das TEDs enviadas (o documento, cifrado no plugin, fica fora).
@@ -608,7 +610,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, nome: first}
+      columns: {ispb: first, agencia: first, conta: first, nome: first, tipoConta: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -635,6 +637,18 @@ datasets:
         type: string
         required: false
         description: Nome da contraparte (campo 11, IN :212). O template o corta em 80 posicoes.
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^([123]|CPAY|CD|CG|SLRY|-)$'
+        description: >-
+          Tipo de conta do recebedor no codigo do campo 8 (IN :209), pelo mesmo mapa da TED recebida: 1 para CACC, 2 para
+          SVGS e PP, 3 para CI; CPAY, CD, CG e SLRY ficam com o proprio codigo; "-" para tipo ausente ou fora do dominio.
+          Nesses casos o campo 8 sai em branco e o campo 18 diz por que.
+      - name: tipoContaInformado
+        type: string
+        required: false
+        description: O tipo de conta como o plugin o grava. So distingue o tipo ausente do fora do dominio; nao vai ao arquivo.
 
   - name: trilho_ted_recebidas
     description: O banco do pagador das TEDs recebidas (os demais dados, cifrados no plugin, ficam fora).
@@ -656,15 +670,15 @@ datasets:
       - name: tipoConta
         type: string
         required: true
-        pattern: '^([123]|PG|CD|CG|-)$'
+        pattern: '^([123]|CPAY|CD|CG|SLRY|-)$'
         description: >-
-          Tipo de conta do pagador no codigo do campo 8 (IN :209): 1, 2 ou 3 para CC, PP e CI do dominio TpCt do STR.
-          PG, CD e CG nao tem codigo literal na IN e ficam com o proprio codigo; "-" para tipo ausente ou fora do
-          dominio. Nos tres ultimos casos o campo 8 sai em branco e o campo 18 diz por que.
+          Tipo de conta do pagador no codigo do campo 8 (IN :209): 1 para CACC, 2 para SVGS e PP, 3 para CI, como o
+          plugin grava o TpCt do STR. CPAY e CD (mais de um codigo possivel na IN), CG e SLRY ficam com o proprio codigo;
+          "-" para tipo ausente ou fora do dominio. Nesses casos o campo 8 sai em branco e o campo 18 diz por que.
       - name: tipoContaInformado
         type: string
         required: false
-        description: O tipo de conta como o STR o mandou (TpCtDebtd). So distingue o tipo ausente do fora do dominio; nao vai ao arquivo.
+        description: O tipo de conta como o plugin o grava. So distingue o tipo ausente do fora do dominio; nao vai ao arquivo.
 
 knownGaps:
   - id: numeracao-entre-geracoes
@@ -677,11 +691,11 @@ knownGaps:
       saem banco, agencia, conta e nome; o CPF/CNPJ (campo 10) e o tipo de pessoa (campo 9) em branco. Na TED
       recebida sai so o banco (campo 5); agencia, conta, tipo de pessoa, CPF/CNPJ e nome (campos 6, 7, 9, 10 e
       11) em branco, com o motivo no campo 18 (OBSERVACAO), e nao o 00001, que diz que nao ha agencia fisica (IN
-      :207). O tipo de conta do pagador (campo 8, IN :209) sai so para CC, PP e CI do dominio TpCt do STR (1, 2 e 3);
-      PG e CD (mais de um codigo possivel na IN), CG, o tipo ausente e o fora do dominio saem em branco, com o motivo
-      no campo 18. No Pix o campo 8 segue a mesma regra: Pix lerian CACC 1 e SVGS 2 (dominio do SPI), TRAN, SLRY,
-      OTHR, ausente e fora do dominio em branco com motivo; Pix JD sempre em branco com motivo (o plugin so guarda o
-      tipo no on-us, no codigo do fornecedor).
+      :207). O tipo de conta (campo 8, IN :209), na TED recebida e na enviada, sai so para CACC (1), SVGS e PP (2) e
+      CI (3), como o plugin grava o tipo; CPAY e CD (mais de um codigo possivel na IN), CG, SLRY, o tipo ausente e o
+      fora do dominio saem em branco, com o motivo no campo 18. No Pix lerian, CACC 1 e SVGS 2 (dominio do SPI); no Pix
+      JD, tpConta 0 e 2 (descritos pelo fornecedor como os do SPI) saem 1 e 2. TRAN, SLRY, OTHR, ausente e fora do
+      dominio saem em branco com motivo; no Pix JD o tipo so existe no Pix entre contas da propria instituicao.
   - id: devolucao-e-estorno
     description: >-
       Devolucao e estorno nao herdam a contraparte da transacao original, e as linhas de devolucao dos plugins nao
