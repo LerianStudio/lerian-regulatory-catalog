@@ -410,7 +410,8 @@ queries:
     # O tipo de conta do recebedor esta em claro em recipient_details (so o documento e
     # cifrado). O motor nao aceita `case` sobre um subcaminho JSONB numa fonte Postgres (so
     # coluna da tabela ou trazida por join), entao o binding so o seleciona e o template o
-    # traduz no campo 8, com o mesmo mapa da TED recebida.
+    # traduz no campo 8, com o mapa dos tipos que a API do plugin aceita no envio (CACC,
+    # SVGS, SLRY e as grafias de conta de pagamento).
     select: [id, recipient_details.ispb, recipient_details.branch, recipient_details.account, recipient_details.accountType, recipient_details.holderName]
 
   - name: ted_recebidas
