@@ -53,7 +53,7 @@ TEMPLATES = ROOT / "br" / "bcb" / "simba"
 # O cabeçalho da seção dos participantes ativos (a primeira da lista).
 ACTIVE_TITLE = "Lista de participantes ativos do Pix"
 HEADER = ";Nome Reduzido;ISPB;CNPJ;"
-REASON = "CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes do Pix"
+REASON = "CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix"
 
 EXPR = r"[A-Za-z_][A-Za-z0-9_.]*"
 BEGIN = re.compile(r"\{# ISPB_CNPJ_BLOCK: (" + EXPR + r") #\}")

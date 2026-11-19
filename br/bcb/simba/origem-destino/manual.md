@@ -94,7 +94,7 @@ e gerado da lista por `tools/ispb_cnpj.py`, e o validador do catalogo recusa o t
 o trecho nao for o gerado. ISPB vazio ou ausente, ou fora da lista (uma TED com banco que so
 participa do STR, por exemplo), deixa o campo em branco e acrescenta ao campo 18, depois de
 `; ` quando ele ja tem texto, o motivo `CNPJ da instituicao da contraparte nao informado:
-ISPB ausente ou fora da lista de participantes do Pix`.
+ISPB ausente ou fora da lista de participantes ativos do Pix`.
 Na tarifa e na contraparte interna, o CNPJ da propria instituicao.
 
 ## O que o tenant preenche no mapeamento (binding)

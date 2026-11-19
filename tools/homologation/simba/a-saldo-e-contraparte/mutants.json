@@ -510,8 +510,8 @@
     "name": "ISPB vazio sem o separador antes do motivo do CNPJ",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{% if ispb == None or ispb == \"\" %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes do Pix",
-    "new": "{% if ispb == None or ispb == \"\" %}{% if observacao %}{% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes do Pix",
+    "old": "{% if ispb == None or ispb == \"\" %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix",
+    "new": "{% if ispb == None or ispb == \"\" %}{% if observacao %}{% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -523,7 +523,7 @@
     "name": "ISPB fora da lista sem o motivo do CNPJ",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "cnpj_k == \"00997185\" %}{% else %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes do Pix{% endif %}",
+    "old": "cnpj_k == \"00997185\" %}{% else %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix{% endif %}",
     "new": "cnpj_k == \"00997185\" %}{% else %}{% endif %}",
     "count": 1,
     "expect": {
@@ -537,7 +537,7 @@
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
     "old": "cnpj_k == \"60746948\" %}{% elif",
-    "new": "cnpj_k == \"60746948\" %}; CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes do Pix{% elif",
+    "new": "cnpj_k == \"60746948\" %}; CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix{% elif",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
