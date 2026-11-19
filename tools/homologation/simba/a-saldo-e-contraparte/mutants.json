@@ -115,5 +115,18 @@
       "line": 9,
       "field": 9
     }
+  },
+  {
+    "name": "estorno de envio herda o beneficiario do envio",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "(l.natureza == \"D\" and (a or c or f))",
+    "new": "(a or c or f)",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 10,
+      "field": 1
+    }
   }
 ]
