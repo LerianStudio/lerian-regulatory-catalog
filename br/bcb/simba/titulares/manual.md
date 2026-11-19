@@ -84,9 +84,14 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
 
 - Nome, documento, endereco principal (linha 1 e linha 2, CEP, UF, pais), telefones,
   e-mails, nome social e renda: o cadastro do titular no CRM.
-- UF (campo 14): a sigla do endereco principal convertida no codigo IBGE pela tabela de
-  `br/bcb/simba/tabelas/uf-ibge.compute.yaml`.
-- Pais (campo 15): `Brasil` para o codigo `BR` do cadastro.
+- Quem mora no exterior: o pais do endereco principal e um codigo diferente de `BR`. Sem
+  pais no cadastro, a pessoa e tratada como no Brasil.
+- UF (campo 14): para quem mora no Brasil, a sigla do endereco principal convertida no
+  codigo IBGE pela tabela de `br/bcb/simba/tabelas/uf-ibge.compute.yaml`; para quem mora no
+  exterior, `00` (IN :150), mesmo que o cadastro traga uma sigla igual a de uma UF.
+- Pais (campo 15): o nome do pais do codigo ISO 3166-1 alfa-2 do cadastro, pela tabela de
+  paises da Receita (`br/rfb/e-financeira/tabelas/paises.txt`), sem acentos e cortado em 40
+  caracteres; `BR` sai `Brasil`. Sem pais no cadastro, o campo sai em branco.
 - Telefone (campo 17): o celular; sem celular, o outro telefone.
 - Renda (campo 18): da pessoa natural, a renda mensal bruta declarada; da pessoa juridica, o
   faturamento anual bruto declarado, como esta no cadastro, sem dividir por 12 (a IN pede a
@@ -113,9 +118,9 @@ sai em branco:
 - `NOME_DOC_IDENTIFICACAO` e `NUMERO_DOC_IDENTIFICACAO` (campos 10 e 11): sempre em branco. O
   CRM guarda so CPF/CNPJ; nenhuma aplicacao Lerian registra RG, CTPS, passaporte ou o
   documento constitutivo da pessoa juridica.
-- `CODIGO_CIDADE` (campo 13): sempre em branco. O CRM guarda o nome da cidade, sem o codigo
-  IBGE. O codigo `0000000` e so para pessoa domiciliada no exterior e nao e usado no lugar
-  do codigo faltante.
+- `CODIGO_CIDADE` (campo 13): em branco para quem mora no Brasil. O CRM guarda o nome da
+  cidade, sem o codigo IBGE. Para quem mora no exterior sai `0000000`, o codigo que a IN da
+  para esse caso (IN :149); ele nao e usado no lugar do codigo faltante.
 - `DATA_FIM_RELACIONAMENTO_CONTA` (campo 21): em branco enquanto o vinculo esta ativo (conta
   aberta, ou parte sem data de fim). A IN nao da codigo para vinculo ativo.
 - `DISPOSITIVO_MOVEL_CADASTRADO` e `COMPUTADOR_CADASTRADO` (campos 26 e 27): sempre em
@@ -135,9 +140,11 @@ Sem e-mail no cadastro, e sempre nas partes relacionadas, o campo 25 sai
   mesmo `caso` substitui a anterior, entao o caso nao se divide em duas). Nao suportado
   nesta versao; tratar fora do Reporter. Gerar com o periodo mais amplo poria no arquivo
   movimento fora do afastamento.
-- **UF do titular**: titular sem UF no endereco principal, com sigla fora da tabela ou
-  domiciliado no exterior recusa a geracao, tambem o titular de uma conta de contraparte.
-  Corrija o cadastro antes de gerar.
+- **UF e pais do titular**: quem mora no Brasil (pais `BR` ou sem pais) sem UF no endereco
+  principal, ou com sigla fora da tabela, recusa a geracao, porque a IN so da o `00` para
+  quem mora no exterior. Um pais informado que a tabela da Receita nao tem tambem recusa,
+  porque o campo 15 pede o nome. As duas recusas valem tambem para o titular de uma conta de
+  contraparte. Corrija o cadastro antes de gerar.
 - **Titular sem cadastro**: o cadastro do titular vem do CRM pelo documento da ordem e pelo
   `holder_id` da conta. Conta do caso cujo titular nao e encontrado no cadastro (apagado, ou
   com documento diferente do da ordem) fica sem tipo de pessoa, documento e nome, e a geracao

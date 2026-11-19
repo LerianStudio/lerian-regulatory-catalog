@@ -125,7 +125,7 @@ datasets:
       key: [contaId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
-                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, cep: first,
+                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
                 celular: first, outroTelefone: first, renda: first, dataRenda: first, faturamento: first,
                 dataFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
                 emailSecundario: first}
@@ -176,11 +176,23 @@ datasets:
         type: string
         required: false
         pattern: '^[0-9]{2}$'
-        description: Codigo IBGE da UF do endereco principal (campo 14, IN :150).
+        description: >-
+          Codigo IBGE da UF do endereco principal (campo 14, IN :150); "00" quando a sigla falta ou esta fora da tabela.
+          Para quem mora no exterior o template escreve "00" mesmo que a sigla coincida com a de uma UF (a provincia
+          SC de outro pais vem 42 aqui e sai 00 no arquivo); para quem mora no Brasil, a regra uf-do-brasil recusa o 00.
       - name: pais
         type: string
         required: false
-        description: Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda; o template escreve Brasil para BR (campo 15, IN :151).
+        description: >-
+          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda. Diferente de BR, a pessoa mora no exterior:
+          o template escreve "0000000" no campo 13 e "00" no campo 14 (IN :149-150). Ausente, e tratada como no Brasil.
+      - name: nomePais
+        type: string
+        required: true
+        description: >-
+          Nome do pais do endereco principal, da tabela de paises da Receita (campo 15, IN :151); "-" quando o codigo
+          falta ou esta fora da tabela. O template escreve o nome, e nada para "-"; a regra pais-na-tabela recusa o
+          codigo informado que nao tem nome.
       - name: cep
         type: string
         required: false
@@ -305,7 +317,7 @@ datasets:
       key: [contaId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
-                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, cep: first,
+                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
                 celular: first, outroTelefone: first, renda: first, dataRenda: first, faturamento: first,
                 dataFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
                 emailSecundario: first}
@@ -356,11 +368,23 @@ datasets:
         type: string
         required: false
         pattern: '^[0-9]{2}$'
-        description: Codigo IBGE da UF do endereco principal (campo 14, IN :150).
+        description: >-
+          Codigo IBGE da UF do endereco principal (campo 14, IN :150); "00" quando a sigla falta ou esta fora da tabela.
+          Para quem mora no exterior o template escreve "00" mesmo que a sigla coincida com a de uma UF (a provincia
+          SC de outro pais vem 42 aqui e sai 00 no arquivo); para quem mora no Brasil, a regra uf-do-brasil recusa o 00.
       - name: pais
         type: string
         required: false
-        description: Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda; o template escreve Brasil para BR (campo 15, IN :151).
+        description: >-
+          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda. Diferente de BR, a pessoa mora no exterior:
+          o template escreve "0000000" no campo 13 e "00" no campo 14 (IN :149-150). Ausente, e tratada como no Brasil.
+      - name: nomePais
+        type: string
+        required: true
+        description: >-
+          Nome do pais do endereco principal, da tabela de paises da Receita (campo 15, IN :151); "-" quando o codigo
+          falta ou esta fora da tabela. O template escreve o nome, e nada para "-"; a regra pais-na-tabela recusa o
+          codigo informado que nao tem nome.
       - name: cep
         type: string
         required: false
@@ -474,6 +498,49 @@ datasets:
         required: false
         description: Fim do vinculo da parte; ausente, o vinculo esta ativo e o campo sai em branco (campo 21, IN :157).
 
+rules:
+  - id: uf-do-brasil
+    severity: error
+    appliesTo: titulares
+    where: {field: nomePais, in: ["Brasil", "-"]}
+    check:
+      notStartsWith: {field: codigoUf, values: ["0"]}
+    message: >-
+      Quem mora no Brasil (pais BR ou ausente) precisa de uma sigla de UF da tabela no endereco principal: a IN so da
+      o codigo 00 para quem mora no exterior (IN :150). Corrija o cadastro antes de gerar.
+
+  - id: pais-na-tabela
+    severity: error
+    appliesTo: titulares
+    where: {field: nomePais, equals: "-"}
+    check:
+      notStartsWith: {field: pais, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]}
+    message: >-
+      O pais do endereco principal e um codigo que a tabela de paises da Receita nao tem, e o campo 15 pede o nome do
+      pais (IN :151). Corrija o cadastro antes de gerar.
+
+  - id: uf-do-brasil-contraparte
+    severity: error
+    appliesTo: titulares_contraparte
+    where: {field: nomePais, in: ["Brasil", "-"]}
+    check:
+      notStartsWith: {field: codigoUf, values: ["0"]}
+    message: >-
+      Quem mora no Brasil (pais BR ou ausente) precisa de uma sigla de UF da tabela no endereco principal: a IN so da
+      o codigo 00 para quem mora no exterior (IN :150). Corrija o cadastro antes de gerar.
+
+  - id: pais-na-tabela-contraparte
+    severity: error
+    appliesTo: titulares_contraparte
+    where: {field: nomePais, equals: "-"}
+    check:
+      notStartsWith: {field: pais, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]}
+    message: >-
+      O pais do endereco principal e um codigo que a tabela de paises da Receita nao tem, e o campo 15 pede o nome do
+      pais (IN :151). Corrija o cadastro antes de gerar.
+
 knownGaps:
   - id: so-titular
     description: >-
@@ -483,7 +550,8 @@ knownGaps:
     description: >-
       As pessoas das contas de contraparte (CONTAS campo 7 = 3) entram com o campo 6 pela pessoa (IN :142): 1 se o
       documento esta na ordem, 0 se nao. Uma conta de contraparte que tambem e do caso sai uma vez, como conta do caso. Titular de conta de
-      contraparte sem UF, com UF fora da tabela ou no exterior recusa a geracao, como o da conta do caso.
+      contraparte segue as mesmas regras de UF e pais do da conta do caso (uf-do-brasil-contraparte e
+      pais-na-tabela-contraparte).
   - id: excluida-do-crm
     description: >-
       Uma conta apagada do CRM (deleted_at) nao entra. Uma conta encerrada (closing_date) entra, com a data no
@@ -498,12 +566,15 @@ knownGaps:
       computadores cadastrados do cliente. A IN nao da sentinela para esses campos.
   - id: cidade-sem-codigo-ibge
     description: >-
-      Campo 13 (IN :149) sempre em branco: o CRM guarda o nome da cidade, sem o codigo IBGE, e a conversao do nome nao
-      e confiavel. O codigo 0000000 e so para pessoa domiciliada no exterior, e nao e usado no lugar do codigo faltante.
+      Campo 13 (IN :149) em branco para quem mora no Brasil: o CRM guarda o nome da cidade, sem o codigo IBGE, e a
+      conversao do nome nao e confiavel. Para quem mora no exterior (pais diferente de BR) sai 0000000, o codigo que a
+      IN da para esse caso; ele nao e usado no lugar do codigo faltante.
   - id: uf-fora-da-tabela
     description: >-
-      O campo 14 converte a sigla da UF do endereco principal do titular para o codigo IBGE. Titular sem UF, com sigla
-      fora da tabela ou domiciliado no exterior recusa a geracao; corrija o cadastro antes de gerar.
+      O campo 14 converte a sigla da UF do endereco principal do titular para o codigo IBGE. Quem mora no Brasil (pais
+      BR ou ausente) sem UF ou com sigla fora da tabela recusa a geracao (regra uf-do-brasil); corrija o cadastro antes
+      de gerar. Quem mora no exterior sai com 00, e um pais informado fora da tabela da Receita recusa a geracao (regra
+      pais-na-tabela).
   - id: parte-sem-cadastro
     description: >-
       A parte relacionada no CRM tem so documento, nome, papel e datas. Para cotitular, representante e procurador

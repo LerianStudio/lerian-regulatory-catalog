@@ -37,7 +37,16 @@
 # nenhuma aplicacao Lerian registra o contrato de cambio e nao ha fonte para o 1.
 #
 # A UF DO TITULAR (campo 14) converte a sigla do endereco principal no codigo IBGE,
-# com a tabela de br/bcb/simba/tabelas/uf-ibge.compute.yaml.
+# com a tabela de br/bcb/simba/tabelas/uf-ibge.compute.yaml. Sigla ausente ou fora
+# da tabela vira "00": para quem mora no Brasil (pais BR ou ausente), a regra
+# `uf-do-brasil` do contrato recusa a geracao; para quem mora no exterior, o
+# template escreve "00" em qualquer caso (IN :150).
+#
+# O PAIS (campo 15) e o nome do codigo ISO 3166-1 alfa-2 do endereco principal, da
+# tabela de paises da Receita (br/rfb/e-financeira/tabelas/paises.txt, linhas
+# vigentes em 19/11/2026; tools/test_simba.py confere o `case` contra ela). Codigo
+# ausente ou fora da tabela vira "-": informado e fora da tabela, a regra
+# `pais-na-tabela` do contrato recusa a geracao; ausente, o campo sai em branco.
 #
 # Filtro encadeado `{query, column}`: grafia provisoria do motor; se
 # mudar, e `sed` nos bindings.
@@ -148,8 +157,262 @@ queries:
             SE: {constant: "28"}
             SP: {constant: "35"}
             TO: {constant: "17"}
-          otherwise: refuse
-    select: [_id, document, name, tipo_pessoa, codigo_uf, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date]
+          otherwise: {constant: "00"}
+      - as: nome_pais
+        case:
+          column: addresses.primary.country
+          when:
+            "AD": {constant: "Andorra"}
+            "AE": {constant: "Emirados Árabes Unidos"}
+            "AF": {constant: "Afeganistão"}
+            "AG": {constant: "Antígua e Barbuda"}
+            "AI": {constant: "Anguilla"}
+            "AL": {constant: "Albânia"}
+            "AM": {constant: "Armênia"}
+            "AO": {constant: "Angola"}
+            "AQ": {constant: "Antártida"}
+            "AR": {constant: "Argentina"}
+            "AS": {constant: "Samoa Americana"}
+            "AT": {constant: "Áustria"}
+            "AU": {constant: "Austrália"}
+            "AW": {constant: "Aruba"}
+            "AX": {constant: "Ilhas Aland"}
+            "AZ": {constant: "Azerbaijão"}
+            "BA": {constant: "Bósnia-Herzegóvina"}
+            "BB": {constant: "Barbados"}
+            "BD": {constant: "Bangladesh"}
+            "BE": {constant: "Bélgica"}
+            "BF": {constant: "Burkina Fasso"}
+            "BG": {constant: "Bulgária"}
+            "BH": {constant: "Bahrein"}
+            "BI": {constant: "Burundi"}
+            "BJ": {constant: "Benin"}
+            "BL": {constant: "São Bartolomeu"}
+            "BM": {constant: "Bermudas"}
+            "BN": {constant: "Brunei"}
+            "BO": {constant: "Bolívia"}
+            "BQ": {constant: "Bonaire, Sint Eustatius e Saba"}
+            "BR": {constant: "Brasil"}
+            "BS": {constant: "Bahamas"}
+            "BT": {constant: "Butão"}
+            "BV": {constant: "Ilha Bouvet (Território da Noruega)"}
+            "BW": {constant: "Botsuana"}
+            "BY": {constant: "Belarus"}
+            "BZ": {constant: "Belize"}
+            "CA": {constant: "Canadá"}
+            "CC": {constant: "Ilhas Cocos"}
+            "CD": {constant: "República Democrática do Congo (ex-Zaire)"}
+            "CF": {constant: "República Centro-Africana"}
+            "CG": {constant: "Congo"}
+            "CH": {constant: "Suíça"}
+            "CI": {constant: "Costa do Marfim"}
+            "CK": {constant: "Ilhas Cook"}
+            "CL": {constant: "Chile"}
+            "CM": {constant: "Camarões"}
+            "CN": {constant: "China"}
+            "CO": {constant: "Colômbia"}
+            "CR": {constant: "Costa Rica"}
+            "CU": {constant: "Cuba"}
+            "CV": {constant: "Cabo Verde"}
+            "CW": {constant: "Curaçao"}
+            "CX": {constant: "Ilha Natal"}
+            "CY": {constant: "Chipre"}
+            "CZ": {constant: "República Tcheca"}
+            "DE": {constant: "Alemanha"}
+            "DJ": {constant: "Djibuti"}
+            "DK": {constant: "Dinamarca"}
+            "DM": {constant: "Dominica"}
+            "DO": {constant: "República Dominicana"}
+            "DZ": {constant: "Argélia"}
+            "EC": {constant: "Equador"}
+            "EE": {constant: "Estônia"}
+            "EG": {constant: "Egito"}
+            "EH": {constant: "Saara Ocidental (Ex-Spanish Sahara)"}
+            "ER": {constant: "Eritréia"}
+            "ES": {constant: "Espanha"}
+            "ET": {constant: "Etiópia"}
+            "FI": {constant: "Finlândia"}
+            "FJ": {constant: "Fiji"}
+            "FK": {constant: "Ilhas Falkland (Malvinas)"}
+            "FM": {constant: "Micronésia"}
+            "FO": {constant: "Ilhas Faroes"}
+            "FR": {constant: "França"}
+            "GA": {constant: "Gabão"}
+            "GB": {constant: "Grã-Bretanha (Reino Unido, UK)"}
+            "GD": {constant: "Granada"}
+            "GE": {constant: "Geórgia"}
+            "GF": {constant: "Guiana Francesa"}
+            "GG": {constant: "Guernsey"}
+            "GH": {constant: "Gana"}
+            "GI": {constant: "Gibraltar"}
+            "GL": {constant: "Groelândia"}
+            "GM": {constant: "Gâmbia"}
+            "GN": {constant: "Guiné"}
+            "GP": {constant: "Guadalupe"}
+            "GQ": {constant: "Guiné Equatorial"}
+            "GR": {constant: "Grécia"}
+            "GS": {constant: "Ilhas Geórgia do Sul e Sandwich do Sul"}
+            "GT": {constant: "Guatemala"}
+            "GU": {constant: "Guam (Território dos Estados Unidos)"}
+            "GW": {constant: "Guiné-Bissau"}
+            "GY": {constant: "Guiana"}
+            "HK": {constant: "Hong Kong"}
+            "HM": {constant: "Ilhas Heard e McDonald (Território da Austrália)"}
+            "HN": {constant: "Honduras"}
+            "HR": {constant: "Croácia (Hrvatska)"}
+            "HT": {constant: "Haiti"}
+            "HU": {constant: "Hungria"}
+            "ID": {constant: "Indonésia"}
+            "IE": {constant: "Irlanda"}
+            "IL": {constant: "Israel"}
+            "IM": {constant: "Ilha do Homem"}
+            "IN": {constant: "Índia"}
+            "IO": {constant: "Território Britânico do Oceano índico"}
+            "IQ": {constant: "Iraque"}
+            "IR": {constant: "Irã"}
+            "IS": {constant: "Islândia"}
+            "IT": {constant: "Itália"}
+            "JE": {constant: "Jersey"}
+            "JM": {constant: "Jamaica"}
+            "JO": {constant: "Jordânia"}
+            "JP": {constant: "Japão"}
+            "KE": {constant: "Kênia"}
+            "KG": {constant: "Kyrgyzstan"}
+            "KH": {constant: "Camboja"}
+            "KI": {constant: "Kiribati"}
+            "KM": {constant: "Ilhas Comores"}
+            "KN": {constant: "São Cristóvão e Névis"}
+            "KP": {constant: "Coréia do Norte"}
+            "KR": {constant: "Coréia do Sul"}
+            "KW": {constant: "Kuait"}
+            "KY": {constant: "Ilhas Cayman"}
+            "KZ": {constant: "Cazaquistão"}
+            "LA": {constant: "Laos"}
+            "LB": {constant: "Líbano"}
+            "LC": {constant: "Santa Lúcia"}
+            "LI": {constant: "Liechtenstein"}
+            "LK": {constant: "Sri Lanka"}
+            "LR": {constant: "Libéria"}
+            "LS": {constant: "Lesoto"}
+            "LT": {constant: "Lituânia"}
+            "LU": {constant: "Luxemburgo"}
+            "LV": {constant: "Látvia"}
+            "LY": {constant: "Líbia"}
+            "MA": {constant: "Marrocos"}
+            "MC": {constant: "Mônaco"}
+            "MD": {constant: "Moldova"}
+            "ME": {constant: "Montenegro"}
+            "MF": {constant: "São Martim"}
+            "MG": {constant: "Madagascar"}
+            "MH": {constant: "Ilhas Marshall"}
+            "MK": {constant: "Macedônia (República Yugoslava)"}
+            "ML": {constant: "Mali"}
+            "MM": {constant: "Myanma (Ex-Burma)"}
+            "MN": {constant: "Mongólia"}
+            "MO": {constant: "Macau"}
+            "MP": {constant: "Ilhas Marianas do Norte"}
+            "MQ": {constant: "Martinica"}
+            "MR": {constant: "Mauritânia"}
+            "MS": {constant: "Montserrat"}
+            "MT": {constant: "Malta"}
+            "MU": {constant: "Maurício"}
+            "MV": {constant: "Maldivas"}
+            "MW": {constant: "Malaui"}
+            "MX": {constant: "Mexico"}
+            "MY": {constant: "Malásia"}
+            "MZ": {constant: "Moçambique"}
+            "NA": {constant: "Namíbia"}
+            "NC": {constant: "Nova Caledônia"}
+            "NE": {constant: "Níger"}
+            "NF": {constant: "Ilhas Norfolk"}
+            "NG": {constant: "Nigéria"}
+            "NI": {constant: "Nicarágua"}
+            "NL": {constant: "Holanda"}
+            "NO": {constant: "Noruega"}
+            "NP": {constant: "Nepal"}
+            "NR": {constant: "Nauru"}
+            "NU": {constant: "Niue"}
+            "NZ": {constant: "Nova Zelândia"}
+            "OM": {constant: "Omã"}
+            "PA": {constant: "Panamá"}
+            "PE": {constant: "Peru"}
+            "PF": {constant: "Polinésia Francesa"}
+            "PG": {constant: "Papua-Nova Guiné"}
+            "PH": {constant: "Filipinas"}
+            "PK": {constant: "Paquistão"}
+            "PL": {constant: "Polônia"}
+            "PM": {constant: "St. Pierre and Miquelon"}
+            "PN": {constant: "Ilha Pitcairn"}
+            "PR": {constant: "Porto Rico"}
+            "PS": {constant: "Territórios Palestinos Ocupados"}
+            "PT": {constant: "Portugal"}
+            "PW": {constant: "Palau"}
+            "PY": {constant: "Paraguai"}
+            "QA": {constant: "Qatar"}
+            "RE": {constant: "Ilha Reunião"}
+            "RO": {constant: "Romênia"}
+            "RS": {constant: "Sérvia"}
+            "RU": {constant: "Federação Russa"}
+            "RW": {constant: "Ruanda"}
+            "SA": {constant: "Arábia Saudita"}
+            "SB": {constant: "Ilhas Solomão"}
+            "SC": {constant: "Ilhas Seychelles"}
+            "SD": {constant: "Sudão"}
+            "SE": {constant: "Suécia"}
+            "SG": {constant: "Cingapura"}
+            "SH": {constant: "Santa Helena"}
+            "SI": {constant: "Eslovênia"}
+            "SJ": {constant: "Ilhas Svalbard e Jan Mayen"}
+            "SK": {constant: "Eslováquia"}
+            "SL": {constant: "Serra Leoa"}
+            "SM": {constant: "San Marino"}
+            "SN": {constant: "Senegal"}
+            "SO": {constant: "Somália"}
+            "SR": {constant: "Suriname"}
+            "SS": {constant: "Sudão do Sul"}
+            "ST": {constant: "São Tomé e Príncipe"}
+            "SV": {constant: "El Salvador"}
+            "SX": {constant: "São Martinho (Parte Holandesa)"}
+            "SY": {constant: "Síria"}
+            "SZ": {constant: "Suazilândia"}
+            "TC": {constant: "Ilhas Turks e Caicos"}
+            "TD": {constant: "Chade"}
+            "TF": {constant: "Territórios do Sul da França"}
+            "TG": {constant: "Togo"}
+            "TH": {constant: "Tailândia"}
+            "TJ": {constant: "Tadjiquistão"}
+            "TK": {constant: "Ilhas Tokelau"}
+            "TL": {constant: "Timor Leste (Ex-East Timor)"}
+            "TM": {constant: "Turcomenistão"}
+            "TN": {constant: "Tunísia"}
+            "TO": {constant: "Tonga"}
+            "TR": {constant: "Turquia"}
+            "TT": {constant: "Trinidad and Tobago"}
+            "TV": {constant: "Tuvalu"}
+            "TW": {constant: "Taiwan - Província da China"}
+            "TZ": {constant: "Tanzânia"}
+            "UA": {constant: "Ucrânia"}
+            "UG": {constant: "Uganda"}
+            "UM": {constant: "Ilhas Menores dos Estados Unidos"}
+            "US": {constant: "Estados Unidos"}
+            "UY": {constant: "Uruguai"}
+            "UZ": {constant: "Uzbequistão"}
+            "VA": {constant: "Vaticano"}
+            "VC": {constant: "Saint Vincente e Granadinas"}
+            "VE": {constant: "Venezuela"}
+            "VG": {constant: "Ilhas Virgens (Inglaterra)"}
+            "VI": {constant: "Ilhas Virgens (Estados Unidos)"}
+            "VN": {constant: "Vietnam"}
+            "VU": {constant: "Vanuatu"}
+            "WF": {constant: "Ilhas Wallis e Futuna"}
+            "WS": {constant: "Samoa Ocidental"}
+            "YE": {constant: "Iêmen"}
+            "YT": {constant: "Mayotte"}
+            "ZA": {constant: "África do Sul"}
+            "ZM": {constant: "Zâmbia"}
+            "ZW": {constant: "Zimbábue"}
+          otherwise: {constant: "-"}
+    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date]
 
   # Uma linha por parte relacionada de cada conta do caso.
   - name: partes_dados
@@ -323,8 +586,262 @@ queries:
             SE: {constant: "28"}
             SP: {constant: "35"}
             TO: {constant: "17"}
-          otherwise: refuse
-    select: [_id, document, name, tipo_pessoa, codigo_uf, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date]
+          otherwise: {constant: "00"}
+      - as: nome_pais
+        case:
+          column: addresses.primary.country
+          when:
+            "AD": {constant: "Andorra"}
+            "AE": {constant: "Emirados Árabes Unidos"}
+            "AF": {constant: "Afeganistão"}
+            "AG": {constant: "Antígua e Barbuda"}
+            "AI": {constant: "Anguilla"}
+            "AL": {constant: "Albânia"}
+            "AM": {constant: "Armênia"}
+            "AO": {constant: "Angola"}
+            "AQ": {constant: "Antártida"}
+            "AR": {constant: "Argentina"}
+            "AS": {constant: "Samoa Americana"}
+            "AT": {constant: "Áustria"}
+            "AU": {constant: "Austrália"}
+            "AW": {constant: "Aruba"}
+            "AX": {constant: "Ilhas Aland"}
+            "AZ": {constant: "Azerbaijão"}
+            "BA": {constant: "Bósnia-Herzegóvina"}
+            "BB": {constant: "Barbados"}
+            "BD": {constant: "Bangladesh"}
+            "BE": {constant: "Bélgica"}
+            "BF": {constant: "Burkina Fasso"}
+            "BG": {constant: "Bulgária"}
+            "BH": {constant: "Bahrein"}
+            "BI": {constant: "Burundi"}
+            "BJ": {constant: "Benin"}
+            "BL": {constant: "São Bartolomeu"}
+            "BM": {constant: "Bermudas"}
+            "BN": {constant: "Brunei"}
+            "BO": {constant: "Bolívia"}
+            "BQ": {constant: "Bonaire, Sint Eustatius e Saba"}
+            "BR": {constant: "Brasil"}
+            "BS": {constant: "Bahamas"}
+            "BT": {constant: "Butão"}
+            "BV": {constant: "Ilha Bouvet (Território da Noruega)"}
+            "BW": {constant: "Botsuana"}
+            "BY": {constant: "Belarus"}
+            "BZ": {constant: "Belize"}
+            "CA": {constant: "Canadá"}
+            "CC": {constant: "Ilhas Cocos"}
+            "CD": {constant: "República Democrática do Congo (ex-Zaire)"}
+            "CF": {constant: "República Centro-Africana"}
+            "CG": {constant: "Congo"}
+            "CH": {constant: "Suíça"}
+            "CI": {constant: "Costa do Marfim"}
+            "CK": {constant: "Ilhas Cook"}
+            "CL": {constant: "Chile"}
+            "CM": {constant: "Camarões"}
+            "CN": {constant: "China"}
+            "CO": {constant: "Colômbia"}
+            "CR": {constant: "Costa Rica"}
+            "CU": {constant: "Cuba"}
+            "CV": {constant: "Cabo Verde"}
+            "CW": {constant: "Curaçao"}
+            "CX": {constant: "Ilha Natal"}
+            "CY": {constant: "Chipre"}
+            "CZ": {constant: "República Tcheca"}
+            "DE": {constant: "Alemanha"}
+            "DJ": {constant: "Djibuti"}
+            "DK": {constant: "Dinamarca"}
+            "DM": {constant: "Dominica"}
+            "DO": {constant: "República Dominicana"}
+            "DZ": {constant: "Argélia"}
+            "EC": {constant: "Equador"}
+            "EE": {constant: "Estônia"}
+            "EG": {constant: "Egito"}
+            "EH": {constant: "Saara Ocidental (Ex-Spanish Sahara)"}
+            "ER": {constant: "Eritréia"}
+            "ES": {constant: "Espanha"}
+            "ET": {constant: "Etiópia"}
+            "FI": {constant: "Finlândia"}
+            "FJ": {constant: "Fiji"}
+            "FK": {constant: "Ilhas Falkland (Malvinas)"}
+            "FM": {constant: "Micronésia"}
+            "FO": {constant: "Ilhas Faroes"}
+            "FR": {constant: "França"}
+            "GA": {constant: "Gabão"}
+            "GB": {constant: "Grã-Bretanha (Reino Unido, UK)"}
+            "GD": {constant: "Granada"}
+            "GE": {constant: "Geórgia"}
+            "GF": {constant: "Guiana Francesa"}
+            "GG": {constant: "Guernsey"}
+            "GH": {constant: "Gana"}
+            "GI": {constant: "Gibraltar"}
+            "GL": {constant: "Groelândia"}
+            "GM": {constant: "Gâmbia"}
+            "GN": {constant: "Guiné"}
+            "GP": {constant: "Guadalupe"}
+            "GQ": {constant: "Guiné Equatorial"}
+            "GR": {constant: "Grécia"}
+            "GS": {constant: "Ilhas Geórgia do Sul e Sandwich do Sul"}
+            "GT": {constant: "Guatemala"}
+            "GU": {constant: "Guam (Território dos Estados Unidos)"}
+            "GW": {constant: "Guiné-Bissau"}
+            "GY": {constant: "Guiana"}
+            "HK": {constant: "Hong Kong"}
+            "HM": {constant: "Ilhas Heard e McDonald (Território da Austrália)"}
+            "HN": {constant: "Honduras"}
+            "HR": {constant: "Croácia (Hrvatska)"}
+            "HT": {constant: "Haiti"}
+            "HU": {constant: "Hungria"}
+            "ID": {constant: "Indonésia"}
+            "IE": {constant: "Irlanda"}
+            "IL": {constant: "Israel"}
+            "IM": {constant: "Ilha do Homem"}
+            "IN": {constant: "Índia"}
+            "IO": {constant: "Território Britânico do Oceano índico"}
+            "IQ": {constant: "Iraque"}
+            "IR": {constant: "Irã"}
+            "IS": {constant: "Islândia"}
+            "IT": {constant: "Itália"}
+            "JE": {constant: "Jersey"}
+            "JM": {constant: "Jamaica"}
+            "JO": {constant: "Jordânia"}
+            "JP": {constant: "Japão"}
+            "KE": {constant: "Kênia"}
+            "KG": {constant: "Kyrgyzstan"}
+            "KH": {constant: "Camboja"}
+            "KI": {constant: "Kiribati"}
+            "KM": {constant: "Ilhas Comores"}
+            "KN": {constant: "São Cristóvão e Névis"}
+            "KP": {constant: "Coréia do Norte"}
+            "KR": {constant: "Coréia do Sul"}
+            "KW": {constant: "Kuait"}
+            "KY": {constant: "Ilhas Cayman"}
+            "KZ": {constant: "Cazaquistão"}
+            "LA": {constant: "Laos"}
+            "LB": {constant: "Líbano"}
+            "LC": {constant: "Santa Lúcia"}
+            "LI": {constant: "Liechtenstein"}
+            "LK": {constant: "Sri Lanka"}
+            "LR": {constant: "Libéria"}
+            "LS": {constant: "Lesoto"}
+            "LT": {constant: "Lituânia"}
+            "LU": {constant: "Luxemburgo"}
+            "LV": {constant: "Látvia"}
+            "LY": {constant: "Líbia"}
+            "MA": {constant: "Marrocos"}
+            "MC": {constant: "Mônaco"}
+            "MD": {constant: "Moldova"}
+            "ME": {constant: "Montenegro"}
+            "MF": {constant: "São Martim"}
+            "MG": {constant: "Madagascar"}
+            "MH": {constant: "Ilhas Marshall"}
+            "MK": {constant: "Macedônia (República Yugoslava)"}
+            "ML": {constant: "Mali"}
+            "MM": {constant: "Myanma (Ex-Burma)"}
+            "MN": {constant: "Mongólia"}
+            "MO": {constant: "Macau"}
+            "MP": {constant: "Ilhas Marianas do Norte"}
+            "MQ": {constant: "Martinica"}
+            "MR": {constant: "Mauritânia"}
+            "MS": {constant: "Montserrat"}
+            "MT": {constant: "Malta"}
+            "MU": {constant: "Maurício"}
+            "MV": {constant: "Maldivas"}
+            "MW": {constant: "Malaui"}
+            "MX": {constant: "Mexico"}
+            "MY": {constant: "Malásia"}
+            "MZ": {constant: "Moçambique"}
+            "NA": {constant: "Namíbia"}
+            "NC": {constant: "Nova Caledônia"}
+            "NE": {constant: "Níger"}
+            "NF": {constant: "Ilhas Norfolk"}
+            "NG": {constant: "Nigéria"}
+            "NI": {constant: "Nicarágua"}
+            "NL": {constant: "Holanda"}
+            "NO": {constant: "Noruega"}
+            "NP": {constant: "Nepal"}
+            "NR": {constant: "Nauru"}
+            "NU": {constant: "Niue"}
+            "NZ": {constant: "Nova Zelândia"}
+            "OM": {constant: "Omã"}
+            "PA": {constant: "Panamá"}
+            "PE": {constant: "Peru"}
+            "PF": {constant: "Polinésia Francesa"}
+            "PG": {constant: "Papua-Nova Guiné"}
+            "PH": {constant: "Filipinas"}
+            "PK": {constant: "Paquistão"}
+            "PL": {constant: "Polônia"}
+            "PM": {constant: "St. Pierre and Miquelon"}
+            "PN": {constant: "Ilha Pitcairn"}
+            "PR": {constant: "Porto Rico"}
+            "PS": {constant: "Territórios Palestinos Ocupados"}
+            "PT": {constant: "Portugal"}
+            "PW": {constant: "Palau"}
+            "PY": {constant: "Paraguai"}
+            "QA": {constant: "Qatar"}
+            "RE": {constant: "Ilha Reunião"}
+            "RO": {constant: "Romênia"}
+            "RS": {constant: "Sérvia"}
+            "RU": {constant: "Federação Russa"}
+            "RW": {constant: "Ruanda"}
+            "SA": {constant: "Arábia Saudita"}
+            "SB": {constant: "Ilhas Solomão"}
+            "SC": {constant: "Ilhas Seychelles"}
+            "SD": {constant: "Sudão"}
+            "SE": {constant: "Suécia"}
+            "SG": {constant: "Cingapura"}
+            "SH": {constant: "Santa Helena"}
+            "SI": {constant: "Eslovênia"}
+            "SJ": {constant: "Ilhas Svalbard e Jan Mayen"}
+            "SK": {constant: "Eslováquia"}
+            "SL": {constant: "Serra Leoa"}
+            "SM": {constant: "San Marino"}
+            "SN": {constant: "Senegal"}
+            "SO": {constant: "Somália"}
+            "SR": {constant: "Suriname"}
+            "SS": {constant: "Sudão do Sul"}
+            "ST": {constant: "São Tomé e Príncipe"}
+            "SV": {constant: "El Salvador"}
+            "SX": {constant: "São Martinho (Parte Holandesa)"}
+            "SY": {constant: "Síria"}
+            "SZ": {constant: "Suazilândia"}
+            "TC": {constant: "Ilhas Turks e Caicos"}
+            "TD": {constant: "Chade"}
+            "TF": {constant: "Territórios do Sul da França"}
+            "TG": {constant: "Togo"}
+            "TH": {constant: "Tailândia"}
+            "TJ": {constant: "Tadjiquistão"}
+            "TK": {constant: "Ilhas Tokelau"}
+            "TL": {constant: "Timor Leste (Ex-East Timor)"}
+            "TM": {constant: "Turcomenistão"}
+            "TN": {constant: "Tunísia"}
+            "TO": {constant: "Tonga"}
+            "TR": {constant: "Turquia"}
+            "TT": {constant: "Trinidad and Tobago"}
+            "TV": {constant: "Tuvalu"}
+            "TW": {constant: "Taiwan - Província da China"}
+            "TZ": {constant: "Tanzânia"}
+            "UA": {constant: "Ucrânia"}
+            "UG": {constant: "Uganda"}
+            "UM": {constant: "Ilhas Menores dos Estados Unidos"}
+            "US": {constant: "Estados Unidos"}
+            "UY": {constant: "Uruguai"}
+            "UZ": {constant: "Uzbequistão"}
+            "VA": {constant: "Vaticano"}
+            "VC": {constant: "Saint Vincente e Granadinas"}
+            "VE": {constant: "Venezuela"}
+            "VG": {constant: "Ilhas Virgens (Inglaterra)"}
+            "VI": {constant: "Ilhas Virgens (Estados Unidos)"}
+            "VN": {constant: "Vietnam"}
+            "VU": {constant: "Vanuatu"}
+            "WF": {constant: "Ilhas Wallis e Futuna"}
+            "WS": {constant: "Samoa Ocidental"}
+            "YE": {constant: "Iêmen"}
+            "YT": {constant: "Mayotte"}
+            "ZA": {constant: "África do Sul"}
+            "ZM": {constant: "Zâmbia"}
+            "ZW": {constant: "Zimbábue"}
+          otherwise: {constant: "-"}
+    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date]
 
   # Uma linha por parte relacionada de cada conta de contraparte.
   - name: partes_contraparte_dados
@@ -400,6 +917,7 @@ datasets:
       complemento: {from: query, column: addresses.primary.line_2}
       codigoUf: {from: query, column: codigo_uf}
       pais: {from: query, column: addresses.primary.country}
+      nomePais: {from: query, column: nome_pais}
       cep: {from: query, column: addresses.primary.zip_code}
       celular: {from: query, column: contact.mobile_phone}
       outroTelefone: {from: query, column: contact.other_phone}
@@ -443,6 +961,7 @@ datasets:
       complemento: {from: query, column: addresses.primary.line_2}
       codigoUf: {from: query, column: codigo_uf}
       pais: {from: query, column: addresses.primary.country}
+      nomePais: {from: query, column: nome_pais}
       cep: {from: query, column: addresses.primary.zip_code}
       celular: {from: query, column: contact.mobile_phone}
       outroTelefone: {from: query, column: contact.other_phone}
