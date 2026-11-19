@@ -353,19 +353,21 @@ queries:
       - {field: flow, operator: eq, values: ["2"]}
       - {field: is_refund, operator: eq, values: ["false"]}
       - {field: deleted_at, operator: isNull}
-    # O tipo de conta da contraparte e o tpConta da JDPI (0 a 4, codigo do fornecedor), gravado
-    # so no Pix entre contas da propria instituicao; nao vira codigo da IN. "JDPI" quando ha
-    # tipo, "-" quando nao ha: o template deixa o campo 8 em branco com o motivo.
+    # O tipo de conta da contraparte e o tpConta da JDPI, gravado so no Pix entre contas da
+    # propria instituicao (fora dele, NULL). O dominio do fornecedor (JDPI ListaAPIs 5.5.0) tem
+    # as descricoes do dominio do SPI: 0 conta corrente de cliente vira 1 e 2 conta poupanca
+    # vira 2 (IN :209); 1 conta salario, 3 conta de pagamento e 4 conta PI ficam com o codigo
+    # SPI equivalente (SLRY, TRAN, OTHR), e o template deixa o campo 8 em branco com o motivo.
     compute:
       - as: tipo_conta_od
         case:
           column: payee_account_type
           when:
-            "0": {constant: "JDPI"}
-            "1": {constant: "JDPI"}
-            "2": {constant: "JDPI"}
-            "3": {constant: "JDPI"}
-            "4": {constant: "JDPI"}
+            "0": {constant: "1"}
+            "1": {constant: "SLRY"}
+            "2": {constant: "2"}
+            "3": {constant: "TRAN"}
+            "4": {constant: "OTHR"}
           otherwise: {constant: "-"}
     select: [id, end_to_end_id, payee_bank_id, payee_branch, payee_account_number, payee_account_digit, tipo_conta_od, payee_document, payee_name, description, conciliation_id]
 
@@ -378,19 +380,21 @@ queries:
       - {field: flow, operator: eq, values: ["1"]}
       - {field: is_refund, operator: eq, values: ["false"]}
       - {field: deleted_at, operator: isNull}
-    # O tipo de conta da contraparte e o tpConta da JDPI (0 a 4, codigo do fornecedor), gravado
-    # so no Pix entre contas da propria instituicao; nao vira codigo da IN. "JDPI" quando ha
-    # tipo, "-" quando nao ha: o template deixa o campo 8 em branco com o motivo.
+    # O tipo de conta da contraparte e o tpConta da JDPI, gravado so no Pix entre contas da
+    # propria instituicao (fora dele, NULL). O dominio do fornecedor (JDPI ListaAPIs 5.5.0) tem
+    # as descricoes do dominio do SPI: 0 conta corrente de cliente vira 1 e 2 conta poupanca
+    # vira 2 (IN :209); 1 conta salario, 3 conta de pagamento e 4 conta PI ficam com o codigo
+    # SPI equivalente (SLRY, TRAN, OTHR), e o template deixa o campo 8 em branco com o motivo.
     compute:
       - as: tipo_conta_od
         case:
           column: payer_account_type
           when:
-            "0": {constant: "JDPI"}
-            "1": {constant: "JDPI"}
-            "2": {constant: "JDPI"}
-            "3": {constant: "JDPI"}
-            "4": {constant: "JDPI"}
+            "0": {constant: "1"}
+            "1": {constant: "SLRY"}
+            "2": {constant: "2"}
+            "3": {constant: "TRAN"}
+            "4": {constant: "OTHR"}
           otherwise: {constant: "-"}
     select: [id, end_to_end_id, payer_bank_id, payer_branch, payer_account_number, payer_account_digit, tipo_conta_od, payer_document, payer_name, description, conciliation_id]
 
@@ -403,7 +407,27 @@ queries:
     filters:
       - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
       - {field: type, operator: eq, values: ["TED_OUT"]}
-    select: [id, recipient_details.ispb, recipient_details.branch, recipient_details.account, recipient_details.holderName]
+    # O tipo de conta do recebedor, em claro em recipient_details (so o documento e cifrado),
+    # com o mesmo mapa da TED recebida.
+    compute:
+      - as: tipo_conta_recebedor
+        case:
+          column: recipient_details.accountType
+          when:
+            CACC: {constant: "1"}
+            SVGS: {constant: "2"}
+            PP: {constant: "2"}
+            CI: {constant: "3"}
+            CPAY: {constant: "CPAY"}
+            PG: {constant: "CPAY"}
+            PAYMENT: {constant: "CPAY"}
+            TRAN: {constant: "CPAY"}
+            "4": {constant: "CPAY"}
+            CD: {constant: "CD"}
+            CG: {constant: "CG"}
+            SLRY: {constant: "SLRY"}
+          otherwise: {constant: "-"}
+    select: [id, recipient_details.ispb, recipient_details.branch, recipient_details.account, recipient_details.accountType, tipo_conta_recebedor, recipient_details.holderName]
 
   - name: ted_recebidas
     description: TEDs recebidas pelo plugin de TED; da contraparte, so o ISPB do pagador.
@@ -412,22 +436,30 @@ queries:
     filters:
       - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
       - {field: type, operator: eq, values: ["TED_IN"]}
-    # O tipo de conta do pagador (TpCtDebtd do STR, gravado em claro pelo plugin) no codigo
-    # do campo 8 (IN :209), so onde o nome do dominio TpCt e o da IN casam: CC conta
-    # corrente (depositos a vista), PP poupanca, CI conta de investimento. PG, CD e CG
-    # sao do dominio e nao tem codigo literal na IN: ficam com o proprio codigo, e o
+    # O tipo de conta do pagador, como o plugin o grava (em claro): o TpCtDebtd do STR,
+    # normalizado (CC vira CACC, PG vira CPAY, CP vira SVGS, CS vira SLRY; o resto fica
+    # como veio). Vira o codigo do campo 8 (IN :209) so onde o nome do dominio e o da IN
+    # casam: CACC conta corrente de cliente, SVGS e PP poupanca, CI investimento. A conta
+    # de pagamento (CPAY e as grafias que o plugin aceita para ela) e a de deposito (CD)
+    # podem ter mais de um codigo; CG e SLRY nao tem: ficam com o proprio codigo, e o
     # template deixa o campo 8 em branco com o motivo. Qualquer outro valor vira "-".
     compute:
       - as: tipo_conta_pagador
         case:
           column: sender_account_type
           when:
-            CC: {constant: "1"}
+            CACC: {constant: "1"}
+            SVGS: {constant: "2"}
             PP: {constant: "2"}
             CI: {constant: "3"}
-            PG: {constant: "PG"}
+            CPAY: {constant: "CPAY"}
+            PG: {constant: "CPAY"}
+            PAYMENT: {constant: "CPAY"}
+            TRAN: {constant: "CPAY"}
+            "4": {constant: "CPAY"}
             CD: {constant: "CD"}
             CG: {constant: "CG"}
+            SLRY: {constant: "SLRY"}
           otherwise: {constant: "-"}
     select: [id, sender_ispb, sender_account_type, tipo_conta_pagador]
 
@@ -579,6 +611,8 @@ datasets:
       ispb: {from: query, column: recipient_details.ispb}
       agencia: {from: query, column: recipient_details.branch}
       conta: {from: query, column: recipient_details.account}
+      tipoConta: {from: query, column: tipo_conta_recebedor}
+      tipoContaInformado: {from: query, column: recipient_details.accountType}
       nome: {from: query, column: recipient_details.holderName}
 
   trilho_ted_recebidas:

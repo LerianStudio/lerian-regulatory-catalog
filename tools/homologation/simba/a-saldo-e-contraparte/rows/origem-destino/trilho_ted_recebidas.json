@@ -9,7 +9,7 @@
     "referencia": "A12",
     "ispb": "",
     "tipoConta": "1",
-    "tipoContaInformado": "CC"
+    "tipoContaInformado": "CACC"
   },
   {
     "referencia": "A13",
@@ -20,12 +20,12 @@
     "referencia": "A14",
     "ispb": "",
     "tipoConta": "-",
-    "tipoContaInformado": "cc"
+    "tipoContaInformado": "XY"
   },
   {
     "referencia": "A15",
     "ispb": "",
-    "tipoConta": "PG",
-    "tipoContaInformado": "PG"
+    "tipoConta": "CPAY",
+    "tipoContaInformado": "CPAY"
   }
 ]
