@@ -18,5 +18,14 @@
     "saldoInicial": "0.00",
     "saldoFinal": "30.00",
     "volumePeriodo": "20.00"
+  },
+  {
+    "contaId": "c3",
+    "numeroAgencia": "00001",
+    "numeroConta": "2222224",
+    "tipoConta": "6",
+    "dataAbertura": "2024-01-02",
+    "saldoInicial": "15.00",
+    "saldoFinal": "15.00"
   }
 ]
