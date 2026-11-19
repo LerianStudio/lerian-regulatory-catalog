@@ -639,14 +639,14 @@ datasets:
         description: Nome da contraparte (campo 11, IN :212). O template o corta em 80 posicoes.
       - name: tipoContaInformado
         type: string
-        required: false
+        required: true
         description: >-
           Tipo de conta do recebedor como o plugin o grava (em claro): CACC, SVGS, SLRY ou uma grafia de conta de
-          pagamento (CPAY, PG, PAYMENT, TRAN, 4), os que a API do plugin aceita; ausente na devolucao de uma TED recebida,
-          que o plugin grava so com o banco. O template o traduz no campo 8 (IN :209): CACC 1, SVGS 2; conta de pagamento
-          e SLRY saem em branco, com o motivo no campo 18; na devolucao, o campo 18 diz que agencia, conta, nome e tipo
-          nao foram gravados. O motor nao aceita `case` sobre o subcaminho JSONB, por isso a traducao fica no
-          template.
+          pagamento (CPAY, PG, PAYMENT, TRAN, 4), os que a API do plugin aceita. O template o traduz no campo 8 (IN
+          :209): CACC 1, SVGS 2; conta de pagamento e SLRY saem em branco, com o motivo no campo 18, e outro valor
+          tambem, com o motivo de fora do dominio. Obrigatorio: toda TED enviada que o plugin grava o tem (a devolucao
+          de uma TED recebida, gravada sem ele, sai pelo revert do Midaz, ver devolucao-e-estorno). O motor nao aceita
+          `case` sobre o subcaminho JSONB, por isso a traducao fica no template.
 
   - name: trilho_ted_recebidas
     description: O banco do pagador das TEDs recebidas (os demais dados, cifrados no plugin, ficam fora).
@@ -692,8 +692,8 @@ knownGaps:
       11) em branco, com o motivo no campo 18 (OBSERVACAO), e nao o 00001, que diz que nao ha agencia fisica (IN
       :207). O tipo de conta (campo 8, IN :209), como o plugin o grava, sai so para CACC (1), SVGS (2) e, na TED
       recebida, PP (2) e CI (3); a conta de pagamento e, na recebida, a CD (mais de um codigo possivel na IN), a CG e
-      a SLRY, o tipo ausente (na enviada, a devolucao de uma TED recebida) e o fora do dominio saem em branco, com o
-      motivo no campo 18. No Pix lerian, CACC 1 e SVGS 2 (dominio do SPI); no Pix
+      a SLRY, o tipo ausente (so na recebida; na enviada o tipo e obrigatorio) e o fora do dominio saem em branco,
+      com o motivo no campo 18. No Pix lerian, CACC 1 e SVGS 2 (dominio do SPI); no Pix
       JD, tpConta 0 e 2 (descritos pelo fornecedor como os do SPI) saem 1 e 2. TRAN, SLRY, OTHR, ausente e fora do
       dominio saem em branco com motivo; no Pix JD o tipo so existe no Pix entre contas da propria instituicao.
   - id: devolucao-e-estorno
