@@ -16,14 +16,20 @@ ERRO (corrigir ou gerar de novo antes de aprovar):
     com outro valor (um lançamento gravado entre as duas gerações desloca a
     numeração: gere os dois de novo);
   * conta do EXTRATO ou do TITULARES que não está no CONTAS; agência do CONTAS que
-    não está no AGENCIAS.
+    não está no AGENCIAS;
+  * arquivo que falta, ou EXTRATO e ORIGEM-DESTINO sem linha nenhuma, quando alguma
+    conta do CONTAS teve lançamento no período (campo 7 = 1).
 
 AVISO (listado para o aprovador, não bloqueia):
   * documento da ordem sem nenhuma conta nos arquivos (`--documentos`): o Reporter não
     confere o CPF/CNPJ de cada documento, então um documento digitado errado só não
-    acha conta, e o caso sai como resposta negativa para ele. O aviso diz a posição do
-    documento na lista, nunca o documento;
-  * CONTAS sem conta nenhuma: confira os documentos da ordem;
+    acha conta, e ele seria declarado sem relacionamento no atendimento da requisição.
+    O aviso diz a posição do documento na lista, nunca o documento;
+  * CONTAS sem conta nenhuma (o Reporter já recusa a geração sem conta; o aviso fica
+    para arquivos montados fora dele): confira os documentos da ordem;
+  * EXTRATO ou ORIGEM-DESTINO ausente quando nenhuma conta do CONTAS teve lançamento
+    no período: o arquivo certo é o vazio (0 byte) que o Reporter gera, e ele não
+    chegou;
   * último saldo do EXTRATO diferente do saldo final do CONTAS (lançamento
     retroativo, ou outra chave de saldo). Com as linhas dos rascunhos, o último é o
     de maior instante (`horaLancamento`), e o saldo é o do campo 12 (disponível +
@@ -111,6 +117,10 @@ CONTAS_SETS = ("contas_investigadas", "contas_contraparte")
 CONTAS_DOCUMENT = "br.bcb.simba.contas"
 EXTRATO_DOCUMENT = "br.bcb.simba.extrato"
 EXTRATO_ENTRIES = "lancamentos"
+# Os arquivos que só têm linha quando alguma conta do caso teve lançamento no período.
+MOVEMENT_FILES = ("EXTRATO", "ORIGEM_DESTINO")
+# CONTAS campo 7 (IN :126): "1" conta investigada com movimento no período.
+MOVED = "1"
 # A chave de saldo em que o Midaz grava a parte de um saque tirada do cheque especial.
 OVERDRAFT_KEY = "overdraft"
 # As operações do EXTRATO que são perna de tarifa (marca feeLeg do Midaz).
@@ -160,6 +170,28 @@ def read_lines(path: Path, name: str, report: Report) -> list[list[str]]:
 
 def field(row: list[str], number: int) -> str:
     return row[number - 1] if len(row) >= number else ""
+
+
+def check_movement_files(files: dict[str, list[list[str]]], missing: dict[str, Path], folder: Path,
+                         report: Report) -> None:
+    """Os arquivos que faltam, e o EXTRATO e o ORIGEM-DESTINO sem linha, contra o movimento do CONTAS.
+
+    Conta do caso sem lançamento no período sai no CONTAS com o campo 7 = 2 e não tem linha no
+    EXTRATO nem no ORIGEM-DESTINO; se nenhuma conta do caso teve lançamento, os dois saem vazios
+    (0 byte). Vazio, nesse caso, é o certo; ausente, falta entregar o arquivo vazio. Com alguma
+    conta de campo 7 = 1, os dois têm de ter linha.
+    """
+    moved = [f"{field(r, 3)} da agência {field(r, 2)}" for r in files["CONTAS"] if field(r, 7) == MOVED]
+    for name, path in missing.items():
+        if name in MOVEMENT_FILES and files["CONTAS"] and not moved:
+            report.warn(f"{path.name}: não encontrado; nenhuma conta do CONTAS teve lançamento no período (campo 7), "
+                        "então o arquivo sai vazio: entregue o arquivo vazio que o Reporter gera")
+        else:
+            report.error(f"{path.name}: não encontrado em {folder}")
+    for name in MOVEMENT_FILES:
+        if moved and not files[name] and name not in missing:
+            report.error(f"{name}: sem linha nenhuma, e o CONTAS diz que a conta {moved[0]} teve lançamento no "
+                         "período (campo 7 = 1)")
 
 
 def check_numbering(extrato: list[list[str]], od: list[list[str]], report: Report) -> None:
@@ -309,8 +341,8 @@ def check_case_documents(path: Path | None, titulares: list[list[str]], report: 
     missing = [str(i) for i, document in enumerate(documents, 1) if _digits(document) not in holders]
     if missing:
         report.warn(f"TITULARES: o(s) documento(s) nº {', '.join(missing)} da ordem (posição em --documentos) não "
-                    "titula(m) conta nenhuma nos arquivos; confira se foi digitado certo antes de aprovar uma "
-                    "resposta negativa")
+                    "titula(m) conta nenhuma nos arquivos; confira se foi digitado certo antes de declará-lo(s) sem "
+                    "relacionamento no atendimento da requisição")
 
 
 def _digits(text: str) -> str:
@@ -496,13 +528,15 @@ def conferir(folder: Path, caso: str, drafts_folder: Path | None = None, previou
              justifications: Path | None = None, documents: Path | None = None) -> Report:
     report = Report()
     files: dict[str, list[list[str]]] = {}
+    missing: dict[str, Path] = {}
     for name in FILES:
         path = _file(folder, caso, name)
         if not path.is_file():
-            report.error(f"{path.name}: não encontrado em {folder}")
+            missing[name] = path
             files[name] = []
             continue
         files[name] = read_lines(path, name, report)
+    check_movement_files(files, missing, folder, report)
 
     drafts = read_rows(drafts_folder, "Draft", "--rascunhos", report)
     if not files["CONTAS"]:

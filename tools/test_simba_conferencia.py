@@ -157,6 +157,38 @@ class Conferencia(unittest.TestCase):
         self.assertEqual([], report.errors)
         self.assertEqual([], report.warnings)
 
+    # ------------------------------------------------------------ caso sem movimento
+    def idle_case(self) -> dict[str, list[list[str]]]:
+        files = case()
+        files["CONTAS"] = [conta("0001", "123456", "2", "4000", "4000"), conta("0001", "654321", "2", "500", "500")]
+        files["EXTRATO"], files["ORIGEM_DESTINO"] = [], []
+        return files
+
+    def test_sem_movimento_extrato_e_od_vazios_passam(self) -> None:
+        report = self.run_case(files=self.idle_case(), drafts=[rows(), extrato_rows()])
+        self.assertEqual([], report.errors)
+        self.assertEqual([], report.warnings)
+
+    def test_sem_movimento_extrato_e_od_ausentes_e_aviso_para_entregar_o_vazio(self) -> None:
+        files = self.idle_case()
+        del files["EXTRATO"], files["ORIGEM_DESTINO"]
+        report = self.run_case(files=files, drafts=[rows()])
+        self.assertEqual([], report.errors)
+        self.assert_says(report.warnings, f"{CASO}_EXTRATO.txt: não encontrado; nenhuma conta do CONTAS teve lançamento")
+        self.assert_says(report.warnings, f"{CASO}_ORIGEM_DESTINO.txt: não encontrado; nenhuma conta do CONTAS")
+
+    def test_conta_movimentada_com_extrato_vazio_e_erro(self) -> None:
+        files = case()
+        files["EXTRATO"], files["ORIGEM_DESTINO"] = [], []
+        report = self.run_case(files=files, drafts=[rows()])
+        self.assert_says(report.errors, "EXTRATO: sem linha nenhuma, e o CONTAS diz que a conta 123456 da agência 0001")
+        self.assert_says(report.errors, "ORIGEM_DESTINO: sem linha nenhuma")
+
+    def test_conta_movimentada_com_extrato_ausente_e_erro(self) -> None:
+        files = case()
+        del files["EXTRATO"]
+        self.assert_says(self.run_case(files=files, drafts=[rows()]).errors, f"{CASO}_EXTRATO.txt: não encontrado em")
+
     # ------------------------------------------------------------ forma do arquivo
     def test_linha_sem_crlf_e_erro(self) -> None:
         folder, drafts_folder = self.write(case(), drafts=[rows()])
@@ -546,6 +578,20 @@ class Mutations(unittest.TestCase):
         self.assertEqual(1, self.failures_with(
             "_carries_the_account_balance", lambda row: True,
             "test_parcela_de_cheque_especial_por_ultimo_nao_e_o_saldo_da_conta"))
+
+    def test_exigir_extrato_sem_movimento_reprova_o_teste(self) -> None:
+        def ausente_e_sempre_erro(files, missing, folder, report):
+            for path in missing.values():
+                report.error(f"{path.name}: não encontrado em {folder}")
+
+        self.assertEqual(1, self.failures_with(
+            "check_movement_files", ausente_e_sempre_erro,
+            "test_sem_movimento_extrato_e_od_ausentes_e_aviso_para_entregar_o_vazio"))
+
+    def test_aceitar_extrato_vazio_com_movimento_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "check_movement_files", lambda files, missing, folder, report: None,
+            "test_conta_movimentada_com_extrato_vazio_e_erro"))
 
     def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
