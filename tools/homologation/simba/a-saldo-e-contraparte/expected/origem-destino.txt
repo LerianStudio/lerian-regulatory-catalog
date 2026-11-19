@@ -32,3 +32,6 @@
 32	32	1250	32	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CPAY sem codigo unico na IN	60746948000112									
 33	33	1250	33	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CPAY sem codigo unico na IN	60746948000112									
 34	34	1250	34	237			1									0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente	60746948000112									
+35	35	200	35	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
+36	36	3000	36	237			1									0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente	60746948000112									
+37	37	200	37	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
