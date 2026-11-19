@@ -1,6 +1,25 @@
 [
   {
     "referencia": "A3",
-    "ispb": ""
+    "ispb": "",
+    "tipoConta": "CG",
+    "tipoContaInformado": "CG"
+  },
+  {
+    "referencia": "A12",
+    "ispb": "",
+    "tipoConta": "1",
+    "tipoContaInformado": "CC"
+  },
+  {
+    "referencia": "A13",
+    "ispb": "",
+    "tipoConta": "-"
+  },
+  {
+    "referencia": "A14",
+    "ispb": "",
+    "tipoConta": "-",
+    "tipoContaInformado": "cc"
   }
 ]
