@@ -38,7 +38,8 @@ Notas:
   lista dá, sem separadores; nada é derivado do ISPB. Como a do Compe, vive no template
   do origem-destino, gerada desta cópia por `tools/ispb_cnpj.py` (que confere o sha256),
   e é congelada por versão do documento. Só a seção dos participantes ativos conta; ISPB
-  ausente ou fora dela sai em branco, com o motivo no campo 18.
+  ausente ou fora dela (inclusive uma instituição ainda na seção em adesão) sai em branco, com o
+  motivo no campo 18.
 - Fora desta pasta por enquanto: código IBGE de município (`*_CIDADE`, 7 dígitos).
 - **País.** O nome do país do TITULARES (campo 15, cópia linha 151) sai da tabela de países
   da Receita que o catálogo já guarda (`br/rfb/e-financeira/tabelas/paises.txt`, ISO 3166-1
