@@ -14,6 +14,9 @@ conferências que o validador, documento a documento, não faz:
   * o conjunto `lancamentos` do EXTRATO e o do ORIGEM-DESTINO têm o mesmo grão, e todo
     campo do ORIGEM-DESTINO existe no EXTRATO com o mesmo tipo — os dois numeram os
     lançamentos igual (o campo 2 do ORIGEM-DESTINO é o campo 1 do EXTRATO);
+  * todo cenário de gabarito do SIMBA (tools/homologation/simba/<cenário>/) traz o
+    `mutants.json`: o teste do motor que lê os cenários pula as quebras quando o
+    arquivo falta, e o gabarito passaria sem provar que pega alguma coisa;
   * toda consulta alcança o parâmetro `documentos`, direto ou pela cadeia de valores
     de consulta e de `from` — sem isso, uma lista opcional ausente (`contas`) deixa uma
     consulta ler todas as contas da instituição. A exceção é a que lê a própria
@@ -27,6 +30,8 @@ Só a biblioteca padrão e o pyyaml do validador:
 from __future__ import annotations
 
 import copy
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -51,6 +56,13 @@ def bindings(root: Path) -> dict[str, dict]:
 
 
 ENTRIES = "lancamentos"
+GOLDEN = Path("tools") / "homologation" / "simba"
+
+
+def scenarios_without_mutants(root: Path) -> list[str]:
+    """Os cenários de gabarito do SIMBA sem o arquivo das quebras que eles têm de pegar."""
+    return [d.name for d in sorted((root / GOLDEN).iterdir())
+            if (d / "scenario.json").is_file() and not (d / "mutants.json").is_file()]
 
 
 def contracts(root: Path) -> dict[str, dict]:
@@ -155,6 +167,10 @@ class SimbaBindings(unittest.TestCase):
     def test_toda_consulta_de_cliente_chega_aos_investigados(self) -> None:
         self.assertEqual([], unscoped_queries(bindings(ROOT)))
 
+    def test_todo_cenario_de_gabarito_traz_as_quebras(self) -> None:
+        self.assertTrue(any((ROOT / GOLDEN).glob("*/scenario.json")), "nenhum cenário de gabarito")
+        self.assertEqual([], scenarios_without_mutants(ROOT))
+
     def test_os_lancamentos_do_od_sao_os_do_extrato(self) -> None:
         self.assertEqual([], entries_mismatch(contracts(ROOT)))
 
@@ -187,6 +203,13 @@ class Mutations(unittest.TestCase):
                 if isinstance(value, dict) and value.get("query") == CASE_ACCOUNTS:
                     value["query"] = "declarante"
         self.assertTrue(any("'lancamentos'" in p for p in unscoped_queries(found)))
+
+    def test_cenario_sem_as_quebras_e_pego(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(ROOT / GOLDEN, root / GOLDEN)
+            (root / GOLDEN / "a-saldo-e-contraparte" / "mutants.json").unlink()
+            self.assertEqual(["a-saldo-e-contraparte"], scenarios_without_mutants(root))
 
     def test_um_campo_do_od_que_o_extrato_nao_tem_e_pego(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
