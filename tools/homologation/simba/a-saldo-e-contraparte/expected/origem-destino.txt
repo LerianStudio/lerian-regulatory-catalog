@@ -1,6 +1,6 @@
 1	1	15000	1	001	1	12345		2	AB12CD34000155	Pagadora Exemplo Ltda						0										pagamento exemplo	E00000000202612021300EXEMPLO0001
 2	2	16250	2													0	contraparte nao identificada pelo trilho										
-3	3	1250	3	999												0	agencia e conta do remetente nao informadas: o plugin de TED as grava cifradas										
+3	3	1250	3	999												0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente										
 4	4	2000	4													0	contraparte nao identificada pelo trilho										
 5	5	3000	5	123	00001	7654321	6	1	98765432100	Recebedor Exemplo						0		11222333000181									
 6	6	100	6	123				2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
