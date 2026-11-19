@@ -120,8 +120,8 @@
     "name": "estorno de envio herda o beneficiario do envio",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "(l.natureza == \"D\" and (a or c or f or g))",
-    "new": "(a or c or f or g)",
+    "old": "(l.natureza == \"D\" and (a or c or f or (g and (l.tipoOperacao == \"DEBIT\" or l.tipoOperacao == \"OVERDRAFT\"))))",
+    "new": "(a or c or f or (g and (l.tipoOperacao == \"DEBIT\" or l.tipoOperacao == \"OVERDRAFT\")))",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -549,13 +549,65 @@
     "name": "devolucao de TED recebida sem o remetente",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "(l.natureza == \"D\" and (a or c or f or g))",
+    "old": "(l.natureza == \"D\" and (a or c or f or (g and (l.tipoOperacao == \"DEBIT\" or l.tipoOperacao == \"OVERDRAFT\"))))",
     "new": "(l.natureza == \"D\" and (a or c or f))",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
       "line": 34,
       "field": 5
+    }
+  },
+  {
+    "name": "cobranca de divida de tarifa como contraparte",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if taxas|where:chaveO or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}",
+    "new": "{% if taxas|where:chaveO or l.tipoOperacao == \"FEE_REFUND\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 37,
+      "field": 5
+    }
+  },
+  {
+    "name": "reembolso de divida de tarifa como contraparte",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if taxas|where:chaveO or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}",
+    "new": "{% if taxas|where:chaveO or l.tipoOperacao == \"FEE_SETTLEMENT\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 35,
+      "field": 5
+    }
+  },
+  {
+    "name": "cobranca de divida de tarifa sem o codigo de tarifa",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "codigo(e, t or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\",",
+    "new": "codigo(e, t or l.tipoOperacao == \"FEE_REFUND\",",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 37,
+      "field": 9
+    }
+  },
+  {
+    "name": "reembolso de divida de tarifa como estorno de transferencia",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "codigo(e, t or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\",",
+    "new": "codigo(e, t or l.tipoOperacao == \"FEE_SETTLEMENT\",",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 35,
+      "field": 9
     }
   }
 ]
