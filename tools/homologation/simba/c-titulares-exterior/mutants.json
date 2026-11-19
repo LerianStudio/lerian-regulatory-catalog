@@ -1,67 +1,67 @@
 [
- {
-  "name": "UF do exterior pela sigla",
-  "document": "br/bcb/simba/titulares",
-  "file": "template.tpl",
-  "old": "{% if t.pais and t.pais != \"BR\" %}00{% else %}{{ t.codigoUf }}{% endif %}",
-  "new": "{{ t.codigoUf }}",
-  "count": 1,
-  "expect": {
-   "document": "br/bcb/simba/titulares",
-   "line": 2,
-   "field": 14
+  {
+    "name": "UF do exterior pela sigla",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.pais and t.pais != \"BR\" %}00{% else %}{{ t.codigoUf }}{% endif %}",
+    "new": "{{ t.codigoUf }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 2,
+      "field": 14
+    }
+  },
+  {
+    "name": "exterior sem a cidade 0000000",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.pais and t.pais != \"BR\" %}0000000{% endif %}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 2,
+      "field": 13
+    }
+  },
+  {
+    "name": "pais pelo codigo",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.nomePais != \"-\" %}{{ ascii(t.nomePais)|slice:\":40\" }}{% endif %}",
+    "new": "{{ t.pais }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 1,
+      "field": 15
+    }
+  },
+  {
+    "name": "sem pais tratado como exterior",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.pais and t.pais != \"BR\" %}0000000{% endif %}",
+    "new": "{% if t.pais != \"BR\" %}0000000{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 3,
+      "field": 13
+    }
+  },
+  {
+    "name": "nome do pais da contraparte sem a troca de acentos",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{{ ascii(u.nomePais)|slice:\":40\" }}",
+    "new": "{{ u.nomePais|slice:\":40\" }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 4,
+      "field": 15
+    }
   }
- },
- {
-  "name": "exterior sem a cidade 0000000",
-  "document": "br/bcb/simba/titulares",
-  "file": "template.tpl",
-  "old": "{% if t.pais and t.pais != \"BR\" %}0000000{% endif %}",
-  "new": "",
-  "count": 1,
-  "expect": {
-   "document": "br/bcb/simba/titulares",
-   "line": 2,
-   "field": 13
-  }
- },
- {
-  "name": "pais pelo codigo",
-  "document": "br/bcb/simba/titulares",
-  "file": "template.tpl",
-  "old": "{% if t.nomePais != \"-\" %}{{ ascii(t.nomePais)|slice:\":40\" }}{% endif %}",
-  "new": "{{ t.pais }}",
-  "count": 1,
-  "expect": {
-   "document": "br/bcb/simba/titulares",
-   "line": 1,
-   "field": 15
-  }
- },
- {
-  "name": "sem pais tratado como exterior",
-  "document": "br/bcb/simba/titulares",
-  "file": "template.tpl",
-  "old": "{% if t.pais and t.pais != \"BR\" %}0000000{% endif %}",
-  "new": "{% if t.pais != \"BR\" %}0000000{% endif %}",
-  "count": 1,
-  "expect": {
-   "document": "br/bcb/simba/titulares",
-   "line": 3,
-   "field": 13
-  }
- },
- {
-  "name": "nome do pais da contraparte sem a troca de acentos",
-  "document": "br/bcb/simba/titulares",
-  "file": "template.tpl",
-  "old": "{{ ascii(u.nomePais)|slice:\":40\" }}",
-  "new": "{{ u.nomePais|slice:\":40\" }}",
-  "count": 1,
-  "expect": {
-   "document": "br/bcb/simba/titulares",
-   "line": 4,
-   "field": 15
-  }
- }
 ]
