@@ -609,5 +609,31 @@
       "line": 39,
       "field": 9
     }
+  },
+  {
+    "name": "bloqueio judicial como pagamento diverso",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- elif operacao == \"BLOCK\" and natureza == \"D\" -%}150",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 40,
+      "field": 9
+    }
+  },
+  {
+    "name": "desbloqueio judicial como recebimento diverso",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- elif operacao == \"UNBLOCK\" and natureza == \"C\" -%}272",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 41,
+      "field": 9
+    }
   }
 ]

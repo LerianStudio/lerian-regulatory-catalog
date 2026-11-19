@@ -871,5 +871,43 @@
     "saldoApos": "0.00",
     "bloqueadoApos": "0.00",
     "chequeEspecialApos": "0.004"
+  },
+  {
+    "operacaoId": "o41",
+    "transacaoId": "t41",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-04T13:00:00Z",
+    "horaLancamento": "2026-12-04T13:00:00Z",
+    "descricao": "Bloqueio judicial",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "5.00",
+    "natureza": "D",
+    "naturezaOposta": "C",
+    "tipoOperacao": "BLOCK",
+    "saldoApos": "0.00",
+    "bloqueadoApos": "0.00",
+    "chequeEspecialApos": "0.004"
+  },
+  {
+    "operacaoId": "o42",
+    "transacaoId": "t42",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-04T13:00:00Z",
+    "horaLancamento": "2026-12-04T13:00:00Z",
+    "descricao": "Desbloqueio judicial",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "5.00",
+    "natureza": "C",
+    "naturezaOposta": "D",
+    "tipoOperacao": "UNBLOCK",
+    "saldoApos": "0.00",
+    "bloqueadoApos": "0.00",
+    "chequeEspecialApos": "0.004"
   }
 ]
