@@ -3102,7 +3102,7 @@ def _check_childof_cycles(doc_dir: Path, contract: dict) -> None:
 
 
 
-FILING_KEYS = {"period", "remittance", "approve"}
+FILING_KEYS = {"period", "remittance", "approve", "allowEmpty"}
 # Quais gerações de uma entrega podem ser aprovadas: qualquer uma (o padrão, igual a
 # não escrever) ou só a que nada mais novo da mesma entrega substitui.
 FILING_APPROVE = ("any", "newest")
@@ -3153,7 +3153,7 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
 
     where = f"{doc_dir.relative_to(ROOT)}: filing"
     filing = mapping_at(where, contract.get("filing"),
-                        "filing é um mapeamento de period, remittance e approve")
+                        "filing é um mapeamento de period, remittance, approve e allowEmpty")
     if filing is None:
         return
 
@@ -3164,6 +3164,12 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
     # aprovar só a mais nova não pode ficar desligada por um valor que parece certo.
     if "approve" in filing and filing.get("approve") not in FILING_APPROVE:
         fail(f"{where}.approve é {filing.get('approve')!r}; aceita {list(FILING_APPROVE)}")
+
+    # `allowEmpty: true` deixa o motor congelar um arquivo de 0 byte (o documento que, num
+    # caso legítimo, não tem linha); sem a chave, o vazio é recusado. O motor recusa na
+    # carga um valor que não seja booleano.
+    if "allowEmpty" in filing and not isinstance(filing.get("allowEmpty"), bool):
+        fail(f"{where}.allowEmpty é {filing.get('allowEmpty')!r}; é true ou false")
 
     params = {}
     for param in parameters_of(contract):
