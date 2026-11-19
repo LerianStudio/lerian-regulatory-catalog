@@ -28,7 +28,9 @@ fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos
 As operacoes das contas do caso que movem saldo em reais (`balance_affected`, `BRL`), nao
 apagadas, do inicio do dia `inicio` ao fim do dia `fim` no calendario do Reporter. As reservas e
 liberacoes do Midaz (operacoes `ON_HOLD` e `RELEASE`) ficam fora: a transferencia que passou
-por reserva sai uma vez so, com a operacao que a concluiu. As contas
+por reserva sai uma vez so, com a operacao que a concluiu. Num ledger que valida rotas, a reserva
+cancelada sai como um debito e um credito de mesmo valor (a reserva e a devolucao), e uma reserva
+ainda aberta na data de corte sai como debito, sem a operacao que a concluiria. As contas
 do caso sao as mesmas do CONTAS: as que um documento da ordem titula (cotitular,
 representante e procurador nao entram).
 
