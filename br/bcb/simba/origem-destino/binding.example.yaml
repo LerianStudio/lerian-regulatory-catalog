@@ -354,7 +354,24 @@ queries:
     filters:
       - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
       - {field: type, operator: eq, values: ["TED_IN"]}
-    select: [id, sender_ispb]
+    # O tipo de conta do pagador (TpCtDebtd do STR, gravado em claro pelo plugin) no codigo
+    # do campo 8 (IN :209), so onde o nome do dominio TpCt e o da IN casam: CC conta
+    # corrente (depositos a vista), PP poupanca, CI conta de investimento. PG, CD e CG
+    # sao do dominio e nao tem codigo literal na IN: ficam com o proprio codigo, e o
+    # template deixa o campo 8 em branco com o motivo. Qualquer outro valor vira "-".
+    compute:
+      - as: tipo_conta_pagador
+        case:
+          column: sender_account_type
+          when:
+            CC: {constant: "1"}
+            PP: {constant: "2"}
+            CI: {constant: "3"}
+            PG: {constant: "PG"}
+            CD: {constant: "CD"}
+            CG: {constant: "CG"}
+          otherwise: {constant: "-"}
+    select: [id, sender_ispb, sender_account_type, tipo_conta_pagador]
 
 datasets:
 
@@ -506,5 +523,7 @@ datasets:
     fields:
       referencia: {from: query, column: id}
       ispb: {from: query, column: sender_ispb}
+      tipoConta: {from: query, column: tipo_conta_pagador}
+      tipoContaInformado: {from: query, column: sender_account_type}
 
 manualOverrides: []

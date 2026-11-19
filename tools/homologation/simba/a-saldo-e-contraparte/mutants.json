@@ -126,7 +126,7 @@
     "expect": {
       "document": "br/bcb/simba/origem-destino",
       "line": 10,
-      "field": 1
+      "field": 2
     }
   },
   {
@@ -151,7 +151,59 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
+      "line": 11,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED recebida sem o codigo do tipo de conta",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\", pg.tipoConta) }}",
+    "new": "\", \"\") }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 11,
+      "field": 8
+    }
+  },
+  {
+    "name": "tipo de conta sem codigo na IN sem o codigo no motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "|add:tc|add:",
+    "new": "|add:",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
       "line": 3,
+      "field": 18
+    }
+  },
+  {
+    "name": "tipo de conta fora do dominio dito nao informado",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif pg.tipoContaInformado %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 13,
+      "field": 18
+    }
+  },
+  {
+    "name": "tipo de conta ausente sem o motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "; tipo de conta do remetente nao informado pelo STR\"",
+    "new": "\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 12,
       "field": 18
     }
   }

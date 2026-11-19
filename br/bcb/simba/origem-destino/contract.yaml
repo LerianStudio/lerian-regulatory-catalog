@@ -604,7 +604,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first}
+      columns: {ispb: first, tipoConta: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -615,6 +615,18 @@ datasets:
         required: false
         pattern: '^[0-9]{8}$'
         description: ISPB da instituicao da contraparte, oito digitos como texto; o template o converte no Compe (campo 5, IN :206).
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^([123]|PG|CD|CG|-)$'
+        description: >-
+          Tipo de conta do pagador no codigo do campo 8 (IN :209): 1, 2 ou 3 para CC, PP e CI do dominio TpCt do STR.
+          PG, CD e CG nao tem codigo literal na IN e ficam com o proprio codigo; "-" para tipo ausente ou fora do
+          dominio. Nos tres ultimos casos o campo 8 sai em branco e o campo 18 diz por que.
+      - name: tipoContaInformado
+        type: string
+        required: false
+        description: O tipo de conta como o STR o mandou (TpCtDebtd). So distingue o tipo ausente do fora do dominio; nao vai ao arquivo.
 
 knownGaps:
   - id: numeracao-entre-geracoes
@@ -627,7 +639,8 @@ knownGaps:
       saem banco, agencia, conta e nome; o CPF/CNPJ (campo 10) e o tipo de pessoa (campo 9) em branco. Na TED
       recebida sai so o banco (campo 5); agencia, conta, tipo de pessoa, CPF/CNPJ e nome (campos 6, 7, 9, 10 e
       11) em branco, com o motivo no campo 18 (OBSERVACAO), e nao o 00001, que diz que nao ha agencia fisica (IN
-      :207).
+      :207). O tipo de conta do pagador (campo 8, IN :209) sai so para CC, PP e CI do dominio TpCt do STR (1, 2 e 3);
+      PG, CD e CG, o tipo ausente e o fora do dominio saem em branco, com o motivo no campo 18.
   - id: devolucao-e-estorno
     description: >-
       Devolucao e estorno nao herdam a contraparte da transacao original, e as linhas de devolucao dos plugins nao
