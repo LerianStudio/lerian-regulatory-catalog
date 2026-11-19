@@ -309,6 +309,10 @@ knownGaps:
       divida, sem o bloqueado); o saldo real da conta esta na linha da parte do disponivel, inclusive quando ela e de
       R$ 0,00. Numa transacao que tambem tem tarifa, a parcela pode ser da tarifa e sai com o codigo e a contraparte da
       transacao.
+  - id: reserva-com-validacao-de-rota
+    description: >-
+      Num ledger que valida rotas, a reserva cancelada sai como um debito e um credito de mesmo valor, e uma reserva
+      ainda aberta na data de corte sai como debito, sem a operacao que a concluiria.
   - id: cheque-especial-antes-do-snapshot
     description: >-
       Operacao gravada antes de o Midaz guardar o cheque especial usado no snapshot nao o tem: o saldo dela sai sem
