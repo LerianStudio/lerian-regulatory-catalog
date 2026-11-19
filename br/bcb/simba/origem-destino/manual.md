@@ -41,8 +41,9 @@ ultimo campo 1 do EXTRATO sao o mesmo numero; se nao forem, gere os dois de novo
 
 Na ordem, a primeira que existe:
 
-1. **Tarifa** (a operacao que o motor de tarifas do Midaz marcou com `feeLeg`): a propria
-   instituicao (Compe, CNPJ, nome no Unicad, pessoa juridica).
+1. **Tarifa** (a operacao que o motor de tarifas do Midaz marcou com `feeLeg`, e a cobranca
+   ou o reembolso de divida de tarifa, operacoes `FEE_SETTLEMENT` e `FEE_REFUND`, que o Midaz
+   grava sem `feeLeg`): a propria instituicao (Compe, CNPJ, nome no Unicad, pessoa juridica).
 2. **O plugin que liquidou a transacao**, lido no banco dele:
    - Pix lerian: a origem do Pix recebido e o destino do Pix enviado (banco, agencia, conta,
      CPF/CNPJ, nome, mensagem e txid; sem txid, o EndToEndId);
@@ -168,14 +169,16 @@ o contrato na carga.
   ou fora do dominio. Na TED enviada, o tipo de conta do recebedor segue a mesma regra, e o
   tipo de pessoa e o CPF/CNPJ do recebedor (campos 9 e 10) saem em branco, porque o plugin
   grava o documento cifrado: o campo 18 diz isso, mais o motivo do tipo de conta quando o
-  campo 8 tambem sai em branco. O tipo do recebedor e obrigatorio: toda TED enviada que o
-  plugin grava o tem (a devolucao de uma TED recebida, gravada sem ele, sai pelo revert do
-  Midaz, ver Devolucao e estorno).
+  campo 8 tambem sai em branco. O tipo do recebedor e obrigatorio: toda TED enviada que
+  chega ao arquivo o tem (a devolucao de uma TED recebida, que o plugin grava sem ele, sai
+  pelo revert do Midaz, ver Devolucao e estorno).
 - **Devolucao e estorno**: nao herdam a contraparte da transacao original, e as linhas de
   devolucao dos plugins nao sao lidas: a devolucao e o revert do Midaz saem com a outra
-  perna interna ou com a linha vazia. Excecao: a devolucao de uma TED recebida e um revert
-  do Midaz com a metadata dela; esse debito sai com o remetente da TED recebida (o banco, e
-  no campo 18 o mesmo motivo dos dados cifrados), porque o dinheiro volta a ele.
+  perna interna ou com a linha vazia. Excecao: a devolucao de uma TED recebida, e o estorno
+  pedido pelo banco remetente, sao reverts do Midaz com a metadata dela; esse debito (`DEBIT`,
+  ou a parcela `OVERDRAFT` dele) sai com o remetente da TED recebida (o banco, e no campo 18
+  o mesmo motivo dos dados cifrados), porque o dinheiro volta a ele. A cobranca de divida de
+  tarifa que o Midaz grava na mesma transacao do credito sai como tarifa.
 - **Credito cross-ledger do Pix JD**: o plugin grava um id derivado do E2E em vez do id da
   linha; a contraparte desse credito sai pela outra perna ou vazia.
 - **Provedor de outra empresa**: contraparte liquidada fora dos plugins Lerian nao e lida.

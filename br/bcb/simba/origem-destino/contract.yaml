@@ -123,7 +123,7 @@ datasets:
       whenKeyRepeats: refuse
       columns: {transacaoId: first, contaId: first, numeroAgencia: first, numeroConta: first, tipoConta: first,
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
-                valor: first, natureza: first, naturezaOposta: first, saldoApos: first, rail: first, fluxo: first, direcao: first,
+                valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, e2e: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
                 iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
     fields:
@@ -188,6 +188,12 @@ datasets:
         required: true
         domain: ["C", "D"]
         description: A natureza da outra perna (D para um credito, C para um debito). So o ORIGEM-DESTINO a le.
+      - name: tipoOperacao
+        type: string
+        required: true
+        description: >-
+          O tipo da operacao no Midaz (operation.type): DEBIT, CREDIT, OVERDRAFT (a parcela do cheque especial) ou, na
+          cobranca de divida de tarifa, FEE_SETTLEMENT e FEE_REFUND, que o motor grava sem feeLeg e sao perna de tarifa.
       - name: saldoApos
         type: decimal
         required: true
@@ -644,8 +650,8 @@ datasets:
           Tipo de conta do recebedor como o plugin o grava (em claro): CACC, SVGS, SLRY ou uma grafia de conta de
           pagamento (CPAY, PG, PAYMENT, TRAN, 4), os que a API do plugin aceita. O template o traduz no campo 8 (IN
           :209): CACC 1, SVGS 2; conta de pagamento e SLRY saem em branco, com o motivo no campo 18, e outro valor
-          tambem, com o motivo de fora do dominio. Obrigatorio: toda TED enviada que o plugin grava o tem (a devolucao
-          de uma TED recebida, gravada sem ele, sai pelo revert do Midaz, ver devolucao-e-estorno). O motor nao aceita
+          tambem, com o motivo de fora do dominio. Obrigatorio: toda TED enviada que chega ao OD o tem (a devolucao
+          de uma TED recebida, que o plugin grava sem ele, nao chega: sai pelo revert do Midaz, ver devolucao-e-estorno). O motor nao aceita
           `case` sobre o subcaminho JSONB, por isso a traducao fica no template.
 
   - name: trilho_ted_recebidas
@@ -700,8 +706,10 @@ knownGaps:
     description: >-
       Devolucao e estorno nao herdam a contraparte da transacao original, e as linhas de devolucao dos plugins nao
       sao lidas nesta versao: a devolucao e o revert do Midaz saem com a outra perna interna ou com a linha vazia.
-      Excecao: o revert do Midaz que devolve uma TED recebida e um debito com a metadata dela, e sai com o remetente
-      da TED recebida (banco, e o mesmo motivo dos dados cifrados), porque o dinheiro volta a ele.
+      Excecao: o debito DEBIT (ou a parcela OVERDRAFT dele) com a metadata de uma TED recebida, o revert do Midaz da
+      devolucao ou do estorno pedido pelo banco remetente, sai com o remetente da TED recebida (banco, e o mesmo motivo
+      dos dados cifrados), porque o dinheiro volta a ele. A cobranca de divida de tarifa (FEE_SETTLEMENT) que o Midaz
+      grava na mesma transacao do credito e tarifa, nao contraparte.
   - id: tipo-de-conta-do-trilho
     description: >-
       O tipo da conta da contraparte de outra instituicao (campo 8, IN :209) so sai com codigo onde o tipo que o plugin

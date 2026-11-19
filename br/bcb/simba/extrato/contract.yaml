@@ -131,7 +131,7 @@ datasets:
       whenKeyRepeats: refuse
       columns: {transacaoId: first, contaId: first, numeroAgencia: first, numeroConta: first, tipoConta: first,
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
-                valor: first, natureza: first, naturezaOposta: first, saldoApos: first, chaveSaldo: first, bloqueadoApos: first,
+                valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, chaveSaldo: first, bloqueadoApos: first,
                 chequeEspecialApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, e2e: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
                 iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
@@ -197,6 +197,12 @@ datasets:
         required: true
         domain: ["C", "D"]
         description: A natureza da outra perna (D para um credito, C para um debito). So o ORIGEM-DESTINO a le.
+      - name: tipoOperacao
+        type: string
+        required: true
+        description: >-
+          O tipo da operacao no Midaz (operation.type): DEBIT, CREDIT, OVERDRAFT (a parcela do cheque especial) ou, na
+          cobranca de divida de tarifa, FEE_SETTLEMENT e FEE_REFUND, que o motor grava sem feeLeg e sao perna de tarifa.
       - name: saldoApos
         type: decimal
         required: true

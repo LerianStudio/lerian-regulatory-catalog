@@ -107,7 +107,7 @@ queries:
     # vazias: chave vazia recusa a leitura inteira, por isso as descricoes vem de
     # `lancamentos_descricao`.
     aggregate:
-      groupBy: [transaction_id, id, account_id, created_at, natureza, natureza_oposta, available_balance_after, balance_key]
+      groupBy: [transaction_id, id, account_id, created_at, natureza, natureza_oposta, type, available_balance_after, balance_key]
       measures:
         - as: valor
           fn: sum
@@ -480,6 +480,7 @@ datasets:
       descricaoTransacao: {from: query, column: descricao_transacao}
       valor: {from: query, column: valor}
       natureza: {from: query, column: natureza}
+      tipoOperacao: {from: query, column: type}
       naturezaOposta: {from: query, column: natureza_oposta}
       saldoApos: {from: query, column: available_balance_after}
       rail: {from: query, column: metadata.rail}
