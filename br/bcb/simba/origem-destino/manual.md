@@ -149,8 +149,10 @@ o contrato na carga.
   de pagamento e conta de deposito podem corresponder a mais de um codigo da IN (a de
   pagamento e `6` so quando pre-paga), e conta garantida e conta-salario nao tem codigo:
   saem em branco, com o motivo acrescentado ao campo 18; tambem o tipo ausente na mensagem
-  ou fora do dominio. Na TED enviada, o tipo de conta do recebedor segue a mesma regra, com
-  o motivo no campo 18.
+  ou fora do dominio. Na TED enviada, o tipo de conta do recebedor segue a mesma regra, e o
+  tipo de pessoa e o CPF/CNPJ do recebedor (campos 9 e 10) saem em branco, porque o plugin
+  grava o documento cifrado: o campo 18 diz isso, mais o motivo do tipo de conta quando o
+  campo 8 tambem sai em branco.
 - **Devolucao e estorno**: nao herdam a contraparte da transacao original, e as linhas de
   devolucao dos plugins nao sao lidas: a devolucao e o revert do Midaz saem com a outra
   perna interna ou com a linha vazia.

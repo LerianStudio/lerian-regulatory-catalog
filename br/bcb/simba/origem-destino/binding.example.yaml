@@ -407,27 +407,11 @@ queries:
     filters:
       - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
       - {field: type, operator: eq, values: ["TED_OUT"]}
-    # O tipo de conta do recebedor, em claro em recipient_details (so o documento e cifrado),
-    # com o mesmo mapa da TED recebida.
-    compute:
-      - as: tipo_conta_recebedor
-        case:
-          column: recipient_details.accountType
-          when:
-            CACC: {constant: "1"}
-            SVGS: {constant: "2"}
-            PP: {constant: "2"}
-            CI: {constant: "3"}
-            CPAY: {constant: "CPAY"}
-            PG: {constant: "CPAY"}
-            PAYMENT: {constant: "CPAY"}
-            TRAN: {constant: "CPAY"}
-            "4": {constant: "CPAY"}
-            CD: {constant: "CD"}
-            CG: {constant: "CG"}
-            SLRY: {constant: "SLRY"}
-          otherwise: {constant: "-"}
-    select: [id, recipient_details.ispb, recipient_details.branch, recipient_details.account, recipient_details.accountType, tipo_conta_recebedor, recipient_details.holderName]
+    # O tipo de conta do recebedor esta em claro em recipient_details (so o documento e
+    # cifrado). O motor nao aceita `case` sobre um subcaminho JSONB numa fonte Postgres (so
+    # coluna da tabela ou trazida por join), entao o binding so o seleciona e o template o
+    # traduz no campo 8, com o mesmo mapa da TED recebida.
+    select: [id, recipient_details.ispb, recipient_details.branch, recipient_details.account, recipient_details.accountType, recipient_details.holderName]
 
   - name: ted_recebidas
     description: TEDs recebidas pelo plugin de TED; da contraparte, so o ISPB do pagador.
@@ -611,7 +595,6 @@ datasets:
       ispb: {from: query, column: recipient_details.ispb}
       agencia: {from: query, column: recipient_details.branch}
       conta: {from: query, column: recipient_details.account}
-      tipoConta: {from: query, column: tipo_conta_recebedor}
       tipoContaInformado: {from: query, column: recipient_details.accountType}
       nome: {from: query, column: recipient_details.holderName}
 
