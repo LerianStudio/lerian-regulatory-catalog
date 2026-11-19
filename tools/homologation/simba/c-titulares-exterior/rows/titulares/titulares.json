@@ -44,5 +44,20 @@
     "nomePais": "-",
     "cep": "20040002",
     "dataInicio": "2025-05-06"
+  },
+  {
+    "contaId": "c4",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333334",
+    "tipoConta": "1",
+    "tipoPessoa": "1",
+    "documento": "22233344405",
+    "nome": "Ana Minuscula",
+    "logradouro": "Rua Tres 300",
+    "codigoUf": "31",
+    "pais": "br",
+    "nomePais": "Brasil",
+    "cep": "30110001",
+    "dataInicio": "2025-09-10"
   }
 ]

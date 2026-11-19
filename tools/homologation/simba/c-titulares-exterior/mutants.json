@@ -3,7 +3,7 @@
     "name": "UF do exterior pela sigla",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if t.pais and t.pais != \"BR\" %}00{% else %}{{ t.codigoUf }}{% endif %}",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}00{% else %}{{ t.codigoUf }}{% endif %}",
     "new": "{{ t.codigoUf }}",
     "count": 1,
     "expect": {
@@ -16,7 +16,7 @@
     "name": "exterior sem a cidade 0000000",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if t.pais and t.pais != \"BR\" %}0000000{% endif %}",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% endif %}",
     "new": "",
     "count": 1,
     "expect": {
@@ -42,8 +42,8 @@
     "name": "sem pais tratado como exterior",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if t.pais and t.pais != \"BR\" %}0000000{% endif %}",
-    "new": "{% if t.pais != \"BR\" %}0000000{% endif %}",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% endif %}",
+    "new": "{% if t.nomePais != \"Brasil\" %}0000000{% endif %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
@@ -60,8 +60,21 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 4,
+      "line": 5,
       "field": 15
+    }
+  },
+  {
+    "name": "pais em minuscula tratado como exterior",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% endif %}",
+    "new": "{% if t.pais and t.pais != \"BR\" %}0000000{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 4,
+      "field": 13
     }
   }
 ]

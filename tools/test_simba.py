@@ -31,7 +31,7 @@ conferências que o validador, documento a documento, não faz:
     instituição (a organização do Midaz), que não é dado de cliente;
   * o TITULARES escreve o nome do país (campo 15) pela tabela de países da Receita, e
     as duas consultas de titular traduzem o código ISO com o mesmo `case`, igual à
-    tabela; sigla de UF ou país sem tradução viram um marcador ("00", "-"), não uma
+    tabela, em maiúscula e em minúscula (`br` é o Brasil, não o exterior); sigla de UF ou país sem tradução viram um marcador ("00", "-"), não uma
     recusa, porque quem mora no exterior não tem UF nossa e quem não tem país mora no
     Brasil;
   * o contrato do TITULARES recusa, nos dois conjuntos de titular, quem mora no Brasil
@@ -134,7 +134,7 @@ HOLDER_SETS = ("titulares", "titulares_contraparte")
 # A data em que o binding leu as linhas vigentes da tabela de países (o comentário dele diz).
 COUNTRIES_READ_ON = datetime.date(2026, 11, 19)
 NO_UF, NO_COUNTRY = "00", "-"
-LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)]
+LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)] + [chr(c) for c in range(ord("a"), ord("z") + 1)]
 
 
 def _compute(query: dict, name: str) -> dict:
@@ -143,8 +143,9 @@ def _compute(query: dict, name: str) -> dict:
 
 def country_names_mismatch(found: dict[str, dict]) -> list[str]:
     """Onde as consultas de titular deixam de traduzir país e UF como a tabela e o contrato esperam."""
-    expected = {code: {"constant": name} for code, name in
-                tabelas_receita.load("paises.txt", COUNTRIES_READ_ON).items()}
+    # O motor compara o texto como está: o código vem nas duas grafias (BR e br).
+    expected = {spelled: {"constant": name} for code, name in
+                tabelas_receita.load("paises.txt", COUNTRIES_READ_ON).items() for spelled in (code, code.lower())}
     queries = queries_of(found.get("titulares", {}))
     problems = []
     for name in HOLDER_QUERIES:
@@ -421,6 +422,11 @@ class Mutations(unittest.TestCase):
             "constant": "Argentinia"}
         self.assertTrue(any("'cadastro_contraparte'" in p and "AR" in p for p in country_names_mismatch(found)))
 
+    def test_pais_em_minuscula_sem_traducao_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        del _compute(queries_of(found["titulares"])["cadastro_titulares"], "nome_pais")["case"]["when"]["br"]
+        self.assertTrue(any("'cadastro_titulares'" in p and "'br'" in p for p in country_names_mismatch(found)))
+
     def test_pais_sem_traducao_que_recusa_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
         _compute(queries_of(found["titulares"])["cadastro_titulares"], "nome_pais")["case"]["otherwise"] = "refuse"
@@ -442,7 +448,7 @@ class Mutations(unittest.TestCase):
         found = copy.deepcopy(contracts(ROOT))
         for r in found["titulares"]["rules"]:
             if r["appliesTo"] == "titulares" and r["where"].get("equals"):
-                r["check"]["notStartsWith"]["values"].remove("Z")
+                r["check"]["notStartsWith"]["values"].remove("z")
         self.assertEqual(["titulares: 'titulares' não recusa o país informado que a tabela não tem"],
                          domicile_rules_missing(found))
 
