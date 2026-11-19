@@ -390,6 +390,7 @@ datasets:
       natureza: {from: query, column: natureza}
       naturezaOposta: {from: query, column: natureza_oposta}
       saldoApos: {from: query, column: available_balance_after}
+      chaveSaldo: {from: query, column: balance_key}
       rail: {from: query, column: metadata.rail}
       fluxo: {from: query, column: metadata.flow}
       direcao: {from: query, column: metadata.direction}

@@ -99,10 +99,12 @@ Na tarifa e na contraparte interna, o Compe da propria instituicao.
 
 - **Parcela de cheque especial**: o lancamento que passou do saldo disponivel aparece no
   EXTRATO em duas linhas (a parte do disponivel e a do cheque especial), e aqui cada uma tem a
-  sua linha. Com a contraparte no plugin Pix ou TED, as duas saem com ela. Numa transferencia
-  interna, nenhuma das duas tem o valor da perna do outro lado, e as duas saem como
-  contraparte nao identificada pelo trilho. A conferencia antes da aprovacao avisa essas
-  transacoes, com o valor, para revisar a contraparte.
+  sua linha. A da parte do disponivel sai com a contraparte do plugin Pix ou TED. A da parcela
+  do cheque especial sai sempre como contraparte nao identificada pelo trilho: o Midaz a grava
+  sem a metadata da operacao que a gerou, e nada a liga a ela. Numa transferencia interna, a
+  parte do disponivel tambem nao tem o valor da perna do outro lado e sai nao identificada. A
+  conferencia antes da aprovacao avisa essas transacoes, com o valor, para revisar a
+  contraparte.
 - **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada
   investigado, e esta versao tem um so `inicio`/`fim` por caso (a geracao mais nova do
   mesmo `caso` substitui a anterior, entao o caso nao se divide em duas). Nao suportado
