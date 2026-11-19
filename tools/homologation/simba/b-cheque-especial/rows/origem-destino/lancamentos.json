@@ -17,7 +17,8 @@
     "direcao": "IN",
     "agregado": "A1",
     "e2e": "E1",
-    "saldoApos": "0.00"
+    "saldoApos": "0.00",
+    "chaveSaldo": "overdraft"
   },
   {
     "operacaoId": "o2",
@@ -37,7 +38,8 @@
     "direcao": "IN",
     "agregado": "A1",
     "e2e": "E1",
-    "saldoApos": "0.00"
+    "saldoApos": "0.00",
+    "chaveSaldo": "default"
   },
   {
     "operacaoId": "o3",
@@ -57,7 +59,8 @@
     "direcao": "OUT",
     "agregado": "A2",
     "e2e": "E2",
-    "saldoApos": "0.00"
+    "saldoApos": "0.00",
+    "chaveSaldo": "default"
   },
   {
     "operacaoId": "o4",
@@ -77,7 +80,8 @@
     "direcao": "OUT",
     "agregado": "A2",
     "e2e": "E2",
-    "saldoApos": "0.00"
+    "saldoApos": "0.00",
+    "chaveSaldo": "overdraft"
   },
   {
     "operacaoId": "o5",
@@ -97,7 +101,8 @@
     "direcao": "OUT",
     "agregado": "A2",
     "e2e": "E2",
-    "saldoApos": "0.00"
+    "saldoApos": "0.00",
+    "chaveSaldo": "default"
   },
   {
     "operacaoId": "o6",
@@ -117,6 +122,7 @@
     "direcao": "OUT",
     "agregado": "A2",
     "e2e": "E2",
-    "saldoApos": "0.00"
+    "saldoApos": "0.00",
+    "chaveSaldo": "overdraft"
   }
 ]
