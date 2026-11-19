@@ -301,7 +301,22 @@ queries:
     filters:
       - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.end_to_end_id}]}
       - {field: direction, operator: eq, values: ["OUTBOUND"]}
-    select: [end_to_end_id, destination_ispb, destination_branch, destination_account_number, destination_tax_id, destination_name, description, tx_id]
+    # O tipo de conta da contraparte (dominio do SPI: kit SPI 5.13.2, PACS008.xlsx, aba Tabela
+    # de Dominios, linhas 19-23) no codigo do campo 8 (IN :209), so onde o nome oficial e o da
+    # IN casam: CACC conta corrente de cliente, SVGS conta de poupanca. TRAN, SLRY e OTHR
+    # ficam com o proprio codigo, e o template deixa o campo 8 em branco com o motivo.
+    compute:
+      - as: tipo_conta_od
+        case:
+          column: destination_account_type
+          when:
+            CACC: {constant: "1"}
+            SVGS: {constant: "2"}
+            TRAN: {constant: "TRAN"}
+            SLRY: {constant: "SLRY"}
+            OTHR: {constant: "OTHR"}
+          otherwise: {constant: "-"}
+    select: [end_to_end_id, destination_ispb, destination_branch, destination_account_number, destination_account_type, tipo_conta_od, destination_tax_id, destination_name, description, tx_id]
 
   - name: pix_lerian_recebimentos
     description: Pix recebidos pelo Pix lerian; a contraparte e a origem.
@@ -310,7 +325,22 @@ queries:
     filters:
       - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.inbound_end_to_end_id}]}
       - {field: direction, operator: eq, values: ["INBOUND"]}
-    select: [end_to_end_id, source_ispb, source_branch, source_account_number, source_tax_id, source_name, description, tx_id]
+    # O tipo de conta da contraparte (dominio do SPI: kit SPI 5.13.2, PACS008.xlsx, aba Tabela
+    # de Dominios, linhas 19-23) no codigo do campo 8 (IN :209), so onde o nome oficial e o da
+    # IN casam: CACC conta corrente de cliente, SVGS conta de poupanca. TRAN, SLRY e OTHR
+    # ficam com o proprio codigo, e o template deixa o campo 8 em branco com o motivo.
+    compute:
+      - as: tipo_conta_od
+        case:
+          column: source_account_type
+          when:
+            CACC: {constant: "1"}
+            SVGS: {constant: "2"}
+            TRAN: {constant: "TRAN"}
+            SLRY: {constant: "SLRY"}
+            OTHR: {constant: "OTHR"}
+          otherwise: {constant: "-"}
+    select: [end_to_end_id, source_ispb, source_branch, source_account_number, source_account_type, tipo_conta_od, source_tax_id, source_name, description, tx_id]
 
   # Pix JD: flow 2 e o envio (CASH_OUT), flow 1 o recebimento (CASH_IN); a linha de
   # devolucao (is_refund) fica fora.
@@ -323,7 +353,21 @@ queries:
       - {field: flow, operator: eq, values: ["2"]}
       - {field: is_refund, operator: eq, values: ["false"]}
       - {field: deleted_at, operator: isNull}
-    select: [id, end_to_end_id, payee_bank_id, payee_branch, payee_account_number, payee_account_digit, payee_document, payee_name, description, conciliation_id]
+    # O tipo de conta da contraparte e o tpConta da JDPI (0 a 4, codigo do fornecedor), gravado
+    # so no Pix entre contas da propria instituicao; nao vira codigo da IN. "JDPI" quando ha
+    # tipo, "-" quando nao ha: o template deixa o campo 8 em branco com o motivo.
+    compute:
+      - as: tipo_conta_od
+        case:
+          column: payee_account_type
+          when:
+            "0": {constant: "JDPI"}
+            "1": {constant: "JDPI"}
+            "2": {constant: "JDPI"}
+            "3": {constant: "JDPI"}
+            "4": {constant: "JDPI"}
+          otherwise: {constant: "-"}
+    select: [id, end_to_end_id, payee_bank_id, payee_branch, payee_account_number, payee_account_digit, tipo_conta_od, payee_document, payee_name, description, conciliation_id]
 
   - name: pix_jd_recebimentos
     description: Pix recebidos pelo Pix JD; a contraparte e o pagador (payer).
@@ -334,7 +378,21 @@ queries:
       - {field: flow, operator: eq, values: ["1"]}
       - {field: is_refund, operator: eq, values: ["false"]}
       - {field: deleted_at, operator: isNull}
-    select: [id, end_to_end_id, payer_bank_id, payer_branch, payer_account_number, payer_account_digit, payer_document, payer_name, description, conciliation_id]
+    # O tipo de conta da contraparte e o tpConta da JDPI (0 a 4, codigo do fornecedor), gravado
+    # so no Pix entre contas da propria instituicao; nao vira codigo da IN. "JDPI" quando ha
+    # tipo, "-" quando nao ha: o template deixa o campo 8 em branco com o motivo.
+    compute:
+      - as: tipo_conta_od
+        case:
+          column: payer_account_type
+          when:
+            "0": {constant: "JDPI"}
+            "1": {constant: "JDPI"}
+            "2": {constant: "JDPI"}
+            "3": {constant: "JDPI"}
+            "4": {constant: "JDPI"}
+          otherwise: {constant: "-"}
+    select: [id, end_to_end_id, payer_bank_id, payer_branch, payer_account_number, payer_account_digit, tipo_conta_od, payer_document, payer_name, description, conciliation_id]
 
   # TED: o recebedor da TED enviada esta em claro em recipient_details; o documento
   # dele e o pagador da TED recebida (exceto o ISPB) ficam fora (cifrados no plugin).
@@ -457,6 +515,8 @@ datasets:
       ispb: {from: query, column: destination_ispb}
       agencia: {from: query, column: destination_branch}
       conta: {from: query, column: destination_account_number}
+      tipoConta: {from: query, column: tipo_conta_od}
+      tipoContaInformado: {from: query, column: destination_account_type}
       documento: {from: query, column: destination_tax_id}
       nome: {from: query, column: destination_name}
       comentario: {from: query, column: description}
@@ -471,6 +531,8 @@ datasets:
       ispb: {from: query, column: source_ispb}
       agencia: {from: query, column: source_branch}
       conta: {from: query, column: source_account_number}
+      tipoConta: {from: query, column: tipo_conta_od}
+      tipoContaInformado: {from: query, column: source_account_type}
       documento: {from: query, column: source_tax_id}
       nome: {from: query, column: source_name}
       comentario: {from: query, column: description}
@@ -485,6 +547,7 @@ datasets:
       ispb: {from: query, column: payee_bank_id}
       agencia: {from: query, column: payee_branch}
       conta: {from: query, column: payee_account_number}
+      tipoConta: {from: query, column: tipo_conta_od}
       digito: {from: query, column: payee_account_digit}
       documento: {from: query, column: payee_document}
       nome: {from: query, column: payee_name}
@@ -500,6 +563,7 @@ datasets:
       ispb: {from: query, column: payer_bank_id}
       agencia: {from: query, column: payer_branch}
       conta: {from: query, column: payer_account_number}
+      tipoConta: {from: query, column: tipo_conta_od}
       digito: {from: query, column: payer_account_digit}
       documento: {from: query, column: payer_document}
       nome: {from: query, column: payer_name}
