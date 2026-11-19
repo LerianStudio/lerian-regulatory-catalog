@@ -120,8 +120,8 @@
     "name": "estorno de envio herda o beneficiario do envio",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "(l.natureza == \"D\" and (a or c or f or (g and (l.tipoOperacao == \"DEBIT\" or l.tipoOperacao == \"OVERDRAFT\"))))",
-    "new": "(a or c or f or (g and (l.tipoOperacao == \"DEBIT\" or l.tipoOperacao == \"OVERDRAFT\")))",
+    "old": "(l.natureza == \"D\" and (a or c or f or g))",
+    "new": "(a or c or f or g)",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -549,7 +549,7 @@
     "name": "devolucao de TED recebida sem o remetente",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "(l.natureza == \"D\" and (a or c or f or (g and (l.tipoOperacao == \"DEBIT\" or l.tipoOperacao == \"OVERDRAFT\"))))",
+    "old": "(l.natureza == \"D\" and (a or c or f or g))",
     "new": "(l.natureza == \"D\" and (a or c or f))",
     "count": 1,
     "expect": {
