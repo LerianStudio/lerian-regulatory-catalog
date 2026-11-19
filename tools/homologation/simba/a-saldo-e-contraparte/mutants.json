@@ -338,45 +338,6 @@
     }
   },
   {
-    "name": "TED enviada de poupanca dita fora do dominio",
-    "document": "br/bcb/simba/origem-destino",
-    "file": "template.tpl",
-    "old": "{% elif tc == \"SVGS\" or tc == \"PP\" %}",
-    "new": "{% elif false %}",
-    "count": 1,
-    "expect": {
-      "document": "br/bcb/simba/origem-destino",
-      "line": 22,
-      "field": 8
-    }
-  },
-  {
-    "name": "TED enviada de conta-salario dita fora do dominio",
-    "document": "br/bcb/simba/origem-destino",
-    "file": "template.tpl",
-    "old": "{% elif tc == \"CG\" or tc == \"SLRY\" %}",
-    "new": "{% elif tc == \"CG\" %}",
-    "count": 1,
-    "expect": {
-      "document": "br/bcb/simba/origem-destino",
-      "line": 24,
-      "field": 18
-    }
-  },
-  {
-    "name": "TED enviada fora do dominio dita nao informada",
-    "document": "br/bcb/simba/origem-destino",
-    "file": "template.tpl",
-    "old": "{% elif tc %}",
-    "new": "{% elif false %}",
-    "count": 1,
-    "expect": {
-      "document": "br/bcb/simba/origem-destino",
-      "line": 25,
-      "field": 18
-    }
-  },
-  {
     "name": "TED recebida de conta-salario dita fora do dominio",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
@@ -426,6 +387,110 @@
       "document": "br/bcb/simba/origem-destino",
       "line": 31,
       "field": 8
+    }
+  },
+  {
+    "name": "TED enviada de poupanca dita nao informada",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif tc == \"SVGS\" %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 22,
+      "field": 8
+    }
+  },
+  {
+    "name": "TED enviada de conta-salario dita nao informada",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif tc == \"SLRY\" %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 24,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia CPAY",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "tc == \"CPAY\" or tc == \"PG\"",
+    "new": "tc == \"PG\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 19,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia PG",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "or tc == \"PG\" or",
+    "new": "or",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 23,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia PAYMENT",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "or tc == \"PAYMENT\" or",
+    "new": "or",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 25,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia TRAN",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "or tc == \"TRAN\" or",
+    "new": "or",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 32,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia 4",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": " or tc == \"4\" %}",
+    "new": " %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 33,
+      "field": 18
+    }
+  },
+  {
+    "name": "devolucao de TED recebida sem o motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; agencia, conta, nome e tipo de conta do recebedor nao informados: o plugin grava a devolucao de TED recebida so com o banco\"",
+    "new": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 26,
+      "field": 18
     }
   }
 ]
