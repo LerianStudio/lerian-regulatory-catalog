@@ -112,6 +112,23 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   Code nao esta na metadata (sai no ORIGEM-DESTINO). Fora do Pix, em branco.
 - 8: a descricao da operacao; vazia, a da transacao.
 
+## Investigado sem conta
+
+Quando nenhum documento da ordem tem conta na instituicao, nao ha arquivo a gerar: os
+arquivos do SIMBA sao das contas (IN art. 1o, :23) e nao tem cabecalho (art. 3o, I, :59).
+O AGENCIAS, o CONTAS e o TITULARES do caso recusam a geracao antes de montar o arquivo
+(erro RPT-0195); nao gere este. Responda a requisicao sem arquivo, pelo atendimento:
+CCS0012 com a situacao 03, relacionamento inexistente.
+
+Quando a ordem tem mais de um investigado e so parte deles tem conta, os arquivos saem com
+as contas de quem tem; quem nao tem e declarado sem relacionamento no atendimento da
+requisicao.
+
+Uma conta do caso sem lancamento no periodo sai no CONTAS com o campo 7 = 2 (IN :126) e nao
+tem linha aqui. Quando nenhuma conta do caso tem lancamento, este arquivo fica sem linha
+nenhuma, e esta versao do Reporter recusa o arquivo vazio depois de monta-lo (erro
+RPT-0153).
+
 ## Limitacoes desta versao
 
 - **Cheque especial em duas linhas**: quando um saque passa do saldo disponivel, o Midaz
