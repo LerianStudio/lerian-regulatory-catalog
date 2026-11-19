@@ -699,12 +699,15 @@ knownGaps:
       sao lidas nesta versao: a devolucao e o revert do Midaz saem com a outra perna interna ou com a linha vazia.
   - id: tipo-de-conta-do-trilho
     description: >-
-      O tipo da conta da contraparte de outra instituicao (campo 8) sai em branco: os plugins gravam o tipo no
-      vocabulario do arranjo (CACC, SVGS, TRAN...) e o de-para para os codigos 1 a 6 da IN nao esta definido.
+      O tipo da conta da contraparte de outra instituicao (campo 8, IN :209) so sai com codigo onde o tipo que o plugin
+      grava casa com a IN ao pe da letra: conta corrente (1), poupanca (2), investimento (3, so na TED). Conta de
+      pagamento e de deposito (mais de um codigo possivel na IN; a de pagamento e 6 so quando pre-paga), garantida,
+      salario e PI, e o tipo ausente ou fora do dominio, saem em branco com o motivo no campo 18.
   - id: cnpj-da-instituicao-externa
     description: >-
       O campo 19 sai com o CNPJ da propria instituicao na contraparte interna e na tarifa; para a contraparte de
-      outra instituicao sai em branco: o plugin grava so o ISPB (a raiz do CNPJ), nao o CNPJ completo.
+      outra instituicao sai em branco: o plugin grava so o ISPB, nao o CNPJ, e a lista de participantes do STR
+      (tabelas/ParticipantesSTR.csv) nao traz o CNPJ.
   - id: chave-pix-da-contraparte
     description: >-
       Os campos 25 e 26 (chave Pix da contraparte) saem em branco: a chave fica em outra tabela do Pix lerian e o
