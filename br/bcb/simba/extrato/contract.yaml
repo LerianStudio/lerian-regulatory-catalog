@@ -301,6 +301,12 @@ knownGaps:
       O campo 12 sai dos saldos que o Midaz gravou em cada operacao (disponivel, bloqueado e cheque especial
       usado), na ordem em que gravou. Com lancamento retroativo, ou conta com mais de uma chave de saldo, o saldo da
       linha nao fecha com o saldo do CONTAS. O motor nao tem soma corrida.
+  - id: parcela-de-cheque-especial
+    description: >-
+      A parcela de um lancamento tirada do (ou paga ao) cheque especial e gravada pelo Midaz em operacao propria, na
+      chave overdraft, sem a metadata da operacao que a gerou e sem nada que a ligue a ela. Sai em linha propria, com
+      o codigo generico 125/218, e no ORIGEM-DESTINO sem contraparte. O saldo dessa linha e menos a divida e nao inclui
+      o valor bloqueado da conta: com bloqueio aberto, as duas linhas da transacao mostram saldos diferentes.
   - id: cheque-especial-antes-do-snapshot
     description: >-
       Operacao gravada antes de o Midaz guardar o cheque especial usado no snapshot nao o tem: o saldo dela sai sem

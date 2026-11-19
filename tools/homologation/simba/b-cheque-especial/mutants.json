@@ -3,8 +3,8 @@
     "name": "linha da chave overdraft com a formula do disponivel",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "{% if l.chaveSaldo == \"overdraft\" %}",
-    "new": "{% if false %}",
+    "old": "{% if l.chaveSaldo == \"overdraft\" %}{% with st=0-l.saldoApos|float %}",
+    "new": "{% if false %}{% with st=0-l.saldoApos|float %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
@@ -23,6 +23,32 @@
       "document": "br/bcb/simba/extrato",
       "line": 4,
       "field": 13
+    }
+  },
+  {
+    "name": "parcela overdraft com o codigo da transacao",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% if l.chaveSaldo == \"overdraft\" %}{% if l.natureza == \"D\" %}125",
+    "new": "{% if false %}{% if l.natureza == \"D\" %}125",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 1,
+      "field": 9
+    }
+  },
+  {
+    "name": "parcela overdraft com a contraparte da transacao",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if l.chaveSaldo == \"overdraft\" %}{% counter \"od\" %}",
+    "new": "{% if false %}{% counter \"od\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 5
     }
   }
 ]
