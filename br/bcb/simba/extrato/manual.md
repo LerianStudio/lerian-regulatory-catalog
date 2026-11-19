@@ -53,7 +53,9 @@ numero nos dois arquivos.
 Na ordem, a primeira regra que vale:
 
 1. **Pelo tipo da operacao no Midaz**: a cobranca de divida de tarifa (`FEE_SETTLEMENT`, no
-   debito) `105`, mesmo dentro de um revert (a cobranca e tarifa, nao estorno; IN :375).
+   debito) `105`, mesmo dentro de um revert (a cobranca e tarifa, nao estorno); o bloqueio
+   judicial (`BLOCK`, no debito) `150`; o desbloqueio (`UNBLOCK`, no credito) `272` (IN :375,
+   :419, :513).
 2. **Estorno** (revert do Midaz, transacao com `parent_transaction_id`): o de uma transferencia
    (lancamento com trilho ou com dado de Pix na metadata) sai `140` no debito e `264` no credito;
    os demais, como o de uma tarifa, `142` e `266` (estornos diversos, IN :411 e :507).

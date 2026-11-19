@@ -37,3 +37,5 @@
 37	37	200	37	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
 38	38	3000	38													0	contraparte nao identificada pelo trilho										
 39	39	100	39	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
+40	40	500	40													0	contraparte nao identificada pelo trilho										
+41	41	500	41													0	contraparte nao identificada pelo trilho										

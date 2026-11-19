@@ -179,6 +179,9 @@ o contrato na carga.
   sai com o remetente da TED recebida (o banco, e no campo 18
   o mesmo motivo dos dados cifrados), porque o dinheiro volta a ele. A cobranca de divida de
   tarifa que o Midaz grava na mesma transacao do credito sai como tarifa.
+- **Bloqueio e desbloqueio judicial** (operacoes `BLOCK` e `UNBLOCK` do Midaz): nao ha
+  trilho; sai a outra perna em conta do CRM ou a linha vazia (`contraparte nao identificada
+  pelo trilho`).
 - **Credito cross-ledger do Pix JD**: o plugin grava um id derivado do E2E em vez do id da
   linha; a contraparte desse credito sai pela outra perna ou vazia.
 - **Provedor de outra empresa**: contraparte liquidada fora dos plugins Lerian nao e lida.
