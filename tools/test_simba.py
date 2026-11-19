@@ -40,7 +40,8 @@ conferências que o validador, documento a documento, não faz:
   * o AGENCIAS, o CONTAS e o TITULARES não saem sem conta nenhuma (`nonEmpty` no conjunto
     das contas do caso: o investigado sem conta é respondido pelo atendimento, sem
     arquivo), e o EXTRATO e o ORIGEM-DESTINO não declaram isso, porque conta sem
-    lançamento no período os deixa sem linha.
+    lançamento no período os deixa sem linha: eles declaram `filing.allowEmpty`, e o
+    arquivo vazio é gerado e entregue.
 
 Só a biblioteca padrão e o pyyaml do validador:
 
@@ -203,6 +204,14 @@ def empty_case_rules_off(found: dict[str, dict]) -> list[str]:
                 for document, name in sorted(CASE_SETS.items()) if sets(document).get(name, {}).get("nonEmpty") is not True]
     problems += [f"{document}: '{name}' é nonEmpty; conta sem lançamento no período deixa o arquivo sem linha"
                  for document in MOVEMENT_DOCUMENTS for name, d in sorted(sets(document).items()) if d.get("nonEmpty")]
+
+    def allows_empty(document: str) -> bool:
+        return ((found.get(document, {}).get("filing") or {}).get("allowEmpty")) is True
+
+    problems += [f"{document}: não declara filing.allowEmpty; sem lançamento no caso o arquivo vazio seria recusado"
+                 for document in MOVEMENT_DOCUMENTS if not allows_empty(document)]
+    problems += [f"{document}: declara filing.allowEmpty; sem conta nenhuma ele não sai (nonEmpty)"
+                 for document in sorted(CASE_SETS) if allows_empty(document)]
     return problems
 
 
@@ -457,6 +466,18 @@ class Mutations(unittest.TestCase):
         for d in found["contas"]["datasets"]:
             d.pop("nonEmpty", None)
         self.assertEqual(["contas: 'contas_investigadas' não é nonEmpty; sem conta nenhuma o arquivo sairia vazio"],
+                         empty_case_rules_off(found))
+
+    def test_od_sem_o_allow_empty_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        found["origem-destino"]["filing"].pop("allowEmpty")
+        self.assertEqual(["origem-destino: não declara filing.allowEmpty; sem lançamento no caso o arquivo vazio "
+                          "seria recusado"], empty_case_rules_off(found))
+
+    def test_contas_com_allow_empty_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        found["contas"]["filing"]["allowEmpty"] = True
+        self.assertEqual(["contas: declara filing.allowEmpty; sem conta nenhuma ele não sai (nonEmpty)"],
                          empty_case_rules_off(found))
 
     def test_extrato_com_nonempty_e_pego(self) -> None:
