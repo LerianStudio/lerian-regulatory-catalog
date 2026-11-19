@@ -1,5 +1,5 @@
 {
-  "description": "Sintetico. Saldo da conta no EXTRATO (devedor, centavo, bloqueado) e a contraparte no ORIGEM-DESTINO (Pix do Banco do Brasil, TED sem ISPB, perna interna, tarifa e lancamento sem contraparte), com a mesma numeracao nos dois arquivos.",
+  "description": "Sintetico. Saldo da conta no EXTRATO (devedor, centavo, bloqueado) e a contraparte no ORIGEM-DESTINO (Pix do Banco do Brasil, TED recebida sem ISPB, com a agencia e a conta do remetente em branco e o motivo na observacao (o plugin de TED as grava cifradas), perna interna, tarifa e lancamento sem contraparte), com a mesma numeracao nos dois arquivos.",
   "documents": [
     "br/bcb/simba/extrato",
     "br/bcb/simba/origem-destino"
