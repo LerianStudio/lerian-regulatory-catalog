@@ -652,8 +652,8 @@
     "natureza": "D",
     "naturezaOposta": "C",
     "rail": "TED",
-    "fluxo": "CASH_OUT",
-    "direcao": "OUT",
+    "fluxo": "CASH_IN",
+    "direcao": "IN",
     "agregado": "A35",
     "saldoApos": "0.00"
   }
