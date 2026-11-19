@@ -3,10 +3,10 @@
 3	3	1250	3	999												0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente; tipo de conta do remetente CG sem codigo correspondente na IN										
 4	4	2000	4													0	contraparte nao identificada pelo trilho										
 5	5	3000	5	123	00001	7654321	6	1	98765432100	Recebedor Exemplo						0		11222333000181									
-6	6	100	6	123				2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
+6	6	100	6	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
 7	7	001	7													0	contraparte nao identificada pelo trilho										
 8	8	001	8													0	contraparte nao identificada pelo trilho										
-9	9	100	9	123				2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
+9	9	100	9	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
 10	10	3000	10													0	contraparte nao identificada pelo trilho										
 11	11	1250	11	999			1									0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente										
 12	12	1250	12	999												0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente; tipo de conta do remetente nao informado pelo STR										

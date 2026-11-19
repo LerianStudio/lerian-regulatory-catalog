@@ -63,5 +63,18 @@
       "line": 3,
       "field": 18
     }
+  },
+  {
+    "name": "tarifa sem a agencia da instituicao",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ instituicao.compe }}\t{{ l.numeroAgencia }}\t",
+    "new": "{{ instituicao.compe }}\t\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 5,
+      "field": 6
+    }
   }
 ]
