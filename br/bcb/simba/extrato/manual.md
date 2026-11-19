@@ -142,7 +142,10 @@ o contrato na carga.
   e 70,00; com o disponivel ja em zero, a parte do disponivel sai com R$ 0,00. A linha da
   parte do disponivel traz o saldo real da conta; a da parcela traz o saldo da chave de
   cheque especial (menos a divida, sem o valor bloqueado). Numa transacao que tambem tem
-  tarifa, a parcela pode ser da tarifa e sai com o codigo e a contraparte da transacao. A
+  tarifa, a parcela pode ser da tarifa e sai com o codigo e a contraparte da transacao. Num
+  credito que quita a divida e sobra saldo, a parcela que paga o cheque especial sai com o
+  saldo `000 C`; como o Midaz grava a parcela depois da linha principal, ela pode ser a
+  ultima linha da conta no periodo e diferir do saldo final do CONTAS, que e o certo. A
   conferencia antes da aprovacao lista essas transacoes.
 - **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada
   investigado, e esta versao tem um so `inicio`/`fim` por caso (a geracao mais nova do
