@@ -179,6 +179,18 @@ def _ispb_block_without_guard() -> str:
     return "{# ISPB_COMPE_BLOCK: ispb #}" + block[len(guard):-len("{% endif %}")] + ispb_compe.END
 
 
+
+def _cnpj_reason_without_guard() -> str:
+    """O trecho do motivo do CNPJ em branco, com a guarda de ISPB vazio tirada à mão."""
+    import ispb_cnpj
+
+    reason = ispb_cnpj.render_reason("ispb", "observacao", ispb_cnpj.read_cnpjs())
+    guard = ('{% if ispb == None or ispb == "" %}{% if observacao %}; {% endif %}'
+             + ispb_cnpj.REASON + "{% else %}")
+    assert reason.startswith(guard) and reason.endswith("{% endif %}")
+    return ("{# ISPB_CNPJ_REASON: ispb observacao #}" + reason[len(guard):-len("{% endif %}")]
+            + ispb_cnpj.END_REASON)
+
 MUTATIONS: list[Mutation] = [
     # ---------------------------------------------------------------- template
     Mutation(
@@ -1050,6 +1062,31 @@ MUTATIONS: list[Mutation] = [
         "sem a guarda, o ISPB vazio é completado a 00000000 e sai como Banco do Brasil",
         lambda b: b[PLANO].update({"template": b[PLANO]["template"] + _ispb_block_without_guard()}),
         "não é o que tools/ispb_compe.py",
+    ),
+    Mutation(
+        "ispb-cnpj-marca-sem-trecho",
+        "a marca sem o trecho gerado escreve o campo 19 em branco",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + "{# ISPB_CNPJ_BLOCK: ispb #}"}),
+        "não é o que tools/ispb_cnpj.py",
+    ),
+    Mutation(
+        "ispb-cnpj-motivo-sem-trecho",
+        "a marca do motivo sem o trecho gerado deixa o campo 19 em branco sem dizer por quê",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"]
+                                   + "{# ISPB_CNPJ_REASON: ispb observacao #}{# /ISPB_CNPJ_REASON #}"}),
+        "não é o que tools/ispb_cnpj.py",
+    ),
+    Mutation(
+        "ispb-cnpj-marca-malformada",
+        "uma marca escrita sem o espaco nao e achada, e o trecho ao lado passaria sem conferencia",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + "{# ISPB_CNPJ_BLOCK:ispb #}00000000000191"}),
+        "fora de uma marca bem escrita",
+    ),
+    Mutation(
+        "ispb-cnpj-motivo-sem-guarda",
+        "sem a guarda, o ISPB vazio é completado a 00000000 e o motivo some, como se fosse o Banco do Brasil",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + _cnpj_reason_without_guard()}),
+        "não é o que tools/ispb_cnpj.py",
     ),
     Mutation(
         "filing-approve-maiusculo",
