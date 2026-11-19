@@ -585,28 +585,28 @@
     }
   },
   {
-    "name": "cobranca de divida de tarifa sem o codigo de tarifa",
-    "document": "br/bcb/simba/extrato",
-    "file": "template.tpl",
-    "old": "codigo(e, t or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\",",
-    "new": "codigo(e, t or l.tipoOperacao == \"FEE_REFUND\",",
-    "count": 1,
-    "expect": {
-      "document": "br/bcb/simba/extrato",
-      "line": 37,
-      "field": 9
-    }
-  },
-  {
     "name": "reembolso de divida de tarifa como estorno de transferencia",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "codigo(e, t or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\",",
-    "new": "codigo(e, t or l.tipoOperacao == \"FEE_SETTLEMENT\",",
+    "old": "codigo(l.tipoOperacao, e, t or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\",",
+    "new": "codigo(l.tipoOperacao, e, t or l.tipoOperacao == \"FEE_SETTLEMENT\",",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
       "line": 35,
+      "field": 9
+    }
+  },
+  {
+    "name": "cobranca de divida de tarifa num estorno como estorno",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- if operacao == \"FEE_SETTLEMENT\" and natureza == \"D\" -%}105{%- elif ",
+    "new": "{%- if ",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 39,
       "field": 9
     }
   }

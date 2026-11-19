@@ -35,3 +35,5 @@
 35	35	200	35	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
 36	36	3000	36	237			1									0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente	60746948000112									
 37	37	200	37	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
+38	38	3000	38													0	contraparte nao identificada pelo trilho										
+39	39	100	39	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
