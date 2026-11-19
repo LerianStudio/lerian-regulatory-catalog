@@ -44,7 +44,9 @@ conferências que o validador, documento a documento, não faz:
     arquivo vazio é gerado e entregue;
   * o tipo de conta do pagador da TED recebida (ORIGEM-DESTINO campo 8) só vira código
     da IN onde o domínio TpCt do STR e a IN casam ao pé da letra (CC 1, PP 2, CI 3); os
-    outros valores do domínio ficam com o próprio código, e o resto vira "-".
+    outros valores do domínio ficam com o próprio código, e o resto vira "-"; no Pix lerian,
+    pelo domínio do SPI (CACC 1, SVGS 2); no Pix JD, o código do fornecedor nunca vira
+    código da IN.
 
 Só a biblioteca padrão e o pyyaml do validador:
 
@@ -223,6 +225,30 @@ def empty_case_rules_off(found: dict[str, dict]) -> list[str]:
 TED_ACCOUNT_TYPES = {"CC": "1", "PP": "2", "CI": "3", "PG": "PG", "CD": "CD", "CG": "CG"}
 
 
+# Domínio do tipo de conta do SPI -> código do campo 8, só os casamentos literais.
+PIX_LERIAN_ACCOUNT_TYPES = {"CACC": "1", "SVGS": "2", "TRAN": "TRAN", "SLRY": "SLRY", "OTHR": "OTHR"}
+# O tpConta da JDPI (0 a 4) é do fornecedor: só marca que há tipo.
+PIX_JD_ACCOUNT_TYPES = {str(n): "JDPI" for n in range(5)}
+PIX_ACCOUNT_QUERIES = {
+    "pix_lerian_envios": ("destination_account_type", PIX_LERIAN_ACCOUNT_TYPES),
+    "pix_lerian_recebimentos": ("source_account_type", PIX_LERIAN_ACCOUNT_TYPES),
+    "pix_jd_envios": ("payee_account_type", PIX_JD_ACCOUNT_TYPES),
+    "pix_jd_recebimentos": ("payer_account_type", PIX_JD_ACCOUNT_TYPES),
+}
+
+
+def pix_account_type_off(found: dict[str, dict]) -> list[str]:
+    """Onde a tradução do tipo de conta da contraparte do Pix deixa de ser a decidida."""
+    queries = queries_of(found.get("origem-destino", {}))
+    problems = []
+    for name, (column, expected) in sorted(PIX_ACCOUNT_QUERIES.items()):
+        case = _compute(queries.get(name) or {}, "tipo_conta_od").get("case") or {}
+        when = {str(k): (v or {}).get("constant") for k, v in (case.get("when") or {}).items()}
+        if case.get("column") != column or when != expected or case.get("otherwise") != {"constant": "-"}:
+            problems.append(f"origem-destino: '{name}' traduz {column} como {when}, e a decisão é {expected} (resto '-')")
+    return problems
+
+
 def ted_account_type_off(found: dict[str, dict]) -> list[str]:
     """Onde a tradução do tipo de conta do pagador da TED recebida deixa de ser a decidida."""
     query = queries_of(found.get("origem-destino", {})).get("ted_recebidas")
@@ -373,6 +399,9 @@ class SimbaBindings(unittest.TestCase):
     def test_tipo_de_conta_da_ted_recebida_so_onde_a_in_casa(self) -> None:
         self.assertEqual([], ted_account_type_off(bindings(ROOT)))
 
+    def test_tipo_de_conta_do_pix_so_onde_a_in_casa(self) -> None:
+        self.assertEqual([], pix_account_type_off(bindings(ROOT)))
+
     def test_os_lancamentos_do_od_sao_os_do_extrato(self) -> None:
         self.assertEqual([], entries_mismatch(contracts(ROOT)))
 
@@ -513,6 +542,18 @@ class Mutations(unittest.TestCase):
         _compute(queries_of(found["origem-destino"])["ted_recebidas"], "tipo_conta_pagador")["case"]["when"]["PG"] = {
             "constant": "6"}
         self.assertTrue(any("a decisão é" in p for p in ted_account_type_off(found)))
+
+    def test_tran_traduzido_por_interpretacao_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        _compute(queries_of(found["origem-destino"])["pix_lerian_recebimentos"], "tipo_conta_od")["case"]["when"]["TRAN"] = {
+            "constant": "6"}
+        self.assertTrue(any("'pix_lerian_recebimentos'" in p for p in pix_account_type_off(found)))
+
+    def test_tipo_do_fornecedor_traduzido_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        _compute(queries_of(found["origem-destino"])["pix_jd_envios"], "tipo_conta_od")["case"]["when"]["0"] = {
+            "constant": "1"}
+        self.assertTrue(any("'pix_jd_envios'" in p for p in pix_account_type_off(found)))
 
     def test_extrato_com_nonempty_e_pego(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
