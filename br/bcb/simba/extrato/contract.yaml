@@ -304,9 +304,11 @@ knownGaps:
   - id: parcela-de-cheque-especial
     description: >-
       A parcela de um lancamento tirada do (ou paga ao) cheque especial e gravada pelo Midaz em operacao propria, na
-      chave overdraft, sem a metadata da operacao que a gerou e sem nada que a ligue a ela. Sai em linha propria, com
-      o codigo generico 125/218, e no ORIGEM-DESTINO sem contraparte. O saldo dessa linha e menos a divida e nao inclui
-      o valor bloqueado da conta: com bloqueio aberto, as duas linhas da transacao mostram saldos diferentes.
+      chave overdraft, sem a metadata da operacao que a gerou e sem nada que a ligue a ela. Sai em linha propria, com o
+      codigo da transacao (a metadata da transacao e a mesma), e traz o saldo da chave de cheque especial (menos a
+      divida, sem o bloqueado); o saldo real da conta esta na linha da parte do disponivel, inclusive quando ela e de
+      R$ 0,00. Numa transacao que tambem tem tarifa, a parcela pode ser da tarifa e sai com o codigo e a contraparte da
+      transacao.
   - id: cheque-especial-antes-do-snapshot
     description: >-
       Operacao gravada antes de o Midaz guardar o cheque especial usado no snapshot nao o tem: o saldo dela sai sem
