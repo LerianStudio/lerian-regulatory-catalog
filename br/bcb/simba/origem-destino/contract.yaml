@@ -706,8 +706,8 @@ knownGaps:
     description: >-
       Devolucao e estorno nao herdam a contraparte da transacao original, e as linhas de devolucao dos plugins nao
       sao lidas nesta versao: a devolucao e o revert do Midaz saem com a outra perna interna ou com a linha vazia.
-      Excecao: o debito DEBIT (ou a parcela OVERDRAFT dele) com a metadata de uma TED recebida, o revert do Midaz da
-      devolucao ou do estorno pedido pelo banco remetente, sai com o remetente da TED recebida (banco, e o mesmo motivo
+      Excecao: o debito com a metadata de uma TED recebida, a devolucao (revert do Midaz) ou o estorno pedido pelo
+      banco remetente (lancamento novo com a mesma metadata), sai com o remetente da TED recebida (banco, e o mesmo motivo
       dos dados cifrados), porque o dinheiro volta a ele. A cobranca de divida de tarifa (FEE_SETTLEMENT) que o Midaz
       grava na mesma transacao do credito e tarifa, nao contraparte.
   - id: tipo-de-conta-do-trilho

@@ -174,9 +174,9 @@ o contrato na carga.
   pelo revert do Midaz, ver Devolucao e estorno).
 - **Devolucao e estorno**: nao herdam a contraparte da transacao original, e as linhas de
   devolucao dos plugins nao sao lidas: a devolucao e o revert do Midaz saem com a outra
-  perna interna ou com a linha vazia. Excecao: a devolucao de uma TED recebida, e o estorno
-  pedido pelo banco remetente, sao reverts do Midaz com a metadata dela; esse debito (`DEBIT`,
-  ou a parcela `OVERDRAFT` dele) sai com o remetente da TED recebida (o banco, e no campo 18
+  perna interna ou com a linha vazia. Excecao: a devolucao de uma TED recebida (revert do Midaz)
+  e o estorno pedido pelo banco remetente (lancamento novo) levam a metadata dela; esse debito
+  sai com o remetente da TED recebida (o banco, e no campo 18
   o mesmo motivo dos dados cifrados), porque o dinheiro volta a ele. A cobranca de divida de
   tarifa que o Midaz grava na mesma transacao do credito sai como tarifa.
 - **Credito cross-ledger do Pix JD**: o plugin grava um id derivado do E2E em vez do id da
