@@ -285,7 +285,7 @@ class Conferencia(unittest.TestCase):
         self.assert_says(self.run_case(drafts=drafts).warnings,
                          "a conta 123456 da agência 0001 tem uma parcela de cheque especial de 70.00")
         self.assert_says(self.run_case(drafts=drafts).warnings,
-                         "com bloqueio aberto, o saldo da parcela não inclui o bloqueado")
+                         "ela traz o saldo da chave de cheque especial, e a linha principal, o saldo real")
 
     def test_valor_bloqueado_no_periodo_e_aviso(self) -> None:
         drafts = [rows(), extrato_rows(("123456", "2026-12-01T10:00:01Z", "20.00", "20.00", "0"))]
@@ -445,6 +445,32 @@ class Conferencia(unittest.TestCase):
                          "as justificativas são uma lista")
 
 
+class GabaritoChequeEspecial(unittest.TestCase):
+    """O aviso que acompanha a limitação fixada no gabarito de cheque especial.
+
+    No cenário b-cheque-especial, a parcela de cheque especial da tarifa sai com o código e a
+    contraparte do Pix da mesma transação: é limitação declarada, não a resposta certa. Ela só
+    vale com o aviso para essa transação, lido aqui das próprias linhas do cenário.
+    """
+
+    SCENARIO = conf.ROOT / "tools" / "homologation" / "simba" / "b-cheque-especial"
+
+    def drafts(self) -> dict[str, dict]:
+        rows = self.SCENARIO / "rows" / "extrato"
+        datasets = {f.stem: json.loads(f.read_text(encoding="utf-8")) for f in rows.glob("*.json")}
+        return {conf.EXTRATO_DOCUMENT: datasets}
+
+    def test_a_transacao_com_tarifa_e_cheque_especial_tem_o_aviso(self) -> None:
+        report = conf.Report()
+        conf.check_entry_balances(self.drafts(), report)
+        avisos = [w for w in report.warnings if "transação com tarifa e cheque especial" in w]
+        # As duas parcelas de cheque especial da transação (70,00 do Pix e 1,00 da tarifa) podem
+        # ser da tarifa: nada as liga a ela. O aviso sai para cada uma.
+        self.assertEqual(2, len(avisos), report.warnings)
+        self.assertTrue(any("parcela de 1.00" in w for w in avisos), avisos)
+        self.assertTrue(any("parcela de 70.00" in w for w in avisos), avisos)
+
+
 class Deriva(unittest.TestCase):
     """O que o script copia dos documentos continua igual ao que os documentos escrevem."""
 
@@ -493,6 +519,19 @@ class Mutations(unittest.TestCase):
         self.assertEqual(1, self.failures_with(
             "check_case_documents", lambda path, titulares, report: None,
             "test_documento_da_ordem_sem_conta_e_aviso_pela_posicao"))
+
+    def test_tirar_o_aviso_de_tarifa_com_cheque_especial_reprova_o_gabarito(self) -> None:
+        silenciado = conf.check_entry_balances
+
+        def sem_o_aviso(drafts, report):
+            silenciado(drafts, report)
+            report.warnings[:] = [w for w in report.warnings if "transação com tarifa e cheque especial" not in w]
+
+        with mock.patch.object(conf, "check_entry_balances", sem_o_aviso):
+            result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(
+                unittest.defaultTestLoader.loadTestsFromName(
+                    "test_a_transacao_com_tarifa_e_cheque_especial_tem_o_aviso", GabaritoChequeEspecial))
+        self.assertEqual(1, len(result.failures))
 
     def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
