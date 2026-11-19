@@ -195,6 +195,19 @@
     }
   },
   {
+    "name": "TED de conta de pagamento sem o codigo no motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "remetente \"|add:tc|add:\" sem codigo unico na IN\"",
+    "new": "remetente \"|add:\" sem codigo unico na IN\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 14,
+      "field": 18
+    }
+  },
+  {
     "name": "TED de conta garantida sem o motivo",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
@@ -204,6 +217,71 @@
     "expect": {
       "document": "br/bcb/simba/origem-destino",
       "line": 3,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix de conta corrente sem o codigo do tipo de conta",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"\", pb.tipoConta) }}",
+    "new": "\"\", \"\") }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 8
+    }
+  },
+  {
+    "name": "Pix de conta de pagamento sem o motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"tipo de conta do pagador TRAN sem codigo unico na IN\"",
+    "new": "\"\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 15,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix de conta PI sem o codigo no motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"tipo de conta do pagador \"|add:tc|add:",
+    "new": "\"tipo de conta do pagador \"|add:",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 16,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix com tipo fora do dominio dito nao informado",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif pb.tipoContaInformado %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 17,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix JD on-us dito nao informado",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if pd.tipoConta == \"JDPI\" %}",
+    "new": "{% if false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 18,
       "field": 18
     }
   }

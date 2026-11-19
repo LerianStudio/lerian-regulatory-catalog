@@ -50,5 +50,18 @@
       "line": 3,
       "field": 7
     }
+  },
+  {
+    "name": "Pix JD de outra instituicao dito do fornecedor",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if pc.tipoConta == \"JDPI\" %}",
+    "new": "{% if true %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
+      "field": 18
+    }
   }
 ]
