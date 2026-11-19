@@ -41,7 +41,10 @@ conferências que o validador, documento a documento, não faz:
     das contas do caso: o investigado sem conta é respondido pelo atendimento, sem
     arquivo), e o EXTRATO e o ORIGEM-DESTINO não declaram isso, porque conta sem
     lançamento no período os deixa sem linha: eles declaram `filing.allowEmpty`, e o
-    arquivo vazio é gerado e entregue.
+    arquivo vazio é gerado e entregue;
+  * o tipo de conta do pagador da TED recebida (ORIGEM-DESTINO campo 8) só vira código
+    da IN onde o domínio TpCt do STR e a IN casam ao pé da letra (CC 1, PP 2, CI 3); os
+    outros valores do domínio ficam com o próprio código, e o resto vira "-".
 
 Só a biblioteca padrão e o pyyaml do validador:
 
@@ -215,6 +218,28 @@ def empty_case_rules_off(found: dict[str, dict]) -> list[str]:
     return problems
 
 
+# TpCt do STR -> código do campo 8 do ORIGEM-DESTINO (IN :209), só os casamentos literais;
+# o domínio sem código na IN fica com o próprio código, para o motivo no campo 18.
+TED_ACCOUNT_TYPES = {"CC": "1", "PP": "2", "CI": "3", "PG": "PG", "CD": "CD", "CG": "CG"}
+
+
+def ted_account_type_off(found: dict[str, dict]) -> list[str]:
+    """Onde a tradução do tipo de conta do pagador da TED recebida deixa de ser a decidida."""
+    query = queries_of(found.get("origem-destino", {})).get("ted_recebidas")
+    if query is None:
+        return ["origem-destino: a consulta 'ted_recebidas' não existe"]
+    case = _compute(query, "tipo_conta_pagador").get("case") or {}
+    problems = []
+    if case.get("column") != "sender_account_type":
+        problems.append("origem-destino: 'ted_recebidas' não traduz sender_account_type em tipo_conta_pagador")
+    when = {k: (v or {}).get("constant") for k, v in (case.get("when") or {}).items()}
+    if when != TED_ACCOUNT_TYPES:
+        problems.append(f"origem-destino: o tipo de conta da TED recebida traduz {when}, e a decisão é {TED_ACCOUNT_TYPES}")
+    if case.get("otherwise") != {"constant": "-"}:
+        problems.append("origem-destino: o tipo de conta da TED recebida fora do domínio não vira '-'")
+    return problems
+
+
 def scenarios_without_mutants(root: Path) -> list[str]:
     """Os cenários de gabarito do SIMBA sem o arquivo das quebras que eles têm de pegar."""
     return [d.name for d in sorted((root / GOLDEN).iterdir())
@@ -344,6 +369,9 @@ class SimbaBindings(unittest.TestCase):
 
     def test_sem_conta_nenhuma_o_cadastro_nao_sai(self) -> None:
         self.assertEqual([], empty_case_rules_off(contracts(ROOT)))
+
+    def test_tipo_de_conta_da_ted_recebida_so_onde_a_in_casa(self) -> None:
+        self.assertEqual([], ted_account_type_off(bindings(ROOT)))
 
     def test_os_lancamentos_do_od_sao_os_do_extrato(self) -> None:
         self.assertEqual([], entries_mismatch(contracts(ROOT)))
@@ -479,6 +507,12 @@ class Mutations(unittest.TestCase):
         found["contas"]["filing"]["allowEmpty"] = True
         self.assertEqual(["contas: declara filing.allowEmpty; sem conta nenhuma ele não sai (nonEmpty)"],
                          empty_case_rules_off(found))
+
+    def test_pg_traduzido_por_interpretacao_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        _compute(queries_of(found["origem-destino"])["ted_recebidas"], "tipo_conta_pagador")["case"]["when"]["PG"] = {
+            "constant": "6"}
+        self.assertTrue(any("a decisão é" in p for p in ted_account_type_off(found)))
 
     def test_extrato_com_nonempty_e_pego(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
