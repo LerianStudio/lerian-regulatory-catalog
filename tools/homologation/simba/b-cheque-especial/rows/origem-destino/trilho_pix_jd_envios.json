@@ -10,5 +10,17 @@
     "comentario": "compra",
     "txid": "",
     "e2e": "E2"
+  },
+  {
+    "referencia": "A3",
+    "ispb": "60746948",
+    "agencia": "77",
+    "conta": "8888",
+    "digito": "2",
+    "documento": "12345678000190",
+    "nome": "Recebedor Exemplo Ltda",
+    "comentario": "",
+    "txid": "",
+    "e2e": "E3"
   }
 ]

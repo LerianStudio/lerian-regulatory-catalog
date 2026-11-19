@@ -119,7 +119,7 @@ datasets:
       whenKeyRepeats: refuse
       columns: {transacaoId: first, contaId: first, numeroAgencia: first, numeroConta: first, tipoConta: first,
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
-                valor: first, natureza: first, naturezaOposta: first, saldoApos: first, chaveSaldo: first, rail: first, fluxo: first, direcao: first,
+                valor: first, natureza: first, naturezaOposta: first, saldoApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, e2e: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
                 iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
     fields:
@@ -189,12 +189,6 @@ datasets:
         required: true
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
         description: Saldo disponivel da conta apos o lancamento, como o Midaz o gravou (campos 12 e 13, IN :181-182).
-      - name: chaveSaldo
-        type: string
-        required: false
-        description: >-
-          A chave de saldo da operacao. A parcela de cheque especial (chave overdraft) sai como linha vazia: o Midaz a
-          grava sem a metadata da perna.
       - name: rail
         type: string
         required: false

@@ -17,8 +17,7 @@
     "direcao": "IN",
     "agregado": "A1",
     "e2e": "E1",
-    "saldoApos": "0.00",
-    "chaveSaldo": "overdraft"
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o2",
@@ -38,8 +37,7 @@
     "direcao": "IN",
     "agregado": "A1",
     "e2e": "E1",
-    "saldoApos": "0.00",
-    "chaveSaldo": "default"
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o3",
@@ -59,8 +57,7 @@
     "direcao": "OUT",
     "agregado": "A2",
     "e2e": "E2",
-    "saldoApos": "0.00",
-    "chaveSaldo": "default"
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o4",
@@ -80,8 +77,27 @@
     "direcao": "OUT",
     "agregado": "A2",
     "e2e": "E2",
-    "saldoApos": "0.00",
-    "chaveSaldo": "overdraft"
+    "saldoApos": "0.00"
+  },
+  {
+    "operacaoId": "o5",
+    "transacaoId": "t2",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "2222222",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-09T15:00:00Z",
+    "horaLancamento": "2026-12-09T15:00:00Z",
+    "descricao": "Tarifa Pix",
+    "valor": "0.00",
+    "natureza": "D",
+    "naturezaOposta": "C",
+    "rail": "PIX",
+    "fluxo": "CASH_OUT",
+    "direcao": "OUT",
+    "agregado": "A2",
+    "e2e": "E2",
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o6",
@@ -101,7 +117,46 @@
     "direcao": "OUT",
     "agregado": "A2",
     "e2e": "E2",
-    "saldoApos": "0.00",
-    "chaveSaldo": "overdraft"
+    "saldoApos": "0.00"
+  },
+  {
+    "operacaoId": "o7",
+    "transacaoId": "t3",
+    "contaId": "c2",
+    "numeroAgencia": "00001",
+    "numeroConta": "2222223",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-10T15:00:00Z",
+    "horaLancamento": "2026-12-10T15:00:00Z",
+    "descricao": "Pix enviado",
+    "valor": "0.00",
+    "natureza": "D",
+    "naturezaOposta": "C",
+    "rail": "PIX",
+    "fluxo": "CASH_OUT",
+    "direcao": "OUT",
+    "agregado": "A3",
+    "e2e": "E3",
+    "saldoApos": "0.00"
+  },
+  {
+    "operacaoId": "o8",
+    "transacaoId": "t3",
+    "contaId": "c2",
+    "numeroAgencia": "00001",
+    "numeroConta": "2222223",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-10T15:00:00Z",
+    "horaLancamento": "2026-12-10T15:00:00Z",
+    "descricao": "Pix enviado",
+    "valor": "20.00",
+    "natureza": "D",
+    "naturezaOposta": "C",
+    "rail": "PIX",
+    "fluxo": "CASH_OUT",
+    "direcao": "OUT",
+    "agregado": "A3",
+    "e2e": "E3",
+    "saldoApos": "0.00"
   }
 ]
