@@ -136,9 +136,10 @@ o contrato na carga.
   6 nao e usado, porque ele diz que nao ha agencia fisica (IN :207). O tipo de conta do
   pagador (campo 8) vem do tipo que o STR informa (dominio TpCt do Dicionario de Dominios
   do Banco Central): conta corrente sai `1`, poupanca `2` e conta de investimento `3`
-  (IN :209). Conta de pagamento, conta de deposito e conta garantida nao tem codigo
-  literal na IN e saem em branco, com o motivo acrescentado ao campo 18; tambem o tipo
-  ausente na mensagem ou fora do dominio.
+  (IN :209). Conta de pagamento e conta de deposito podem corresponder a mais de um codigo
+  da IN (a de pagamento e `6` so quando pre-paga), e conta garantida nao tem codigo: as
+  tres saem em branco, com o motivo acrescentado ao campo 18; tambem o tipo ausente na
+  mensagem ou fora do dominio.
 - **Devolucao e estorno**: nao herdam a contraparte da transacao original, e as linhas de
   devolucao dos plugins nao sao lidas: a devolucao e o revert do Midaz saem com a outra
   perna interna ou com a linha vazia.
