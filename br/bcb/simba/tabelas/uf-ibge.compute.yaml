@@ -7,7 +7,9 @@
 #   column: <COLUNA_COM_A_SIGLA_DA_UF>  ex.: address_state
 # Exterior / sem agencia fisica = "00" (IN BCB 636 Anexo I, Agencias campo 6,
 # normas/IN-BCB-636-2025.md L106) NAO entra aqui: e condicao do template.
-# Sigla fora da lista recusa (otherwise: refuse).
+# Sigla fora da lista recusa (otherwise: refuse). O TITULARES troca o otherwise por
+# {constant: "00"}: quem mora no exterior nao tem UF da tabela, e a regra uf-do-brasil
+# do contrato recusa o 00 de quem mora no Brasil.
 - as: UF_IBGE_AS
   case:
     column: UF_SIGLA_COLUMN

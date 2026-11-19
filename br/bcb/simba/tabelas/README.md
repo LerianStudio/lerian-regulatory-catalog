@@ -9,7 +9,7 @@ template de cada documento. Não edite à mão: regere a partir da origem.
 | Arquivo | Conteúdo | Origem |
 |---|---|---|
 | `uf-ibge.yaml` | UF (sigla) → código IBGE de 2 dígitos, 27 UFs | `br/rfb/e-financeira/tabelas/uf.txt` (Receita, `http://sped.rfb.gov.br/arquivo/download/1949`, baixado em 06/11/2026), sha256 `5816106201212a3ba1a17b787f278b7de6491342184f47ca5de041ccb66983ef`, linhas vigentes lidas por `tools/tabelas_receita.py` |
-| `uf-ibge.compute.yaml` | O mesmo mapa como item de `compute` do binding (`case` com `otherwise: refuse`) | idem; `as` e `column` são marcadores a trocar no binding de cada documento |
+| `uf-ibge.compute.yaml` | O mesmo mapa como item de `compute` do binding (`case` com `otherwise: refuse`) | idem; `as` e `column` são marcadores a trocar no binding de cada documento (o TITULARES troca o `otherwise` por `{constant: "00"}`, ver o comentário do arquivo) |
 | `anexo-ii.yaml` | Códigos do campo 9 `CODIGO_TIPO_LANCAMENTO` do arquivo IV EXTRATO: débito (66) e crédito (78) | IN 636, seção `## ANEXO II` da cópia (linhas 363-519) |
 | `ParticipantesSTR.csv` | Participantes do STR: ISPB → código de compensação (`Número_Código`), cópia byte a byte (UTF-8 com BOM, 471 linhas + cabeçalho, 46.388 bytes) | Banco Central, `https://www.bcb.gov.br/content/estabilidadefinanceira/str1/ParticipantesSTR.csv`, baixado em 18/11/2026 11:17 UTC, sha256 `1e5c5f84d8cc4389864df50965c4fa00b4e7f954533fe7d7e5e857381c5de6e8` |
 
@@ -32,3 +32,7 @@ Notas:
   Instituição com código e `Participa_da_Compe = Não` sai com o código; `n/a`, `0` ou
   ISPB fora da lista saem `999` (o "sem código Compe" da mesma linha 206).
 - Fora desta pasta por enquanto: código IBGE de município (`*_CIDADE`, 7 dígitos).
+- **País.** O nome do país do TITULARES (campo 15, cópia linha 151) sai da tabela de países
+  da Receita que o catálogo já guarda (`br/rfb/e-financeira/tabelas/paises.txt`, ISO 3166-1
+  alfa-2, linhas vigentes em 19/11/2026), copiada no `case` do binding do TITULARES;
+  `tools/test_simba.py` confere a cópia contra a tabela.
