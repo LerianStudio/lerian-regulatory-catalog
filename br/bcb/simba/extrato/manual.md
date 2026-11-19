@@ -52,20 +52,21 @@ numero nos dois arquivos.
 
 Na ordem, a primeira regra que vale:
 
-1. **Estorno** (revert do Midaz, transacao com `parent_transaction_id`): o de uma transferencia
+1. **Pelo tipo da operacao no Midaz**: a cobranca de divida de tarifa (`FEE_SETTLEMENT`, no
+   debito) `105`, mesmo dentro de um revert (a cobranca e tarifa, nao estorno; IN :375).
+2. **Estorno** (revert do Midaz, transacao com `parent_transaction_id`): o de uma transferencia
    (lancamento com trilho ou com dado de Pix na metadata) sai `140` no debito e `264` no credito;
    os demais, como o de uma tarifa, `142` e `266` (estornos diversos, IN :411 e :507).
-2. **Tarifa** (operacao que o motor de tarifas do Midaz marcou com `feeLeg`, e a cobranca de
-   divida de tarifa, `FEE_SETTLEMENT`, que o Midaz grava sem `feeLeg`): `105`; o reembolso
-   (`FEE_REFUND`, num revert) e um estorno: `266`.
-3. **Plugin com contrato de correlacao** (TED, Pix JD), pela metadata da transacao
+3. **Tarifa** (operacao que o motor de tarifas do Midaz marcou com `feeLeg`): `105`; o
+   reembolso de divida de tarifa (`FEE_REFUND`, num revert) e um estorno: `266`.
+4. **Plugin com contrato de correlacao** (TED, Pix JD), pela metadata da transacao
    (`rail`, `flow`, `direction`; direcao vazia vale a natureza): devolucao (`REFUND`) `140`/
    `264`; Pix enviado ou entre contas da instituicao `135`, recebido `261`; TED enviada `134`,
    recebida `259`; transferencia TED ou interna entre contas da instituicao (`P2P`) `133`/`258`.
-4. **Pix lerian**: recebido (`payment_type` `PIX_IN`) `261`, ou `223` quando a iniciacao foi
+5. **Pix lerian**: recebido (`payment_type` `PIX_IN`) `261`, ou `223` quando a iniciacao foi
    por QR Code; devolucao (`original_end_to_end_id`) `140`/`264`; enviado (`end_to_end_id` com
    `initiation_id`) `135`.
-5. **Nada acima**: `125` no debito, `218` no credito.
+6. **Nada acima**: `125` no debito, `218` no credito.
 
 So sai codigo do lado da natureza (debito `1xx`, credito `2xx`). O codigo `116` nunca sai.
 
