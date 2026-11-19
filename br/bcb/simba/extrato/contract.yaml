@@ -312,7 +312,8 @@ knownGaps:
       codigo da transacao (a metadata da transacao e a mesma), e traz o saldo da chave de cheque especial (menos a
       divida, sem o bloqueado); o saldo real da conta esta na linha da parte do disponivel, inclusive quando ela e de
       R$ 0,00. Numa transacao que tambem tem tarifa, a parcela pode ser da tarifa e sai com o codigo e a contraparte da
-      transacao.
+      transacao. Num credito que quita a divida e sobra saldo, a parcela sai com saldo 000 C e, gravada depois da linha
+      principal, pode ser a ultima da conta no periodo e diferir do saldo final do CONTAS.
   - id: reserva-com-validacao-de-rota
     description: >-
       Num ledger que valida rotas, a reserva cancelada sai como um debito e um credito de mesmo valor, e uma reserva
