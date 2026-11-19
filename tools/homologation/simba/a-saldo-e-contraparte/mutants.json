@@ -169,19 +169,6 @@
     }
   },
   {
-    "name": "tipo de conta sem codigo na IN sem o codigo no motivo",
-    "document": "br/bcb/simba/origem-destino",
-    "file": "template.tpl",
-    "old": "|add:tc|add:",
-    "new": "|add:",
-    "count": 1,
-    "expect": {
-      "document": "br/bcb/simba/origem-destino",
-      "line": 3,
-      "field": 18
-    }
-  },
-  {
     "name": "tipo de conta fora do dominio dito nao informado",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
@@ -204,6 +191,19 @@
     "expect": {
       "document": "br/bcb/simba/origem-destino",
       "line": 12,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED de conta garantida sem o motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "; tipo de conta do remetente CG sem codigo correspondente na IN\"",
+    "new": "\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
       "field": 18
     }
   }
