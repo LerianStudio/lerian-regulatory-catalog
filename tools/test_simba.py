@@ -36,7 +36,11 @@ conferências que o validador, documento a documento, não faz:
     Brasil;
   * o contrato do TITULARES recusa, nos dois conjuntos de titular, quem mora no Brasil
     sem UF da tabela (a IN só dá o 00 para o exterior) e o país informado que a tabela
-    não tem.
+    não tem;
+  * o AGENCIAS, o CONTAS e o TITULARES não saem sem conta nenhuma (`nonEmpty` no conjunto
+    das contas do caso: o investigado sem conta é respondido pelo atendimento, sem
+    arquivo), e o EXTRATO e o ORIGEM-DESTINO não declaram isso, porque conta sem
+    lançamento no período os deixa sem linha.
 
 Só a biblioteca padrão e o pyyaml do validador:
 
@@ -184,6 +188,23 @@ def domicile_rules_missing(found: dict[str, dict]) -> list[str]:
     return problems
 
 
+# O conjunto das contas do caso de cada arquivo que não sai sem conta nenhuma.
+CASE_SETS = {"agencias": "agencias_do_caso", "contas": "contas_investigadas", "titulares": "titulares"}
+MOVEMENT_DOCUMENTS = ("extrato", "origem-destino")
+
+
+def empty_case_rules_off(found: dict[str, dict]) -> list[str]:
+    """Onde o `nonEmpty` dos conjuntos de contas do caso falta, ou aparece no EXTRATO e no ORIGEM-DESTINO."""
+    def sets(document: str) -> dict[str, dict]:
+        return {d.get("name"): d for d in found.get(document, {}).get("datasets") or [] if isinstance(d, dict)}
+
+    problems = [f"{document}: '{name}' não é nonEmpty; sem conta nenhuma o arquivo sairia vazio"
+                for document, name in sorted(CASE_SETS.items()) if sets(document).get(name, {}).get("nonEmpty") is not True]
+    problems += [f"{document}: '{name}' é nonEmpty; conta sem lançamento no período deixa o arquivo sem linha"
+                 for document in MOVEMENT_DOCUMENTS for name, d in sorted(sets(document).items()) if d.get("nonEmpty")]
+    return problems
+
+
 def scenarios_without_mutants(root: Path) -> list[str]:
     """Os cenários de gabarito do SIMBA sem o arquivo das quebras que eles têm de pegar."""
     return [d.name for d in sorted((root / GOLDEN).iterdir())
@@ -311,6 +332,9 @@ class SimbaBindings(unittest.TestCase):
     def test_o_contrato_recusa_uf_e_pais_sem_traducao(self) -> None:
         self.assertEqual([], domicile_rules_missing(contracts(ROOT)))
 
+    def test_sem_conta_nenhuma_o_cadastro_nao_sai(self) -> None:
+        self.assertEqual([], empty_case_rules_off(contracts(ROOT)))
+
     def test_os_lancamentos_do_od_sao_os_do_extrato(self) -> None:
         self.assertEqual([], entries_mismatch(contracts(ROOT)))
 
@@ -421,6 +445,21 @@ class Mutations(unittest.TestCase):
                 r["check"]["notStartsWith"]["values"].remove("Z")
         self.assertEqual(["titulares: 'titulares' não recusa o país informado que a tabela não tem"],
                          domicile_rules_missing(found))
+
+    def test_contas_sem_o_nonempty_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["contas"]["datasets"]:
+            d.pop("nonEmpty", None)
+        self.assertEqual(["contas: 'contas_investigadas' não é nonEmpty; sem conta nenhuma o arquivo sairia vazio"],
+                         empty_case_rules_off(found))
+
+    def test_extrato_com_nonempty_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["extrato"]["datasets"]:
+            if d["name"] == ENTRIES:
+                d["nonEmpty"] = True
+        self.assertEqual([f"extrato: '{ENTRIES}' é nonEmpty; conta sem lançamento no período deixa o arquivo sem linha"],
+                         empty_case_rules_off(found))
 
 
 if __name__ == "__main__":
