@@ -38,8 +38,10 @@ AVISO (listado para o aprovador, não bloqueia):
     como o Reporter as devolve em `GET /v1/regulatory/reports/{reportId}/rows`, onde o
     saldo tem sinal. Sem elas, o saldo devedor não é conferido, e a conferência diz isso;
   * pelas linhas do rascunho do EXTRATO: a parcela de cheque especial que o Midaz grava
-    em operação separada (chave overdraft), que sai como lançamento próprio e, numa
-    transferência interna, sem contraparte no ORIGEM-DESTINO; conta que usou cheque especial no período ou
+    em operação separada (chave overdraft), que sai como lançamento próprio, com o
+    saldo da chave de cheque especial e, numa transferência interna, sem contraparte no
+    ORIGEM-DESTINO; e, na transação que também tem tarifa, o aviso de que a parcela pode
+    ser da tarifa e sai com o código e a contraparte da transação; conta que usou cheque especial no período ou
     teve valor bloqueado depois de algum lançamento (o saldo final pode não mostrar
     nenhum dos dois), e lançamento sem o cheque especial usado (operação gravada antes
     de o Midaz guardar o snapshot), cujo saldo sai sem ele. Sem essas linhas, nada
@@ -111,6 +113,8 @@ EXTRATO_DOCUMENT = "br.bcb.simba.extrato"
 EXTRATO_ENTRIES = "lancamentos"
 # A chave de saldo em que o Midaz grava a parte de um saque tirada do cheque especial.
 OVERDRAFT_KEY = "overdraft"
+# As operações do EXTRATO que são perna de tarifa (marca feeLeg do Midaz).
+EXTRATO_FEES = "taxas"
 
 
 class Report:
@@ -244,12 +248,19 @@ def check_entry_balances(drafts: dict[str, dict] | None, report: Report) -> None
             used.add(key)
         if (_decimal(str(row.get("bloqueadoApos") or "0")) or Decimal(0)) > 0:
             held.add(key)
+    fees = {str(r.get("operacaoId")) for r in (drafts or {}).get(EXTRATO_DOCUMENT, {}).get(EXTRATO_FEES) or []}
+    with_fee = {str(r.get("transacaoId")) for r in entries if str(r.get("operacaoId")) in fees}
     for row in entries:
-        if row.get("chaveSaldo") == OVERDRAFT_KEY:
-            report.warn(f"EXTRATO: a conta {row.get('numeroConta')} da agência {row.get('numeroAgencia')} tem uma parcela "
-                        f"de cheque especial de {row.get('valor')} em lançamento separado; revise a contraparte no "
-                        "ORIGEM-DESTINO, onde a parcela sai como não identificada pelo trilho; com bloqueio aberto, o saldo da "
-                        "parcela não inclui o bloqueado")
+        if row.get("chaveSaldo") != OVERDRAFT_KEY:
+            continue
+        account = f"a conta {row.get('numeroConta')} da agência {row.get('numeroAgencia')}"
+        report.warn(f"EXTRATO: {account} tem uma parcela de cheque especial de {row.get('valor')} em lançamento "
+                    "separado: ela traz o saldo da chave de cheque especial, e a linha principal, o saldo real; numa "
+                    "transferência interna, a parcela sai sem contraparte no ORIGEM-DESTINO")
+        if str(row.get("transacaoId")) in with_fee:
+            report.warn(f"EXTRATO: {account} tem transação com tarifa e cheque especial: conferir código e contraparte da "
+                        f"parcela de {row.get('valor')}, que pode ser da tarifa e sai com o código e a contraparte da "
+                        "transação")
     for key in sorted(used):
         report.warn(f"EXTRATO: a conta {key[1]} da agência {key[0]} usou cheque especial no período")
     for key in sorted(held):
