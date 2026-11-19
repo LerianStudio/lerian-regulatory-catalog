@@ -93,9 +93,13 @@ fisica, ou `00001` na instituicao sem agencia fisica (IN :100, :207).
 
 ## Campos em branco, e por que
 
-- 8 (tipo da conta) da contraparte de outra instituicao: os plugins gravam o tipo no
-  vocabulario do arranjo (CACC, SVGS, TRAN...) e o de-para para os codigos 1 a 6 da IN nao
-  esta definido.
+- 8 (tipo da conta) da contraparte de outra instituicao: sai com o codigo da IN so onde o
+  tipo que o plugin grava casa com ele ao pe da letra (conta corrente, poupanca,
+  investimento); conta de pagamento, de deposito, garantida, salario e PI, e o tipo ausente
+  ou fora do dominio, saem em branco, com o motivo no campo 18 (ver De onde vem a
+  contraparte).
+- 19 (CNPJ da instituicao) da contraparte de outra instituicao: os plugins gravam so o
+  ISPB, e a lista de participantes do STR nao traz o CNPJ.
 - 12 e 13 (documento de identificacao): nao existe em nenhuma aplicacao.
 - 14 a 16 e 20 a 24 (boleto e cheque): nao existem como produto.
 - 19 (CNPJ da instituicao da contraparte): sai na tarifa e na contraparte interna; na de
