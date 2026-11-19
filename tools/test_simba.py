@@ -20,8 +20,9 @@ conferências que o validador, documento a documento, não faz:
   * toda consulta de lançamentos ou de saldo do razão deixa de fora as reservas e
     liberações do Midaz (ON_HOLD, RELEASE): a transferência que passou por reserva sai uma
     vez só, e o saldo não conta a reserva como débito;
-  * as consultas que viram linha tiram a operação de valor zero (o Midaz grava 0,00 na
-    parte do disponível de um saque inteiro no cheque especial);
+  * as consultas que viram linha mantêm a operação de valor zero (o Midaz grava 0,00 na
+    parte do disponível de um saque inteiro no cheque especial, e é ela que traz o saldo
+    real da conta);
   * as somas de saldo do CONTAS contam a chave de sistema overdraft, onde o Midaz grava a
     parte de um saque tirada do cheque especial: sem ela, a conta nunca sai devedora;
   * toda consulta alcança o parâmetro `documentos`, direto ou pela cadeia de valores
@@ -68,8 +69,9 @@ LEDGER = ("midaz_transaction", "operation")
 HOLD_TYPES = {"ON_HOLD", "RELEASE"}
 # Lida pelo id de uma entrada que já passou pelo filtro: não lista nem soma nada.
 LOOKUP_QUERIES = {"lancamentos_descricao"}
-# As consultas que viram linha do EXTRATO e do ORIGEM-DESTINO: sem a operação de 0,00
-# que o Midaz grava quando a parte do disponível de um saque no cheque especial é zero.
+# As consultas que viram linha do EXTRATO e do ORIGEM-DESTINO: a operação de 0,00 que o
+# Midaz grava quando a parte do disponível de um saque no cheque especial é zero fica nelas;
+# é ela que traz o saldo real da conta.
 ENTRY_QUERIES = {"lancamentos_dados", "pernas_lancamento"}
 # As somas de saldo do CONTAS.
 BALANCE_QUERIES = {"saldo_inicial_caso", "saldo_final_caso", "saldo_inicial_contraparte", "saldo_final_contraparte"}
@@ -92,15 +94,13 @@ def holds_not_excluded(found: dict[str, dict]) -> list[str]:
     return problems
 
 
-def zero_entries_kept(found: dict[str, dict]) -> list[str]:
-    """As consultas de linha que não tiram a operação de valor zero."""
+def zero_entries_dropped(found: dict[str, dict]) -> list[str]:
+    """As consultas de linha que filtram pelo valor, e perderiam a operação de 0,00."""
     problems = []
     for document, binding in found.items():
         for name, query in queries_of(binding).items():
-            if name in ENTRY_QUERIES and not any(
-                    c.get("field") == "amount" and c.get("operator") == "gt" and c.get("values") == ["0"]
-                    for c in _filters(query)):
-                problems.append(f"{document}: a consulta '{name}' não tira a operação de valor zero")
+            if name in ENTRY_QUERIES and any(c.get("field") == "amount" for c in _filters(query)):
+                problems.append(f"{document}: a consulta '{name}' filtra o valor e perde a operação de 0,00")
     return problems
 
 
@@ -225,8 +225,8 @@ class SimbaBindings(unittest.TestCase):
     def test_reservas_e_liberacoes_ficam_fora(self) -> None:
         self.assertEqual([], holds_not_excluded(bindings(ROOT)))
 
-    def test_operacao_de_valor_zero_nao_vira_linha(self) -> None:
-        self.assertEqual([], zero_entries_kept(bindings(ROOT)))
+    def test_operacao_de_valor_zero_vira_linha(self) -> None:
+        self.assertEqual([], zero_entries_dropped(bindings(ROOT)))
 
     def test_o_saldo_do_contas_conta_o_cheque_especial(self) -> None:
         self.assertEqual([], overdraft_left_out(bindings(ROOT)))
@@ -274,11 +274,11 @@ class Mutations(unittest.TestCase):
         query["filters"] = [c for c in query["filters"] if c.get("field") != "type"]
         self.assertTrue(any("'lancamentos_dados'" in p for p in holds_not_excluded(found)))
 
-    def test_linha_de_valor_zero_e_pega(self) -> None:
+    def test_filtro_que_perde_a_linha_de_valor_zero_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
-        query = queries_of(found["origem-destino"])["pernas_lancamento"]
-        query["filters"] = [c for c in query["filters"] if c.get("field") != "amount"]
-        self.assertTrue(any("'pernas_lancamento'" in p for p in zero_entries_kept(found)))
+        queries_of(found["extrato"])["lancamentos_dados"]["filters"].append(
+            {"field": "amount", "operator": "gt", "values": ["0"]})
+        self.assertTrue(any("'lancamentos_dados'" in p for p in zero_entries_dropped(found)))
 
     def test_soma_que_volta_a_tirar_o_cheque_especial_e_pega(self) -> None:
         found = copy.deepcopy(self.found)
