@@ -23,7 +23,7 @@
 23	23	1250	23	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CPAY sem codigo unico na IN										
 24	24	1250	24	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor SLRY sem codigo correspondente na IN										
 25	25	1250	25	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CPAY sem codigo unico na IN										
-26	26	1250	26	237												0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; agencia, conta, nome e tipo de conta do recebedor nao informados: o plugin grava a devolucao de TED recebida so com o banco										
+26	26	1250	26	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor fora do dominio do plugin										
 27	27	1250	27	999												0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente; tipo de conta do remetente SLRY sem codigo correspondente na IN										
 28	28	1250	28	237	77	88882		2	12345678000190	Recebedor Exemplo Ltda						0	tipo de conta do recebedor TRAN sem codigo unico na IN										E29
 29	29	1250	29	237	77	88882		2	12345678000190	Recebedor Exemplo Ltda						0	tipo de conta do recebedor SLRY sem codigo correspondente na IN										E30

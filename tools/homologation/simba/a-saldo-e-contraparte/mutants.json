@@ -481,10 +481,10 @@
     }
   },
   {
-    "name": "devolucao de TED recebida sem o motivo",
+    "name": "tipo de conta enviado fora do dominio sem o motivo",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; agencia, conta, nome e tipo de conta do recebedor nao informados: o plugin grava a devolucao de TED recebida so com o banco\"",
+    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor fora do dominio do plugin\"",
     "new": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\"",
     "count": 1,
     "expect": {
