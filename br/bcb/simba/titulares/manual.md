@@ -84,8 +84,9 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
 
 - Nome, documento, endereco principal (linha 1 e linha 2, CEP, UF, pais), telefones,
   e-mails, nome social e renda: o cadastro do titular no CRM.
-- Quem mora no exterior: o pais do endereco principal e um codigo diferente de `BR`. Sem
-  pais no cadastro, a pessoa e tratada como no Brasil.
+- Quem mora no exterior: o pais do endereco principal e um codigo da tabela que nao e o do
+  Brasil, em maiuscula ou minuscula (`br` e o Brasil). Sem pais no cadastro, a pessoa e
+  tratada como no Brasil.
 - UF (campo 14): para quem mora no Brasil, a sigla do endereco principal convertida no
   codigo IBGE pela tabela de `br/bcb/simba/tabelas/uf-ibge.compute.yaml`; para quem mora no
   exterior, `00` (IN :150), mesmo que o cadastro traga uma sigla igual a de uma UF.

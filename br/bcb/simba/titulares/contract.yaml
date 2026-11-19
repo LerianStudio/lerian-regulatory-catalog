@@ -188,8 +188,9 @@ datasets:
         type: string
         required: false
         description: >-
-          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda. Diferente de BR, a pessoa mora no exterior:
-          o template escreve "0000000" no campo 13 e "00" no campo 14 (IN :149-150). Ausente, e tratada como no Brasil.
+          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda, em maiuscula ou minuscula. Com nome na
+          tabela que nao e Brasil, a pessoa mora no exterior: o template escreve "0000000" no campo 13 e "00" no campo 14
+          (IN :149-150). Ausente, e tratada como no Brasil.
       - name: nomePais
         type: string
         required: true
@@ -380,8 +381,9 @@ datasets:
         type: string
         required: false
         description: >-
-          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda. Diferente de BR, a pessoa mora no exterior:
-          o template escreve "0000000" no campo 13 e "00" no campo 14 (IN :149-150). Ausente, e tratada como no Brasil.
+          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda, em maiuscula ou minuscula. Com nome na
+          tabela que nao e Brasil, a pessoa mora no exterior: o template escreve "0000000" no campo 13 e "00" no campo 14
+          (IN :149-150). Ausente, e tratada como no Brasil.
       - name: nomePais
         type: string
         required: true
@@ -519,7 +521,9 @@ rules:
     where: {field: nomePais, equals: "-"}
     check:
       notStartsWith: {field: pais, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
-                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]}
+                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                            "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                            "z"]}
     message: >-
       O pais do endereco principal e um codigo que a tabela de paises da Receita nao tem, e o campo 15 pede o nome do
       pais (IN :151). Corrija o cadastro antes de gerar.
@@ -540,7 +544,9 @@ rules:
     where: {field: nomePais, equals: "-"}
     check:
       notStartsWith: {field: pais, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
-                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]}
+                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                            "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                            "z"]}
     message: >-
       O pais do endereco principal e um codigo que a tabela de paises da Receita nao tem, e o campo 15 pede o nome do
       pais (IN :151). Corrija o cadastro antes de gerar.
