@@ -12,6 +12,7 @@ template de cada documento. Não edite à mão: regere a partir da origem.
 | `uf-ibge.compute.yaml` | O mesmo mapa como item de `compute` do binding (`case` com `otherwise: refuse`) | idem; `as` e `column` são marcadores a trocar no binding de cada documento (o TITULARES troca o `otherwise` por `{constant: "00"}`, ver o comentário do arquivo) |
 | `anexo-ii.yaml` | Códigos do campo 9 `CODIGO_TIPO_LANCAMENTO` do arquivo IV EXTRATO: débito (66) e crédito (78) | IN 636, seção `## ANEXO II` da cópia (linhas 363-519) |
 | `ParticipantesSTR.csv` | Participantes do STR: ISPB → código de compensação (`Número_Código`), cópia byte a byte (UTF-8 com BOM, 471 linhas + cabeçalho, 46.388 bytes) | Banco Central, `https://www.bcb.gov.br/content/estabilidadefinanceira/str1/ParticipantesSTR.csv`, baixado em 18/11/2026 11:17 UTC, sha256 `1e5c5f84d8cc4389864df50965c4fa00b4e7f954533fe7d7e5e857381c5de6e8` |
+| `ParticipantesPix.csv` | Participantes do Pix: ISPB → CNPJ da instituição, só a primeira seção (os ativos, linhas 3-864: 845 com ISPB, 17 sem); a seção das instituições em adesão fica fora. Cópia byte a byte (ISO-8859-1, `;`, LF, sem BOM, 125.254 bytes) | Banco Central, `https://www.bcb.gov.br/content/estabilidadefinanceira/participantes_pix/lista-participantes-instituicoes-em-adesao-pix-20261119.csv`, baixado em 19/11/2026, sha256 `4dd1890d0a49c169ac9ddb77f21b1fe48a580dce6f9083def9e2166da637c5e4`, lida por `tools/ispb_cnpj.py` |
 
 Notas:
 
@@ -31,6 +32,13 @@ Notas:
   congelada por versão do documento: uma lista nova do Banco Central é uma versão nova.
   Instituição com código e `Participa_da_Compe = Não` sai com o código; `n/a`, `0` ou
   ISPB fora da lista saem `999` (o "sem código Compe" da mesma linha 206).
+- **ISPB → CNPJ.** O CNPJ da instituição da contraparte (ORIGEM-DESTINO campo 19
+  `CNPJ_INSTITUIÇÃO_OD`, cópia linha 220) sai da lista de participantes do Pix, a única
+  lista do Banco Central que liga ISPB a CNPJ (a do STR não traz CNPJ). Vale o CNPJ que a
+  lista dá, sem separadores; nada é derivado do ISPB. Como a do Compe, vive no template
+  do origem-destino, gerada desta cópia por `tools/ispb_cnpj.py` (que confere o sha256),
+  e é congelada por versão do documento. Só a seção dos participantes ativos conta; ISPB
+  ausente ou fora dela sai em branco, com o motivo no campo 18.
 - Fora desta pasta por enquanto: código IBGE de município (`*_CIDADE`, 7 dígitos).
 - **País.** O nome do país do TITULARES (campo 15, cópia linha 151) sai da tabela de países
   da Receita que o catálogo já guarda (`br/rfb/e-financeira/tabelas/paises.txt`, ISO 3166-1
