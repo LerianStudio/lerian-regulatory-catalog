@@ -78,7 +78,9 @@ ausente sai `999` (nunca o Banco do Brasil, cujo ISPB e `00000000`); uma TED rec
 registrada antes de o plugin gravar o ISPB do remetente cai nesse caso. O `999` marca tanto a
 instituicao sem codigo Compe quanto o ISPB desconhecido (vazio ou fora da lista): o arquivo
 nao separa os dois casos.
-Na tarifa e na contraparte interna, o Compe da propria instituicao.
+Na tarifa e na contraparte interna, o Compe da propria instituicao. Na tarifa, o campo 6
+e a agencia da conta investigada, como no cadastro de agencias do AGENCIAS: a agencia
+fisica, ou `00001` na instituicao sem agencia fisica (IN :100, :207).
 
 ## O que o tenant preenche no mapeamento (binding)
 
