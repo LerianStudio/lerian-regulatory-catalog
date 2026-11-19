@@ -44,9 +44,12 @@ conferências que o validador, documento a documento, não faz:
     arquivo vazio é gerado e entregue;
   * o tipo de conta do pagador da TED recebida (ORIGEM-DESTINO campo 8) só vira código
     da IN onde o domínio TpCt do STR e a IN casam ao pé da letra (CC 1, PP 2, CI 3); os
-    outros valores do domínio ficam com o próprio código, e o resto vira "-"; no Pix lerian,
+    outros valores do domínio ficam com o próprio código, e o resto vira "-" (a TED enviada
+    traduz no template, porque o tipo dela vem de um subcaminho JSON); no Pix lerian,
     pelo domínio do SPI (CACC 1, SVGS 2); no Pix JD, o código do fornecedor nunca vira
-    código da IN.
+    código da IN;
+  * nenhum `case` de fonte Postgres lê um subcaminho JSON (`a.b`): o motor o recusa na
+    carga, e o documento inteiro deixaria de gerar.
 
 Só a biblioteca padrão e o pyyaml do validador:
 
@@ -224,8 +227,13 @@ def empty_case_rules_off(found: dict[str, dict]) -> list[str]:
 # o domínio sem código na IN fica com o próprio código, para o motivo no campo 18.
 TED_ACCOUNT_TYPES = {"CACC": "1", "SVGS": "2", "PP": "2", "CI": "3", "CPAY": "CPAY", "PG": "CPAY", "PAYMENT": "CPAY",
                      "TRAN": "CPAY", "4": "CPAY", "CD": "CD", "CG": "CG", "SLRY": "SLRY"}
-TED_ACCOUNT_QUERIES = {"ted_recebidas": ("sender_account_type", "tipo_conta_pagador"),
-                       "ted_enviadas": ("recipient_details.accountType", "tipo_conta_recebedor")}
+# A TED enviada traduz no template: o tipo vem de um subcaminho JSONB, e o motor não aceita
+# `case` sobre ele (ver plain_computes_off).
+TED_ACCOUNT_QUERIES = {"ted_recebidas": ("sender_account_type", "tipo_conta_pagador")}
+# As fontes Postgres do SIMBA: nelas o motor só aceita `case` sobre coluna da tabela ou trazida
+# por join, nunca sobre um subcaminho (`a.b`) de uma coluna JSON. As fontes Mongo (CRM,
+# metadata do Midaz) aceitam o caminho do documento.
+POSTGRES_SOURCES = {"bank_transfer", "midaz_onboarding", "midaz_transaction", "pix_jd", "pix_lerian"}
 
 
 # Domínio do tipo de conta do SPI -> código do campo 8, só os casamentos literais.
@@ -250,6 +258,21 @@ def pix_account_type_off(found: dict[str, dict]) -> list[str]:
         when = {str(k): (v or {}).get("constant") for k, v in (case.get("when") or {}).items()}
         if case.get("column") != column or when != expected or case.get("otherwise") != {"constant": "-"}:
             problems.append(f"origem-destino: '{name}' traduz {column} como {when}, e a decisão é {expected} (resto '-')")
+    return problems
+
+
+def plain_computes_off(found: dict[str, dict]) -> list[str]:
+    """Os `case` de fonte Postgres que leem um subcaminho JSON, que o motor recusa."""
+    problems = []
+    for document, binding in sorted(found.items()):
+        for name, query in sorted(queries_of(binding).items()):
+            if query.get("dataSource") not in POSTGRES_SOURCES:
+                continue
+            for compute in query.get("compute") or []:
+                column = ((compute or {}).get("case") or {}).get("column")
+                if isinstance(column, str) and "." in column:
+                    problems.append(f"{document}: '{name}' ({query.get('dataSource')}) calcula sobre {column}, "
+                                    "um subcaminho JSON que o motor recusa numa fonte Postgres")
     return problems
 
 
@@ -405,6 +428,9 @@ class SimbaBindings(unittest.TestCase):
     def test_tipo_de_conta_da_ted_recebida_so_onde_a_in_casa(self) -> None:
         self.assertEqual([], ted_account_type_off(bindings(ROOT)))
 
+    def test_case_em_fonte_postgres_le_coluna_simples(self) -> None:
+        self.assertEqual([], plain_computes_off(bindings(ROOT)))
+
     def test_tipo_de_conta_do_pix_so_onde_a_in_casa(self) -> None:
         self.assertEqual([], pix_account_type_off(bindings(ROOT)))
 
@@ -545,9 +571,17 @@ class Mutations(unittest.TestCase):
 
     def test_pg_traduzido_por_interpretacao_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
-        _compute(queries_of(found["origem-destino"])["ted_enviadas"], "tipo_conta_recebedor")["case"]["when"]["CPAY"] = {
+        _compute(queries_of(found["origem-destino"])["ted_recebidas"], "tipo_conta_pagador")["case"]["when"]["CPAY"] = {
             "constant": "6"}
-        self.assertTrue(any("'ted_enviadas'" in p and "a decisão é" in p for p in ted_account_type_off(found)))
+        self.assertTrue(any("'ted_recebidas'" in p and "a decisão é" in p for p in ted_account_type_off(found)))
+
+    def test_case_sobre_subcaminho_json_em_postgres_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        queries_of(found["origem-destino"])["ted_enviadas"].setdefault("compute", []).append(
+            {"as": "tipo_conta_recebedor", "case": {"column": "recipient_details.accountType",
+                                                    "when": {"CACC": {"constant": "1"}}, "otherwise": {"constant": "-"}}})
+        self.assertEqual(["origem-destino: 'ted_enviadas' (bank_transfer) calcula sobre recipient_details.accountType, "
+                          "um subcaminho JSON que o motor recusa numa fonte Postgres"], plain_computes_off(found))
 
     def test_tran_traduzido_por_interpretacao_e_pego(self) -> None:
         found = copy.deepcopy(self.found)

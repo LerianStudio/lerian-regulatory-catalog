@@ -27,5 +27,11 @@
     "ispb": "",
     "tipoConta": "CPAY",
     "tipoContaInformado": "CPAY"
+  },
+  {
+    "referencia": "A28",
+    "ispb": "",
+    "tipoConta": "SLRY",
+    "tipoContaInformado": "SLRY"
   }
 ]

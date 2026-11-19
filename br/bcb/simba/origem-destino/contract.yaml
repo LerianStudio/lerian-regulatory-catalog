@@ -610,7 +610,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, nome: first, tipoConta: first, tipoContaInformado: first}
+      columns: {ispb: first, agencia: first, conta: first, nome: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -637,18 +637,14 @@ datasets:
         type: string
         required: false
         description: Nome da contraparte (campo 11, IN :212). O template o corta em 80 posicoes.
-      - name: tipoConta
-        type: string
-        required: true
-        pattern: '^([123]|CPAY|CD|CG|SLRY|-)$'
-        description: >-
-          Tipo de conta do recebedor no codigo do campo 8 (IN :209), pelo mesmo mapa da TED recebida: 1 para CACC, 2 para
-          SVGS e PP, 3 para CI; CPAY, CD, CG e SLRY ficam com o proprio codigo; "-" para tipo ausente ou fora do dominio.
-          Nesses casos o campo 8 sai em branco e o campo 18 diz por que.
       - name: tipoContaInformado
         type: string
         required: false
-        description: O tipo de conta como o plugin o grava. So distingue o tipo ausente do fora do dominio; nao vai ao arquivo.
+        description: >-
+          Tipo de conta do recebedor como o plugin o grava (em claro). O template o traduz no campo 8 (IN :209) com o mapa
+          da TED recebida: CACC 1, SVGS e PP 2, CI 3; conta de pagamento e CD (mais de um codigo possivel), CG e SLRY,
+          ausente ou fora do dominio saem em branco, com o motivo no campo 18. O motor nao aceita `case` sobre o
+          subcaminho JSONB, por isso a traducao fica no template.
 
   - name: trilho_ted_recebidas
     description: O banco do pagador das TEDs recebidas (os demais dados, cifrados no plugin, ficam fora).
@@ -688,7 +684,8 @@ knownGaps:
   - id: ted-cifrada
     description: >-
       O plugin de TED grava cifrados o documento do recebedor e os dados do pagador da TED recebida. Na TED enviada
-      saem banco, agencia, conta e nome; o CPF/CNPJ (campo 10) e o tipo de pessoa (campo 9) em branco. Na TED
+      saem banco, agencia, conta e nome; o CPF/CNPJ (campo 10) e o tipo de pessoa (campo 9) em branco, com o motivo no
+      campo 18. Na TED
       recebida sai so o banco (campo 5); agencia, conta, tipo de pessoa, CPF/CNPJ e nome (campos 6, 7, 9, 10 e
       11) em branco, com o motivo no campo 18 (OBSERVACAO), e nao o 00001, que diz que nao ha agencia fisica (IN
       :207). O tipo de conta (campo 8, IN :209), na TED recebida e na enviada, sai so para CACC (1), SVGS e PP (2) e

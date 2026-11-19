@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "referencia": "A32",
+    "ispb": "60746948",
+    "agencia": "77",
+    "conta": "8888",
+    "documento": "12345678000190",
+    "nome": "Recebedor Exemplo Ltda",
+    "comentario": "",
+    "txid": "",
+    "e2e": "E32",
+    "tipoConta": "1",
+    "tipoContaInformado": "CACC"
+  }
+]

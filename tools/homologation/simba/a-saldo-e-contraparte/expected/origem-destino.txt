@@ -16,6 +16,16 @@
 16	16	15000	16	001	1	12345		2	AB12CD34000155	Pagadora Exemplo Ltda						0	tipo de conta do pagador OTHR sem codigo correspondente na IN									pagamento exemplo	E00000000202612021300EXEMPLO0017
 17	17	15000	17	001	1	12345		2	AB12CD34000155	Pagadora Exemplo Ltda						0	tipo de conta do pagador fora do dominio do SPI									pagamento exemplo	E00000000202612021300EXEMPLO0018
 18	18	1250	18	999	1	76543	1	1	98765432100	Cliente Da Casa						0											
-19	19	1250	19	237	4321	555666				Recebedor TED Exemplo						0	tipo de conta do recebedor CPAY sem codigo unico na IN										
-20	20	1250	20	237	4321	555666	1			Recebedor TED Exemplo						0											
+19	19	1250	19	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CPAY sem codigo unico na IN										
+20	20	1250	20	237	4321	555666	1			Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor										
 21	21	100	21	123	00002			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
+22	22	1250	22	237	4321	555666	2			Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor										
+23	23	1250	23	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CG sem codigo correspondente na IN										
+24	24	1250	24	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor SLRY sem codigo correspondente na IN										
+25	25	1250	25	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor fora do dominio do plugin										
+26	26	1250	26	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor nao informado pelo plugin										
+27	27	1250	27	999												0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente; tipo de conta do remetente SLRY sem codigo correspondente na IN										
+28	28	1250	28	237	77	88882		2	12345678000190	Recebedor Exemplo Ltda						0	tipo de conta do recebedor TRAN sem codigo unico na IN										E29
+29	29	1250	29	237	77	88882		2	12345678000190	Recebedor Exemplo Ltda						0	tipo de conta do recebedor SLRY sem codigo correspondente na IN										E30
+30	30	1250	30	237	77	88882		2	12345678000190	Recebedor Exemplo Ltda						0	tipo de conta do recebedor OTHR sem codigo correspondente na IN										E31
+31	31	1250	31	237	77	8888	1	2	12345678000190	Recebedor Exemplo Ltda						0											E32
