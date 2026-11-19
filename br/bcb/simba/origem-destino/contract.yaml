@@ -710,9 +710,10 @@ knownGaps:
       salario e PI, e o tipo ausente ou fora do dominio, saem em branco com o motivo no campo 18.
   - id: cnpj-da-instituicao-externa
     description: >-
-      O campo 19 sai com o CNPJ da propria instituicao na contraparte interna e na tarifa; para a contraparte de
-      outra instituicao sai em branco: o plugin grava so o ISPB, nao o CNPJ, e a lista de participantes do STR
-      (tabelas/ParticipantesSTR.csv) nao traz o CNPJ.
+      O campo 19 da contraparte de outra instituicao sai do ISPB pela lista de participantes ativos do Pix
+      (tabelas/ParticipantesPix.csv), a unica lista do Banco Central com o CNPJ. Fica em branco, com o motivo no
+      campo 18, quando o plugin nao grava o ISPB ou quando a instituicao nao e participante ativa do Pix (uma TED
+      com banco que so participa do STR, por exemplo): nenhuma tabela publica do Banco Central da esse CNPJ.
   - id: chave-pix-da-contraparte
     description: >-
       Os campos 25 e 26 (chave Pix da contraparte) saem em branco: a chave fica em outra tabela do Pix lerian e o
