@@ -702,5 +702,27 @@
     "saldoApos": "0.00",
     "bloqueadoApos": "0.00",
     "chequeEspecialApos": "0.004"
+  },
+  {
+    "operacaoId": "o35",
+    "transacaoId": "t35",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-04T13:00:00Z",
+    "horaLancamento": "2026-12-04T13:00:00Z",
+    "descricao": "Devolucao de TED recebida",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "12.50",
+    "natureza": "D",
+    "naturezaOposta": "C",
+    "rail": "TED",
+    "fluxo": "CASH_OUT",
+    "direcao": "OUT",
+    "agregado": "A35",
+    "saldoApos": "0.00",
+    "bloqueadoApos": "0.00",
+    "chequeEspecialApos": "0.004"
   }
 ]
