@@ -116,7 +116,8 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   grava a parte coberta pelo disponivel numa operacao e a parte tirada do cheque especial
   em outra (chave `overdraft`); um credito que paga o cheque especial tambem se divide. O
   arquivo traz as duas linhas, na mesma sessao (campo 27), cada uma com o seu valor: o
-  lancamento de R$ 100,00 com R$ 30,00 disponiveis sai como 30,00 e 70,00. A parcela do
+  lancamento de R$ 100,00 com R$ 30,00 disponiveis sai como 30,00 e 70,00; com o disponivel
+  ja em zero, o Midaz grava a parte do disponivel com R$ 0,00, que nao sai. A parcela do
   cheque especial sai com o codigo generico (`125` no debito, `218` no credito), porque o
   Midaz a grava sem a metadata da operacao que a gerou (inclusive a marca de tarifa). O
   saldo da linha da parcela e menos a divida e nao inclui o valor bloqueado: com bloqueio
