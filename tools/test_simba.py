@@ -518,6 +518,40 @@ def reversed_period_allowed(found: dict[str, dict]) -> list[str]:
             problems.append(f"{document}: o fim não declara notBefore: inicio")
     return problems
 
+
+# Os identificadores da metadata (EndToEndId de envio e de recebimento) saem crus no campo 26
+# do EXTRATO: a metadata do Midaz aceita TAB, CR e LF, que partiriam o registro.
+RAW_METADATA_FIELDS = ("e2e", "e2eEnvio", "e2eRecebimento")
+# Uma transação é uma sessão do EXTRATO (campo 27): o motor ordena cada conjunto pelo grão, e
+# só com a transação na frente as operações dela ficam juntas.
+ENTRY_GRAIN = ["transacaoId", "operacaoId"]
+
+
+def raw_metadata_unguarded(found: dict[str, dict]) -> list[str]:
+    """Os identificadores da metadata que o EXTRATO imprime sem um pattern que recuse TAB, CR e LF."""
+    import re
+
+    fields = {f.get("name"): f for d in found.get("extrato", {}).get("datasets") or []
+              if d.get("name") == ENTRIES for f in d.get("fields") or []}
+    problems = []
+    for name in RAW_METADATA_FIELDS:
+        pattern = (fields.get(name) or {}).get("pattern")
+        if not pattern or any(re.fullmatch(pattern, "E2E" + c + "X") for c in ("\t", "\r", "\n")):
+            problems.append(f"extrato: '{ENTRIES}.{name}' aceita TAB, CR ou LF")
+    return problems
+
+
+def entry_grain_off(found: dict[str, dict]) -> list[str]:
+    """Onde o grão (e a chave) dos lançamentos não põe a transação antes da operação."""
+    problems = []
+    for document in ("extrato", "origem-destino"):
+        for d in found.get(document, {}).get("datasets") or []:
+            if d.get("name") != ENTRIES:
+                continue
+            if d.get("grain") != ENTRY_GRAIN or (d.get("consolidation") or {}).get("key") != ENTRY_GRAIN:
+                problems.append(f"{document}: '{ENTRIES}' não ordena por {ENTRY_GRAIN}")
+    return problems
+
 def queries_of(binding: dict) -> dict[str, dict]:
     return {q["name"]: q for q in binding.get("queries") or []
             if isinstance(q, dict) and isinstance(q.get("name"), str)}
@@ -635,6 +669,12 @@ class SimbaBindings(unittest.TestCase):
 
     def test_texto_que_passa_pelo_ascii_tem_o_pattern_do_macro(self) -> None:
         self.assertEqual([], ascii_fields_off(ROOT, contracts(ROOT)))
+
+    def test_identificador_da_metadata_nao_parte_o_registro(self) -> None:
+        self.assertEqual([], raw_metadata_unguarded(contracts(ROOT)))
+
+    def test_lancamentos_ordenam_pela_transacao(self) -> None:
+        self.assertEqual([], entry_grain_off(contracts(ROOT)))
 
     def test_periodo_invertido_e_recusado(self) -> None:
         self.assertEqual([], reversed_period_allowed(contracts(ROOT)))
@@ -772,6 +812,21 @@ class Mutations(unittest.TestCase):
                 (target / "template.tpl").write_text(text, encoding="utf-8")
             self.assertEqual(["contas: ascii(c.apelido) escreve um campo sem o pattern ASCII"],
                              ascii_fields_off(Path(tmp), contracts(ROOT)))
+
+    def test_e2e_sem_o_pattern_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["extrato"]["datasets"]:
+            for f in d.get("fields") or []:
+                if d["name"] == ENTRIES and f["name"] == "e2eEnvio":
+                    f.pop("pattern")
+        self.assertEqual([f"extrato: '{ENTRIES}.e2eEnvio' aceita TAB, CR ou LF"], raw_metadata_unguarded(found))
+
+    def test_grao_so_pela_operacao_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["origem-destino"]["datasets"]:
+            if d["name"] == ENTRIES:
+                d["grain"] = ["operacaoId"]
+        self.assertEqual([f"origem-destino: '{ENTRIES}' não ordena por {ENTRY_GRAIN}"], entry_grain_off(found))
 
     def test_fim_sem_o_not_before_e_pego(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
