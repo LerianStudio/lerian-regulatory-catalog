@@ -259,14 +259,43 @@ class Conferencia(unittest.TestCase):
         files = case()
         files["EXTRATO"].append(lancamento("3", "0001", "654321", "135", "100", "D", "400", "C"))
         files["ORIGEM_DESTINO"].append(od("3", "3", "100"))
-        self.assert_says(self.run_case(files).errors, "EXTRATO: a conta 654321 da agência 0001 tem lançamento, e o "
-                                                      "CONTAS não a dá como investigada com movimento")
+        self.assert_says(self.run_case(files).errors, "EXTRATO: a conta 654321 da agência 0001, tipo 6, tem lançamento, "
+                                                      "e o CONTAS não a dá como investigada com movimento")
 
     def test_conta_movimentada_sem_linha_no_extrato_e_erro(self) -> None:
         files = case()
         files["CONTAS"][1] = conta("0001", "654321", "1", "500", "500")
-        self.assert_says(self.run_case(files).errors, "CONTAS: a conta 654321 da agência 0001 teve lançamento no "
-                                                      "período (campo 7 = 1) e não tem linha no EXTRATO")
+        self.assert_says(self.run_case(files).errors, "CONTAS: a conta 654321 da agência 0001, tipo 6, teve lançamento "
+                                                      "no período (campo 7 = 1) e não tem linha no EXTRATO")
+
+    def same_number_two_types(self) -> dict[str, list[list[str]]]:
+        """O caso coerente mais uma conta poupança (tipo 2) com o número da corrente 123456."""
+        files = case()
+        files["CONTAS"].append(conta("0001", "123456", "1", "300", "300"))
+        files["CONTAS"][2][3] = "2"
+        files["TITULARES"].append(titular("0001", "123456"))
+        files["TITULARES"][2][3] = "2"
+        return files
+
+    def test_mesmo_numero_movimentado_no_outro_tipo_sem_extrato_e_erro(self) -> None:
+        self.assert_says(self.run_case(self.same_number_two_types()).errors,
+                         "CONTAS: a conta 123456 da agência 0001, tipo 2, teve lançamento no período")
+
+    def test_extrato_do_tipo_sem_movimento_do_mesmo_numero_e_erro(self) -> None:
+        files = self.same_number_two_types()
+        files["CONTAS"][2][6] = "2"
+        files["EXTRATO"].append(lancamento("3", "0001", "123456", "135", "100", "D", "200", "C"))
+        files["EXTRATO"][2][4] = "2"
+        files["ORIGEM_DESTINO"].append(od("3", "3", "100"))
+        self.assert_says(self.run_case(files).errors,
+                         "EXTRATO: a conta 123456 da agência 0001, tipo 2, tem lançamento, e o CONTAS não a dá")
+
+    def test_mesmo_numero_com_os_dois_tipos_movimentados_passa(self) -> None:
+        files = self.same_number_two_types()
+        files["EXTRATO"].append(lancamento("3", "0001", "123456", "135", "100", "D", "200", "C"))
+        files["EXTRATO"][2][4] = "2"
+        files["ORIGEM_DESTINO"].append(od("3", "3", "100"))
+        self.assertEqual([], [e for e in self.run_case(files).errors if "lançamento" in e or "tipo" in e])
 
     def test_conta_do_titulares_fora_do_contas_e_erro(self) -> None:
         files = case()
@@ -719,7 +748,7 @@ class Mutations(unittest.TestCase):
 
     def test_aceitar_extrato_de_conta_sem_movimento_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
-            "moved_accounts", lambda contas: {(conf.field(r, 2), conf.field(r, 3)) for r in contas},
+            "moved_accounts", lambda contas: {(conf.field(r, 2), conf.field(r, 3), conf.field(r, 4)) for r in contas},
             "test_conta_do_extrato_sem_movimento_no_contas_e_erro"))
 
     def test_aceitar_conta_movimentada_sem_extrato_reprova_o_teste(self) -> None:
@@ -730,6 +759,14 @@ class Mutations(unittest.TestCase):
     def test_esquecer_o_documento_ausente_das_duas_pastas_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
             "expected_documents", lambda: set(), "test_documento_ausente_das_duas_pastas_bloqueia"))
+
+    def test_ignorar_o_tipo_da_conta_reprova_os_testes(self) -> None:
+        def sem_o_tipo(rows, agency, account, kind):
+            return {(conf.field(r, agency), conf.field(r, account), "") for r in rows}
+
+        for test in ("test_mesmo_numero_movimentado_no_outro_tipo_sem_extrato_e_erro",
+                     "test_extrato_do_tipo_sem_movimento_do_mesmo_numero_e_erro"):
+            self.assertEqual(1, self.failures_with("typed_accounts", sem_o_tipo, test), test)
 
     def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(

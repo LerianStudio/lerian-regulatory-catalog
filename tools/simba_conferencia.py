@@ -247,16 +247,19 @@ def check_membership(files: dict[str, list[list[str]]], report: Report) -> None:
     for branch in sorted({field(r, 2) for r in files["CONTAS"]} - branches):
         report.error(f"CONTAS: a agência {branch} não está no AGENCIAS")
     # O TITULARES traz também os titulares das contas de contraparte (campo 7 = 3); o
-    # EXTRATO, só as contas investigadas que tiveram lançamento.
+    # EXTRATO, só as contas investigadas que tiveram lançamento. Uma conta é o número COM o
+    # tipo: o mesmo número pode ser duas contas (corrente e poupança).
+    typed = typed_accounts(files["CONTAS"], 2, 3, 4)
     moved = moved_accounts(files["CONTAS"])
-    statement = {(field(r, 3), field(r, 4)) for r in files["EXTRATO"]}
-    for key in sorted((statement & accounts) - moved):
-        report.error(f"EXTRATO: a conta {key[1]} da agência {key[0]} tem lançamento, e o CONTAS não a dá como "
-                     "investigada com movimento (campo 7 = 1); gere os cinco arquivos com os mesmos parâmetros")
+    statement = typed_accounts(files["EXTRATO"], 3, 4, 5)
+    for key in sorted((statement & typed) - moved):
+        report.error(f"EXTRATO: a conta {key[1]} da agência {key[0]}, tipo {key[2]}, tem lançamento, e o CONTAS não "
+                     "a dá como investigada com movimento (campo 7 = 1); gere os cinco arquivos com os mesmos "
+                     "parâmetros")
     if files["EXTRATO"]:
         for key in sorted(unstated_accounts(moved, statement)):
-            report.error(f"CONTAS: a conta {key[1]} da agência {key[0]} teve lançamento no período (campo 7 = 1) e "
-                         "não tem linha no EXTRATO; gere os cinco arquivos com os mesmos parâmetros")
+            report.error(f"CONTAS: a conta {key[1]} da agência {key[0]}, tipo {key[2]}, teve lançamento no período "
+                         "(campo 7 = 1) e não tem linha no EXTRATO; gere os cinco arquivos com os mesmos parâmetros")
 
 
 def check_institution_and_types(files: dict[str, list[list[str]]], report: Report) -> None:
@@ -285,12 +288,18 @@ def check_institution_and_types(files: dict[str, list[list[str]]], report: Repor
                              "gere os arquivos de novo")
 
 
-def moved_accounts(contas: list[list[str]]) -> set[tuple[str, str]]:
-    """(agência, conta) das contas investigadas com lançamento no período (CONTAS campo 7 = 1)."""
-    return {(field(r, 2), field(r, 3)) for r in contas if field(r, 7) == MOVED}
+def typed_accounts(rows: list[list[str]], agency: int, account: int, kind: int) -> set[tuple[str, str, str]]:
+    """(agência, conta, tipo) de cada linha: o número sozinho não separa duas contas de tipos diferentes."""
+    return {(field(r, agency), field(r, account), field(r, kind)) for r in rows}
 
 
-def unstated_accounts(moved: set[tuple[str, str]], statement: set[tuple[str, str]]) -> set[tuple[str, str]]:
+def moved_accounts(contas: list[list[str]]) -> set[tuple[str, str, str]]:
+    """(agência, conta, tipo) das contas investigadas com lançamento no período (CONTAS campo 7 = 1)."""
+    return typed_accounts([r for r in contas if field(r, 7) == MOVED], 2, 3, 4)
+
+
+def unstated_accounts(moved: set[tuple[str, str, str]],
+                      statement: set[tuple[str, str, str]]) -> set[tuple[str, str, str]]:
     """As contas de campo 7 = 1 que o EXTRATO não traz."""
     return moved - statement
 
