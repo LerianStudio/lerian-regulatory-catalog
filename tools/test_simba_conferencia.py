@@ -209,6 +209,14 @@ class Conferencia(unittest.TestCase):
         path.write_bytes(path.read_bytes().replace(b"PESSOA EXEMPLO", "PESSOA EXEMPLÃ".encode("utf-8"), 1))
         self.assert_says(conf.conferir(folder, CASO, drafts_folder).errors, "TITULARES:1: caractere fora do ASCII")
 
+    def test_caractere_de_controle_e_erro_sem_ecoar_o_caractere(self) -> None:
+        folder, drafts_folder = self.write(case(), drafts=[rows()])
+        path = folder / f"{CASO}_CONTAS.txt"
+        path.write_bytes(path.read_bytes().replace(b"654321", b"654\x1b[2J", 1))
+        report = conf.conferir(folder, CASO, drafts_folder)
+        self.assert_says(report.errors, "CONTAS:2: caractere de controle 0x1B")
+        self.assertFalse(any("\x1b" in t for t in report.errors + report.warnings + report.blocks))
+
     def test_contas_sem_conta_e_aviso(self) -> None:
         files = {name: [] for name in conf.FILES}
         self.assert_says(self.run_case(files).warnings, "CONTAS: nenhuma conta")

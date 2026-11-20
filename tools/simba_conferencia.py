@@ -10,8 +10,9 @@ pelo número. O Reporter recusa o que um documento sozinho prova errado; o que s
 aparece cruzando os cinco sai daqui, para quem aprova.
 
 ERRO (corrigir ou gerar de novo antes de aprovar):
-  * linha sem CRLF, com caractere fora do ASCII (IN art. 3º, caput) ou com outro
-    número de campos do que o Anexo I dá ao arquivo;
+  * linha sem CRLF, com caractere fora do ASCII (IN art. 3º, caput), com caractere de
+    controle que não é o TAB entre campos, ou com outro número de campos do que o Anexo I
+    dá ao arquivo;
   * EXTRATO e ORIGEM-DESTINO com números de lançamento diferentes, ou o mesmo número
     com outro valor (um lançamento gravado entre as duas gerações desloca a
     numeração: gere os dois de novo);
@@ -168,11 +169,22 @@ def read_lines(path: Path, name: str, report: Report) -> list[list[str]]:
             text = line.decode("ascii", errors="replace")
         if "\n" in text or "\r" in text:
             report.error(f"{name}:{number}: quebra de linha que não é CRLF")
+        controls = sorted({ord(c) for c in text if _is_control(c)})
+        if controls:
+            # A mensagem dá o código, nunca o caractere: impresso cru no terminal de quem aprova,
+            # um ESC apagaria ou reescreveria o que a conferência mostra.
+            report.error(f"{name}:{number}: caractere de controle {', '.join(f'0x{c:02X}' for c in controls)}")
+            text = "".join("?" if _is_control(c) else c for c in text)
         fields = text.split("\t")
         if len(fields) != FILES[name]:
             report.error(f"{name}:{number}: {len(fields)} campos; o Anexo I dá {FILES[name]}")
         rows.append(fields)
     return rows
+
+
+def _is_control(c: str) -> bool:
+    """Caractere de controle ASCII que não é o TAB entre campos (CR e LF têm a sua própria mensagem)."""
+    return (ord(c) < 0x20 and c not in "\t\r\n") or ord(c) == 0x7F
 
 
 def field(row: list[str], number: int) -> str:
