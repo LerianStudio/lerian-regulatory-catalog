@@ -128,5 +128,18 @@
       "line": 2,
       "field": 9
     }
+  },
+  {
+    "name": "renda da pessoa natural fora do campo 18",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% elif t.renda %}{{ t.renda|replace:\".:\" }}{% endif %}",
+    "new": "{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 3,
+      "field": 18
+    }
   }
 ]
