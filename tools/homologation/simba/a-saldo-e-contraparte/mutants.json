@@ -635,5 +635,18 @@
       "line": 41,
       "field": 9
     }
+  },
+  {
+    "name": "tarifa sem o motivo da conta em branco",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "0\ttarifa da propria instituicao; sem conta de contraparte\t{{ instituicao.cnpj }}",
+    "new": "0\t\t{{ instituicao.cnpj }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 6,
+      "field": 18
+    }
   }
 ]
