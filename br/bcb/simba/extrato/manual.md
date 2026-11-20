@@ -172,7 +172,8 @@ o contrato na carga.
 - **Codigos especificos sem marca**: Pix Saque, Pix Troco, mesma titularidade e boleto saem
   com o codigo largo (`135`/`261` no Pix, `134`/`259` na TED).
 - **Texto sem acento**: descricao e nome da instituicao passam pela conversao para ASCII do
-  template, e TAB vira espaco. **Quebra de linha (CR ou LF) dentro de um valor nao e retirada.**
+  template, e TAB, CR e LF viram espaco: uma quebra de linha nao parte o registro. O numero
+  da conta nao passa pela conversao: com TAB, CR ou LF ele recusa a geracao.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa macros. A geracao nao.
 - **Ordem**: a ordem do arquivo e a da leitura agrupada por transacao e operacao, nao a
