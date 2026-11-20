@@ -76,5 +76,18 @@
       "line": 5,
       "field": 6
     }
+  },
+  {
+    "name": "EXTRATO 26 do Pix JD recebido lido do envio",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% for pd in trilho_pix_jd_recebimentos|where:chaveR %}{% with x=pd.txid",
+    "new": "{% for pd in trilho_pix_jd_envios|where:chaveR %}{% with x=pd.txid",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 1,
+      "field": 26
+    }
   }
 ]
