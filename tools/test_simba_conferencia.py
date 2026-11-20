@@ -257,6 +257,22 @@ class Conferencia(unittest.TestCase):
         files["TITULARES"].append(titular("0001", "888888"))
         self.assert_says(self.run_case(files).errors, "TITULARES: a conta 888888")
 
+    def test_compe_diferente_no_extrato_e_erro(self) -> None:
+        files = case()
+        files["EXTRATO"][0][1] = "998"
+        self.assert_says(self.run_case(files).errors, "o Compe da instituição difere entre os arquivos")
+
+    def test_compe_da_contraparte_no_od_nao_conta(self) -> None:
+        files = case()
+        files["ORIGEM_DESTINO"][0][4] = "001"
+        self.assertEqual([], self.run_case(files).errors)
+
+    def test_tipo_de_conta_diferente_no_titulares_e_erro(self) -> None:
+        files = case()
+        files["TITULARES"][0][3] = "1"
+        self.assert_says(self.run_case(files).errors, "a conta 123456 da agência 0001 tem tipos de conta diferentes "
+                                                      "(CONTAS 6; EXTRATO 6; TITULARES 1)")
+
     def test_agencia_fora_do_agencias_e_erro(self) -> None:
         files = case()
         files["AGENCIAS"] = [agencia("0002")]

@@ -18,6 +18,8 @@ ERRO (corrigir ou gerar de novo antes de aprovar):
     numeração: gere os dois de novo);
   * conta do EXTRATO ou do TITULARES que não está no CONTAS; agência do CONTAS que
     não está no AGENCIAS;
+  * Compe da instituição diferente entre AGENCIAS, CONTAS, TITULARES e EXTRATO, ou
+    conta com tipo de conta diferente no CONTAS, no TITULARES e no EXTRATO;
   * conta do EXTRATO que o CONTAS não dá como investigada com movimento (campo 7 = 1),
     ou conta de campo 7 = 1 sem linha no EXTRATO: o EXTRATO traz só os lançamentos das
     contas investigadas (IN art. 2º, IV), e o CONTAS marca o movimento pelos mesmos
@@ -126,6 +128,12 @@ EXTRATO_ENTRIES = "lancamentos"
 MOVEMENT_FILES = ("EXTRATO", "ORIGEM_DESTINO")
 # CONTAS campo 7 (IN :126): "1" conta investigada com movimento no período.
 MOVED = "1"
+# O campo do Compe da instituição em cada arquivo (Anexo I: AGENCIAS 1, CONTAS 1, TITULARES 1,
+# EXTRATO 2; o 5 do ORIGEM-DESTINO é o Compe da contraparte, outra instituição).
+COMPE_FIELDS = {"AGENCIAS": 1, "CONTAS": 1, "TITULARES": 1, "EXTRATO": 2}
+# (campo da agência, campo da conta, campo do tipo de conta) dos arquivos que repetem o tipo
+# da conta do CONTAS (Anexo I: CONTAS 4, TITULARES 4, EXTRATO 5).
+ACCOUNT_TYPE_FIELDS = {"CONTAS": (2, 3, 4), "TITULARES": (2, 3, 4), "EXTRATO": (3, 4, 5)}
 # TITULARES campo 5 (IN :141): "T" é o titular; algarismos são os cotitulares, e as outras
 # letras, representante e procurador.
 HOLDER = "T"
@@ -246,6 +254,27 @@ def check_membership(files: dict[str, list[list[str]]], report: Report) -> None:
         for key in sorted(unstated_accounts(moved, statement)):
             report.error(f"CONTAS: a conta {key[1]} da agência {key[0]} teve lançamento no período (campo 7 = 1) e "
                          "não tem linha no EXTRATO; gere os cinco arquivos com os mesmos parâmetros")
+
+
+def check_institution_and_types(files: dict[str, list[list[str]]], report: Report) -> None:
+    """O Compe da instituição e o tipo de cada conta, iguais nos arquivos que os repetem.
+
+    O Compe é um valor do mapeamento de cada documento, digitado em cada binding; o tipo da conta
+    vem do cadastro, lido em cada geração.
+    """
+    compes = {name: sorted({field(r, number) for r in files[name]}) for name, number in COMPE_FIELDS.items()}
+    if len({value for values in compes.values() for value in values}) > 1:
+        found = "; ".join(f"{name} {', '.join(values)}" for name, values in compes.items() if values)
+        report.error(f"o Compe da instituição difere entre os arquivos ({found}); corrija o mapeamento")
+    types: dict[tuple[str, str], dict[str, set[str]]] = {}
+    for name, (agency, account, kind) in ACCOUNT_TYPE_FIELDS.items():
+        for r in files[name]:
+            types.setdefault((field(r, agency), field(r, account)), {}).setdefault(name, set()).add(field(r, kind))
+    for key, by_file in sorted(types.items()):
+        if len(set().union(*by_file.values())) > 1:
+            found = "; ".join(f"{name} {', '.join(sorted(values))}" for name, values in sorted(by_file.items()))
+            report.error(f"a conta {key[1]} da agência {key[0]} tem tipos de conta diferentes ({found}); "
+                         "gere os arquivos de novo")
 
 
 def moved_accounts(contas: list[list[str]]) -> set[tuple[str, str]]:
@@ -589,6 +618,7 @@ def conferir(folder: Path, caso: str, drafts_folder: Path | None = None, previou
         report.warn("CONTAS: nenhuma conta; confira os documentos e o período da ordem")
     check_numbering(files["EXTRATO"], files["ORIGEM_DESTINO"], report)
     check_membership(files, report)
+    check_institution_and_types(files, report)
     check_balances(files["EXTRATO"], files["CONTAS"], drafts, report)
     check_generic_entries(files["EXTRATO"], files["ORIGEM_DESTINO"], report)
     check_identity(files["TITULARES"], report)
