@@ -1,0 +1,82 @@
+[
+  {
+    "referencia": "A9",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "CACC"
+  },
+  {
+    "referencia": "A20",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "CPAY"
+  },
+  {
+    "referencia": "A21",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "CACC"
+  },
+  {
+    "referencia": "A23",
+    "ispb": "00250699",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "SVGS"
+  },
+  {
+    "referencia": "A24",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "PG"
+  },
+  {
+    "referencia": "A25",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "SLRY"
+  },
+  {
+    "referencia": "A26",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "PAYMENT"
+  },
+  {
+    "referencia": "A27",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "XY"
+  },
+  {
+    "referencia": "A33",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "TRAN"
+  },
+  {
+    "referencia": "A34",
+    "ispb": "60746948",
+    "agencia": "4321",
+    "conta": "555666",
+    "nome": "Recebedor TED Exemplo",
+    "tipoContaInformado": "4"
+  }
+]

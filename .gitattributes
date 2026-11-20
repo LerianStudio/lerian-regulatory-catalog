@@ -1,0 +1,3 @@
+# Os templates levam o fim de linha que o regulador recebe (CRLF no SIMBA): o git
+# não converte nada dentro de um .tpl.
+*.tpl -text

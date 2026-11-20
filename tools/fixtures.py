@@ -65,7 +65,7 @@ PLANO_CONTRACT = {
         {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S"],
          "description": "Remessa."},
     ],
-    "filing": {"period": ["dataBase"],
+    "filing": {"period": ["dataBase"], "approve": "newest", "allowEmpty": False,
                "remittance": {"parameter": "tipoRemessa", "original": "I", "replacement": "S"}},
     "datasets": [
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
@@ -280,7 +280,18 @@ HIER_CONTRACT = {
     "apiVersion": APIV,
     "kind": "DocumentContract",
     "metadata": _meta("zz.fixture.hierarquia", "HIER"),
-    "parameters": [{"name": "dataBase", "type": "month", "required": True, "description": "Competência."}],
+    # Um semestre (span) e duas datas que caem nele, a final não antes da inicial.
+    "parameters": [{"name": "dataBase", "type": "month", "required": True, "span": 6,
+                    "description": "Semestre, pelo mês em que termina."},
+                   {"name": "dtIni", "type": "date", "required": False, "within": "dataBase",
+                    "description": "Início do período informado."},
+                   {"name": "dtFim", "type": "date", "required": False, "within": "dataBase",
+                    "notBefore": "dtIni", "description": "Fim do período informado."},
+                   # Uma lista de valores (`multiple`), lida por `in` num filtro do binding.
+                   {"name": "titularesPedidos", "type": "string", "required": False, "multiple": True,
+                    "maxItems": 50, "description": "Titulares pedidos; ausente, todos."}],
+    # O período é declarado: uma lista (`multiple`) nunca entra nele.
+    "filing": {"period": ["dataBase", "dtIni", "dtFim"]},
     "datasets": [
         {"name": "titulares", "description": "Titulares.", "grain": ["codigo"],
          "consolidation": {"key": ["codigo"], "whenKeyRepeats": "refuse",
@@ -325,7 +336,7 @@ HIER_CONTRACT = {
 
 HIER_TEMPLATE = """{# Fixture HIER — hierarquia de conjuntos. #}
 {# As filhas são alcançadas como lista aninhada na linha do pai. #}
-|H|{{ system.dataBase }}|
+|H|{{ system.dataBase }}|{{ system.periods.dataBase.start }}|{{ system.periods.dataBase.end }}|
 {%- for t in titulares %}
 |T|{{ t.codigo }}|{{ t.tipo }}|{{ t.cnpj }}|
 {%- endfor %}
@@ -344,6 +355,7 @@ HIER_BINDING = {
     "contractVersion": "1.0.0",
     "queries": [
         {"name": "base_titulares", "dataSource": "crm", "table": "holders",
+         "filters": [{"field": "_id", "operator": "in", "values": [{"parameter": "titularesPedidos"}]}],
          "join": [{"table": "aliases", "match": {"holder_id": "_id"}, "columns": {"apelido": "alias"}}]},
         {"name": "movimento", "dataSource": "fonte_x", "table": "lancamento",
          "join": [{"query": "base_titulares", "match": {"conta": "conta"}}],

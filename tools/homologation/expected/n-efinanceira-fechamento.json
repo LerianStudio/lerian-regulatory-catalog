@@ -1,0 +1,156 @@
+{
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/n-efinanceira-fechamento.json e do XSD evtFechamentoeFinanceira-v1_5_0. Caminho debaixo de evtFechamentoeFinanceira, sem o namespace; texto, null para ausente; o id pela forma e maior que os anteriores da execução. As datas: semestre 2026-06 = 2026-01-01 a 2026-06-30, 2026-12 = 2026-07-01 a 2026-12-31, salvo dtInicio/dtFim informados. sitEspecial sai sempre (0 quando não informado); ContasAReportarCRS e ContasAReportarFATCA só quando informados; nadaADeclarar, FechamentoPP, EntPatDecExterior e FechamentoMovOpFinAnual nunca (o nadaADeclarar não é parâmetro do contrato: knownGap nada-a-declarar-fora). A ordem importa: o original de 2026-06 é julgado e SÓ ENTÃO aprovado; depois dele, outro original de 2026-06 é recusado (RPT-0197), e a outra entrada gerada de 2026-06 é retificação. As de 2026-12 ficam em rascunho (nenhuma é aprovada), então se geram de novo a cada execução. As recusas de parâmetro são de 2026-12, onde não há original aprovado: só a regra do parâmetro responde.",
+  "documents": [
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "original-com-movimento",
+      "parameters": {"semestre": "2026-06", "indRetificacao": "1", "fechamentoMovOpFin": "1"},
+      "approve": true,
+      "_note": "O fechamento do primeiro semestre de 2026 com movimento de operações financeiras, sem datas nem situação especial informadas: as datas do semestre e sitEspecial 0 (o padrão do contrato). Sem CRS nem FATCA. Julgado elemento a elemento e só então aprovado; numa execução seguinte, o aprovado é o julgado.",
+      "elements": {
+        "ideEvento/indRetificacao": "1",
+        "ideEvento/nrRecibo": null,
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoFechamento/dtInicio": "2026-01-01",
+        "infoFechamento/dtFim": "2026-06-30",
+        "infoFechamento/sitEspecial": "0",
+        "infoFechamento/nadaADeclarar": null,
+        "FechamentoPP": null,
+        "FechamentoMovOpFin/FechamentoMovOpFin": "1",
+        "FechamentoMovOpFin/ContasAReportarCRS": null,
+        "FechamentoMovOpFin/ContasAReportarFATCA": null,
+        "FechamentoMovOpFin/EntPatDecExterior": null,
+        "FechamentoMovOpFinAnual": null
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "segunda-original",
+      "parameters": {"semestre": "2026-06", "indRetificacao": "1", "fechamentoMovOpFin": "0"},
+      "refused": {"status": 409, "code": "RPT-0197"},
+      "_note": "O original de 2026-06 já foi aprovado acima: outro original do MESMO semestre é recusado na hora, mesmo com outro indicador — os indicadores não entram no período da entrega (filing.period: [semestre]), como a Receita recusa o segundo fechamento ativo do semestre (MS1212)."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "retificacao-sem-contas",
+      "parameters": {"semestre": "2026-06", "indRetificacao": "2", "nrRecibo": "123456-01-001-2026-765432",
+                     "fechamentoMovOpFin": "1", "contasAReportarCRS": "0", "contasAReportarFATCA": "0"},
+      "_note": "Retificação espontânea (2) do semestre, com o recibo, que acrescenta a inexistência de contas CRS e FATCA: os dois saem dentro de FechamentoMovOpFin, depois do indicador e na ordem do XSD (CRS e depois FATCA). Evento novo, id maior que o do original. Fica em rascunho.",
+      "elements": {
+        "ideEvento/indRetificacao": "2",
+        "ideEvento/nrRecibo": "123456-01-001-2026-765432",
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoFechamento/dtInicio": "2026-01-01",
+        "infoFechamento/dtFim": "2026-06-30",
+        "infoFechamento/sitEspecial": "0",
+        "infoFechamento/nadaADeclarar": null,
+        "FechamentoPP": null,
+        "FechamentoMovOpFin/FechamentoMovOpFin": "1",
+        "FechamentoMovOpFin/ContasAReportarCRS": "0",
+        "FechamentoMovOpFin/ContasAReportarFATCA": "0",
+        "FechamentoMovOpFin/EntPatDecExterior": null,
+        "FechamentoMovOpFinAnual": null
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "original-sem-movimento",
+      "parameters": {"semestre": "2026-12", "indRetificacao": "1", "fechamentoMovOpFin": "0"},
+      "_note": "O original do segundo semestre de 2026 sem movimento de operações financeiras (FechamentoMovOpFin 0): o grupo sai mesmo assim, com o indicador. Não é aprovado: fica em rascunho, e a execução seguinte gera outro rascunho da mesma entrega.",
+      "elements": {
+        "ideEvento/indRetificacao": "1",
+        "ideEvento/nrRecibo": null,
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoFechamento/dtInicio": "2026-07-01",
+        "infoFechamento/dtFim": "2026-12-31",
+        "infoFechamento/sitEspecial": "0",
+        "infoFechamento/nadaADeclarar": null,
+        "FechamentoPP": null,
+        "FechamentoMovOpFin/FechamentoMovOpFin": "0",
+        "FechamentoMovOpFin/ContasAReportarCRS": null,
+        "FechamentoMovOpFin/ContasAReportarFATCA": null,
+        "FechamentoMovOpFin/EntPatDecExterior": null,
+        "FechamentoMovOpFinAnual": null
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "extincao-no-meio",
+      "parameters": {"semestre": "2026-12", "indRetificacao": "2", "nrRecibo": "777-02-345-2026-9",
+                     "dtFim": "2026-11-30", "sitEspecial": "1", "fechamentoMovOpFin": "0"},
+      "_note": "Retificação do fechamento de 2026-12 de uma instituição extinta em 30/11/2026: dtFim informado no meio do semestre e sitEspecial 1 (extinção), como a Receita exige (MS1045, que o motor não cruza: knownGap situacao-especial-no-meio-do-semestre). Sem dtInicio, o primeiro dia do semestre. Retificação sem original aprovado no Reporter: aceita, porque nomeia o recibo. Fica em rascunho.",
+      "elements": {
+        "ideEvento/indRetificacao": "2",
+        "ideEvento/nrRecibo": "777-02-345-2026-9",
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoFechamento/dtInicio": "2026-07-01",
+        "infoFechamento/dtFim": "2026-11-30",
+        "infoFechamento/sitEspecial": "1",
+        "infoFechamento/nadaADeclarar": null,
+        "FechamentoPP": null,
+        "FechamentoMovOpFin/FechamentoMovOpFin": "0",
+        "FechamentoMovOpFin/ContasAReportarCRS": null,
+        "FechamentoMovOpFin/ContasAReportarFATCA": null,
+        "FechamentoMovOpFin/EntPatDecExterior": null,
+        "FechamentoMovOpFinAnual": null
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "situacao-especial-4",
+      "parameters": {"semestre": "2026-12", "indRetificacao": "1", "fechamentoMovOpFin": "0", "sitEspecial": "4"},
+      "refused": {"status": 400, "code": "RPT-0140", "detailContains": ["sitEspecial"]},
+      "_note": "A situação especial vai de 0 a 5 sem o 4 (XSD e Anexo II): fora do domínio, recusado na hora."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "contas-crs-1",
+      "parameters": {"semestre": "2026-12", "indRetificacao": "1", "fechamentoMovOpFin": "0", "contasAReportarCRS": "1"},
+      "refused": {"status": 400, "code": "RPT-0140", "detailContains": ["contasAReportarCRS"]},
+      "_note": "ContasAReportarCRS só aceita 0 (inexistência de contas): 1 é recusado na hora."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "movimento-com-2",
+      "parameters": {"semestre": "2026-12", "indRetificacao": "1", "fechamentoMovOpFin": "2"},
+      "refused": {"status": 400, "code": "RPT-0140", "detailContains": ["fechamentoMovOpFin"]},
+      "_note": "O indicador de movimento é 0 ou 1: 2 é recusado na hora."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "sem-indicador-de-movimento",
+      "parameters": {"semestre": "2026-12", "indRetificacao": "1"},
+      "refused": {"status": 400, "code": "RPT-0140", "detailContains": ["fechamentoMovOpFin"]},
+      "_note": "O contrato pede o indicador de movimento, sem padrão: sem ele, a geração é recusada na hora."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "fim-depois-do-semestre",
+      "parameters": {"semestre": "2026-12", "indRetificacao": "1", "fechamentoMovOpFin": "0",
+                     "dtFim": "2027-01-01", "sitEspecial": "1"},
+      "refused": {"status": 400, "code": "RPT-0140",
+                  "detailContains": ["dtFim", "outside semestre 2026-12 (2026-07-01 to 2026-12-31)"]},
+      "_note": "O primeiro dia de 2027 como data de encerramento do segundo semestre de 2026: recusado na hora (within), com o parâmetro e as datas do semestre na recusa."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-fechamento",
+      "label": "retificacao-a-pedido",
+      "parameters": {"semestre": "2026-12", "indRetificacao": "3", "nrRecibo": "123456-01-001-2026-765433",
+                     "fechamentoMovOpFin": "0"},
+      "refused": {"status": 400, "code": "RPT-0140", "detailContains": ["indRetificacao"]},
+      "_note": "A regra MS1119 cita o 3 (retificação a pedido), o XSD do fechamento não: vale o XSD, e o domínio do parâmetro é 1 ou 2."
+    }
+  ]
+}

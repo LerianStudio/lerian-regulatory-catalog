@@ -56,6 +56,31 @@ def warn(msg: str) -> None:
     WARNINGS.append(msg)
 
 
+# A pasta de material de curadoria de um documento. Um arquivo dentro dela nunca é
+# o contrato do documento, nem o de outro, mesmo que se chame contract.yaml.
+CURATION_DIR = "schema"
+# As profundidades de um contract.yaml, contando o próprio arquivo: sem e com a pasta
+# de família. Um contrato mais fundo não é documento: o Reporter monta o caminho pelo
+# id e lê só estes dois níveis.
+CONTRACT_DEPTHS = (4, 5)
+
+
+def contract_paths(root: Path) -> list[Path]:
+    """Todo contrato do catálogo, em `<país>/<regulador>/<documento>/` ou dentro de uma
+    pasta de família (`<país>/<regulador>/<família>/<documento>/`).
+
+    A varredura era de três níveis fixos, e um documento do SIMBA (br/bcb/simba/agencias)
+    ficava de fora sem aviso: o índice o anunciava, nada do contrato era conferido. Uma
+    porta só, lida pelo validador, por tools/natureza.py e por tools/tabelas_receita.py,
+    para os três não divergirem.
+    """
+    return sorted(
+        path for path in root.rglob("contract.yaml")
+        if len(path.relative_to(root).parts) in CONTRACT_DEPTHS
+        and CURATION_DIR not in path.relative_to(root).parts[:-1]
+    )
+
+
 def load(path: Path):
     """Lê um YAML do catálogo, reprovando em vez de estourar.
 
@@ -425,8 +450,55 @@ def check_template(doc_dir: Path, contract: dict) -> None:
 
     refs = set(re.findall(r"\{\{\s*([A-Za-z_]\w*)\.(\w+)", body))
 
+    # Um campo também é posicionado DENTRO de uma expressão: argumento de macro
+    # (`{{ ascii(t.nome) }}`), condição (`{% if t.dataFim %}`) ou `with`. Só o começo
+    # do `{{` contava, e o campo posto assim aparecia como "nenhum template o
+    # posiciona" — e um nome trocado ali passava calado. Strings saem antes (um
+    # `"a.b"` não é campo), e a tag `for` só liga nomes (o iterável é conjunto, não
+    # campo). Numa tag `{% %}` uma cabeça que não é laço sobre conjunto (forloop, um
+    # nome do `with`) é ignorada; num `{{ }}` ela é conferida como sempre.
+    tag_refs: set[tuple[str, str]] = set()
+    for opener, inner in re.findall(r"(\{\{|\{%)-?(.*?)-?(?:\}\}|%\})", body, flags=re.DOTALL):
+        expr = re.sub(r"\"[^\"]*\"|'[^']*'", "", inner)
+        if opener == "{%" and re.match(r"\s*(for|endfor|macro|endmacro)\b", expr):
+            continue
+        for head, field in re.findall(r"(?<![\w.])([A-Za-z_]\w*)\.([A-Za-z_]\w*)", expr):
+            if head in ("forloop", "parentloop"):
+                continue
+            if opener == "{{":
+                refs.add((head, field))
+            else:
+                tag_refs.add((head, field))
+    for head, field in tag_refs - refs:
+        # `{% if Op.Venc %}` pergunta se o conjunto filho tem linha: Venc é conjunto,
+        # não campo de Op.
+        if head != "system" and field not in datasets and dataset_of(head) is not None:
+            refs.add((head, field))
+
+    # As pontas de um período (`span`) chegam ao template como
+    # system.periods.<parâmetro>.start/.end (o motor publica `periods` em `system`, e
+    # por isso o nome é reservado). Só um parâmetro que declara span tem período: um
+    # outro, ou uma ponta que não é start nem end, imprime vazio num arquivo que parece
+    # completo.
+    spans = span_parameters(contract)
+    for name, edge in sorted(set(re.findall(r"system\.periods\b(?:\.(\w+))?(?:\.(\w+))?", body))):
+        if name not in spans:
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: template lê system.periods.{name}"
+                f"{'.' + edge if edge else ''}, e '{name}' não é um parâmetro que declara span; "
+                f"o motor só publica o período de um month com span "
+                f"({', '.join(sorted(spans)) or 'nenhum neste contrato'})"
+            )
+        elif edge not in ("start", "end"):
+            fail(
+                f"{doc_dir.relative_to(ROOT)}: template lê system.periods.{name}"
+                f"{'.' + edge if edge else ''}; de um período o template lê só .start e .end"
+            )
+
     placed: set[tuple[str, str]] = set()
     for head, field in sorted(refs):
+        if head == "system" and field == "periods" and spans:
+            continue
         if head == "system":
             if field not in parameters:
                 fail(
@@ -560,9 +632,14 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             f"'{binding.get('contract')}', não para este contrato"
         )
 
+    multiple = multiple_parameters(contract)
+
     check_binding_queries(doc_dir, binding)
     check_parent_match(doc_dir, contract, binding)
     check_column_survival(doc_dir, binding)
+    _check_span_edges(doc_dir, contract, binding)
+    _check_filter_values(doc_dir, contract, binding)
+    raw_rows = _raw_rows(example)
 
     queries = {q.get("name") for q in query_list(binding)}
     declared, _ = declared_names(contract)
@@ -651,6 +728,19 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             _check_children_of_empty_set(doc_dir, dataset, bound, by_name)
             continue
 
+        # `rows`: o cliente escreve as linhas do conjunto à mão, uma a uma, e
+        # `rows: []` com `pendingReason` enquanto não as escreveu. Num conjunto
+        # nonEmpty a pendência é do cliente preencher, como a lista manual.
+        if isinstance(entry, dict) and "rows" in entry:
+            if _check_manual_rows(doc_dir, contract, dataset, entry, bound, by_name, raw_rows.get(dataset)):
+                client_fills.add(dataset)
+            continue
+
+        if isinstance(entry, dict) and "pendingReason" in entry:
+            fail(f"{doc_dir.relative_to(ROOT)}: o conjunto '{dataset}' declara pendingReason e não escreve "
+                 f"linhas; o pendingReason de um conjunto diz por que as linhas escritas à mão ainda não "
+                 f"estão lá, então vai ao lado de `rows: []`")
+
         raw_from = entry.get("from")
         if raw_from is not None and not isinstance(raw_from, dict):
             fail(
@@ -721,6 +811,9 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                             f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
                             f"resolve por {case.get('from')!r}; use {', '.join(sorted(valid))}"
                         )
+                    if case.get("from") == "parameter":
+                        _check_field_parameter(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}]",
+                                               case.get("parameter"), multiple)
                     # A MESMA precondição do caminho direto: `rowSet` só significa
                     # algo se o conjunto declarar rowSet no contrato. Aplicá-la num
                     # caminho e não no outro é o furo de sempre — a origem existe em
@@ -740,10 +833,10 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                         )
 
                     if case.get("from") == "manual" and case.get("value") is None:
-                        if not case.get("pendingReason"):
+                        if not pending_reason(case):
                             fail(
                                 f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
-                                f"é manual sem valor e sem `pendingReason`"
+                                f"é manual sem valor e sem `pendingReason`{_reason_shape(case)}"
                             )
                         if field in required_by_dataset.get(dataset, set()):
                             pending.add(f"{dataset}.{field}")
@@ -758,6 +851,11 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
                     f"{how!r}; use query, constant, parameter, manual, rowSet ou byRowClass"
                 )
+
+            # Mesma conferência do caso de classe acima: a origem existe nos dois caminhos.
+            if how == "parameter":
+                _check_field_parameter(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}",
+                                       spec.get("parameter"), multiple)
 
             # `rowSet` só significa algo se o CONJUNTO declarar rowSet no contrato:
             # aceitar o nome da origem sem conferir a precondição deixa o campo
@@ -784,10 +882,10 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             # (acima): ele não é um valor que o cliente digita uma vez, e o motor nem o
             # leva ao recomeçar da referência.
             if how == "manual" and spec.get("value") is None:
-                if not spec.get("pendingReason"):
+                if not pending_reason(spec):
                     fail(
                         f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} é manual sem "
-                        f"valor e sem `pendingReason`"
+                        f"valor e sem `pendingReason`{_reason_shape(spec)}"
                     )
                 if field in required_by_dataset.get(dataset, set()):
                     client_fills.add(f"{dataset}.{field}")
@@ -829,20 +927,11 @@ def _check_children_of_empty_set(doc_dir: Path, dataset: str, bound: dict, by_na
     """Um conjunto pendurado (a qualquer profundidade) num conjunto declarado vazio
     também é declarado vazio: sem linha no pai, não há onde pendurar as dele, e um
     filho não mapeado deixaria pendências que bloqueiam a aprovação."""
-    for name, declared in by_name.items():
-        parent, seen = name, set()
-        while True:
-            child_of = (by_name.get(parent) or {}).get("childOf")
-            parent = child_of.get("dataset") if isinstance(child_of, dict) else None
-            if not isinstance(parent, str) or parent in seen:
-                break
-            seen.add(parent)
-            if parent == dataset:
-                entry = bound.get(name)
-                if not (isinstance(entry, dict) and "emptyReason" in entry):
-                    fail(f"{doc_dir.relative_to(ROOT)}: o conjunto '{dataset}' é declarado vazio e "
-                         f"'{name}' pendura nele sem ser declarado vazio também")
-                break
+    for name in _hanging_from(by_name, dataset):
+        entry = bound.get(name)
+        if not (isinstance(entry, dict) and "emptyReason" in entry):
+            fail(f"{doc_dir.relative_to(ROOT)}: o conjunto '{dataset}' é declarado vazio e "
+                 f"'{name}' pendura nele sem ser declarado vazio também")
 
 
 def _check_list(doc_dir: Path, contract: dict, dataset: str, field: str, spec: dict, entry: dict) -> bool:
@@ -880,38 +969,310 @@ def _check_list(doc_dir: Path, contract: dict, dataset: str, field: str, spec: d
     if how == "constant" and not values:
         fail(f"{where} é uma lista vazia numa constante: não escreveria linha nenhuma")
         return False
-    if how == "manual" and not values and not spec.get("pendingReason"):
-        fail(f"{where} é uma lista manual vazia e sem `pendingReason`")
+    if how == "manual" and not values and not pending_reason(spec):
+        fail(f"{where} é uma lista manual vazia e sem `pendingReason`{_reason_shape(spec)}")
         return False
 
     declared = next((f for f in fields_of(ds) if isinstance(f, dict) and f.get("name") == field), {})
-    # O motor confere o valor ESCRITO, depois de normalize e format; sem aplicá-los
-    # aqui, o domain, o length e o pattern ficam para o motor nesses campos.
-    if declared.get("normalize") is not None or declared.get("format") is not None:
-        declared = {}
-    # The engine checks the value against the GROUPED pattern. One that does not
-    # compile is reported by _check_field_shape; the values are not judged by it.
-    pattern = None
-    if isinstance(declared.get("pattern"), str):
-        try:
-            pattern = re.compile(f"(?:{declared['pattern']})")
-        except re.error:
-            pattern = None
     seen: set[str] = set()
     for value in values:
         if value.strip() == "":
             fail(f"{where} lista um valor vazio")
         elif value in seen:
             fail(f"{where} lista '{value}' duas vezes")
-        elif isinstance(declared.get("domain"), list) and value not in [str(d) for d in declared["domain"]]:
-            fail(f"{where} lista '{value}', que o domain do campo recusa")
-        elif isinstance(declared.get("length"), int) and len(value) != declared["length"]:
-            fail(f"{where} lista '{value}', e o campo tem {declared['length']} posições")
-        elif pattern is not None and not pattern.fullmatch(value):
-            fail(f"{where} lista '{value}', que o pattern do campo recusa")
+        elif (refusal := _value_refusal(declared, value)) is not None:
+            fail(f"{where} lista '{value}'{refusal}")
         seen.add(value)
 
     return how == "manual" and not values
+
+
+def _value_refusal(declared: dict, value: str) -> str | None:
+    """Por que o campo recusa um valor escrito no mapeamento, ou None.
+
+    Confere o domain, o length e o pattern, como o motor (Populator.CheckValue).
+    O motor confere o valor ESCRITO, depois de normalize e format; sem aplicá-los
+    aqui, o domain, o length e o pattern ficam para o motor nesses campos.
+    """
+    if declared.get("normalize") is not None or declared.get("format") is not None:
+        return None
+    if isinstance(declared.get("domain"), list) and value not in [str(d) for d in declared["domain"]]:
+        return ", que o domain do campo recusa"
+    if isinstance(declared.get("length"), int) and len(value) != declared["length"]:
+        return f", e o campo tem {declared['length']} posições"
+    # The engine checks the value against the GROUPED pattern. One that does not
+    # compile is reported by _check_field_shape; the values are not judged by it.
+    if isinstance(declared.get("pattern"), str):
+        try:
+            pattern = re.compile(f"(?:{declared['pattern']})")
+        except re.error:
+            return None
+        if not pattern.fullmatch(value):
+            return ", que o pattern do campo recusa"
+    return None
+
+
+def pending_reason(entry: object) -> str | None:
+    """O `pendingReason` como o motor o lê (yamldoc.OptionalString), ou None.
+
+    O motor lê o texto de qualquer escalar: `pendingReason: 5` é o motivo "5". Um
+    mapa ou uma lista ele recusa; um nulo ou um texto em branco não dizem motivo.
+    Mais estrito que o motor de propósito: só o motivo de um conjunto de `rows` o
+    motor apara; num campo, numa lista ou num caso de byRowClass ele aceita um
+    motivo só de espaços, que não diz nada a quem preenche, e aqui ele é recusado.
+    """
+    if not isinstance(entry, dict):
+        return None
+    reason = entry.get("pendingReason")
+    if reason is None or isinstance(reason, (dict, list)):
+        return None
+    text = str(reason).strip()
+    return text or None
+
+
+def _reason_shape(entry: dict) -> str:
+    """O complemento da recusa quando o `pendingReason` escrito não é um escalar."""
+    reason = entry.get("pendingReason") if isinstance(entry, dict) else None
+    if isinstance(reason, dict):
+        return " (o pendingReason escrito é um mapa, e o motor o recusa: é um texto)"
+    if isinstance(reason, list):
+        return " (o pendingReason escrito é uma lista, e o motor o recusa: é um texto)"
+    return ""
+
+
+def _raw_rows(example: Path) -> dict[str, object]:
+    """As `rows` de cada conjunto do binding, lidas do NÓ YAML e não do dicionário.
+
+    Duas coisas que o dicionário de yaml.safe_load apaga e o motor vê: a mesma
+    chave escrita duas vezes numa linha (o dicionário guarda a última, calado) e o
+    texto do valor como escrito (`1.50` vira o número 1.5, e o motor lê "1.50").
+
+    Responde, por conjunto, o nó de `rows`; quem o lê é _check_manual_rows.
+    """
+    try:
+        root = yaml.compose(example.read_text(encoding="utf-8"), Loader=yaml.SafeLoader)
+    except (OSError, yaml.YAMLError):
+        return {}  # load() já reprovou
+
+    out: dict[str, object] = {}
+    datasets = _node_child(root, "datasets")
+    if not isinstance(datasets, yaml.MappingNode):
+        return out
+    for key, entry in datasets.value:
+        rows = _node_child(entry, "rows")
+        if isinstance(key, yaml.ScalarNode) and rows is not None:
+            out[key.value] = rows
+    return out
+
+
+def _node_child(node: object, key: str) -> object:
+    """O nó sob `key` num mapeamento YAML, ou None."""
+    if not isinstance(node, yaml.MappingNode):
+        return None
+    for k, v in node.value:
+        if isinstance(k, yaml.ScalarNode) and k.value == key:
+            return v
+    return None
+
+
+YAML_NULL = "tag:yaml.org,2002:null"
+
+
+def _check_manual_rows(doc_dir: Path, contract: dict, dataset: str, entry: dict, bound: dict,
+                       by_name: dict, raw) -> bool:
+    """Um conjunto que o mapeamento preenche à mão, linha a linha (`rows`).
+
+    O motor recusa os mesmos casos ao ler e ao planejar o mapeamento
+    (readManualRows, readManualRow, refuseRowsItCannotFill). Responde se o conjunto
+    é uma pendência do CLIENTE: `rows: []` com `pendingReason` num conjunto nonEmpty
+    — o rascunho sai com a lacuna, que impede aprovar e baixar até o cliente
+    escrever as linhas. Não bloqueia a geração, como a lista manual pendente.
+    """
+    where = f"{doc_dir.relative_to(ROOT)}: {dataset}.rows"
+    declared = by_name.get(dataset, {})
+
+    # As linhas são o conjunto inteiro: ao lado de uma consulta, de um campo ou de
+    # outra origem, o conjunto teria duas respostas para as mesmas linhas.
+    others = sorted(str(key) for key in entry if key not in ("rows", "pendingReason"))
+    if others:
+        fail(f"{doc_dir.relative_to(ROOT)}: o conjunto '{dataset}' declara rows junto com {others}; "
+             f"um conjunto preenchido à mão é as linhas e nada mais, então rows e pendingReason são "
+             f"suas únicas chaves")
+
+    rows = entry.get("rows")
+    if not isinstance(rows, list):
+        fail(f"{where} é {rows!r}; rows é a lista das linhas do conjunto, cada uma um mapa de campo a valor")
+        return False
+
+    reason = pending_reason(entry)
+    if "pendingReason" in entry and reason is None:
+        fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.pendingReason está vazio ou não é um texto"
+             f"{_reason_shape(entry)}; um conjunto sem linha escrita ainda diz por quê, ou fica igual "
+             f"a um conjunto que ninguém preencheu")
+    if rows and "pendingReason" in entry:
+        fail(f"{doc_dir.relative_to(ROOT)}: {dataset}.pendingReason está ao lado de linhas escritas; ele "
+             f"diz por que nenhuma linha está escrita ainda, então sai quando as linhas entram")
+
+    # Onde linhas escritas à mão cabem: um conjunto aberto de várias linhas,
+    # pendurado no singleton de topo — são linhas da única entrega, como as da lista.
+    if declared.get("grain") == "singleton":
+        fail(f"{where} preenche '{dataset}' linha a linha, e ele é de uma linha (singleton): a linha "
+             f"dele é a da própria entrega, então mapeie os campos")
+    elif "rowSet" in declared:
+        fail(f"{where} preenche '{dataset}' linha a linha, e as linhas dele são do catálogo (rowSet): "
+             f"toda linha que o conjunto fechado publica é escrita")
+    elif "childOf" not in declared or not _hangs_from_top_singleton(declared, by_name):
+        fail(f"{where} preenche '{dataset}' linha a linha, e ele não pende de um singleton de topo; "
+             f"linhas escritas à mão são linhas da única entrega, então pendem da linha dela")
+
+    # Uma linha escrita à mão não carrega chave a que a linha de um filho se prenda.
+    # Um filho declarado vazio não escreve linha, então não precisa de onde se prender.
+    for child in _hanging_from(by_name, dataset):
+        child_entry = bound.get(child)
+        if not (isinstance(child_entry, dict) and "emptyReason" in child_entry):
+            fail(f"{where} preenche '{dataset}' linha a linha, e '{child}' pende dele; uma linha escrita "
+                 f"à mão não carrega chave a que as linhas do filho se prendam, então declare '{child}' "
+                 f"vazio ou mapeie '{dataset}' de outro jeito")
+
+    if not rows:
+        if declared.get("nonEmpty") is True and not reason:
+            fail(f"{where} está vazio e sem pendingReason, e '{dataset}' não pode sair vazio (nonEmpty); "
+                 f"quem completa o mapeamento não tem o que fazer. Escreva as linhas, ou diga por que "
+                 f"ainda não estão lá")
+            return False
+        return declared.get("nonEmpty") is True and bool(reason)
+
+    fields = {f["name"]: f for f in fields_of(declared)}
+    derived = {f: s for (d, f), s in derived_fields(contract).items() if d == dataset}
+    generated = {f for (d, f) in generated_fields(contract) if d == dataset}
+
+    # `raw` é o nó das mesmas `rows`, lido do mesmo arquivo que `rows`, então o
+    # comprimento bate sempre; o caso contrário é inalcançável hoje (só se _raw_rows
+    # não tivesse lido o arquivo, que load() já teria reprovado). Se acontecer, cada
+    # linha é recusada como não lida em vez de julgada sem o texto como escrito.
+    nodes = raw.value if isinstance(raw, yaml.SequenceNode) and len(raw.value) == len(rows) \
+        else [None] * len(rows)
+    written_rows = [
+        _check_manual_row(f"{where}[{index}]", dataset, row, node, fields, derived, generated)
+        for index, (row, node) in enumerate(zip(rows, nodes))
+    ]
+
+    _check_rows_grain(where, dataset, declared, fields, written_rows)
+    return False
+
+
+def _check_manual_row(where: str, dataset: str, row, node, fields: dict, derived: dict,
+                      generated: set) -> dict[str, str] | None:
+    """Uma linha escrita à mão: cada campo que ela nomeia e o valor simples que carrega.
+
+    Responde o texto de cada valor COMO ESCRITO, ou None quando a linha não é lida.
+    Um campo que a linha deixa de fora não tem valor nela, então um valor vazio é
+    recusado em vez de lido como valor.
+    """
+    if not isinstance(row, dict) or not isinstance(node, yaml.MappingNode):
+        fail(f"{where} é {row!r}; uma linha é um mapa de cada campo do conjunto ao seu valor")
+        return None
+    if not node.value:
+        fail(f"{where} não escreve campo nenhum; uma linha sem nada escreveria uma linha de brancos")
+        return None
+
+    written: dict[str, str] = {}
+    for key_node, value_node in node.value:
+        key = key_node.value if isinstance(key_node, yaml.ScalarNode) else None
+        if not isinstance(key, str):
+            fail(f"{where} tem uma chave que não é o nome de um campo")
+            continue
+        if key in written:
+            fail(f"{where}.{key} está escrito duas vezes na linha; o valor seria o último lido")
+            continue
+        if not isinstance(value_node, yaml.ScalarNode):
+            kind = "uma lista" if isinstance(value_node, yaml.SequenceNode) else "um mapa"
+            fail(f"{where}.{key} é {kind}, e uma linha escreve um valor simples por campo")
+            continue
+        if value_node.tag == YAML_NULL or not value_node.value.strip():
+            fail(f"{where}.{key} está vazio; tire o campo da linha e ele fica sem valor nela")
+            continue
+        written[key] = value_node.value
+
+    for key in sorted(written):
+        if key not in fields:
+            fail(f"{where} nomeia '{key}', que não é campo de '{dataset}'. Ele declara "
+                 f"{', '.join(sorted(fields))}")
+        elif key in derived or key in generated:
+            fail(f"{where} escreve '{key}', que o motor preenche (derivado pelo contrato ou gerado "
+                 f"na geração), então uma linha não o escreve")
+
+    for name, declared in fields.items():
+        if name in derived or name in generated:
+            continue
+        if name not in written:
+            if declared.get("required") is True:
+                fail(f"{where} deixa de fora '{name}', que o contrato exige em toda linha de '{dataset}'")
+            continue
+        if (refusal := _value_refusal(declared, written[name])) is not None:
+            fail(f"{where}.{name} traz '{written[name]}'{refusal}")
+
+    return written
+
+
+def _check_rows_grain(where: str, dataset: str, declared: dict, fields: dict,
+                      rows: list[dict[str, str] | None]) -> None:
+    """Duas linhas escritas à mão com os mesmos valores do grão: o arquivo levaria a
+    mesma linha duas vezes. O motor recusa o mesmo (refuseRepeatedGrain).
+
+    Compara o texto COMO ESCRITO, porque este validador não aplica normalize nem
+    format: o motor compara depois deles, então "111.111.111-11" e "11111111111" sob
+    `normalize: digits` são uma linha lá e duas aqui. Valor igual como escrito é igual
+    depois de normalizado, então o que se recusa aqui o motor também recusa; o que
+    só a normalização iguala fica para o motor. Uma chave derivada (prefixOf) é
+    comparada pelo corte da origem quando a origem não normaliza, e pela origem
+    inteira quando normaliza — origem igual dá derivado igual.
+    """
+    keys = declared.get("grain")
+    if not isinstance(keys, list) or not keys or not all(isinstance(k, str) for k in keys):
+        return
+
+    def token(row: dict[str, str], key: str) -> str:
+        field = fields.get(key, {})
+        source = field.get("prefixOf")
+        if not isinstance(source, str):
+            return row.get(key, "")
+        value = row.get(source, "")
+        origin = fields.get(source, {})
+        length = field.get("length")
+        if origin.get("normalize") is not None or origin.get("format") is not None \
+                or not isinstance(length, int) or isinstance(length, bool):
+            return value
+        return value[:length]
+
+    seen: dict[tuple[str, ...], int] = {}
+    for index, row in enumerate(rows):
+        if row is None:
+            continue
+        identity = tuple(token(row, key) for key in keys)
+        if identity in seen:
+            fail(f"{where}[{index}] traz o mesmo {', '.join(keys)} que rows[{seen[identity]}] "
+                 f"({', '.join(identity)}); '{dataset}' é uma linha por {', '.join(keys)}, então o "
+                 f"arquivo a levaria duas vezes")
+            continue
+        seen[identity] = index
+
+
+def _hanging_from(by_name: dict, ancestor: str) -> list[str]:
+    """Os conjuntos que pendem, a qualquer profundidade, do conjunto nomeado."""
+    out = []
+    for name in by_name:
+        parent, seen = name, set()
+        while True:
+            child_of = (by_name.get(parent) or {}).get("childOf")
+            parent = child_of.get("dataset") if isinstance(child_of, dict) else None
+            if not isinstance(parent, str) or parent in seen:
+                break
+            seen.add(parent)
+            if parent == ancestor:
+                out.append(name)
+                break
+    return out
 
 
 def check_closed_account_set(doc_dir: Path, contract: dict) -> None:
@@ -1252,6 +1613,16 @@ REMOVED_MEASURE_KEYS = {
     "statedIn": "a natureza é regra do contrato (`rules`, tabela `natureza`)",
 }
 PARAMETER_VALUE_KEYS = {"parameter", "at", "of", "calendar"}
+# O valor de filtro lido de OUTRA consulta do binding (o filtro encadeado): os valores
+# de uma coluna dela. Grafia da gramática do motor, ainda provisória: os nomes
+# vivem só aqui para trocar num lugar quando ela fixar.
+QUERY_VALUE_KEYS = ("query", "column")
+QUERY_VALUE_OPERATOR = "in"
+
+
+def is_query_value(value: object) -> bool:
+    """O valor de filtro que nomeia uma consulta, bem ou mal formado."""
+    return isinstance(value, dict) and QUERY_VALUE_KEYS[0] in value
 
 
 def _check_removed_grammar(doc_dir: Path, qname: str, query: dict) -> None:
@@ -1334,6 +1705,8 @@ def _check_parameter_values(doc_dir: Path, qname: str, filters: object) -> None:
         references = [v for v in values if isinstance(v, dict)]
         if not references:
             continue
+        if any(is_query_value(v) for v in references):
+            continue  # _check_filter_values confere o valor de consulta, em todo caminho
 
         where = f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}'"
         if len(values) != 1:
@@ -1358,6 +1731,174 @@ def _check_parameter_values(doc_dir: Path, qname: str, filters: object) -> None:
             fail(f"{where}: of é {reference.get('of')!r}; um período é day, month ou year")
         if reference.get("calendar") not in (None, "business"):
             fail(f"{where}: calendar é {reference.get('calendar')!r}; o calendário publicado é business")
+
+
+def _check_span_edges(doc_dir: Path, contract: dict, binding: dict) -> None:
+    """Um filtro não corta pela ponta (`at`) de um parâmetro que declara `span`.
+
+    As pontas são cortadas por dia, mês ou ano; o período de N meses que o `span`
+    declara não é nenhuma delas, então a leitura delimitaria um período diferente
+    do que o leiaute imprime. O motor recusa o binding nos mesmos casos
+    (refuseUnresolvableParameters), em filters e em having, a qualquer profundidade
+    de anyOf e allOf.
+    """
+    spans = span_parameters(contract)
+
+    def walk(qname: str, conditions: object) -> None:
+        if not isinstance(conditions, list):
+            return
+        for condition in conditions:
+            if not isinstance(condition, dict):
+                continue
+            walk(qname, condition.get("anyOf"))
+            walk(qname, condition.get("allOf"))
+            values = condition.get("values")
+            for value in values if isinstance(values, list) else []:
+                if not isinstance(value, dict) or not value.get("at"):
+                    continue
+                name = value.get("parameter")
+                span = spans.get(name) if isinstance(name, str) else None
+                if span is not None:
+                    fail(
+                        f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}' "
+                        f"lê o {value.get('at')} do parâmetro '{name}', que nomeia um período de {span} "
+                        f"meses (span); o motor ainda não corta a extração por esse período"
+                    )
+
+    for query in query_list(binding):
+        qname = query.get("name", "<sem nome>")
+        walk(qname, query.get("filters"))
+        walk(qname, query.get("having"))
+
+
+def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
+    """De onde um filtro lê os seus valores, conferido em todo caminho.
+
+    Um parâmetro `multiple` é uma lista: só se lê como o conjunto de um `in` ou `nin`,
+    e nunca pela ponta (`at`) de um período, que uma lista não tem.
+
+    Um valor de consulta (`{query, column}`) é o conjunto de valores de uma coluna de
+    outra consulta, lido só por `in`, sozinho na condição e só no nível de cima de
+    filters (nunca em having nem dentro de anyOf/allOf). A consulta existe, não é a
+    própria, seleciona ou agrega, e entrega a coluna antes dos juntes. Um nome trocado não
+    falharia na escrita: o `in` sairia vazio e o documento, sem linha, com cara de certo.
+
+    Como em _check_span_edges, em filters e em having, a qualquer profundidade de anyOf
+    e allOf.
+    """
+    multiple = multiple_parameters(contract)
+    queries = {q["name"]: q for q in query_list(binding) if isinstance(q.get("name"), str)}
+    # Arestas de valor de consulta, para o ciclo: a origem tem de ser extraída antes.
+    reads: dict[str, set[str]] = {}
+
+    def check_query_value(where: str, qname: str, condition: dict, values: list, value: dict) -> None:
+        if set(value) != set(QUERY_VALUE_KEYS):
+            fail(f"{where}: um valor de consulta é exatamente {' e '.join(QUERY_VALUE_KEYS)}; "
+                 f"traz {sorted(map(str, value))}")
+            return
+        source, column = (value.get(key) for key in QUERY_VALUE_KEYS)
+        for key, written in zip(QUERY_VALUE_KEYS, (source, column)):
+            if not isinstance(written, str) or not written:
+                fail(f"{where}: o valor de consulta tem {key} {written!r}; query e column são nomes, em texto")
+                return
+        if condition.get("operator") != QUERY_VALUE_OPERATOR:
+            fail(f"{where}: lê os valores de uma consulta com {condition.get('operator')!r}; "
+                 f"só {QUERY_VALUE_OPERATOR} lê um conjunto")
+        if len(values) != 1:
+            fail(f"{where}: lê os valores de uma consulta e outros valores; a condição lê uma coisa só")
+        if source == qname:
+            fail(f"{where}: lê os valores da própria consulta; um filtro lê de outra")
+            return
+        if source not in queries:
+            fail(f"{where}: lê os valores da consulta '{source}', que não existe")
+            return
+        if isinstance(qname, str):  # um name que não é texto já foi recusado; não vira chave
+            reads.setdefault(qname, set()).add(source)
+        produced = own_columns(queries[source], queries)
+        if produced is None:
+            fail(f"{where}: lê a coluna '{column}' de '{source}', que não seleciona nem agrega; "
+                 f"a consulta de origem declara no select a coluna que entrega")
+        elif column not in produced:
+            fail(f"{where}: lê a coluna '{column}' de '{source}', que ela não entrega antes do junte "
+                 f"(entrega {sorted(produced)})")
+
+    def walk(qname: str, conditions: object, nested: bool = False, having: bool = False) -> None:
+        if not isinstance(conditions, list):
+            return
+        for condition in conditions:
+            if not isinstance(condition, dict):
+                continue
+            walk(qname, condition.get("anyOf"), True, having)
+            walk(qname, condition.get("allOf"), True, having)
+            values = condition.get("values")
+            where = f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}'"
+            operator = condition.get("operator")
+            for value in values if isinstance(values, list) else []:
+                if not isinstance(value, dict):
+                    continue
+                if is_query_value(value):
+                    # O motor recusa na carga o valor de consulta em having e dentro de
+                    # anyOf/allOf: ele estreita as linhas lidas, antes de agrupar, e é uma
+                    # condição própria em filters.
+                    if having:
+                        fail(f"{where}: lê os valores da consulta '{value.get(QUERY_VALUE_KEYS[0])}' em "
+                             f"having; um filtro lido de outra consulta estreita as linhas lidas, antes "
+                             f"de agrupar, e vai em filters")
+                    elif nested:
+                        fail(f"{where}: lê os valores da consulta '{value.get(QUERY_VALUE_KEYS[0])}' dentro "
+                             f"de anyOf ou allOf; um filtro lido de outra consulta é uma condição própria "
+                             f"em filters, nunca combinada com outras")
+                    else:
+                        check_query_value(where, qname, condition, values, value)
+                    continue
+                name = value.get("parameter")
+                if not isinstance(name, str) or name not in multiple:
+                    continue
+                if "at" in value:
+                    fail(f"{where}: lê o {value.get('at')} do parâmetro '{name}', que é uma lista (multiple); "
+                         f"uma lista não tem ponta de período")
+                elif operator not in MULTIPLE_OPERATORS:
+                    fail(f"{where}: lê o parâmetro '{name}', que é uma lista (multiple), com {operator!r}; "
+                         f"uma lista se lê com {' ou '.join(MULTIPLE_OPERATORS)}")
+
+    for query in query_list(binding):
+        qname = query.get("name", "<sem nome>")
+        walk(qname, query.get("filters"))
+        walk(qname, query.get("having"), having=True)
+
+    _check_query_value_cycles(doc_dir, queries, reads)
+
+
+def _check_query_value_cycles(doc_dir: Path, queries: dict[str, dict], reads: dict[str, set[str]]) -> None:
+    """Ciclo que passa por um valor de consulta, pelas arestas de `from` e de valor.
+
+    O junte fica fora: ele não ordena a extração. Só o ciclo com ao menos uma aresta
+    de valor é dito aqui; o de `from` puro já sai, uma vez, em check_binding_queries.
+    Cada ciclo sai uma vez, por mais arestas de valor que tenha.
+    """
+    def edges(name: str) -> list[str]:
+        base = queries[name].get("from")
+        out = sorted(reads.get(name, set()))
+        return out + [base] if isinstance(base, str) and base in queries else out
+
+    reported: set[frozenset[str]] = set()
+    for reader in sorted(reads):
+        for source in sorted(reads[reader]):
+            # Um caminho de volta de `source` até `reader` fecha o ciclo.
+            paths, visited = [[source]], {source}
+            while paths:
+                path = paths.pop(0)
+                if path[-1] == reader:
+                    cycle = frozenset(path)
+                    if cycle not in reported:
+                        reported.add(cycle)
+                        fail(f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `from` e valor de "
+                             f"consulta: {' -> '.join([reader, *path])}")
+                    break
+                for nxt in edges(path[-1]):
+                    if nxt not in visited:
+                        visited.add(nxt)
+                        paths.append([*path, nxt])
 
 
 def check_binding_queries(doc_dir: Path, binding: dict) -> None:
@@ -1524,6 +2065,74 @@ def _reaches(by_name: dict[str, dict], start: str, goal: str) -> bool:
     return False
 
 
+def check_ispb_block(doc_dir: Path) -> None:
+    """O trecho que troca ISPB por código COMPE é EXATAMENTE o que tools/ispb_compe.py
+    gera da lista de participantes do STR publicada em br/bcb/simba/tabelas/.
+
+    Escrito ou retocado à mão, ele erra em silêncio: um código trocado manda a
+    contraparte para outro banco, e a guarda de ISPB vazio removida faz o vazio virar
+    00000000, que é o Banco do Brasil.
+    """
+    path = doc_dir / "template.tpl"
+    if not path.is_file():
+        return
+    with path.open(encoding="utf-8", newline="") as handle:
+        text = handle.read()
+    if "ISPB_COMPE_BLOCK" not in text:
+        return
+
+    import ispb_compe
+
+    if ispb_compe.malformed_markers(text):
+        fail(f"{doc_dir.relative_to(ROOT)}: o template menciona ISPB_COMPE_BLOCK fora de uma marca bem escrita "
+             f"(`{{# ISPB_COMPE_BLOCK: <expressao> #}}` ... `{ispb_compe.END}`); o trecho ao lado nao seria conferido")
+        return
+
+    try:
+        expected = ispb_compe.expected_template(text, ispb_compe.read_codes())
+    except (OSError, ispb_compe.TableError) as problem:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→COMPE não pôde ser conferido contra a tabela do STR: {problem}")
+        return
+    if text != expected:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→COMPE do template não é o que tools/ispb_compe.py "
+             "gera da tabela do STR; regere")
+
+
+def check_cnpj_block(doc_dir: Path) -> None:
+    """Os trechos que trocam ISPB pelo CNPJ da instituição (campo 19) e escrevem o motivo do
+    CNPJ em branco (campo 18) são EXATAMENTE o que tools/ispb_cnpj.py gera da lista de
+    participantes do Pix publicada em br/bcb/simba/tabelas/.
+
+    Escrito ou retocado à mão, o trecho erra em silêncio: um CNPJ trocado põe a contraparte
+    em outra instituição, e um ISPB fora da lista sairia em branco sem o motivo.
+    """
+    path = doc_dir / "template.tpl"
+    if not path.is_file():
+        return
+    with path.open(encoding="utf-8", newline="") as handle:
+        text = handle.read()
+
+    import ispb_cnpj
+
+    if not any(token in text for token in ispb_cnpj.TOKENS):
+        return
+    if ispb_cnpj.malformed_markers(text):
+        fail(f"{doc_dir.relative_to(ROOT)}: o template menciona ISPB_CNPJ_BLOCK ou ISPB_CNPJ_REASON fora de uma marca "
+             f"bem escrita (`{{# ISPB_CNPJ_BLOCK: <expressao> #}}` ... `{ispb_cnpj.END}`, "
+             f"`{{# ISPB_CNPJ_REASON: <expressao> <observacao> #}}` ... `{ispb_cnpj.END_REASON}`); "
+             "o trecho ao lado nao seria conferido")
+        return
+
+    try:
+        expected = ispb_cnpj.expected_template(text, ispb_cnpj.read_cnpjs())
+    except (OSError, ispb_cnpj.TableError) as problem:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→CNPJ não pôde ser conferido contra a lista do Pix: {problem}")
+        return
+    if text != expected:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→CNPJ do template não é o que tools/ispb_cnpj.py "
+             "gera da lista de participantes do Pix; regere")
+
+
 def check_template_parses(doc_dir: Path) -> None:
     """Regras do MOTOR de template que uma leitura por regex não pega.
 
@@ -1619,6 +2228,82 @@ def _aggregation(query: object) -> dict | None:
     aggregate = query.get("aggregate")
 
     return aggregate if isinstance(aggregate, dict) else None
+
+
+def _check_field_parameter(where: str, name: object, multiple: set[str]) -> None:
+    """Um campo `from: parameter` nomeia UM parâmetro, e ele não é uma lista.
+
+    Uma lista (`multiple`) é o conjunto de um filtro, nunca o valor de um campo:
+    escrita numa célula, viraria o texto da lista inteira. A forma vem antes: um
+    nome que não é texto não pode nem ser procurado entre as listas.
+    """
+    if not isinstance(name, str) or not name:
+        fail(f"{where} resolve por parameter com parameter {name!r}; parameter é o nome de um parâmetro, em texto")
+    elif name in multiple:
+        fail(f"{where} escreve o parâmetro '{name}', que é uma lista (multiple); um campo recebe um valor só")
+
+
+def _as_names(items: object) -> set[str] | None:
+    """Os `as` de uma lista de colunas calculadas; None se a forma não é uma lista de mapas."""
+    if items is None:
+        return set()
+    if not isinstance(items, list):
+        return None
+    return {i["as"] for i in items if isinstance(i, dict) and isinstance(i.get("as"), str) and i["as"]}
+
+
+def own_columns(query: dict, queries: dict[str, dict]) -> set[str] | None:
+    """As colunas que uma consulta tem ANTES dos juntes: o que um valor de consulta lê.
+
+    O motor resolve o conjunto de um `{query, column}` quando lê as consultas, e só
+    depois junta as linhas; a coluna que a origem recebe de uma parceira de junte
+    ainda não existe ali, e o `in` sairia vazio. Por isso não é produced_columns,
+    que soma as parceiras.
+
+    Como o motor (ownOutputs): segue a cadeia de `from` até a consulta que seleciona
+    (`select`) ou agrega, somando as derivadas do caminho. Agregada: groupBy e medidas;
+    com `select`: as colunas selecionadas. Colunas de `compute` não entram por conta
+    própria: o motor só as entrega se o `select` as nomeia. Sem `select` nem agregação
+    na cadeia o esquema é o da tabela, que este repositório não conhece; forma
+    malformada também: None, "não confira" (a forma é recusada onde é conferida).
+    """
+    derived: set[str] = set()
+    seen: set[str] = set()
+    cursor = query
+
+    while isinstance(cursor, dict):
+        name = cursor.get("name")
+        if isinstance(name, str):
+            if name in seen:
+                return None  # ciclo de `from`: já recusado em check_binding_queries
+            seen.add(name)
+
+        names = _as_names(cursor.get("derive"))
+        if names is None:
+            return None
+
+        aggregate = _aggregation(cursor)
+        if aggregate:
+            group = aggregate.get("groupBy") or []
+            measures = _as_names(aggregate.get("measures"))
+            if not isinstance(group, list) or measures is None:
+                return None
+            return {g for g in group if isinstance(g, str)} | measures | names | derived
+
+        # O `select` fecha o que a consulta entrega antes das derivadas dela: as que
+        # contam são as das consultas de cima, que compõem sobre esta (resolveSelected).
+        select = cursor.get("select")
+        if isinstance(select, list) and select:
+            return {c for c in select if isinstance(c, str)} | derived
+
+        derived |= names
+
+        base = cursor.get("from")
+        if not isinstance(base, str) or base not in queries:
+            return None
+        cursor = queries[base]
+
+    return None
 
 
 def produced_columns(
@@ -2452,8 +3137,40 @@ def _check_childof_cycles(doc_dir: Path, contract: dict) -> None:
 
 
 
-FILING_KEYS = {"period", "remittance"}
+FILING_KEYS = {"period", "remittance", "approve", "allowEmpty"}
+# Quais gerações de uma entrega podem ser aprovadas: qualquer uma (o padrão, igual a
+# não escrever) ou só a que nada mais novo da mesma entrega substitui.
+FILING_APPROVE = ("any", "newest")
 REMITTANCE_KEYS = {"parameter", "original", "replacement", "reference"}
+
+
+def check_multiple_period(doc_dir: Path, contract: dict) -> None:
+    """Um parâmetro `multiple` nunca faz parte do período da entrega.
+
+    O período é congelado em cada relatório e repetido na leitura de quem substitui
+    quem; uma lista de até 1000 valores iria junto em cada um. O motor recusa o
+    contrato na carga quando o período tem um parâmetro `multiple`, nomeado em
+    `filing.period` ou derivado: sem `period` (com ou sem bloco `filing`), o período é
+    todo parâmetro menos o da remessa e a referência dela. `period: []` declara um
+    documento sem período.
+    """
+    filing = contract.get("filing") if isinstance(contract.get("filing"), dict) else {}
+    params = {p["name"]: p for p in parameters_of(contract)
+              if isinstance(p, dict) and isinstance(p.get("name"), str)}
+    if "period" in filing:
+        named = filing.get("period") if isinstance(filing.get("period"), list) else []
+        period = [n for n in named if isinstance(n, str)]
+        how = "filing.period nomeia"
+    else:
+        remittance = filing.get("remittance") if isinstance(filing.get("remittance"), dict) else {}
+        outside = {remittance.get("parameter"), remittance.get("reference")}
+        period = [n for n in params if n not in outside]
+        how = "sem filing.period, o período é todo parâmetro menos o da remessa, e inclui"
+    for name in period:
+        if params.get(name, {}).get("multiple") is True:
+            fail(f"{doc_dir.relative_to(ROOT)}: {how} {name!r}, que é multiple; o período é um valor por "
+                 "parâmetro, e o motor recusa a lista nele: declare filing.period só com parâmetros escalares, "
+                 "ou `period: []` para um documento sem período")
 
 
 def check_filing(doc_dir: Path, contract: dict) -> None:
@@ -2471,12 +3188,23 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
 
     where = f"{doc_dir.relative_to(ROOT)}: filing"
     filing = mapping_at(where, contract.get("filing"),
-                        "filing é um mapeamento de period e remittance")
+                        "filing é um mapeamento de period, remittance, approve e allowEmpty")
     if filing is None:
         return
 
     for key in sorted(set(filing) - FILING_KEYS):
         fail(f"{where} declara {key!r}, que o motor não conhece; filing aceita {sorted(FILING_KEYS)}")
+
+    # O motor recusa na carga qualquer outra grafia, inclusive "" e true: a regra de
+    # aprovar só a mais nova não pode ficar desligada por um valor que parece certo.
+    if "approve" in filing and filing.get("approve") not in FILING_APPROVE:
+        fail(f"{where}.approve é {filing.get('approve')!r}; aceita {list(FILING_APPROVE)}")
+
+    # `allowEmpty: true` deixa o motor congelar um arquivo de 0 byte (o documento que, num
+    # caso legítimo, não tem linha); sem a chave, o vazio é recusado. O motor recusa na
+    # carga um valor que não seja booleano.
+    if "allowEmpty" in filing and not isinstance(filing.get("allowEmpty"), bool):
+        fail(f"{where}.allowEmpty é {filing.get('allowEmpty')!r}; é true ou false")
 
     params = {}
     for param in parameters_of(contract):
@@ -2530,6 +3258,10 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
             fail(f"{rwhere}.parameter nomeia {name!r}, que não é parâmetro deste contrato")
         elif name in period:
             fail(f"{rwhere}.parameter {name!r} também está em period; a remessa não é parte do período")
+        elif params[name].get("multiple") is True:
+            # A remessa é UM valor, o da original ou o de uma substituição; numa lista as
+            # regras de original e substituição deixariam de valer sem aviso.
+            fail(f"{rwhere}.parameter nomeia {name!r}, que é uma lista (multiple); a remessa é um valor só")
         else:
             domain = params[name].get("domain")
             values = domain if isinstance(domain, list) else []
@@ -2752,6 +3484,8 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
         if "required" in param and not isinstance(required, bool):
             fail(f"{where} tem required {required!r}; é true ou false")
 
+        _check_multiple(where, param, ptype, default)
+
         if domain is not None and not isinstance(domain, list):
             fail(f"{where} tem domain {domain!r}; um domínio é a lista fechada de valores aceitos")
             domain = None
@@ -2797,6 +3531,15 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
         elif closed and ptype not in ("month", "date"):
             fail(f"{where} declara closed e não é do tipo month nem date, então não nomeia período que feche")
 
+        # `periods` é a chave sob a qual o motor publica ao template os limites dos
+        # períodos (system.periods.<nome>.start/end); um parâmetro com esse nome
+        # sombrearia os períodos ou seria sombreado por eles.
+        if name == RESERVED_PARAMETER:
+            fail(f"{where} usa um nome reservado: o template lê os limites dos períodos do contrato "
+                 f"sob system.{RESERVED_PARAMETER}")
+
+        _check_relation_keys(where, param, ptype)
+
         months = optional_at(where, param, "allowedMonths")
         if months is None:
             continue
@@ -2811,6 +3554,226 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
         for month in months:
             if not isinstance(month, str) or month not in MONTHS_OF_YEAR:
                 fail(f"{where} tem allowedMonths com {month!r}; um mês é de '01' a '12', com dois dígitos")
+
+    _check_parameter_relations(doc_dir, contract)
+
+
+# Um parâmetro `multiple` é uma LISTA de valores do `type`, que é o tipo de cada um.
+MULTIPLE_TYPES = ("string", "integer")
+# Quantos valores uma lista aceita (`maxItems`); ausente, o motor aceita o máximo.
+MIN_ITEMS, MAX_ITEMS = 1, 1000
+# Os operadores com que um filtro do binding lê uma lista, na grafia do motor
+# (pkg/reporter/filterval/operators.go). Não confundir com o `notIn` de `where`.
+MULTIPLE_OPERATORS = ("in", "nin")
+# O que um parâmetro `multiple` não declara, e por quê. `allowedMonths`, `span`,
+# `within` e `notBefore` não estão aqui: o tipo de uma lista é string ou integer, e
+# cada uma delas já é recusada fora de month ou date. `closed` está, porque
+# `closed: false` passa pela regra de tipo. `businessDay` e `appliesTo` não são lidas
+# em mais nenhum ponto deste validador: aqui só a combinação com `multiple` é recusada.
+MULTIPLE_EXCLUDES = {
+    "closed": "fechar um período é de um month ou de uma date, e uma lista não nomeia período",
+    "businessDay": "dia útil é de uma date, e uma lista não é um dia",
+    "appliesTo": "uma lista de valores não nomeia o período que fecha",
+    "pattern": "o pattern confere UM valor escrito inteiro, e uma lista traz vários",
+}
+
+
+def _check_multiple(where: str, param: dict, ptype, default) -> None:
+    """`multiple` e `maxItems` lidos sozinhos: a forma e onde valem.
+
+    `list: true` foi a primeira grafia proposta, e o formato adotou `multiple`
+    (`list` já tem outro sentido no binding). O motor não a lê, então a lista pedida viraria um parâmetro de um valor
+    só sem ninguém ver: aqui ela é recusada nomeando a chave que a substitui.
+    """
+    if "list" in param:
+        fail(f"{where} declara list, que saiu do formato; uma lista de valores é `multiple: true`")
+
+    multiple = optional_at(where, param, "multiple")
+    if multiple is not None and not isinstance(multiple, bool):
+        fail(f"{where} tem multiple {multiple!r}; é true ou false")
+    elif multiple is True:
+        if ptype is not None and ptype not in MULTIPLE_TYPES:
+            fail(f"{where} declara multiple e é do tipo {ptype!r}; uma lista é de {' ou '.join(MULTIPLE_TYPES)}, "
+                 f"e type é o tipo de cada valor")
+        if default is not None:
+            fail(f"{where} declara multiple e default; uma lista vem inteira da requisição, sem valor padrão")
+        for key, why in MULTIPLE_EXCLUDES.items():
+            if key in param:
+                fail(f"{where} declara multiple e {key}; {why}")
+
+    if "maxItems" not in param:
+        return
+    # Antes de qualquer comparação: bool é int em Python, e `maxItems: true` passaria como 1.
+    limit = optional_at(where, param, "maxItems")
+    if limit is None:
+        pass  # optional_at já reprovou a chave escrita e vazia
+    elif multiple is not True:
+        fail(f"{where} declara maxItems sem multiple: true; o limite é de quantos valores uma lista aceita")
+    elif isinstance(limit, bool) or not isinstance(limit, int) or not MIN_ITEMS <= limit <= MAX_ITEMS:
+        fail(f"{where} tem maxItems {limit!r}; é quantos valores a lista aceita, um inteiro de "
+             f"{MIN_ITEMS} a {MAX_ITEMS} (ausente, {MAX_ITEMS})")
+
+
+def multiple_parameters(contract: dict) -> set[str]:
+    """Os parâmetros que o contrato declara como lista (`multiple: true`)."""
+    return {
+        p["name"] for p in parameters_of(contract)
+        if isinstance(p, dict) and isinstance(p.get("name"), str) and p.get("multiple") is True
+    }
+
+
+# O nome que o motor reserva para os limites dos períodos (pongo.PeriodsContextKey).
+RESERVED_PARAMETER = "periods"
+# Quantos meses um período (`span`) cobre, como o carregador do motor aceita.
+MIN_SPAN, MAX_SPAN = 1, 12
+
+
+# O que strconv.Atoi aceita: sinal opcional e algarismos ASCII. É como o motor lê o
+# `span` (yamldoc.OptionalInt): pelo TEXTO do escalar, com aspas ou sem.
+WHOLE_NUMBER = re.compile(r"[+-]?[0-9]+")
+
+
+def _span_as_written(path: Path, contract: dict) -> None:
+    """Troca o `span` de cada parâmetro pelo texto do escalar como escrito.
+
+    yaml.safe_load lê `span: 0x6` como 6, `span: 1_2` como 12 e `span: 010` como 8
+    (YAML 1.1); o motor lê o texto e o passa a strconv.Atoi, que recusa os dois
+    primeiros e lê o terceiro como 10. `span: "6"` é o texto "6", que o motor aceita.
+    Um nulo, uma lista ou um mapa ficam como o dicionário os leu: optional_at e
+    _check_relation_keys os recusam.
+    """
+    try:
+        root = yaml.compose(path.read_text(encoding="utf-8"), Loader=yaml.SafeLoader)
+    except (OSError, yaml.YAMLError):
+        return  # load() já reprovou
+    params = _node_child(root, "parameters")
+    if not isinstance(params, yaml.SequenceNode) or not isinstance(contract.get("parameters"), list):
+        return
+    for node, param in zip(params.value, contract["parameters"]):
+        span = _node_child(node, "span")
+        if isinstance(param, dict) and isinstance(span, yaml.ScalarNode) and span.tag != YAML_NULL:
+            param["span"] = span.value
+
+
+def _span_number(span: object) -> int | None:
+    """O número que o motor lê de um `span`, ou None quando ele o recusaria."""
+    if isinstance(span, bool):
+        return None
+    if isinstance(span, int):
+        return span
+    if isinstance(span, str) and WHOLE_NUMBER.fullmatch(span):
+        return int(span)
+    return None
+
+
+def declared_span(param: object) -> int | None:
+    """O `span` que um parâmetro declara, só quando é um número que o motor aceita."""
+    if not isinstance(param, dict):
+        return None
+    span = _span_number(param.get("span"))
+    if span is not None and MIN_SPAN <= span <= MAX_SPAN:
+        return span
+    return None
+
+
+def span_parameters(contract: dict) -> dict[str, int]:
+    """Os parâmetros que declaram um `span` que o motor aceita, com quantos meses cobrem."""
+    return {
+        p["name"]: span for p in parameters_of(contract)
+        if isinstance(p, dict) and isinstance(p.get("name"), str)
+        and (span := declared_span(p)) is not None
+    }
+
+
+def _check_relation_keys(where: str, param: dict, ptype) -> None:
+    """`span`, `within` e `notBefore` lidos sozinhos: a forma e o tipo onde valem.
+
+    O motor recusa os mesmos casos ao carregar o contrato (readRelationKeys e
+    validateRelationDeclaration). Um `span: 0` ou um `within: ""` escritos são
+    recusados em vez de lidos como ausentes: zero e vazio são como o motor guarda
+    a relação não declarada, e o curador que os escreveu quis dizer outra coisa.
+    """
+    if "span" in param:
+        written = optional_at(where, param, "span")
+        span = _span_number(written)
+        if written is None:
+            pass  # optional_at já reprovou a chave escrita e vazia
+        elif span is None:
+            fail(f"{where} tem span {written!r}; é quantos meses o período cobre, um número inteiro de "
+                 f"{MIN_SPAN} a {MAX_SPAN} (algarismos, como o motor lê)")
+        elif ptype != "month":
+            fail(f"{where} declara span e é do tipo {ptype!r}; só um month nomeia um período de meses")
+        elif not MIN_SPAN <= span <= MAX_SPAN:
+            fail(f"{where} tem span {span}; um período cobre de {MIN_SPAN} a {MAX_SPAN} meses")
+
+    for key, means in (("within", "nomeia o parâmetro month com span em cujo período a data cai"),
+                       ("notBefore", "nomeia o parâmetro date antes do qual esta data não pode vir")):
+        if key not in param:
+            continue
+        named = optional_at(where, param, key)
+        if named is None:
+            continue
+        if not isinstance(named, str) or not named.strip():
+            fail(f"{where} tem {key} {named!r} vazio ou que não é um nome; {key} {means}, ou tire a chave")
+        elif ptype != "date":
+            fail(f"{where} declara {key} e é do tipo {ptype!r}; só uma date se relaciona com um "
+                 f"período ou com outro dia")
+
+
+def _check_parameter_relations(doc_dir: Path, contract: dict) -> None:
+    """O que `within` e `notBefore` nomeiam existe, tem o tipo certo e não fecha ciclo.
+
+    Resolvido depois de todo parâmetro lido, como o motor (resolveParameterRelations):
+    a relação nomeia OUTRO parâmetro. Uma cadeia de `notBefore` que volta ao começo
+    só se satisfaz com o mesmo dia em todos, o que nenhum curador quis declarar.
+    """
+    params = {p["name"]: p for p in parameters_of(contract)
+              if isinstance(p, dict) and isinstance(p.get("name"), str) and p["name"]}
+
+    for name, param in params.items():
+        where = f"{doc_dir.relative_to(ROOT)}: parâmetro '{name}'"
+        if param.get("type") != "date":
+            continue  # _check_relation_keys já recusou a relação fora de uma date
+
+        within = param.get("within")
+        if isinstance(within, str) and within.strip():
+            period = params.get(within)
+            if within == name:
+                fail(f"{where} tem within que nomeia o próprio parâmetro; within nomeia um month com span")
+            elif period is None:
+                fail(f"{where} tem within '{within}', que não é parâmetro deste contrato")
+            elif period.get("type") != "month":
+                fail(f"{where} tem within '{within}', do tipo {period.get('type')!r}; uma data cai "
+                     f"dentro de um month que declara span")
+            elif "span" not in period:
+                fail(f"{where} tem within '{within}', um month que não declara span; declare quantos "
+                     f"meses o período dele cobre")
+
+        floor = param.get("notBefore")
+        if isinstance(floor, str) and floor.strip():
+            other = params.get(floor)
+            if floor == name:
+                fail(f"{where} tem notBefore que nomeia o próprio parâmetro; não relaciona o dia a nada")
+            elif other is None:
+                fail(f"{where} tem notBefore '{floor}', que não é parâmetro deste contrato")
+            elif other.get("type") != "date":
+                fail(f"{where} tem notBefore '{floor}', do tipo {other.get('type')!r}; um dia se "
+                     f"compara com outra date")
+
+    # Cada parâmetro nomeia no máximo um outro, então a cadeia a partir de um deles é
+    # um caminho, e é ciclo exatamente quando volta ao começo. Um ciclo mais adiante
+    # é encontrado a partir de um de seus membros.
+    for start in params:
+        chain, cursor = [start], params[start].get("notBefore")
+        while isinstance(cursor, str) and cursor in params and len(chain) <= len(params):
+            chain.append(cursor)
+            if cursor == start:
+                if len(chain) > 2:  # o auto-notBefore já foi recusado acima
+                    fail(f"{doc_dir.relative_to(ROOT)}: parâmetro '{start}' tem notBefore em ciclo "
+                         f"({' -> '.join(chain)}); cada dia teria de vir depois do seguinte, o que só "
+                         f"o mesmo dia em todos responde")
+                break
+            cursor = params[cursor].get("notBefore")
 
 
 RULE_KEYS = {"id", "severity", "appliesTo", "message", "where", "transform", "check"}
@@ -3051,10 +4014,11 @@ def main() -> int:
 
     contracts: dict[str, dict] = {}
 
-    for path in sorted(ROOT.glob("*/*/*/contract.yaml")):
+    for path in contract_paths(ROOT):
         contract = load(path)
         if contract is None:
             continue
+        _span_as_written(path, contract)
 
         doc_dir = path.parent
         metadata = contract.get("metadata")
@@ -3075,9 +4039,12 @@ def main() -> int:
         check_engine_parity(doc_dir, contract)
         check_parameters(doc_dir, contract)
         check_filing(doc_dir, contract)
+        check_multiple_period(doc_dir, contract)
         check_consolidation(doc_dir, contract)
         check_structure(doc_dir, contract)
         check_template_parses(doc_dir)
+        check_ispb_block(doc_dir)
+        check_cnpj_block(doc_dir)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_tables(doc_dir, contract)

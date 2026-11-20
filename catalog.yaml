@@ -78,6 +78,78 @@ documents:
       situação no CRS e no FATCA, tipos de entidade e residências fiscais. Primeiro
       evento da e-Financeira; reenviado como retificação quando o cadastro muda.
 
+  - id: br.rfb.efinanceira-abertura
+    path: br/rfb/efinanceira-abertura
+    country: BR
+    regulator: RFB
+    document: evtAberturaeFinanceira
+    family: e-financeira
+    title: e-Financeira — Abertura
+    version: 1.0.0
+    status: draft
+    periodicity: semiannual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Abertura da e-Financeira de um semestre: as datas do período, o responsável
+      pelas requisições de movimentação financeira (RMF), os responsáveis pela
+      e-Financeira e o representante legal. Uma abertura original por semestre;
+      reenviada como retificação quando muda.
+
+  - id: br.rfb.efinanceira-fechamento
+    path: br/rfb/efinanceira-fechamento
+    country: BR
+    regulator: RFB
+    document: evtFechamentoeFinanceira
+    family: e-financeira
+    title: e-Financeira — Fechamento
+    version: 1.0.0
+    status: draft
+    periodicity: semiannual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Fechamento da e-Financeira de um semestre: as datas do período, a situação
+      especial e os indicadores de movimento de operações financeiras e de inexistência de
+      contas CRS e FATCA, declarados a cada geração.
+      Um fechamento original por semestre; reenviado como retificação quando muda.
+
+  - id: br.rfb.efinanceira-exclusao
+    path: br/rfb/efinanceira-exclusao
+    country: BR
+    regulator: RFB
+    document: evtExclusao
+    family: e-financeira
+    title: e-Financeira — Exclusão de Evento
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Exclusão de um evento da e-Financeira enviado indevidamente, pelo recibo de
+      entrega dele. O arquivo leva só o CNPJ da declarante e o recibo. O Anexo II só
+      nomeia a regra do recibo; pelo campo 10 e pela REGRA_VALIDA_NR_RECIBO (A II
+      p.14), ele tem de ser de um evento recebido, ativo e da mesma declarante, e a
+      Receita confere.
+
+  - id: br.rfb.efinanceira-exclusao-efinanceira
+    path: br/rfb/efinanceira-exclusao-efinanceira
+    country: BR
+    regulator: RFB
+    document: evtExclusaoeFinanceira
+    family: e-financeira
+    title: e-Financeira — Exclusão da e-Financeira
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Exclusão de uma abertura ainda sem fechamento, da e-Financeira ou de Repasse, e
+      de todo evento de movimento ou de repasse enviado depois dela, pelo recibo de
+      entrega da abertura. A Receita confere que a abertura existe e está ativa.
+
   - id: br.bcb.scr-3040
     path: br/bcb/scr-3040
     country: BR
@@ -93,3 +165,83 @@ documents:
     summary: >-
       Remessa mensal ao SCR com cada cliente, as operações dele, os vencimentos, as garantias e as
       informações adicionais de aquisição e reestruturação, a partir do dataset que o Lender publica.
+
+  - id: br.bcb.simba.agencias
+    path: br/bcb/simba/agencias
+    country: BR
+    regulator: BCB
+    document: AGENCIAS
+    family: simba
+    title: SIMBA — Agencias
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Agencias das contas investigadas e das contas da mesma instituicao com as quais
+      elas transacionaram no periodo do afastamento do sigilo, uma linha por agencia.
+
+  - id: br.bcb.simba.contas
+    path: br/bcb/simba/contas
+    country: BR
+    regulator: BCB
+    document: CONTAS
+    family: simba
+    title: SIMBA — Contas
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Contas investigadas e contas da mesma instituicao com as quais elas transacionaram
+      no periodo do afastamento do sigilo, com abertura, encerramento e saldos.
+
+  - id: br.bcb.simba.titulares
+    path: br/bcb/simba/titulares
+    country: BR
+    regulator: BCB
+    document: TITULARES
+    family: simba
+    title: SIMBA — Titulares
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Titulares, cotitulares, representantes e procuradores das contas investigadas, uma
+      linha por vinculo da pessoa com a conta, com cadastro, renda e datas do vinculo.
+
+  - id: br.bcb.simba.extrato
+    path: br/bcb/simba/extrato
+    country: BR
+    regulator: BCB
+    document: EXTRATO
+    family: simba
+    title: SIMBA — Extrato
+    version: 1.0.1
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Lancamentos das contas investigadas no periodo do afastamento do sigilo, com valor,
+      natureza, saldo apos o lancamento e o codigo do tipo de lancamento do Anexo II.
+
+  - id: br.bcb.simba.origem-destino
+    path: br/bcb/simba/origem-destino
+    country: BR
+    regulator: BCB
+    document: ORIGEM-DESTINO
+    family: simba
+    title: SIMBA — Origem-Destino
+    version: 1.0.1
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Origem e destino dos recursos de cada lancamento do EXTRATO: a contraparte pelo plugin
+      Pix ou TED da transacao, pela outra perna interna, ou a propria instituicao na tarifa.

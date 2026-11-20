@@ -1,0 +1,111 @@
+{
+  "_about": "Gabarito ESCRITO À MÃO a partir de scenario/l-efinanceira-exclusoes.json. Caminho debaixo de evtExclusao ou evtExclusaoeFinanceira, sem o namespace; o id pela forma e maior que os anteriores da execução (gerações uma depois da outra; o número começa pelo instante da geração). As exclusões não têm remessa: nenhuma entrada é original, nenhuma é aprovada, e toda execução gera de novo. cnpjDeclarante é o legalDocument da organização do J. O arquivo não traz indRetificacao nem nrRecibo: o XSD não os tem.",
+  "documents": [
+    {
+      "documentId": "br.rfb.efinanceira-exclusao",
+      "label": "exclusao",
+      "parameters": {
+        "nrReciboEvento": "1-01-001-2026-424242"
+      },
+      "_note": "Um evento enviado indevidamente, excluído pelo recibo de entrega dele: o arquivo leva o CNPJ da organização e o recibo digitado, nada mais. Fica em rascunho (sem remessa, não há original a aprovar).",
+      "elements": {
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoExclusao/nrReciboEvento": "1-01-001-2026-424242"
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-exclusao-efinanceira",
+      "label": "exclusao-efinanceira",
+      "parameters": {
+        "nrReciboEvento": "123456789012345678-02-345-2026-987654321098765432"
+      },
+      "_note": "Uma abertura em andamento excluída pelo recibo dela, no maior recibo que o formato aceita (18 + 2 + 3 + 4 + 18 dígitos e quatro traços = 49 posições, o maxLength do XSD). Id maior que o da entrada anterior: o número começa pelo instante da geração, e esta geração vem depois daquela.",
+      "elements": {
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoExclusaoeFinanceira/nrReciboEvento": "123456789012345678-02-345-2026-987654321098765432"
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-exclusao",
+      "label": "recibo-mais-curto",
+      "parameters": {
+        "nrReciboEvento": "1-01-001-2026-1"
+      },
+      "_note": "O menor recibo que o formato aceita (1 + 2 + 3 + 4 + 1 dígitos e quatro traços = 15 posições, o minLength do XSD): aceito e julgado elemento a elemento, o recibo no arquivo tal como digitado.",
+      "elements": {
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoExclusao/nrReciboEvento": "1-01-001-2026-1"
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-exclusao",
+      "label": "recibo-fora-do-formato",
+      "parameters": {
+        "nrReciboEvento": "1-1-001-2026-424242"
+      },
+      "refused": {
+        "status": 400,
+        "code": "RPT-0140",
+        "detailContains": [
+          "nrReciboEvento"
+        ]
+      },
+      "_note": "O segundo grupo tem um dígito, e o formato pede dois: o pattern do parâmetro recusa o pedido antes de gerar."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-exclusao-efinanceira",
+      "label": "recibo-com-19-digitos",
+      "parameters": {
+        "nrReciboEvento": "1234567890123456789-02-345-2026-1"
+      },
+      "refused": {
+        "status": 400,
+        "code": "RPT-0140",
+        "detailContains": [
+          "nrReciboEvento"
+        ]
+      },
+      "_note": "O primeiro grupo tem 19 dígitos, um acima dos 18 do formato: recusado na hora também na outra exclusão."
+    },
+    {
+      "documentId": "br.rfb.efinanceira-exclusao",
+      "label": "mesmo-recibo-1",
+      "parameters": {
+        "nrReciboEvento": "555-01-001-2026-777"
+      },
+      "_note": "Primeira geração para o recibo 555-01-001-2026-777.",
+      "elements": {
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoExclusao/nrReciboEvento": "555-01-001-2026-777"
+      }
+    },
+    {
+      "documentId": "br.rfb.efinanceira-exclusao",
+      "label": "mesmo-recibo-2",
+      "parameters": {
+        "nrReciboEvento": "555-01-001-2026-777"
+      },
+      "supersedes": "mesmo-recibo-1",
+      "_note": "O MESMO recibo de novo: sem remessa não há regra de original, então o pedido é aceito e há dois rascunhos da mesma entrega (filing.period: [nrReciboEvento]). Enquanto os dois são rascunho, o mais novo é o que vale: o anterior continua Draft e responde supersededBy com este. Evento novo, id maior.",
+      "elements": {
+        "ideEvento/tpAmb": "2",
+        "ideEvento/aplicEmi": "1",
+        "ideEvento/verAplic": "Lerian Reporter",
+        "ideDeclarante/cnpjDeclarante": "EF9J2K7A000114",
+        "infoExclusao/nrReciboEvento": "555-01-001-2026-777"
+      }
+    }
+  ]
+}
