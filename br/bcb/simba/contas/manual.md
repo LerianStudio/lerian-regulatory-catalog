@@ -22,6 +22,8 @@ mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 
 O `fim` tem de ser um dia que ja acabou no calendario do Reporter: a geracao le um periodo
 fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos.
+O `fim` tambem nao pode ser anterior ao `inicio`: um periodo invertido e recusado ao gerar,
+em vez de sair um arquivo sem lancamento nenhum.
 
 ## Quais contas entram
 
@@ -113,7 +115,9 @@ requisicao.
   confira que o valor cadastrado inclui o DV.
 - **Texto sem acento**: o nome da instituicao passa pela conversao para ASCII do template, e
   TAB, CR e LF viram espaco. O numero da conta nao passa pela conversao: com TAB, CR ou LF
-  ele recusa a geracao.
+  ele recusa a geracao. Um caractere fora do ASCII que a conversao nao cobre (por exemplo `°`, `’`, `–`, `ø`)
+  recusa a geracao, porque o arquivo e ASCII (IN art. 3o): a recusa mostra o campo e o valor,
+  e o cadastro tem de ser corrigido.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa uma macro. A geracao nao.
 - **Uma instituicao por arquivo**: um documento entregue em base individual nao soma

@@ -74,6 +74,7 @@ parameters:
     type: date
     closed: true
     required: true
+    notBefore: inicio
     description: Ultimo dia do afastamento do sigilo.
 
 filing:
@@ -110,6 +111,7 @@ datasets:
       - name: nomeUnicad
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da instituicao como esta no Unicad (campo 11 na tarifa). O template o corta em 80 posicoes.
 
   # O CONJUNTO QUE O ORIGEM-DESTINO TAMBEM LE, igual nos dois contratos: o numero do
@@ -345,6 +347,7 @@ datasets:
       - name: nome
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome do titular (campo 11, IN :212). O template o corta em 80 posicoes.
 
   # A contraparte pela linha do plugin que liquidou a transacao: um conjunto por
@@ -389,6 +392,7 @@ datasets:
       - name: nome
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da contraparte (campo 11, IN :212). O template o corta em 80 posicoes.
       - name: comentario
         type: string
@@ -453,6 +457,7 @@ datasets:
       - name: nome
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da contraparte (campo 11, IN :212). O template o corta em 80 posicoes.
       - name: comentario
         type: string
@@ -523,6 +528,7 @@ datasets:
       - name: nome
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da contraparte (campo 11, IN :212). O template o corta em 80 posicoes.
       - name: comentario
         type: string
@@ -589,6 +595,7 @@ datasets:
       - name: nome
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da contraparte (campo 11, IN :212). O template o corta em 80 posicoes.
       - name: comentario
         type: string
@@ -643,6 +650,7 @@ datasets:
       - name: nome
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da contraparte (campo 11, IN :212). O template o corta em 80 posicoes.
       - name: tipoContaInformado
         type: string

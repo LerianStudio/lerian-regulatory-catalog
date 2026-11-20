@@ -22,6 +22,8 @@ mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 
 O `fim` tem de ser um dia que ja acabou no calendario do Reporter: a geracao le um periodo
 fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos.
+O `fim` tambem nao pode ser anterior ao `inicio`: um periodo invertido e recusado ao gerar,
+em vez de sair um arquivo sem lancamento nenhum.
 
 ## Quais lancamentos entram
 
@@ -173,7 +175,11 @@ o contrato na carga.
   com o codigo largo (`135`/`261` no Pix, `134`/`259` na TED).
 - **Texto sem acento**: descricao e nome da instituicao passam pela conversao para ASCII do
   template, e TAB, CR e LF viram espaco: uma quebra de linha nao parte o registro. O numero
-  da conta nao passa pela conversao: com TAB, CR ou LF ele recusa a geracao.
+  da conta nao passa pela conversao: com TAB, CR ou LF ele recusa a geracao. No nome da
+  instituicao, um caractere fora do ASCII que a conversao nao cobre (por exemplo `°`, `’`,
+  `–`, `ø`) recusa a geracao, porque o arquivo e ASCII (IN art. 3o). A descricao e texto
+  livre: ate o filtro de transliteracao do Reporter, ela pode levar ao arquivo um caractere
+  fora do ASCII que a conversao nao cobre.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa macros. A geracao nao.
 - **Ordem**: a ordem do arquivo e a da leitura agrupada por transacao e operacao, nao a
