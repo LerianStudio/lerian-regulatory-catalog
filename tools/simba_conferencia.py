@@ -125,6 +125,9 @@ EXTRATO_ENTRIES = "lancamentos"
 MOVEMENT_FILES = ("EXTRATO", "ORIGEM_DESTINO")
 # CONTAS campo 7 (IN :126): "1" conta investigada com movimento no período.
 MOVED = "1"
+# TITULARES campo 5 (IN :141): "T" é o titular; algarismos são os cotitulares, e as outras
+# letras, representante e procurador.
+HOLDER = "T"
 # A chave de saldo em que o Midaz grava a parte de um saque tirada do cheque especial.
 OVERDRAFT_KEY = "overdraft"
 # As operações do EXTRATO que são perna de tarifa (marca feeLeg do Midaz).
@@ -361,8 +364,10 @@ def check_case_documents(path: Path | None, titulares: list[list[str]], report: 
     if not documents:
         report.error(f"--documentos: {path.name} não traz documento nenhum")
         return
-    # O TITULARES já escreve o documento só com dígitos (e letras, no CNPJ alfanumérico).
-    holders = {field(r, 8) for r in titulares}
+    # O TITULARES já escreve o documento só com dígitos (e letras, no CNPJ alfanumérico). Só o
+    # titular conta: a conta em que o documento é cotitular, representante ou procurador não é
+    # selecionada por ele.
+    holders = {field(r, 8) for r in titulares if field(r, 5) == HOLDER}
     missing = [str(i) for i, document in enumerate(documents, 1) if _digits(document) not in holders]
     if missing:
         report.warn(f"TITULARES: o(s) documento(s) nº {', '.join(missing)} da ordem (posição em --documentos) não "

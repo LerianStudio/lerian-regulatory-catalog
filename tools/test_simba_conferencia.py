@@ -377,6 +377,12 @@ class Conferencia(unittest.TestCase):
         self.assert_says(warnings, "o(s) documento(s) nº 2 da ordem")
         self.assertFalse(any(documento_errado in w for w in warnings), "o aviso ecoou o documento")
 
+    def test_documento_da_ordem_so_como_cotitular_e_aviso(self) -> None:
+        files = case()
+        for row in files["TITULARES"]:
+            row[4] = "1"
+        self.assert_says(self.run_case(files).warnings, "o(s) documento(s) nº 1 da ordem")
+
     def test_sem_a_lista_da_ordem_a_conferencia_diz_o_que_nao_viu(self) -> None:
         folder, drafts_folder = self.write(case(), drafts=coherent_drafts())
         self.assert_says(conf.conferir(folder, CASO, drafts_folder).warnings,
