@@ -503,6 +503,10 @@ def read_justifications(path: Path | None, report: Report) -> set[tuple]:
             report.error(f"{path.name}: há justificativa sem motivo, que não libera nada")
             continue
         key = entry.get("key") or {}
+        if not isinstance(key, dict) or not all(isinstance(entry.get(n), str) for n in ("documentId", "dataset")):
+            report.error(f"{path.name}: há justificativa fora da forma {{documentId, dataset, key: {{campo: valor}}, "
+                         "motivo}, que não libera nada")
+            continue
         grain = sorted(key)
         try:
             grain = grains_of(entry["documentId"]).get(entry["dataset"]) or grain

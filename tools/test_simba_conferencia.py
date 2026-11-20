@@ -436,6 +436,17 @@ class Conferencia(unittest.TestCase):
         self.assert_says(report.blocks, "parteId=p2")
         self.assert_says(report.errors, "justificativa sem motivo")
 
+    def test_justificativa_com_chave_fora_da_forma_e_erro_e_nao_libera(self) -> None:
+        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))))
+        justificativas = self.root / "justificativas.json"
+        justificativas.write_text(json.dumps([{
+            "documentId": "br.bcb.simba.titulares", "dataset": "partes",
+            "key": ["c1", "p2"], "motivo": "CPF corrigido no cadastro"}]), encoding="utf-8")
+        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"))], previous=anterior,
+                               justifications=justificativas)
+        self.assert_says(report.errors, "há justificativa fora da forma")
+        self.assert_says(report.blocks, "parteId=p2")
+
     def test_linha_nova_e_so_aviso(self) -> None:
         anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"))))
         report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"), ("c2", "p3"))], previous=anterior)
