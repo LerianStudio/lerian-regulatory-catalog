@@ -69,8 +69,9 @@ conjunto, pela chave do grão que o contrato declara. Uma chave do Final que fal
 rascunho novo é uma linha que o reenvio perdeu (um cadastro apagado, um lançamento
 estornado na base, um binding alterado) e BLOQUEIA a aprovação, a menos que o
 arquivo de justificativas a libere com o motivo registrado. Um conjunto do envio
-anterior que o contrato atual não tem, um documento sem rascunho novo ou um rascunho
-sem o envio anterior na pasta também bloqueia. Uma chave nova é só aviso. A pasta de
+anterior que o contrato atual não tem, um documento sem rascunho novo, um rascunho
+sem o envio anterior na pasta, ou um documento do SIMBA ausente das duas pastas
+também bloqueia. Uma chave nova é só aviso. A pasta de
 `--anterior` traz o ÚLTIMO envio aprovado, uma resposta por documento, com status
 Final; quem roda a conferência a escolhe, e o script recusa pasta vazia, status que
 não seja Final e documento repetido.
@@ -460,6 +461,9 @@ def check_overdraft_rows(drafts: dict[str, dict] | None, report: Report) -> None
 def check_resubmission(drafts: dict[str, dict], previous: dict[str, dict], justified: set[tuple],
                        report: Report) -> None:
     """Diff por linha, pela chave do grão, entre o último Final e o rascunho novo."""
+    for document in sorted(expected_documents() - set(drafts) - set(previous)):
+        report.block(f"{document}: nem rascunho novo nem envio anterior nas pastas; a completude do reenvio dele não "
+                     "foi conferida")
     for document in sorted(set(drafts) - set(previous)):
         report.block(f"{document}: há rascunho novo e a pasta do envio anterior não traz o Final dele")
     for document, final_sets in sorted(previous.items()):
@@ -489,6 +493,12 @@ def check_resubmission(drafts: dict[str, dict], previous: dict[str, dict], justi
                     report.block(text + "; libere só com o motivo registrado em --justificativas")
             if after - before:
                 report.warn(f"{document} {dataset}: {len(after - before)} linha(s) novas em relação ao envio anterior")
+
+
+def expected_documents() -> set[str]:
+    """Os documentos do SIMBA neste catálogo: o reenvio confere todos eles."""
+    return {(yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("metadata", {}).get("id")
+            for path in sorted((ROOT / "br" / "bcb" / "simba").glob("*/contract.yaml"))} - {None}
 
 
 def grains_of(document: str) -> dict[str, list[str] | str]:

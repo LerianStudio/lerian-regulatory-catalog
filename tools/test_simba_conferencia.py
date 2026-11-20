@@ -115,6 +115,13 @@ def coherent_drafts() -> list[dict]:
                                  ("123456", "2026-12-01T10:00:02Z", "40.00"))]
 
 
+def complete(*responses: dict) -> list[dict]:
+    """As respostas dadas, mais uma vazia de cada documento do SIMBA que falta (o reenvio confere os cinco)."""
+    present = {r["documentId"] for r in responses}
+    return list(responses) + [{"documentId": d, "status": "Draft", "datasets": {}}
+                              for d in sorted(conf.expected_documents() - present)]
+
+
 def final(*drafts: dict) -> list[dict]:
     """As mesmas respostas, como as de um envio aprovado."""
     return [dict(d, status="Final") for d in drafts]
@@ -445,12 +452,12 @@ class Conferencia(unittest.TestCase):
         self.assertIn("BLOQUEIO:", out.getvalue())
 
     def test_justificativa_registrada_libera_a_linha(self) -> None:
-        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))))
+        anterior = self.rows_folder("final", final(*complete(rows(), titulares_rows(("c1", "p1"), ("c1", "p2")))))
         justificativas = self.root / "justificativas.json"
         justificativas.write_text(json.dumps([{
             "documentId": "br.bcb.simba.titulares", "dataset": "partes",
             "key": {"contaId": "c1", "parteId": "p2"}, "motivo": "CPF corrigido no cadastro"}]), encoding="utf-8")
-        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"))], previous=anterior,
+        report = self.run_case(drafts=complete(rows(), titulares_rows(("c1", "p1"))), previous=anterior,
                                justifications=justificativas)
         self.assertEqual([], report.blocks)
         self.assert_says(report.released, "contaId=c1, parteId=p2")
@@ -478,10 +485,20 @@ class Conferencia(unittest.TestCase):
         self.assert_says(report.blocks, "parteId=p2")
 
     def test_linha_nova_e_so_aviso(self) -> None:
-        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"))))
-        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"), ("c2", "p3"))], previous=anterior)
+        anterior = self.rows_folder("final", final(*complete(rows(), titulares_rows(("c1", "p1")))))
+        report = self.run_case(drafts=complete(rows(), titulares_rows(("c1", "p1"), ("c2", "p3"))), previous=anterior)
         self.assertEqual([], report.blocks)
         self.assert_says(report.warnings, "br.bcb.simba.titulares partes: 1 linha(s) novas")
+
+    def test_documento_ausente_das_duas_pastas_bloqueia(self) -> None:
+        anterior = self.rows_folder("final", final(rows()))
+        report = self.run_case(drafts=[rows()], previous=anterior)
+        self.assert_says(report.blocks, "br.bcb.simba.origem-destino: nem rascunho novo nem envio anterior nas pastas")
+        self.assert_says(report.blocks, "br.bcb.simba.titulares: nem rascunho novo nem envio anterior nas pastas")
+
+    def test_os_cinco_documentos_nas_duas_pastas_nao_bloqueiam(self) -> None:
+        anterior = self.rows_folder("final", final(*complete(rows())))
+        self.assertEqual([], self.run_case(drafts=complete(rows()), previous=anterior).blocks)
 
     def test_documento_do_final_sem_rascunho_bloqueia(self) -> None:
         anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"))))
@@ -603,6 +620,10 @@ class Deriva(unittest.TestCase):
                               "chequeEspecialApos"},
                              self.fields("extrato", conf.EXTRATO_ENTRIES))
 
+    def test_o_reenvio_confere_os_cinco_documentos(self) -> None:
+        self.assertEqual({"br.bcb.simba.agencias", "br.bcb.simba.contas", "br.bcb.simba.titulares",
+                          "br.bcb.simba.extrato", "br.bcb.simba.origem-destino"}, conf.expected_documents())
+
     def test_os_ids_dos_documentos_existem(self) -> None:
         ids = {self.contract(f)["metadata"]["id"] for f in ("contas", "extrato")}
         self.assertEqual({conf.CONTAS_DOCUMENT, conf.EXTRATO_DOCUMENT}, ids)
@@ -680,6 +701,10 @@ class Mutations(unittest.TestCase):
         self.assertEqual(1, self.failures_with(
             "unstated_accounts", lambda moved, statement: set(),
             "test_conta_movimentada_sem_linha_no_extrato_e_erro"))
+
+    def test_esquecer_o_documento_ausente_das_duas_pastas_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "expected_documents", lambda: set(), "test_documento_ausente_das_duas_pastas_bloqueia"))
 
     def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
