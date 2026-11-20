@@ -574,11 +574,16 @@ def missing_case_accounts(found: dict[str, dict]) -> list[str]:
     return [document for document, binding in found.items() if CASE_ACCOUNTS not in queries_of(binding)]
 
 
+# Só o filtro de pertinência restringe a leitura ao conjunto: um `nin` pelos documentos lê
+# todo cliente MENOS os investigados.
+MEMBERSHIP = "in"
+
+
 def _reads(query: dict) -> tuple[set[str], set[str]]:
-    """Os parâmetros e as consultas de que uma consulta depende para ler."""
+    """Os parâmetros e as consultas que restringem por pertinência (`in`) o que a consulta lê."""
     parameters, sources = set(), set()
     for condition in query.get("filters") or []:
-        if not isinstance(condition, dict):
+        if not isinstance(condition, dict) or condition.get("operator") != MEMBERSHIP:
             continue
         for value in condition.get("values") or []:
             if isinstance(value, dict) and isinstance(value.get("parameter"), str):
@@ -870,6 +875,20 @@ class Mutations(unittest.TestCase):
                             if not any(isinstance(v, dict) and v.get("parameter") == INVESTIGATED
                                        for v in c.get("values") or [])]
         self.assertTrue(any(f"'{CASE_ACCOUNTS}'" in p for p in unscoped_queries(found)))
+
+    def test_consulta_que_exclui_os_investigados_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        for condition in queries_of(found["contas"])[CASE_ACCOUNTS]["filters"]:
+            if any(isinstance(v, dict) and v.get("parameter") == INVESTIGATED for v in condition.get("values") or []):
+                condition["operator"] = "nin"
+        self.assertTrue(any(f"'{CASE_ACCOUNTS}'" in p for p in unscoped_queries(found)))
+
+    def test_consulta_que_exclui_as_contas_do_caso_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        for condition in queries_of(found["contas"])["lancamentos"]["filters"]:
+            if any(isinstance(v, dict) and v.get("query") == CASE_ACCOUNTS for v in condition.get("values") or []):
+                condition["operator"] = "nin"
+        self.assertTrue(any("'lancamentos'" in p for p in unscoped_queries(found)))
 
     def test_nome_de_pais_diferente_da_tabela_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
