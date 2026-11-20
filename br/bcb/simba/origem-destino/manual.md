@@ -107,7 +107,10 @@ Na tarifa e na contraparte interna, o CNPJ da propria instituicao.
 2. **Codigo Compe** (`compe`) e **nome no Unicad** (`nomeUnicad`) da instituicao.
 3. **Fontes de dados**: `midaz_metadata` (o Mongo da metadata do Midaz) e uma fonte por plugin
    usado: `pix_lerian`, `pix_jd`, `bank_transfer`. Quem nao usa um plugin apaga as consultas
-   dele e o conjunto `trilho_*` correspondente do binding.
+   dele e declara vazio cada conjunto `trilho_*` dele, com o motivo:
+   `trilho_pix_jd_envios: {emptyReason: "a instituicao nao usa o Pix JD"}`. Nao apague o
+   conjunto: sem origem, os campos obrigatorios dele ficam pendentes e o rascunho nao pode
+   ser aprovado.
 
 ## Campos em branco, e por que
 

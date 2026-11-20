@@ -90,8 +90,11 @@ cautelar. Revise as linhas com `125`/`218` antes de aprovar.
 5. **Fonte `midaz_metadata`**: o Mongo da metadata do Midaz (colecoes `transaction` e
    `operation`), que a configuracao padrao do Reporter nao traz; cadastre-a antes.
 6. **Fontes dos plugins de Pix** (`pix_lerian`, `pix_jd`), as mesmas do ORIGEM-DESTINO: o
-   TxId do campo 26 esta so no plugin. Quem nao usa um plugin apaga as consultas dele e o
-   conjunto `trilho_*` correspondente do binding.
+   TxId do campo 26 esta so no plugin. Quem nao usa um plugin apaga as consultas dele e
+   declara vazio cada conjunto `trilho_*` dele, com o motivo:
+   `trilho_pix_jd_envios: {emptyReason: "a instituicao nao usa o Pix JD"}`. Nao apague o
+   conjunto: sem origem, o campo obrigatorio dele fica pendente e o rascunho nao pode ser
+   aprovado.
 
 O CNPJ vem da organizacao do Midaz; tipo da conta do CRM (`regulatory_fields.account_type`).
 

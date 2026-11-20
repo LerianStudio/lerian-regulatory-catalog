@@ -3,7 +3,8 @@
 # Exemplo preenchido contra o Midaz (`midaz_onboarding`, `midaz_transaction`), a
 # metadata do Midaz (`midaz_metadata`), o CRM do Midaz (`plugin_crm`) e os bancos
 # dos plugins (`pix_lerian`, `pix_jd`, `bank_transfer`), lidos direto. Cliente sem um
-# dos plugins apaga as consultas dele e a fonte `also` correspondente.
+# dos plugins apaga as consultas dele e declara vazio cada conjunto trilho_* dele com
+# `emptyReason` (apagado, o conjunto fica pendente e o rascunho nao pode ser aprovado).
 #
 # MESMA NUMERACAO DO EXTRATO: `lancamentos_dados` e as consultas que ela junta
 # (`lancamentos_descricao`, `contas_lancamento`, `metadados_transacao`) e `taxas_lancamento` tem o MESMO texto

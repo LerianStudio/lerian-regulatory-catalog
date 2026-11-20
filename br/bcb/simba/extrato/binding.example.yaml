@@ -204,7 +204,8 @@ queries:
   # O TxId do Pix (campo 26, IN :195) esta so no plugin que liquidou o Pix, na mesma linha
   # que o ORIGEM-DESTINO le para a contraparte: tx_id no Pix lerian, conciliation_id no Pix
   # JD. Mesmas consultas do ORIGEM-DESTINO, so com a referencia e o TxId. Quem nao usa um
-  # plugin apaga as consultas dele e o conjunto trilho_* correspondente.
+  # plugin apaga as consultas dele e declara vazio cada conjunto trilho_* dele com
+  # `emptyReason` (apagado, o conjunto fica pendente e o rascunho nao pode ser aprovado).
   - name: pix_lerian_envios_txid
     description: Pix enviados pelo Pix lerian, com o TxId.
     dataSource: pix_lerian
