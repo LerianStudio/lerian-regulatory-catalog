@@ -28,6 +28,13 @@
 # representante, "R". Declare-o em `vinculo` nas duas consultas de partes. Sem a
 # declaracao, uma parte com esse papel recusa a geracao.
 #
+# DATAS DO CRM GRAVADAS COMO INSTANTE (`civilDate: true`): o CRM do Midaz guarda
+# o encerramento da conta e o inicio e o fim do vinculo das partes
+# (`closing_date`, `start_date`, `end_date`) como data e hora a meia-noite UTC
+# (um documento nao tem tipo de dia). Sem a marca, o motor corta o instante no fuso
+# do documento e o dia sai um antes. Com `civilDate: true` o binding le o dia UTC; um instante fora
+# da meia-noite recusa a geracao. A chave exige o Reporter que a conhece.
+#
 # A RENDA (campos 18 e 19): da pessoa natural, a renda mensal bruta declarada; da
 # pessoa juridica, o faturamento anual declarado, como esta no cadastro (sem
 # dividir por 12). A data e a `reference_date` de cada um.
@@ -1434,7 +1441,7 @@ datasets:
       moedaRenda: {from: query, column: natural_person.monthly_gross_income.currency}
       moedaFaturamento: {from: query, column: legal_person.annual_gross_revenue.currency}
       dataInicio: {from: query, column: banking_details.opening_date}
-      dataFim: {from: query, column: banking_details.closing_date}
+      dataFim: {from: query, column: banking_details.closing_date, civilDate: true}
       nomeSocial: {from: query, column: natural_person.social_name}
       emailPrincipal: {from: query, column: contact.primary_email}
       emailSecundario: {from: query, column: contact.secondary_email}
@@ -1451,8 +1458,8 @@ datasets:
       vinculo: {from: query, column: vinculo}
       documento: {from: query, column: related_parties.document}
       nome: {from: query, column: related_parties.name}
-      dataInicio: {from: query, column: related_parties.start_date}
-      dataFim: {from: query, column: related_parties.end_date}
+      dataInicio: {from: query, column: related_parties.start_date, civilDate: true}
+      dataFim: {from: query, column: related_parties.end_date, civilDate: true}
 
   titulares_contraparte:
     from:
@@ -1480,7 +1487,7 @@ datasets:
       moedaRenda: {from: query, column: natural_person.monthly_gross_income.currency}
       moedaFaturamento: {from: query, column: legal_person.annual_gross_revenue.currency}
       dataInicio: {from: query, column: banking_details.opening_date}
-      dataFim: {from: query, column: banking_details.closing_date}
+      dataFim: {from: query, column: banking_details.closing_date, civilDate: true}
       nomeSocial: {from: query, column: natural_person.social_name}
       emailPrincipal: {from: query, column: contact.primary_email}
       emailSecundario: {from: query, column: contact.secondary_email}
@@ -1497,7 +1504,7 @@ datasets:
       vinculo: {from: query, column: vinculo}
       documento: {from: query, column: related_parties.document}
       nome: {from: query, column: related_parties.name}
-      dataInicio: {from: query, column: related_parties.start_date}
-      dataFim: {from: query, column: related_parties.end_date}
+      dataInicio: {from: query, column: related_parties.start_date, civilDate: true}
+      dataFim: {from: query, column: related_parties.end_date, civilDate: true}
 
 manualOverrides: []
