@@ -20,6 +20,12 @@
 # `inicio`) e ate o fim do ultimo (`lt` o fim de `fim`). Credito soma, debito
 # subtrai; outra direcao recusa a geracao (como no Cadoc 4010).
 #
+# DATAS DO CRM GRAVADAS COMO INSTANTE (`civilDate: true`): o CRM do Midaz guarda
+# o encerramento da conta (`banking_details.closing_date`) como data e hora a
+# meia-noite UTC (um documento nao tem tipo de dia). Sem a marca, o motor corta o instante no fuso do documento e o
+# dia sai um antes. Com `civilDate: true` o binding le o dia UTC; um instante fora
+# da meia-noite recusa a geracao. A chave exige o Reporter que a conhece.
+#
 # Filtro encadeado `{query, column}`: grafia provisoria do motor; se
 # mudar, e `sed` nos bindings.
 
@@ -344,7 +350,7 @@ datasets:
       numeroConta: {from: query, column: banking_details.account}
       tipoConta: {from: query, column: tipo_conta}
       dataAbertura: {from: query, column: banking_details.opening_date}
-      dataEncerramento: {from: query, column: banking_details.closing_date}
+      dataEncerramento: {from: query, column: banking_details.closing_date, civilDate: true}
       saldoInicial: {from: query, column: saldo_inicial}
       saldoFinal: {from: query, column: saldo_final}
       volumePeriodo: {from: query, column: volume_periodo}
@@ -358,7 +364,7 @@ datasets:
       numeroConta: {from: query, column: banking_details.account}
       tipoConta: {from: query, column: tipo_conta}
       dataAbertura: {from: query, column: banking_details.opening_date}
-      dataEncerramento: {from: query, column: banking_details.closing_date}
+      dataEncerramento: {from: query, column: banking_details.closing_date, civilDate: true}
       saldoInicial: {from: query, column: saldo_inicial}
       saldoFinal: {from: query, column: saldo_final}
 
