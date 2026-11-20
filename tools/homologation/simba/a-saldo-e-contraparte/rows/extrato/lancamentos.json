@@ -681,14 +681,11 @@
     "natureza": "D",
     "naturezaOposta": "C",
     "tipoOperacao": "DEBIT",
-    "rail": "PIX",
-    "fluxo": "CASH_OUT",
-    "direcao": "OUT",
-    "agregado": "A32",
     "saldoApos": "0.00",
     "bloqueadoApos": "0.00",
     "chequeEspecialApos": "0.004",
-    "e2e": "E32"
+    "e2eEnvio": "E32",
+    "iniciacao": "I32"
   },
   {
     "operacaoId": "o33",
