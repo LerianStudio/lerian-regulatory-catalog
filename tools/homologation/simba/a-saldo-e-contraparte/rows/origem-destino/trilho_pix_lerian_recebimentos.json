@@ -1,0 +1,54 @@
+[
+  {
+    "referencia": "E00000000202612021300EXEMPLO0001",
+    "ispb": "00000000",
+    "agencia": "1",
+    "conta": "12345",
+    "documento": "AB.12C.D34/0001-55",
+    "nome": "Pagadora Exemplo Ltda",
+    "comentario": "pagamento exemplo",
+    "txid": "",
+    "e2e": "E00000000202612021300EXEMPLO0001",
+    "tipoConta": "1",
+    "tipoContaInformado": "CACC"
+  },
+  {
+    "referencia": "E00000000202612021300EXEMPLO0016",
+    "ispb": "00000000",
+    "agencia": "1",
+    "conta": "12345",
+    "documento": "AB.12C.D34/0001-55",
+    "nome": "Pagadora Exemplo Ltda",
+    "comentario": "pagamento exemplo",
+    "txid": "",
+    "e2e": "E00000000202612021300EXEMPLO0016",
+    "tipoConta": "TRAN",
+    "tipoContaInformado": "TRAN"
+  },
+  {
+    "referencia": "E00000000202612021300EXEMPLO0017",
+    "ispb": "00000000",
+    "agencia": "1",
+    "conta": "12345",
+    "documento": "AB.12C.D34/0001-55",
+    "nome": "Pagadora Exemplo Ltda",
+    "comentario": "pagamento exemplo",
+    "txid": "",
+    "e2e": "E00000000202612021300EXEMPLO0017",
+    "tipoConta": "OTHR",
+    "tipoContaInformado": "OTHR"
+  },
+  {
+    "referencia": "E00000000202612021300EXEMPLO0018",
+    "ispb": "00000000",
+    "agencia": "1",
+    "conta": "12345",
+    "documento": "AB.12C.D34/0001-55",
+    "nome": "Pagadora Exemplo Ltda",
+    "comentario": "pagamento exemplo",
+    "txid": "",
+    "e2e": "E00000000202612021300EXEMPLO0018",
+    "tipoConta": "-",
+    "tipoContaInformado": "CC"
+  }
+]

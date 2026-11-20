@@ -1,0 +1,678 @@
+[
+  {
+    "name": "sinal do cheque especial",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "-l.chequeEspecialApos|default:\"0\"|float",
+    "new": "+l.chequeEspecialApos|default:\"0\"|float",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 2,
+      "field": 13
+    }
+  },
+  {
+    "name": "saldo sem o bloqueado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "+l.bloqueadoApos|default:\"0\"|float",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 4,
+      "field": 12
+    }
+  },
+  {
+    "name": "truncamento no saldo devedor",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% with sm=sc*100+0.500001 %}",
+    "new": "{% with sm=sc*100 %}",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 7,
+      "field": 12
+    }
+  },
+  {
+    "name": "truncamento no saldo credor",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% with sm=st*100+0.500001 %}",
+    "new": "{% with sm=st*100 %}",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 6,
+      "field": 12
+    }
+  },
+  {
+    "name": "meio centavo sem a folga do ponto flutuante",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "+0.500001 %}",
+    "new": "+0.5 %}",
+    "count": 4,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 8,
+      "field": 12
+    }
+  },
+  {
+    "name": "EXTRATO pula o primeiro lancamento",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- for l in lancamentos %}",
+    "new": "{%- for l in lancamentos|slice:\"1:\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 1,
+      "field": 6
+    }
+  },
+  {
+    "name": "ORIGEM-DESTINO pula o primeiro lancamento",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{%- for l in lancamentos %}",
+    "new": "{%- for l in lancamentos|slice:\"1:\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 3
+    }
+  },
+  {
+    "name": "ISPB vazio sem a guarda",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if ispb == None or ispb == \"\" %}999{% else %}",
+    "new": "{% if false %}999{% else %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
+      "field": 5
+    }
+  },
+  {
+    "name": "todo estorno como estorno de transferencia",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- if (rail or pagamento or envio or recebimento) and not taxa -%}{%- if natureza == \"D\" -%}140{%- else -%}264{%- endif -%}{%- elif natureza == \"D\" -%}142{%- else -%}266{%- endif -%}",
+    "new": "{%- if natureza == \"D\" -%}140{%- else -%}264{%- endif -%}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 9,
+      "field": 9
+    }
+  },
+  {
+    "name": "estorno de envio herda o beneficiario do envio",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "(l.natureza == \"D\" and (a or c or f or g))",
+    "new": "(a or c or f or g)",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 10,
+      "field": 2
+    }
+  },
+  {
+    "name": "estorno de tarifa com trilho como estorno de transferencia",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "(rail or pagamento or envio or recebimento) and not taxa",
+    "new": "(rail or pagamento or envio or recebimento)",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 9,
+      "field": 9
+    }
+  },
+  {
+    "name": "TED recebida sem o motivo dos dados do remetente em branco",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente\"",
+    "new": "\"\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 11,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED recebida sem o codigo do tipo de conta",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\", pg.tipoConta) }}",
+    "new": "\", \"\") }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 11,
+      "field": 8
+    }
+  },
+  {
+    "name": "tipo de conta fora do dominio dito nao informado",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif pg.tipoContaInformado %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 13,
+      "field": 18
+    }
+  },
+  {
+    "name": "tipo de conta ausente sem o motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "; tipo de conta do remetente nao informado pelo STR\"",
+    "new": "\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 12,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED de conta de pagamento sem o codigo no motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "remetente \"|add:tc|add:\" sem codigo unico na IN\"",
+    "new": "remetente \"|add:\" sem codigo unico na IN\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 14,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix de conta corrente sem o codigo do tipo de conta",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"\", pb.tipoConta) }}",
+    "new": "\"\", \"\") }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 8
+    }
+  },
+  {
+    "name": "Pix de conta de pagamento dito fora do dominio",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif pb.tipoConta == \"TRAN\" %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 15,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix de conta PI dito fora do dominio",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif pb.tipoConta == \"SLRY\" or pb.tipoConta == \"OTHR\" %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 16,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix com tipo fora do dominio dito nao informado",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif pb.tipoContaInformado %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 17,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED de conta garantida sem o codigo no motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "remetente \"|add:tc|add:\" sem codigo correspondente na IN\"",
+    "new": "remetente \"|add:\" sem codigo correspondente na IN\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix JD de conta corrente sem o codigo do tipo de conta",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"\", pd.tipoConta) }}",
+    "new": "\"\", \"\") }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 18,
+      "field": 8
+    }
+  },
+  {
+    "name": "tarifa com a agencia fixa em 00001",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ l.numeroAgencia }}\t\t\t2\t",
+    "new": "00001\t\t\t2\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 21,
+      "field": 6
+    }
+  },
+  {
+    "name": "TED enviada de conta de pagamento sem o motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CPAY sem codigo unico na IN\"",
+    "new": "\"\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 19,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada de conta corrente dita fora do dominio",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if tc == \"CACC\" %}",
+    "new": "{% if false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 20,
+      "field": 8
+    }
+  },
+  {
+    "name": "TED enviada sem a base do motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\", \"1\")",
+    "new": "\"\", \"1\")",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 20,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED recebida de conta-salario dita fora do dominio",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "pg.tipoConta == \"CG\" or pg.tipoConta == \"SLRY\"",
+    "new": "pg.tipoConta == \"CG\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 27,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix JD enviado de conta de pagamento dito nao informado",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif pc.tipoConta == \"TRAN\" %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 28,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix JD enviado de conta-salario ou PI dito nao informado",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif pc.tipoConta == \"SLRY\" or pc.tipoConta == \"OTHR\" %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 29,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix lerian enviado de conta corrente sem o codigo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"\", pa.tipoConta) }}",
+    "new": "\"\", \"\") }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 31,
+      "field": 8
+    }
+  },
+  {
+    "name": "TED enviada de poupanca dita nao informada",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif tc == \"SVGS\" %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 22,
+      "field": 8
+    }
+  },
+  {
+    "name": "TED enviada de conta-salario dita nao informada",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% elif tc == \"SLRY\" %}",
+    "new": "{% elif false %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 24,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia CPAY",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "tc == \"CPAY\" or tc == \"PG\"",
+    "new": "tc == \"PG\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 19,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia PG",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "or tc == \"PG\" or",
+    "new": "or",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 23,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia PAYMENT",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "or tc == \"PAYMENT\" or",
+    "new": "or",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 25,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia TRAN",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "or tc == \"TRAN\" or",
+    "new": "or",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 32,
+      "field": 18
+    }
+  },
+  {
+    "name": "TED enviada sem a grafia 4",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": " or tc == \"4\" %}",
+    "new": " %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 33,
+      "field": 18
+    }
+  },
+  {
+    "name": "tipo de conta enviado fora do dominio sem o motivo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor fora do dominio do plugin\"",
+    "new": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\"",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 26,
+      "field": 18
+    }
+  },
+  {
+    "name": "CNPJ da contraparte trocado na lista",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "cnpj_k == \"60746948\" %}60746948000112{% elif",
+    "new": "cnpj_k == \"60746948\" %}60746948000113{% elif",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 19,
+      "field": 19
+    }
+  },
+  {
+    "name": "ISPB vazio sem o separador antes do motivo do CNPJ",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if ispb == None or ispb == \"\" %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix",
+    "new": "{% if ispb == None or ispb == \"\" %}{% if observacao %}{% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
+      "field": 18
+    }
+  },
+  {
+    "name": "ISPB fora da lista sem o motivo do CNPJ",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "cnpj_k == \"00997185\" %}{% else %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix{% endif %}",
+    "new": "cnpj_k == \"00997185\" %}{% else %}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 22,
+      "field": 18
+    }
+  },
+  {
+    "name": "ISPB da lista com o motivo do CNPJ",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "cnpj_k == \"60746948\" %}{% elif",
+    "new": "cnpj_k == \"60746948\" %}; CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix{% elif",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 19,
+      "field": 18
+    }
+  },
+  {
+    "name": "devolucao de TED recebida sem o remetente",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "(l.natureza == \"D\" and (a or c or f or g))",
+    "new": "(l.natureza == \"D\" and (a or c or f))",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 34,
+      "field": 5
+    }
+  },
+  {
+    "name": "cobranca de divida de tarifa como contraparte",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if taxas|where:chaveO or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}",
+    "new": "{% if taxas|where:chaveO or l.tipoOperacao == \"FEE_REFUND\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 37,
+      "field": 5
+    }
+  },
+  {
+    "name": "reembolso de divida de tarifa como contraparte",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if taxas|where:chaveO or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}",
+    "new": "{% if taxas|where:chaveO or l.tipoOperacao == \"FEE_SETTLEMENT\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 35,
+      "field": 5
+    }
+  },
+  {
+    "name": "reembolso de divida de tarifa como estorno de transferencia",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "codigo(l.tipoOperacao, e, t or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\",",
+    "new": "codigo(l.tipoOperacao, e, t or l.tipoOperacao == \"FEE_SETTLEMENT\",",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 35,
+      "field": 9
+    }
+  },
+  {
+    "name": "cobranca de divida de tarifa num estorno como estorno",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- if operacao == \"FEE_SETTLEMENT\" and natureza == \"D\" -%}105{%- elif ",
+    "new": "{%- if ",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 39,
+      "field": 9
+    }
+  },
+  {
+    "name": "bloqueio judicial como pagamento diverso",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- elif operacao == \"BLOCK\" and natureza == \"D\" -%}150",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 40,
+      "field": 9
+    }
+  },
+  {
+    "name": "desbloqueio judicial como recebimento diverso",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- elif operacao == \"UNBLOCK\" and natureza == \"C\" -%}272",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 41,
+      "field": 9
+    }
+  },
+  {
+    "name": "tarifa sem o motivo da conta em branco",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "0\ttarifa da propria instituicao; sem conta de contraparte\t{{ instituicao.cnpj }}",
+    "new": "0\t\t{{ instituicao.cnpj }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 6,
+      "field": 18
+    }
+  },
+  {
+    "name": "perna interna ambigua impressa duas vezes",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if ps|length > 1 %}",
+    "new": "{% if ps|length > 9 %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 42,
+      "field": 5
+    }
+  },
+  {
+    "name": "conta da perna interna com hifen",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "contract.yaml",
+    "old": "        normalize: digits\n        pattern: '^[0-9]{1,20}$'\n        description: >-\n          Numero da conta com o digito verificador, so digitos",
+    "new": "        pattern: '^[^\\t\\r\\n]{1,20}$'\n        description: >-\n          Numero da conta com o digito verificador, so digitos",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 5,
+      "field": 7
+    }
+  }
+]

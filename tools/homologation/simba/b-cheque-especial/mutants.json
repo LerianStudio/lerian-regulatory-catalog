@@ -1,0 +1,80 @@
+[
+  {
+    "name": "linha da chave overdraft com a formula do disponivel",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% if l.chaveSaldo == \"overdraft\" %}{% with st=0-l.saldoApos|float %}",
+    "new": "{% if false %}{% with st=0-l.saldoApos|float %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 4,
+      "field": 12
+    }
+  },
+  {
+    "name": "sinal da divida na linha overdraft",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% with st=0-l.saldoApos|float %}",
+    "new": "{% with st=l.saldoApos|float %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 4,
+      "field": 13
+    }
+  },
+  {
+    "name": "linha de 0,00 sem o bloqueado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "+l.bloqueadoApos|default:\"0\"|float",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 7,
+      "field": 12
+    }
+  },
+  {
+    "name": "conta sem lancamento como movimentada",
+    "document": "br/bcb/simba/contas",
+    "file": "template.tpl",
+    "old": "{% if c.volumePeriodo %}1{% else %}2{% endif %}",
+    "new": "1",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/contas",
+      "line": 3,
+      "field": 7
+    }
+  },
+  {
+    "name": "Pix JD de outra instituicao com tipo de conta",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if pc.tipoConta == \"1\" or pc.tipoConta == \"2\" %}",
+    "new": "{% if true %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 3,
+      "field": 8
+    }
+  },
+  {
+    "name": "tarifa sem a agencia da instituicao",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ instituicao.compe }}\t{{ l.numeroAgencia }}\t",
+    "new": "{{ instituicao.compe }}\t\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 5,
+      "field": 6
+    }
+  }
+]

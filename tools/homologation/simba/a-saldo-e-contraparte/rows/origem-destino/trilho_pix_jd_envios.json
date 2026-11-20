@@ -1,0 +1,41 @@
+[
+  {
+    "referencia": "A29",
+    "ispb": "60746948",
+    "agencia": "77",
+    "conta": "8888",
+    "digito": "2",
+    "documento": "12345678000190",
+    "nome": "Recebedor Exemplo Ltda",
+    "comentario": "",
+    "txid": "",
+    "e2e": "E29",
+    "tipoConta": "TRAN"
+  },
+  {
+    "referencia": "A30",
+    "ispb": "60746948",
+    "agencia": "77",
+    "conta": "8888",
+    "digito": "2",
+    "documento": "12345678000190",
+    "nome": "Recebedor Exemplo Ltda",
+    "comentario": "",
+    "txid": "",
+    "e2e": "E30",
+    "tipoConta": "SLRY"
+  },
+  {
+    "referencia": "A31",
+    "ispb": "60746948",
+    "agencia": "77",
+    "conta": "8888",
+    "digito": "2",
+    "documento": "12345678000190",
+    "nome": "Recebedor Exemplo Ltda",
+    "comentario": "",
+    "txid": "",
+    "e2e": "E31",
+    "tipoConta": "OTHR"
+  }
+]

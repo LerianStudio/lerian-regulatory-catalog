@@ -1,0 +1,31 @@
+[
+  {
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "2222222",
+    "tipoConta": "6",
+    "dataAbertura": "2024-01-02",
+    "saldoInicial": "-70.00",
+    "saldoFinal": "-71.00",
+    "volumePeriodo": "200.00"
+  },
+  {
+    "contaId": "c2",
+    "numeroAgencia": "00001",
+    "numeroConta": "2222223",
+    "tipoConta": "6",
+    "dataAbertura": "2024-01-02",
+    "saldoInicial": "0.00",
+    "saldoFinal": "30.00",
+    "volumePeriodo": "20.00"
+  },
+  {
+    "contaId": "c3",
+    "numeroAgencia": "00001",
+    "numeroConta": "2222224",
+    "tipoConta": "6",
+    "dataAbertura": "2024-01-02",
+    "saldoInicial": "15.00",
+    "saldoFinal": "15.00"
+  }
+]
