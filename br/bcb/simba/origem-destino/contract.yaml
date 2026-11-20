@@ -119,11 +119,11 @@ datasets:
   # (transacao, operacao, ...), o que fixa a ordem das linhas; cada operacao e um grupo.
   - name: lancamentos
     description: Os lancamentos das contas do caso no periodo, um por operacao, na ordem da consulta.
-    grain: [operacaoId]
+    grain: [transacaoId, operacaoId]
     consolidation:
-      key: [operacaoId]
+      key: [transacaoId, operacaoId]
       whenKeyRepeats: refuse
-      columns: {transacaoId: first, contaId: first, numeroAgencia: first, numeroConta: first, tipoConta: first,
+      columns: {contaId: first, numeroAgencia: first, numeroConta: first, tipoConta: first,
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
                 valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, e2e: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
