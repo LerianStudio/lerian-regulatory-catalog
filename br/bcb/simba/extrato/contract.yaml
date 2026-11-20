@@ -248,6 +248,7 @@ datasets:
       - name: e2e
         type: string
         required: false
+        pattern: '^[^\t\r\n]*$'
         description: EndToEndId gravado pelo plugin TED ou Pix JD.
       - name: tipoPagamento
         type: string
@@ -260,6 +261,7 @@ datasets:
       - name: e2eEnvio
         type: string
         required: false
+        pattern: '^[^\t\r\n]*$'
         description: end_to_end_id do envio do Pix lerian.
       - name: iniciacao
         type: string
@@ -268,6 +270,7 @@ datasets:
       - name: e2eRecebimento
         type: string
         required: false
+        pattern: '^[^\t\r\n]*$'
         description: inbound_end_to_end_id do recebimento do Pix lerian.
       - name: devolucao
         type: string
