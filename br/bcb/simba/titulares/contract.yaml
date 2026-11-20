@@ -76,6 +76,7 @@ parameters:
     type: date
     closed: true
     required: true
+    notBefore: inicio
     description: Ultimo dia do afastamento do sigilo.
 
 filing:
@@ -108,6 +109,7 @@ datasets:
       - name: nomeUnicad
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da instituicao como esta no Unicad (campo 23, IN :159). O template o corta em 50 posicoes.
       - name: operaCambio
         type: string
@@ -167,14 +169,17 @@ datasets:
       - name: nome
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome completo do titular (campo 9, IN :145). O template o corta em 80 posicoes.
       - name: logradouro
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Linha 1 do endereco principal (campo 12, IN :148). Ausente, o campo sai em branco.
       - name: complemento
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Linha 2 do endereco principal; o template a junta ao logradouro e corta em 80 (campo 12, IN :148).
       - name: codigoUf
         type: string
@@ -194,6 +199,7 @@ datasets:
       - name: nomePais
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: >-
           Nome do pais do endereco principal, da tabela de paises da Receita (campo 15, IN :151); "-" quando o codigo
           falta ou esta fora da tabela. O template escreve o nome, e nada para "-"; a regra pais-na-tabela recusa o
@@ -206,10 +212,12 @@ datasets:
       - name: celular
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Telefone celular do cadastro (campo 17, IN :153). Preferido ao outro telefone.
       - name: outroTelefone
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Outro telefone do cadastro, usado sem celular (campo 17, IN :153).
       - name: renda
         type: decimal
@@ -256,14 +264,17 @@ datasets:
       - name: nomeSocial
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome social da pessoa natural (campo 24, IN :160). O template o corta em 50 posicoes.
       - name: emailPrincipal
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: E-mail principal (campo 25, IN :161).
       - name: emailSecundario
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: E-mail secundario, unido ao principal por ";" (campo 25, IN :161).
 
   # Uma linha por parte relacionada de cada conta do caso.
@@ -315,6 +326,7 @@ datasets:
       - name: nome
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da parte como esta no CRM (campo 9, IN :145). O template o corta em 80 posicoes.
       - name: dataInicio
         type: date
@@ -374,14 +386,17 @@ datasets:
       - name: nome
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome completo do titular (campo 9, IN :145). O template o corta em 80 posicoes.
       - name: logradouro
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Linha 1 do endereco principal (campo 12, IN :148). Ausente, o campo sai em branco.
       - name: complemento
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Linha 2 do endereco principal; o template a junta ao logradouro e corta em 80 (campo 12, IN :148).
       - name: codigoUf
         type: string
@@ -401,6 +416,7 @@ datasets:
       - name: nomePais
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: >-
           Nome do pais do endereco principal, da tabela de paises da Receita (campo 15, IN :151); "-" quando o codigo
           falta ou esta fora da tabela. O template escreve o nome, e nada para "-"; a regra pais-na-tabela recusa o
@@ -413,10 +429,12 @@ datasets:
       - name: celular
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Telefone celular do cadastro (campo 17, IN :153). Preferido ao outro telefone.
       - name: outroTelefone
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Outro telefone do cadastro, usado sem celular (campo 17, IN :153).
       - name: renda
         type: decimal
@@ -463,14 +481,17 @@ datasets:
       - name: nomeSocial
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome social da pessoa natural (campo 24, IN :160). O template o corta em 50 posicoes.
       - name: emailPrincipal
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: E-mail principal (campo 25, IN :161).
       - name: emailSecundario
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: E-mail secundario, unido ao principal por ";" (campo 25, IN :161).
 
   # Uma linha por parte relacionada de cada conta de contraparte (campo 6 pela pessoa, IN :142).
@@ -522,6 +543,7 @@ datasets:
       - name: nome
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da parte como esta no CRM (campo 9, IN :145). O template o corta em 80 posicoes.
       - name: dataInicio
         type: date

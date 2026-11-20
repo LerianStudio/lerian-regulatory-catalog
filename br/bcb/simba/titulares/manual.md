@@ -23,6 +23,8 @@ mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 
 O `fim` tem de ser um dia que ja acabou no calendario do Reporter: a geracao le um periodo
 fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos.
+O `fim` tambem nao pode ser anterior ao `inicio`: um periodo invertido e recusado ao gerar,
+em vez de sair um arquivo sem lancamento nenhum.
 
 ## Quais linhas entram
 
@@ -111,7 +113,8 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   binding): o CRM os guarda como a meia-noite UTC do dia, e a API do CRM normaliza para essa
   meia-noite qualquer valor que receba, com ou sem hora ou fuso (`2026-06-30T00:00:00-03:00`
   vira o dia 30). Um valor gravado fora da API com hora diferente da meia-noite UTC recusa a
-  geracao (RPT-0143).
+  geracao (RPT-0143). Partes gravadas nas versoes beta da v3.5.0 do Midaz anteriores ao tipo
+  de data podem ter essa hora e recusar a geracao; regrave a data pela API.
 
 Nas partes relacionadas, o CRM guarda so documento, nome, papel e as datas de inicio e fim do
 vinculo. O tipo de pessoa da parte (campo 7) sai do tamanho do documento: 11 posicoes CPF
@@ -188,7 +191,9 @@ requisicao.
 - **Texto sem acento**: nomes, endereco, telefones e e-mails passam pela conversao para ASCII
   do template, e TAB, CR e LF viram espaco: uma quebra de linha no cadastro nao parte o
   registro. O numero da conta nao passa pela conversao: com TAB, CR ou LF ele recusa a
-  geracao.
+  geracao. Um caractere fora do ASCII que a conversao nao cobre (por exemplo `°`, `’`, `–`, `ø`)
+  recusa a geracao, porque o arquivo e ASCII (IN art. 3o): a recusa mostra o campo e o valor,
+  e o cadastro tem de ser corrigido.
 - **Pessoa investigada nas partes**: o campo 6 compara o documento da parte com cada
   elemento da lista `documentos` da ordem, que vem so com digitos. Vale igual nas contas de
   contraparte: um investigado que e procurador numa delas sai `1`.
