@@ -125,7 +125,9 @@ requisicao.
   contas.
 - **Texto sem acento**: todo texto passa pela conversao para ASCII do template (acentos,
   cedilha, til, ordinais) e TAB, CR e LF dentro de um valor viram espaco: uma quebra de
-  linha no cadastro nao parte o registro.
+  linha no cadastro nao parte o registro. Um caractere fora do ASCII que a conversao nao cobre (por exemplo `°`, `’`, `–`, `ø`)
+  recusa a geracao, porque o arquivo e ASCII (IN art. 3o): a recusa mostra o campo e o valor,
+  e o cadastro tem de ser corrigido.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa uma macro. A geracao nao.
 - **Uma instituicao por arquivo**: um documento entregue em base individual nao soma

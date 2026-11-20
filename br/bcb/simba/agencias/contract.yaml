@@ -108,6 +108,7 @@ datasets:
       - name: nomeUnicad
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da instituicao como esta no Unicad (campo 13, IN :113). O template o corta em 50 posicoes.
       - name: possuiAgenciaFisica
         type: string
@@ -147,10 +148,12 @@ datasets:
       - name: nomeAgencia
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da agencia (campo 3, IN :101). Sem agencia fisica o template escreve a sentinela.
       - name: endereco
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Endereco e complemento da agencia (campo 4, IN :102). Sem agencia fisica, a sentinela.
       - name: codigoCidade
         type: string
@@ -165,6 +168,7 @@ datasets:
       - name: pais
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome do pais da agencia (campo 7, IN :105). O template o corta em 40 posicoes.
       - name: cep
         type: string
@@ -174,6 +178,7 @@ datasets:
       - name: telefone
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Telefone da agencia (campo 9, IN :107). O template o corta em 20 posicoes.
       - name: dataAbertura
         type: date
@@ -208,10 +213,12 @@ datasets:
       - name: nomeAgencia
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da agencia (campo 3, IN :101). Sem agencia fisica o template escreve a sentinela.
       - name: endereco
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Endereco e complemento da agencia (campo 4, IN :102). Sem agencia fisica, a sentinela.
       - name: codigoCidade
         type: string
@@ -226,6 +233,7 @@ datasets:
       - name: pais
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome do pais da agencia (campo 7, IN :105). O template o corta em 40 posicoes.
       - name: cep
         type: string
@@ -235,6 +243,7 @@ datasets:
       - name: telefone
         type: string
         required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Telefone da agencia (campo 9, IN :107). O template o corta em 20 posicoes.
       - name: dataAbertura
         type: date

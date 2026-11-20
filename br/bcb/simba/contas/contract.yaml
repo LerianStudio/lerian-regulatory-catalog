@@ -105,6 +105,7 @@ datasets:
       - name: nomeUnicad
         type: string
         required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: Nome da instituicao como esta no Unicad (campo 9, IN :128). O template o corta em 50 posicoes.
 
   # Dois conjuntos porque o motor nao une duas consultas. A conta das outras
