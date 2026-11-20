@@ -120,9 +120,9 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
 - 18 e 19: `0000000` e `00`, as sentinelas da IN para localizacao indisponivel.
 - 26 (`ID_TRANSACAO_PIX`, `TransactionIdentification <TxId>`, IN :195): o TxId que o plugin
   que liquidou o Pix grava, o mesmo do campo 28 do ORIGEM-DESTINO; nunca o EndToEndId, que e
-  outro identificador. Em branco fora do Pix, no Pix sem TxId (por chave ou manual) e no Pix
-  enviado pelo Pix JD, que repassa o TxId ao SPI sem guarda-lo; o campo 18 do ORIGEM-DESTINO
-  diz o motivo.
+  outro identificador. Em branco fora do Pix, no Pix sem TxId (por chave ou manual, ou QR
+  estatico com `***` no lugar do TxId) e no Pix enviado pelo Pix JD, que repassa o TxId ao SPI
+  sem guarda-lo; o campo 18 do ORIGEM-DESTINO diz o motivo.
 - 8: a descricao da operacao; vazia, a da transacao.
 
 ## Investigado sem conta

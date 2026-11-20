@@ -679,8 +679,8 @@
     "name": "TxId cortado no campo 28",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{{ txid }}{%- endmacro %}",
-    "new": "{{ txid|slice:\":5\" }}{%- endmacro %}",
+    "old": "{{ tx }}{% endwith %}{%- endmacro %}",
+    "new": "{{ tx|slice:\":5\" }}{% endwith %}{%- endmacro %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -744,7 +744,7 @@
     "name": "EXTRATO 26 com o E2E no lugar do TxId",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "trilho_pix_lerian_envios|where:chaveR %}{{ pa.txid }}",
+    "old": "trilho_pix_lerian_envios|where:chaveR %}{{ pa.txid|default:\"\"|cut:\"***\" }}",
     "new": "trilho_pix_lerian_envios|where:chaveR %}{{ l.e2eEnvio }}",
     "count": 1,
     "expect": {
@@ -763,6 +763,32 @@
     "expect": {
       "document": "br/bcb/simba/extrato",
       "line": 1,
+      "field": 26
+    }
+  },
+  {
+    "name": "TxId *** do QR estatico tomado como TxId",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% with tx=txid|default:\"\"|cut:\"***\" %}",
+    "new": "{% with tx=txid|default:\"\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 15,
+      "field": 18
+    }
+  },
+  {
+    "name": "EXTRATO 26 com o TxId *** do QR estatico",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ pb.txid|default:\"\"|cut:\"***\" }}",
+    "new": "{{ pb.txid }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 15,
       "field": 26
     }
   }

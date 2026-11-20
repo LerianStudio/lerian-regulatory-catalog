@@ -128,8 +128,9 @@ Na tarifa e na contraparte interna, o CNPJ da propria instituicao.
   campo sai em branco e o campo 18 da linha do Pix diz por que (IN art. 2o, § 1o), depois do
   motivo do tipo de conta e antes do motivo do CNPJ, separados por `; `:
   - `TxId nao informado: Pix sem identificador de conciliacao`: o Pix nao tem TxId (Pix por
-    chave ou manual, ou QR estatico sem TxId), ou seja, inexistencia da informacao. Vale para
-    o Pix recebido nos dois plugins e para o Pix enviado pelo Pix lerian;
+    chave ou manual, ou QR estatico sem TxId, que traz `***` no lugar dele: Manual de Padroes
+    para Iniciacao do Pix, 2.6.2, nota 25), ou seja, inexistencia da informacao. Vale para o
+    Pix recebido nos dois plugins e para o Pix enviado pelo Pix lerian;
   - `TxId nao informado: o plugin de Pix nao grava o TxId do Pix enviado`: Pix enviado pelo Pix
     JD, inclusive o pagamento de QR dinamico, que tem TxId: o plugin o repassa ao SPI e nao o
     guarda, ou seja, inviabilidade tecnica.
