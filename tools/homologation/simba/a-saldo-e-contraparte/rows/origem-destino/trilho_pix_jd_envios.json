@@ -9,7 +9,6 @@
     "nome": "Recebedor Exemplo Ltda",
     "comentario": "",
     "txid": "",
-    "e2e": "E29",
     "tipoConta": "TRAN"
   },
   {
@@ -22,7 +21,6 @@
     "nome": "Recebedor Exemplo Ltda",
     "comentario": "",
     "txid": "",
-    "e2e": "E30",
     "tipoConta": "SLRY"
   },
   {
@@ -35,7 +33,6 @@
     "nome": "Recebedor Exemplo Ltda",
     "comentario": "",
     "txid": "",
-    "e2e": "E31",
     "tipoConta": "OTHR"
   }
 ]

@@ -159,8 +159,8 @@
     "name": "TED recebida sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\", pg.tipoConta) }}",
-    "new": "\", \"\") }}",
+    "old": "\", pg.tipoConta, \"\") }}",
+    "new": "\", \"\", \"\") }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -211,8 +211,8 @@
     "name": "Pix de conta corrente sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"\", pb.tipoConta) }}",
-    "new": "\"\", \"\") }}",
+    "old": "\"\", pb.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
+    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -276,8 +276,8 @@
     "name": "Pix JD de conta corrente sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"\", pd.tipoConta) }}",
-    "new": "\"\", \"\") }}",
+    "old": "\"\", pd.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
+    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -328,8 +328,8 @@
     "name": "TED enviada sem a base do motivo",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\", \"1\")",
-    "new": "\"\", \"1\")",
+    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\", \"1\", \"\")",
+    "new": "\"\", \"1\", \"\")",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -380,8 +380,8 @@
     "name": "Pix lerian enviado de conta corrente sem o codigo",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"\", pa.tipoConta) }}",
-    "new": "\"\", \"\") }}",
+    "old": "\"\", pa.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
+    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -510,8 +510,8 @@
     "name": "ISPB vazio sem o separador antes do motivo do CNPJ",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{% if ispb == None or ispb == \"\" %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix",
-    "new": "{% if ispb == None or ispb == \"\" %}{% if observacao %}{% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix",
+    "old": "{% if ispb == None or ispb == \"\" %}{% if obs18 %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix",
+    "new": "{% if ispb == None or ispb == \"\" %}{% if obs18 %}{% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -523,7 +523,7 @@
     "name": "ISPB fora da lista sem o motivo do CNPJ",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "cnpj_k == \"00997185\" %}{% else %}{% if observacao %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix{% endif %}",
+    "old": "cnpj_k == \"00997185\" %}{% else %}{% if obs18 %}; {% endif %}CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix{% endif %}",
     "new": "cnpj_k == \"00997185\" %}{% else %}{% endif %}",
     "count": 1,
     "expect": {
@@ -673,6 +673,71 @@
       "document": "br/bcb/simba/origem-destino",
       "line": 5,
       "field": 7
+    }
+  },
+  {
+    "name": "TxId cortado no campo 28",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ txid }}{%- endmacro %}",
+    "new": "{{ txid|slice:\":5\" }}{%- endmacro %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 28
+    }
+  },
+  {
+    "name": "motivo do TxId impresso com o TxId presente",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% with tm=txmotivo|slice:tk %}",
+    "new": "{% with tm=txmotivo %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 18
+    }
+  },
+  {
+    "name": "Pix JD enviado dito sem identificador de conciliacao",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: o plugin de Pix nao grava o TxId do Pix enviado\")",
+    "new": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\")",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 28,
+      "field": 18
+    }
+  },
+  {
+    "name": "motivo do TxId sem o separador antes do CNPJ",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% with obs18=observacao|add:tm %}",
+    "new": "{% with obs18=observacao %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 18,
+      "field": 18
+    }
+  },
+  {
+    "name": "motivo do TxId sem o separador depois do tipo",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if observacao and tm %}; {% endif %}",
+    "new": "{% if observacao and tm %}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 15,
+      "field": 18
     }
   }
 ]

@@ -539,7 +539,6 @@ datasets:
       nome: {from: query, column: destination_name}
       comentario: {from: query, column: description}
       txid: {from: query, column: tx_id}
-      e2e: {from: query, column: end_to_end_id}
 
   trilho_pix_lerian_recebimentos:
     from:
@@ -555,7 +554,6 @@ datasets:
       nome: {from: query, column: source_name}
       comentario: {from: query, column: description}
       txid: {from: query, column: tx_id}
-      e2e: {from: query, column: end_to_end_id}
 
   trilho_pix_jd_envios:
     from:
@@ -571,7 +569,6 @@ datasets:
       nome: {from: query, column: payee_name}
       comentario: {from: query, column: description}
       txid: {from: query, column: conciliation_id}
-      e2e: {from: query, column: end_to_end_id}
 
   trilho_pix_jd_recebimentos:
     from:
@@ -587,7 +584,6 @@ datasets:
       nome: {from: query, column: payer_name}
       comentario: {from: query, column: description}
       txid: {from: query, column: conciliation_id}
-      e2e: {from: query, column: end_to_end_id}
 
   trilho_ted_enviadas:
     from:

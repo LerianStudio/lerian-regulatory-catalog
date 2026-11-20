@@ -363,7 +363,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first, tipoContaInformado: first}
+      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -404,11 +404,10 @@ datasets:
       - name: txid
         type: string
         required: false
-        description: txid do Pix por QR Code (campo 28, IN :229). Sem ele, sai o E2E.
-      - name: e2e
-        type: string
-        required: false
-        description: EndToEndId do Pix (campo 28 quando nao ha txid).
+        pattern: '^[^\t\r\n]*$'
+        description: >-
+          TxId do Pix (TransactionIdentification, campo 28, IN :229). Sem ele, o campo sai em branco e o campo 18
+          diz por que.
       - name: tipoConta
         type: string
         required: true
@@ -428,7 +427,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first, tipoContaInformado: first}
+      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -469,11 +468,10 @@ datasets:
       - name: txid
         type: string
         required: false
-        description: txid do Pix por QR Code (campo 28, IN :229). Sem ele, sai o E2E.
-      - name: e2e
-        type: string
-        required: false
-        description: EndToEndId do Pix (campo 28 quando nao ha txid).
+        pattern: '^[^\t\r\n]*$'
+        description: >-
+          TxId do Pix (TransactionIdentification, campo 28, IN :229). Sem ele, o campo sai em branco e o campo 18
+          diz por que.
       - name: tipoConta
         type: string
         required: true
@@ -493,7 +491,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first}
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first}
     fields:
       - name: referencia
         type: string
@@ -540,11 +538,10 @@ datasets:
       - name: txid
         type: string
         required: false
-        description: txid do Pix por QR Code (campo 28, IN :229). Sem ele, sai o E2E.
-      - name: e2e
-        type: string
-        required: false
-        description: EndToEndId do Pix (campo 28 quando nao ha txid).
+        pattern: '^[^\t\r\n]*$'
+        description: >-
+          TxId do Pix (TransactionIdentification, campo 28, IN :229). Sem ele, o campo sai em branco e o campo 18
+          diz por que.
       - name: tipoConta
         type: string
         required: true
@@ -560,7 +557,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first}
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first}
     fields:
       - name: referencia
         type: string
@@ -607,11 +604,10 @@ datasets:
       - name: txid
         type: string
         required: false
-        description: txid do Pix por QR Code (campo 28, IN :229). Sem ele, sai o E2E.
-      - name: e2e
-        type: string
-        required: false
-        description: EndToEndId do Pix (campo 28 quando nao ha txid).
+        pattern: '^[^\t\r\n]*$'
+        description: >-
+          TxId do Pix (TransactionIdentification, campo 28, IN :229). Sem ele, o campo sai em branco e o campo 18
+          diz por que.
       - name: tipoConta
         type: string
         required: true

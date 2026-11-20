@@ -9,7 +9,6 @@
     "nome": "Loja Exemplo",
     "comentario": "compra",
     "txid": "",
-    "e2e": "E2",
     "tipoConta": "-"
   },
   {
@@ -22,7 +21,6 @@
     "nome": "Recebedor Exemplo Ltda",
     "comentario": "",
     "txid": "",
-    "e2e": "E3",
     "tipoConta": "-"
   }
 ]
