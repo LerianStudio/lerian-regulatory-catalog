@@ -928,5 +928,26 @@
     "saldoApos": "0.00",
     "bloqueadoApos": "0.00",
     "chequeEspecialApos": "0.004"
+  },
+  {
+    "operacaoId": "o46",
+    "transacaoId": "t32",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-04T13:00:00Z",
+    "horaLancamento": "2026-12-04T13:00:00Z",
+    "descricao": "Tarifa",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "1.00",
+    "natureza": "D",
+    "naturezaOposta": "C",
+    "tipoOperacao": "DEBIT",
+    "saldoApos": "0.00",
+    "bloqueadoApos": "0.00",
+    "chequeEspecialApos": "0.004",
+    "e2eEnvio": "E32",
+    "iniciacao": "I32"
   }
 ]

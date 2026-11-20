@@ -757,8 +757,8 @@
     "name": "EXTRATO 26 do recebido lido do envio",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "{% if l.natureza == \"D\" %}{% for pa in trilho_pix_lerian_envios",
-    "new": "{% if l.natureza == \"C\" %}{% for pa in trilho_pix_lerian_envios",
+    "old": "{% elif l.natureza == \"D\" %}{% for pa in trilho_pix_lerian_envios",
+    "new": "{% elif l.natureza == \"C\" %}{% for pa in trilho_pix_lerian_envios",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
@@ -789,6 +789,19 @@
     "expect": {
       "document": "br/bcb/simba/extrato",
       "line": 15,
+      "field": 26
+    }
+  },
+  {
+    "name": "EXTRATO 26 com o TxId na linha da tarifa",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% if t or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}{% elif l.natureza == \"D\" %}",
+    "new": "{% if l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}{% elif l.natureza == \"D\" %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 43,
       "field": 26
     }
   }

@@ -844,5 +844,24 @@
     "fluxo": "P2P",
     "direcao": "OUT",
     "saldoApos": "0.00"
+  },
+  {
+    "operacaoId": "o46",
+    "transacaoId": "t32",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-04T13:00:00Z",
+    "horaLancamento": "2026-12-04T13:00:00Z",
+    "descricao": "Tarifa",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "1.00",
+    "natureza": "D",
+    "naturezaOposta": "C",
+    "tipoOperacao": "DEBIT",
+    "saldoApos": "0.00",
+    "e2eEnvio": "E32",
+    "iniciacao": "I32"
   }
 ]

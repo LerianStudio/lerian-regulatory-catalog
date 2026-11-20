@@ -40,3 +40,4 @@
 40	40	500	40													0	contraparte nao identificada pelo trilho										
 41	41	500	41													0	contraparte nao identificada pelo trilho										
 42	42	5000	42													0	contraparte nao identificada: mais de uma perna interna de mesmo valor										
+43	43	100	43	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
