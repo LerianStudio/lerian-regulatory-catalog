@@ -213,3 +213,35 @@ documents:
     summary: >-
       Titulares, cotitulares, representantes e procuradores das contas investigadas, uma
       linha por vinculo da pessoa com a conta, com cadastro, renda e datas do vinculo.
+
+  - id: br.bcb.simba.extrato
+    path: br/bcb/simba/extrato
+    country: BR
+    regulator: BCB
+    document: EXTRATO
+    family: simba
+    title: SIMBA — Extrato
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Lancamentos das contas investigadas no periodo do afastamento do sigilo, com valor,
+      natureza, saldo apos o lancamento e o codigo do tipo de lancamento do Anexo II.
+
+  - id: br.bcb.simba.origem-destino
+    path: br/bcb/simba/origem-destino
+    country: BR
+    regulator: BCB
+    document: ORIGEM-DESTINO
+    family: simba
+    title: SIMBA — Origem-Destino
+    version: 1.0.0
+    status: draft
+    periodicity: eventual
+    appliesTo:
+      institutionTypes: [IP, SCD, SCFI]
+    summary: >-
+      Origem e destino dos recursos de cada lancamento do EXTRATO: a contraparte pelo plugin
+      Pix ou TED da transacao, pela outra perna interna, ou a propria instituicao na tarifa.

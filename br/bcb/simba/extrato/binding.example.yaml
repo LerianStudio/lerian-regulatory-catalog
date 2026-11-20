@@ -1,0 +1,272 @@
+# Binding do SIMBA EXTRATO — QUEM PREENCHE E O CLIENTE.
+#
+# Exemplo preenchido contra o Midaz (`midaz_onboarding`, `midaz_transaction`), a
+# metadata do Midaz (`midaz_metadata`, o Mongo das colecoes `transaction` e
+# `operation`) e o CRM do Midaz (`plugin_crm`). As contas do caso saem de
+# `contas_do_caso`, a mesma consulta (mesmo texto) nos bindings de AGENCIAS, CONTAS,
+# TITULARES e ORIGEM-DESTINO.
+#
+# MESMA NUMERACAO DO ORIGEM-DESTINO: `lancamentos_dados` e as consultas que ela junta
+# (`lancamentos_descricao`, `contas_lancamento`, `metadados_transacao`) e `taxas_lancamento` tem o MESMO texto
+# nos dois bindings, e o conjunto `lancamentos` tem o mesmo grao e os campos do
+# ORIGEM-DESTINO no EXTRATO (o EXTRATO le tambem os saldos; test_simba confere). Mudar
+# uma delas e mudar nos dois; senao o numero do lancamento (campo 1) aponta para
+# outra linha no ORIGEM-DESTINO.
+#
+# O NUMERO DA AGENCIA (5 digitos; 00001 sem agencia fisica) sai do cadastro de
+# agencias do tenant, o MESMO `case` do binding do AGENCIAS (valores SINTETICOS
+# aqui: "0001" digital, "0002" fisica ficticia). Agencia fora do cadastro recusa.
+#
+# O TIPO DA CONTA vem de `regulatory_fields.account_type` do CRM, cujos valores o
+# proprio Midaz documenta com os codigos da IN (midaz pkg/mmodel/instrument.go:19).
+#
+# NATUREZA (campo 11): credit C, debit D; outra direcao, ou nenhuma, recusa a geracao.
+#
+# O CANAL (campo 17) e um so por instituicao: declare em `interfaceTransacao`.
+#
+# Filtro encadeado `{query, column}`: grafia provisoria do motor; se
+# mudar, e `sed` nos bindings.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.simba.extrato
+contractVersion: 1.0.0
+
+queries:
+
+  - name: declarante
+    description: A organizacao do Midaz, que e a instituicao que responde ao caso. O CNPJ dela e o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    filters:
+      - field: deleted_at
+        operator: isNull
+
+  # As contas do caso: as que o documento investigado TITULA (cotitular, representante e
+  # procurador nao entram). Excluida do CRM fica fora; encerrada entra.
+  - name: contas_do_caso
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: document, operator: in, values: [{parameter: documentos}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
+
+  - name: lancamentos
+    description: Lancamentos das contas do caso no periodo, so a transacao de cada um.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    select: [transaction_id, account_id]
+
+  - name: lancamentos_dados
+    description: Os lancamentos das contas do caso no periodo, com a conta, a metadata da transacao e a descricao.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    compute:
+      - as: natureza
+        case:
+          column: direction
+          when:
+            credit: {constant: "C"}
+            debit: {constant: "D"}
+          otherwise: refuse
+      # A natureza da contraparte, para achar a outra perna no ORIGEM-DESTINO.
+      - as: natureza_oposta
+        case:
+          column: direction
+          when:
+            credit: {constant: "D"}
+            debit: {constant: "C"}
+          otherwise: refuse
+    join:
+      - query: lancamentos_descricao
+        match: {id: id}
+      - query: contas_lancamento
+        match: {account_id: account_id}
+      - query: metadados_transacao
+        match: {transaction_id: entity_id}
+    # Agrupar por (transacao, operacao, ...) da uma linha por operacao e fixa a ordem:
+    # o motor ordena uma leitura agrupada pela chave, e uma leitura sem agrupamento
+    # nao tem ordem. A transacao vem primeiro para as operacoes de uma transacao
+    # ficarem juntas (sessao, campo 27 do EXTRATO). So colunas que nunca sao nulas nem
+    # vazias: chave vazia recusa a leitura inteira, por isso as descricoes vem de
+    # `lancamentos_descricao`.
+    aggregate:
+      groupBy: [transaction_id, id, account_id, created_at, natureza, natureza_oposta, type, available_balance_after, balance_key]
+      measures:
+        - as: valor
+          fn: sum
+          of: amount
+
+  # A descricao da operacao e a da transacao (a operacao pode vir com descricao vazia).
+  - name: lancamentos_descricao
+    description: A descricao de cada lancamento do caso no periodo e a da transacao dele.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    join:
+      - table: transaction
+        match: {transaction_id: id}
+        columns: {descricao_transacao: description}
+    # O saldo bloqueado e o cheque especial usado depois do lancamento entram no saldo
+    # da conta (EXTRATO 12 e 13): o disponivel do Midaz nao fica abaixo de zero nem conta
+    # o bloqueado. O cheque especial usado fica no snapshot da operacao, ausente em
+    # operacao gravada antes de o Midaz guardar o snapshot.
+    select: [id, description, descricao_transacao, on_hold_balance_after, snapshot.overdraftUsedAfter]
+
+  - name: contas_lancamento
+    description: Agencia, numero e tipo de cada conta do caso.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+    select: [account_id, banking_details.account, numero_agencia, tipo_conta]
+
+  # A metadata que os plugins gravam na transacao do Midaz (Mongo do Midaz, colecao
+  # `transaction`): rail, flow, direction, aggregateId e endToEndId do contrato de
+  # correlacao (TED e Pix JD); payment_type, initiation_type e os E2E do Pix lerian.
+  - name: metadados_transacao
+    description: A metadata de cada transacao dos lancamentos do caso.
+    dataSource: midaz_metadata
+    table: transaction
+    filters:
+      - {field: entity_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [entity_id, metadata.rail, metadata.flow, metadata.direction, metadata.aggregateId, metadata.endToEndId, metadata.payment_type, metadata.initiation_type, metadata.end_to_end_id, metadata.initiation_id, metadata.inbound_end_to_end_id, metadata.refund_id, metadata.original_end_to_end_id]
+
+  # A perna de tarifa: o motor de tarifas do Midaz grava feeLeg = "true" na metadata
+  # da operacao que ele criou (colecao `operation`).
+  - name: taxas_lancamento
+    description: As operacoes dos lancamentos do caso que sao perna de tarifa.
+    dataSource: midaz_metadata
+    table: operation
+    filters:
+      - {field: entity_id, operator: in, values: [{query: lancamentos_dados, column: id}]}
+      - {field: metadata.feeLeg, operator: eq, values: ["true"]}
+      - {field: deleted_at, operator: isNull}
+    select: [entity_id]
+
+  # O revert do Midaz: a transacao que estorna outra tem parent_transaction_id.
+  - name: estornos_lancamento
+    description: As transacoes dos lancamentos do caso que estornam outra.
+    dataSource: midaz_transaction
+    table: transaction
+    filters:
+      - {field: id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: parent_transaction_id, operator: notNull}
+      - {field: deleted_at, operator: isNull}
+    select: [id]
+
+datasets:
+
+  instituicao:
+    from:
+      query: declarante
+    fields:
+      cnpj:
+        from: query
+        column: legal_document
+      compe:
+        from: manual
+        pendingReason: "o codigo Compe da instituicao, 3 digitos; 999 se ela nao tem codigo Compe"
+      nomeUnicad:
+        from: manual
+        pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
+      # Campo 17: o canal das transacoes (1 agencia ... 5 mobile, 9 outros). Nenhuma
+      # aplicacao registra o canal por lancamento; declare o do seu produto.
+      interfaceTransacao:
+        from: constant
+        value: "9"
+
+  lancamentos:
+    from:
+      query: lancamentos_dados
+    fields:
+      operacaoId: {from: query, column: id}
+      transacaoId: {from: query, column: transaction_id}
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      dataLancamento: {from: query, column: created_at}
+      horaLancamento: {from: query, column: created_at}
+      descricao: {from: query, column: description}
+      descricaoTransacao: {from: query, column: descricao_transacao}
+      valor: {from: query, column: valor}
+      natureza: {from: query, column: natureza}
+      tipoOperacao: {from: query, column: type}
+      naturezaOposta: {from: query, column: natureza_oposta}
+      saldoApos: {from: query, column: available_balance_after}
+      chaveSaldo: {from: query, column: balance_key}
+      bloqueadoApos: {from: query, column: on_hold_balance_after}
+      chequeEspecialApos: {from: query, column: snapshot.overdraftUsedAfter}
+      rail: {from: query, column: metadata.rail}
+      fluxo: {from: query, column: metadata.flow}
+      direcao: {from: query, column: metadata.direction}
+      agregado: {from: query, column: metadata.aggregateId}
+      e2e: {from: query, column: metadata.endToEndId}
+      tipoPagamento: {from: query, column: metadata.payment_type}
+      tipoIniciacao: {from: query, column: metadata.initiation_type}
+      e2eEnvio: {from: query, column: metadata.end_to_end_id}
+      iniciacao: {from: query, column: metadata.initiation_id}
+      e2eRecebimento: {from: query, column: metadata.inbound_end_to_end_id}
+      devolucao: {from: query, column: metadata.refund_id}
+      e2eOriginal: {from: query, column: metadata.original_end_to_end_id}
+
+  estornos:
+    from:
+      query: estornos_lancamento
+    fields:
+      transacaoId: {from: query, column: id}
+
+  taxas:
+    from:
+      query: taxas_lancamento
+    fields:
+      operacaoId: {from: query, column: entity_id}
+
+manualOverrides: []
