@@ -519,8 +519,8 @@ def reversed_period_allowed(found: dict[str, dict]) -> list[str]:
     return problems
 
 
-# Os identificadores da metadata (EndToEndId de envio e de recebimento) saem crus no campo 26
-# do EXTRATO: a metadata do Midaz aceita TAB, CR e LF, que partiriam o registro.
+# Os identificadores da metadata (EndToEndId de envio e de recebimento) chegam crus ao template,
+# que liga por eles o lançamento ao trilho: a metadata do Midaz aceita TAB, CR e LF.
 RAW_METADATA_FIELDS = ("e2e", "e2eEnvio", "e2eRecebimento")
 # Uma transação é uma sessão do EXTRATO (campo 27): o motor ordena cada conjunto pelo grão, e
 # só com a transação na frente as operações dela ficam juntas.
@@ -538,6 +538,26 @@ def raw_metadata_unguarded(found: dict[str, dict]) -> list[str]:
         pattern = (fields.get(name) or {}).get("pattern")
         if not pattern or any(re.fullmatch(pattern, "E2E" + c + "X") for c in ("\t", "\r", "\n")):
             problems.append(f"extrato: '{ENTRIES}.{name}' aceita TAB, CR ou LF")
+    return problems
+
+
+# O TxId sai cru no campo 26 do EXTRATO e no 28 do ORIGEM-DESTINO, como o plugin o grava.
+TXID_DOCUMENTS = ("extrato", "origem-destino")
+
+
+def txid_unguarded(found: dict[str, dict]) -> list[str]:
+    """Os TxId dos trilhos de Pix sem um pattern que recuse TAB, CR e LF."""
+    import re
+
+    problems = []
+    for document in TXID_DOCUMENTS:
+        trails = [d for d in found.get(document, {}).get("datasets") or [] if d.get("name", "").startswith("trilho_pix_")]
+        if not trails:
+            problems.append(f"{document}: nenhum trilho de Pix com o TxId")
+        for d in trails:
+            pattern = next((f.get("pattern") for f in d.get("fields") or [] if f.get("name") == "txid"), None)
+            if not pattern or any(re.fullmatch(pattern, "TX" + c + "ID") for c in ("\t", "\r", "\n")):
+                problems.append(f"{document}: '{d.get('name')}.txid' aceita TAB, CR ou LF")
     return problems
 
 
@@ -672,6 +692,9 @@ class SimbaBindings(unittest.TestCase):
 
     def test_identificador_da_metadata_nao_parte_o_registro(self) -> None:
         self.assertEqual([], raw_metadata_unguarded(contracts(ROOT)))
+
+    def test_txid_nao_parte_o_registro(self) -> None:
+        self.assertEqual([], txid_unguarded(contracts(ROOT)))
 
     def test_lancamentos_ordenam_pela_transacao(self) -> None:
         self.assertEqual([], entry_grain_off(contracts(ROOT)))
@@ -820,6 +843,14 @@ class Mutations(unittest.TestCase):
                 if d["name"] == ENTRIES and f["name"] == "e2eEnvio":
                     f.pop("pattern")
         self.assertEqual([f"extrato: '{ENTRIES}.e2eEnvio' aceita TAB, CR ou LF"], raw_metadata_unguarded(found))
+
+    def test_txid_sem_o_pattern_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["extrato"]["datasets"]:
+            for f in d.get("fields") or []:
+                if d["name"] == "trilho_pix_jd_recebimentos" and f["name"] == "txid":
+                    f.pop("pattern")
+        self.assertEqual(["extrato: 'trilho_pix_jd_recebimentos.txid' aceita TAB, CR ou LF"], txid_unguarded(found))
 
     def test_grao_so_pela_operacao_e_pego(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
