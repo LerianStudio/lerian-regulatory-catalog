@@ -234,12 +234,14 @@ datasets:
       - name: moedaRenda
         type: string
         required: false
+        pattern: '^([A-Z]{3})?$'
         description: >-
           A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
           (regra moeda-da-renda).
       - name: moedaFaturamento
         type: string
         required: false
+        pattern: '^([A-Z]{3})?$'
         description: >-
           A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
           em BRL sai (regra moeda-do-faturamento).
@@ -439,12 +441,14 @@ datasets:
       - name: moedaRenda
         type: string
         required: false
+        pattern: '^([A-Z]{3})?$'
         description: >-
           A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
           (regra moeda-da-renda).
       - name: moedaFaturamento
         type: string
         required: false
+        pattern: '^([A-Z]{3})?$'
         description: >-
           A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
           em BRL sai (regra moeda-do-faturamento).
@@ -578,58 +582,66 @@ rules:
   - id: moeda-da-renda
     severity: error
     appliesTo: titulares
-    where: {field: moedaRenda, notIn: ["BRL", ""]}
+    where: {field: tipoPessoa, notIn: ["2"]}
     check:
-      notStartsWith: {field: moedaRenda, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
-                                                "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
-                                                "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
-                                                "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+      notStartsWith: {field: moedaRenda, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
-      A renda declarada no cadastro esta numa moeda que nao e BRL, e o catalogo nao converte moeda: o campo 18 (IN
-      :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN :73). Declare a
-      renda em BRL no cadastro antes de gerar.
+      A renda declarada no cadastro da pessoa natural esta numa moeda que nao e BRL, e o catalogo nao converte moeda:
+      o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN
+      :73). Declare a renda em BRL no cadastro antes de gerar.
 
   - id: moeda-do-faturamento
     severity: error
     appliesTo: titulares
-    where: {field: moedaFaturamento, notIn: ["BRL", ""]}
+    where: {field: tipoPessoa, equals: "2"}
     check:
-      notStartsWith: {field: moedaFaturamento, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
-                                                "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
-                                                "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
-                                                "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+      notStartsWith: {field: moedaFaturamento, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
-      O faturamento declarado no cadastro esta numa moeda que nao e BRL, e o catalogo nao converte moeda: o campo 18 (IN
-      :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN :73). Declare o
-      faturamento em BRL no cadastro antes de gerar.
+      O faturamento declarado no cadastro da pessoa juridica esta numa moeda que nao e BRL, e o catalogo nao converte
+      moeda: o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII,
+      IN :73). Declare o faturamento em BRL no cadastro antes de gerar.
 
   - id: moeda-da-renda-contraparte
     severity: error
     appliesTo: titulares_contraparte
-    where: {field: moedaRenda, notIn: ["BRL", ""]}
+    where: {field: tipoPessoa, notIn: ["2"]}
     check:
-      notStartsWith: {field: moedaRenda, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
-                                                "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
-                                                "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
-                                                "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+      notStartsWith: {field: moedaRenda, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
-      A renda declarada no cadastro esta numa moeda que nao e BRL, e o catalogo nao converte moeda: o campo 18 (IN
-      :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN :73). Declare a
-      renda em BRL no cadastro antes de gerar.
+      A renda declarada no cadastro da pessoa natural esta numa moeda que nao e BRL, e o catalogo nao converte moeda:
+      o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN
+      :73). Declare a renda em BRL no cadastro antes de gerar.
 
   - id: moeda-do-faturamento-contraparte
     severity: error
     appliesTo: titulares_contraparte
-    where: {field: moedaFaturamento, notIn: ["BRL", ""]}
+    where: {field: tipoPessoa, equals: "2"}
     check:
-      notStartsWith: {field: moedaFaturamento, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
-                                                "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
-                                                "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
-                                                "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+      notStartsWith: {field: moedaFaturamento, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
-      O faturamento declarado no cadastro esta numa moeda que nao e BRL, e o catalogo nao converte moeda: o campo 18 (IN
-      :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN :73). Declare o
-      faturamento em BRL no cadastro antes de gerar.
+      O faturamento declarado no cadastro da pessoa juridica esta numa moeda que nao e BRL, e o catalogo nao converte
+      moeda: o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII,
+      IN :73). Declare o faturamento em BRL no cadastro antes de gerar.
 
 knownGaps:
   - id: so-titular
