@@ -224,6 +224,15 @@ class Conferencia(unittest.TestCase):
         self.assert_says(report.errors, "CONTAS:2: caractere de controle 0x1B")
         self.assertFalse(any("\x1b" in t for t in report.errors + report.warnings + report.blocks))
 
+    def test_cr_solto_nao_chega_as_mensagens(self) -> None:
+        folder, drafts_folder = self.write(case(), drafts=[rows()])
+        path = folder / f"{CASO}_CONTAS.txt"
+        path.write_bytes(path.read_bytes().replace(b"999", b"9\r9", 1))
+        report = conf.conferir(folder, CASO, drafts_folder)
+        self.assert_says(report.errors, "CONTAS:1: quebra de linha que não é CRLF")
+        self.assert_says(report.errors, "CONTAS 999, 9?9")
+        self.assertFalse(any("\r" in t or "\n" in t for t in report.errors + report.warnings + report.blocks))
+
     def test_contas_sem_conta_e_aviso(self) -> None:
         files = {name: [] for name in conf.FILES}
         self.assert_says(self.run_case(files).warnings, "CONTAS: nenhuma conta")

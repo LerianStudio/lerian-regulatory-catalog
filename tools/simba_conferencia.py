@@ -178,6 +178,8 @@ def read_lines(path: Path, name: str, report: Report) -> list[list[str]]:
             text = line.decode("ascii", errors="replace")
         if "\n" in text or "\r" in text:
             report.error(f"{name}:{number}: quebra de linha que não é CRLF")
+            # Fica fora dos campos: impresso numa mensagem, o CR reescreveria a linha no terminal.
+            text = text.replace("\r", "?").replace("\n", "?")
         controls = sorted({ord(c) for c in text if _is_control(c)})
         if controls:
             # A mensagem dá o código, nunca o caractere: impresso cru no terminal de quem aprova,
