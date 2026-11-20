@@ -10,13 +10,20 @@ pelo número. O Reporter recusa o que um documento sozinho prova errado; o que s
 aparece cruzando os cinco sai daqui, para quem aprova.
 
 ERRO (corrigir ou gerar de novo antes de aprovar):
-  * linha sem CRLF, com caractere fora do ASCII (IN art. 3º, caput) ou com outro
-    número de campos do que o Anexo I dá ao arquivo;
+  * linha sem CRLF, com caractere fora do ASCII (IN art. 3º, caput), com caractere de
+    controle que não é o TAB entre campos, ou com outro número de campos do que o Anexo I
+    dá ao arquivo;
   * EXTRATO e ORIGEM-DESTINO com números de lançamento diferentes, ou o mesmo número
     com outro valor (um lançamento gravado entre as duas gerações desloca a
     numeração: gere os dois de novo);
   * conta do EXTRATO ou do TITULARES que não está no CONTAS; agência do CONTAS que
     não está no AGENCIAS;
+  * Compe da instituição diferente entre AGENCIAS, CONTAS, TITULARES e EXTRATO, ou
+    conta do TITULARES ou do EXTRATO com um tipo de conta que o CONTAS não lhe dá;
+  * conta do EXTRATO que o CONTAS não dá como investigada com movimento (campo 7 = 1),
+    ou conta de campo 7 = 1 sem linha no EXTRATO: o EXTRATO traz só os lançamentos das
+    contas investigadas (IN art. 2º, IV), e o CONTAS marca o movimento pelos mesmos
+    documentos e período (um arquivo gerado com outros parâmetros);
   * arquivo que falta, ou EXTRATO e ORIGEM-DESTINO sem linha nenhuma, quando alguma
     conta do CONTAS teve lançamento no período (campo 7 = 1).
 
@@ -62,8 +69,9 @@ conjunto, pela chave do grão que o contrato declara. Uma chave do Final que fal
 rascunho novo é uma linha que o reenvio perdeu (um cadastro apagado, um lançamento
 estornado na base, um binding alterado) e BLOQUEIA a aprovação, a menos que o
 arquivo de justificativas a libere com o motivo registrado. Um conjunto do envio
-anterior que o contrato atual não tem, um documento sem rascunho novo ou um rascunho
-sem o envio anterior na pasta também bloqueia. Uma chave nova é só aviso. A pasta de
+anterior que o contrato atual não tem, um documento sem rascunho novo, um rascunho
+sem o envio anterior na pasta, ou um documento do SIMBA ausente das duas pastas
+também bloqueia. Uma chave nova é só aviso. A pasta de
 `--anterior` traz o ÚLTIMO envio aprovado, uma resposta por documento, com status
 Final; quem roda a conferência a escolhe, e o script recusa pasta vazia, status que
 não seja Final e documento repetido.
@@ -121,6 +129,15 @@ EXTRATO_ENTRIES = "lancamentos"
 MOVEMENT_FILES = ("EXTRATO", "ORIGEM_DESTINO")
 # CONTAS campo 7 (IN :126): "1" conta investigada com movimento no período.
 MOVED = "1"
+# O campo do Compe da instituição em cada arquivo (Anexo I: AGENCIAS 1, CONTAS 1, TITULARES 1,
+# EXTRATO 2; o 5 do ORIGEM-DESTINO é o Compe da contraparte, outra instituição).
+COMPE_FIELDS = {"AGENCIAS": 1, "CONTAS": 1, "TITULARES": 1, "EXTRATO": 2}
+# (campo da agência, campo da conta, campo do tipo de conta) dos arquivos que repetem o tipo
+# da conta do CONTAS (Anexo I: CONTAS 4, TITULARES 4, EXTRATO 5).
+ACCOUNT_TYPE_FIELDS = {"CONTAS": (2, 3, 4), "TITULARES": (2, 3, 4), "EXTRATO": (3, 4, 5)}
+# TITULARES campo 5 (IN :141): "T" é o titular; algarismos são os cotitulares, e as outras
+# letras, representante e procurador.
+HOLDER = "T"
 # A chave de saldo em que o Midaz grava a parte de um saque tirada do cheque especial.
 OVERDRAFT_KEY = "overdraft"
 # As operações do EXTRATO que são perna de tarifa (marca feeLeg do Midaz).
@@ -161,11 +178,24 @@ def read_lines(path: Path, name: str, report: Report) -> list[list[str]]:
             text = line.decode("ascii", errors="replace")
         if "\n" in text or "\r" in text:
             report.error(f"{name}:{number}: quebra de linha que não é CRLF")
+            # Fica fora dos campos: impresso numa mensagem, o CR reescreveria a linha no terminal.
+            text = text.replace("\r", "?").replace("\n", "?")
+        controls = sorted({ord(c) for c in text if _is_control(c)})
+        if controls:
+            # A mensagem dá o código, nunca o caractere: impresso cru no terminal de quem aprova,
+            # um ESC apagaria ou reescreveria o que a conferência mostra.
+            report.error(f"{name}:{number}: caractere de controle {', '.join(f'0x{c:02X}' for c in controls)}")
+            text = "".join("?" if _is_control(c) else c for c in text)
         fields = text.split("\t")
         if len(fields) != FILES[name]:
             report.error(f"{name}:{number}: {len(fields)} campos; o Anexo I dá {FILES[name]}")
         rows.append(fields)
     return rows
+
+
+def _is_control(c: str) -> bool:
+    """Caractere de controle ASCII que não é o TAB entre campos (CR e LF têm a sua própria mensagem)."""
+    return (ord(c) < 0x20 and c not in "\t\r\n") or ord(c) == 0x7F
 
 
 def field(row: list[str], number: int) -> str:
@@ -216,6 +246,62 @@ def check_membership(files: dict[str, list[list[str]]], report: Report) -> None:
             report.error(f"{name}: a conta {key[1]} da agência {key[0]} não está no CONTAS")
     for branch in sorted({field(r, 2) for r in files["CONTAS"]} - branches):
         report.error(f"CONTAS: a agência {branch} não está no AGENCIAS")
+    # O TITULARES traz também os titulares das contas de contraparte (campo 7 = 3); o
+    # EXTRATO, só as contas investigadas que tiveram lançamento. Uma conta é o número COM o
+    # tipo: o mesmo número pode ser duas contas (corrente e poupança).
+    typed = typed_accounts(files["CONTAS"], 2, 3, 4)
+    moved = moved_accounts(files["CONTAS"])
+    statement = typed_accounts(files["EXTRATO"], 3, 4, 5)
+    for key in sorted((statement & typed) - moved):
+        report.error(f"EXTRATO: a conta {key[1]} da agência {key[0]}, tipo {key[2]}, tem lançamento, e o CONTAS não "
+                     "a dá como investigada com movimento (campo 7 = 1); gere os cinco arquivos com os mesmos "
+                     "parâmetros")
+    if files["EXTRATO"]:
+        for key in sorted(unstated_accounts(moved, statement)):
+            report.error(f"CONTAS: a conta {key[1]} da agência {key[0]}, tipo {key[2]}, teve lançamento no período "
+                         "(campo 7 = 1) e não tem linha no EXTRATO; gere os cinco arquivos com os mesmos parâmetros")
+
+
+def check_institution_and_types(files: dict[str, list[list[str]]], report: Report) -> None:
+    """O Compe da instituição igual nos arquivos, e o tipo de cada conta do TITULARES e do EXTRATO no CONTAS.
+
+    O Compe é um valor do mapeamento de cada documento, digitado em cada binding; o tipo da conta
+    vem do cadastro, lido em cada geração. Duas contas distintas podem ter o mesmo número com
+    tipos diferentes (corrente e poupança: por isso o Anexo I leva o tipo ao lado do número), e o
+    CONTAS as traz em duas linhas; erro é o TITULARES ou o EXTRATO trazerem, para o número, um
+    tipo que o CONTAS não tem.
+    """
+    compes = {name: sorted({field(r, number) for r in files[name]}) for name, number in COMPE_FIELDS.items()}
+    if len({value for values in compes.values() for value in values}) > 1:
+        found = "; ".join(f"{name} {', '.join(values)}" for name, values in compes.items() if values)
+        report.error(f"o Compe da instituição difere entre os arquivos ({found}); corrija o mapeamento")
+    types: dict[str, dict[tuple[str, str], set[str]]] = {}
+    for name, (agency, account, kind) in ACCOUNT_TYPE_FIELDS.items():
+        for r in files[name]:
+            types.setdefault(name, {}).setdefault((field(r, agency), field(r, account)), set()).add(field(r, kind))
+    contas = types.get("CONTAS", {})
+    for name in sorted(set(types) - {"CONTAS"}):
+        for key, values in sorted(types[name].items()):
+            if key in contas and values - contas[key]:
+                report.error(f"{name}: a conta {key[1]} da agência {key[0]} tem o tipo "
+                             f"{', '.join(sorted(values - contas[key]))}, e o CONTAS, {', '.join(sorted(contas[key]))}; "
+                             "gere os arquivos de novo")
+
+
+def typed_accounts(rows: list[list[str]], agency: int, account: int, kind: int) -> set[tuple[str, str, str]]:
+    """(agência, conta, tipo) de cada linha: o número sozinho não separa duas contas de tipos diferentes."""
+    return {(field(r, agency), field(r, account), field(r, kind)) for r in rows}
+
+
+def moved_accounts(contas: list[list[str]]) -> set[tuple[str, str, str]]:
+    """(agência, conta, tipo) das contas investigadas com lançamento no período (CONTAS campo 7 = 1)."""
+    return typed_accounts([r for r in contas if field(r, 7) == MOVED], 2, 3, 4)
+
+
+def unstated_accounts(moved: set[tuple[str, str, str]],
+                      statement: set[tuple[str, str, str]]) -> set[tuple[str, str, str]]:
+    """As contas de campo 7 = 1 que o EXTRATO não traz."""
+    return moved - statement
 
 
 def check_balances(extrato: list[list[str]], contas: list[list[str]], drafts: dict[str, dict] | None,
@@ -336,8 +422,10 @@ def check_case_documents(path: Path | None, titulares: list[list[str]], report: 
     if not documents:
         report.error(f"--documentos: {path.name} não traz documento nenhum")
         return
-    # O TITULARES já escreve o documento só com dígitos (e letras, no CNPJ alfanumérico).
-    holders = {field(r, 8) for r in titulares}
+    # O TITULARES já escreve o documento só com dígitos (e letras, no CNPJ alfanumérico). Só o
+    # titular conta: a conta em que o documento é cotitular, representante ou procurador não é
+    # selecionada por ele.
+    holders = {field(r, 8) for r in titulares if field(r, 5) == HOLDER}
     missing = [str(i) for i, document in enumerate(documents, 1) if _digits(document) not in holders]
     if missing:
         report.warn(f"TITULARES: o(s) documento(s) nº {', '.join(missing)} da ordem (posição em --documentos) não "
@@ -389,6 +477,9 @@ def check_overdraft_rows(drafts: dict[str, dict] | None, report: Report) -> None
 def check_resubmission(drafts: dict[str, dict], previous: dict[str, dict], justified: set[tuple],
                        report: Report) -> None:
     """Diff por linha, pela chave do grão, entre o último Final e o rascunho novo."""
+    for document in sorted(expected_documents() - set(drafts) - set(previous)):
+        report.block(f"{document}: nem rascunho novo nem envio anterior nas pastas; a completude do reenvio dele não "
+                     "foi conferida")
     for document in sorted(set(drafts) - set(previous)):
         report.block(f"{document}: há rascunho novo e a pasta do envio anterior não traz o Final dele")
     for document, final_sets in sorted(previous.items()):
@@ -418,6 +509,12 @@ def check_resubmission(drafts: dict[str, dict], previous: dict[str, dict], justi
                     report.block(text + "; libere só com o motivo registrado em --justificativas")
             if after - before:
                 report.warn(f"{document} {dataset}: {len(after - before)} linha(s) novas em relação ao envio anterior")
+
+
+def expected_documents() -> set[str]:
+    """Os documentos do SIMBA neste catálogo: o reenvio confere todos eles."""
+    return {(yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("metadata", {}).get("id")
+            for path in sorted((ROOT / "br" / "bcb" / "simba").glob("*/contract.yaml"))} - {None}
 
 
 def grains_of(document: str) -> dict[str, list[str] | str]:
@@ -478,6 +575,10 @@ def read_justifications(path: Path | None, report: Report) -> set[tuple]:
             report.error(f"{path.name}: há justificativa sem motivo, que não libera nada")
             continue
         key = entry.get("key") or {}
+        if not isinstance(key, dict) or not all(isinstance(entry.get(n), str) for n in ("documentId", "dataset")):
+            report.error(f"{path.name}: há justificativa fora da forma {{documentId, dataset, key: {{campo: valor}}, "
+                         "motivo}, que não libera nada")
+            continue
         grain = sorted(key)
         try:
             grain = grains_of(entry["documentId"]).get(entry["dataset"]) or grain
@@ -543,6 +644,7 @@ def conferir(folder: Path, caso: str, drafts_folder: Path | None = None, previou
         report.warn("CONTAS: nenhuma conta; confira os documentos e o período da ordem")
     check_numbering(files["EXTRATO"], files["ORIGEM_DESTINO"], report)
     check_membership(files, report)
+    check_institution_and_types(files, report)
     check_balances(files["EXTRATO"], files["CONTAS"], drafts, report)
     check_generic_entries(files["EXTRATO"], files["ORIGEM_DESTINO"], report)
     check_identity(files["TITULARES"], report)

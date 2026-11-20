@@ -115,6 +115,13 @@ def coherent_drafts() -> list[dict]:
                                  ("123456", "2026-12-01T10:00:02Z", "40.00"))]
 
 
+def complete(*responses: dict) -> list[dict]:
+    """As respostas dadas, mais uma vazia de cada documento do SIMBA que falta (o reenvio confere os cinco)."""
+    present = {r["documentId"] for r in responses}
+    return list(responses) + [{"documentId": d, "status": "Draft", "datasets": {}}
+                              for d in sorted(conf.expected_documents() - present)]
+
+
 def final(*drafts: dict) -> list[dict]:
     """As mesmas respostas, como as de um envio aprovado."""
     return [dict(d, status="Final") for d in drafts]
@@ -209,6 +216,23 @@ class Conferencia(unittest.TestCase):
         path.write_bytes(path.read_bytes().replace(b"PESSOA EXEMPLO", "PESSOA EXEMPLÃ".encode("utf-8"), 1))
         self.assert_says(conf.conferir(folder, CASO, drafts_folder).errors, "TITULARES:1: caractere fora do ASCII")
 
+    def test_caractere_de_controle_e_erro_sem_ecoar_o_caractere(self) -> None:
+        folder, drafts_folder = self.write(case(), drafts=[rows()])
+        path = folder / f"{CASO}_CONTAS.txt"
+        path.write_bytes(path.read_bytes().replace(b"654321", b"654\x1b[2J", 1))
+        report = conf.conferir(folder, CASO, drafts_folder)
+        self.assert_says(report.errors, "CONTAS:2: caractere de controle 0x1B")
+        self.assertFalse(any("\x1b" in t for t in report.errors + report.warnings + report.blocks))
+
+    def test_cr_solto_nao_chega_as_mensagens(self) -> None:
+        folder, drafts_folder = self.write(case(), drafts=[rows()])
+        path = folder / f"{CASO}_CONTAS.txt"
+        path.write_bytes(path.read_bytes().replace(b"999", b"9\r9", 1))
+        report = conf.conferir(folder, CASO, drafts_folder)
+        self.assert_says(report.errors, "CONTAS:1: quebra de linha que não é CRLF")
+        self.assert_says(report.errors, "CONTAS 999, 9?9")
+        self.assertFalse(any("\r" in t or "\n" in t for t in report.errors + report.warnings + report.blocks))
+
     def test_contas_sem_conta_e_aviso(self) -> None:
         files = {name: [] for name in conf.FILES}
         self.assert_says(self.run_case(files).warnings, "CONTAS: nenhuma conta")
@@ -231,10 +255,84 @@ class Conferencia(unittest.TestCase):
         files["EXTRATO"][1] = lancamento("2", "0001", "999999", "135", "1000", "D", "4000", "C")
         self.assert_says(self.run_case(files).errors, "EXTRATO: a conta 999999 da agência 0001 não está no CONTAS")
 
+    def test_conta_do_extrato_sem_movimento_no_contas_e_erro(self) -> None:
+        files = case()
+        files["EXTRATO"].append(lancamento("3", "0001", "654321", "135", "100", "D", "400", "C"))
+        files["ORIGEM_DESTINO"].append(od("3", "3", "100"))
+        self.assert_says(self.run_case(files).errors, "EXTRATO: a conta 654321 da agência 0001, tipo 6, tem lançamento, "
+                                                      "e o CONTAS não a dá como investigada com movimento")
+
+    def test_conta_movimentada_sem_linha_no_extrato_e_erro(self) -> None:
+        files = case()
+        files["CONTAS"][1] = conta("0001", "654321", "1", "500", "500")
+        self.assert_says(self.run_case(files).errors, "CONTAS: a conta 654321 da agência 0001, tipo 6, teve lançamento "
+                                                      "no período (campo 7 = 1) e não tem linha no EXTRATO")
+
+    def same_number_two_types(self) -> dict[str, list[list[str]]]:
+        """O caso coerente mais uma conta poupança (tipo 2) com o número da corrente 123456."""
+        files = case()
+        files["CONTAS"].append(conta("0001", "123456", "1", "300", "300"))
+        files["CONTAS"][2][3] = "2"
+        files["TITULARES"].append(titular("0001", "123456"))
+        files["TITULARES"][2][3] = "2"
+        return files
+
+    def test_mesmo_numero_movimentado_no_outro_tipo_sem_extrato_e_erro(self) -> None:
+        self.assert_says(self.run_case(self.same_number_two_types()).errors,
+                         "CONTAS: a conta 123456 da agência 0001, tipo 2, teve lançamento no período")
+
+    def test_extrato_do_tipo_sem_movimento_do_mesmo_numero_e_erro(self) -> None:
+        files = self.same_number_two_types()
+        files["CONTAS"][2][6] = "2"
+        files["EXTRATO"].append(lancamento("3", "0001", "123456", "135", "100", "D", "200", "C"))
+        files["EXTRATO"][2][4] = "2"
+        files["ORIGEM_DESTINO"].append(od("3", "3", "100"))
+        self.assert_says(self.run_case(files).errors,
+                         "EXTRATO: a conta 123456 da agência 0001, tipo 2, tem lançamento, e o CONTAS não a dá")
+
+    def test_mesmo_numero_com_os_dois_tipos_movimentados_passa(self) -> None:
+        files = self.same_number_two_types()
+        files["EXTRATO"].append(lancamento("3", "0001", "123456", "135", "100", "D", "200", "C"))
+        files["EXTRATO"][2][4] = "2"
+        files["ORIGEM_DESTINO"].append(od("3", "3", "100"))
+        self.assertEqual([], [e for e in self.run_case(files).errors if "lançamento" in e or "tipo" in e])
+
     def test_conta_do_titulares_fora_do_contas_e_erro(self) -> None:
         files = case()
         files["TITULARES"].append(titular("0001", "888888"))
         self.assert_says(self.run_case(files).errors, "TITULARES: a conta 888888")
+
+    def test_compe_diferente_no_extrato_e_erro(self) -> None:
+        files = case()
+        files["EXTRATO"][0][1] = "998"
+        self.assert_says(self.run_case(files).errors, "o Compe da instituição difere entre os arquivos")
+
+    def test_compe_da_contraparte_no_od_nao_conta(self) -> None:
+        files = case()
+        files["ORIGEM_DESTINO"][0][4] = "001"
+        self.assertEqual([], self.run_case(files).errors)
+
+    def test_tipo_de_conta_diferente_no_titulares_e_erro(self) -> None:
+        files = case()
+        files["TITULARES"][0][3] = "1"
+        self.assert_says(self.run_case(files).errors, "TITULARES: a conta 123456 da agência 0001 tem o tipo 1, e o "
+                                                      "CONTAS, 6")
+
+    def test_tipo_de_conta_do_extrato_fora_do_contas_e_erro(self) -> None:
+        files = case()
+        files["EXTRATO"][1][4] = "2"
+        self.assert_says(self.run_case(files).errors, "EXTRATO: a conta 123456 da agência 0001 tem o tipo 2, e o "
+                                                      "CONTAS, 6")
+
+    def test_mesmo_numero_com_dois_tipos_no_contas_passa(self) -> None:
+        # Corrente e poupança com o mesmo número: duas contas, duas linhas no CONTAS e no TITULARES.
+        files = case()
+        files["CONTAS"].append(conta("0001", "123456", "2", "300", "300"))
+        files["CONTAS"][2][3] = "2"
+        files["TITULARES"].append(titular("0001", "123456"))
+        files["TITULARES"][2][3] = "2"
+        report = self.run_case(files)
+        self.assertEqual([], [e for e in report.errors if "tipo" in e])
 
     def test_agencia_fora_do_agencias_e_erro(self) -> None:
         files = case()
@@ -364,6 +462,12 @@ class Conferencia(unittest.TestCase):
         self.assert_says(warnings, "o(s) documento(s) nº 2 da ordem")
         self.assertFalse(any(documento_errado in w for w in warnings), "o aviso ecoou o documento")
 
+    def test_documento_da_ordem_so_como_cotitular_e_aviso(self) -> None:
+        files = case()
+        for row in files["TITULARES"]:
+            row[4] = "1"
+        self.assert_says(self.run_case(files).warnings, "o(s) documento(s) nº 1 da ordem")
+
     def test_sem_a_lista_da_ordem_a_conferencia_diz_o_que_nao_viu(self) -> None:
         folder, drafts_folder = self.write(case(), drafts=coherent_drafts())
         self.assert_says(conf.conferir(folder, CASO, drafts_folder).warnings,
@@ -402,12 +506,12 @@ class Conferencia(unittest.TestCase):
         self.assertIn("BLOQUEIO:", out.getvalue())
 
     def test_justificativa_registrada_libera_a_linha(self) -> None:
-        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))))
+        anterior = self.rows_folder("final", final(*complete(rows(), titulares_rows(("c1", "p1"), ("c1", "p2")))))
         justificativas = self.root / "justificativas.json"
         justificativas.write_text(json.dumps([{
             "documentId": "br.bcb.simba.titulares", "dataset": "partes",
             "key": {"contaId": "c1", "parteId": "p2"}, "motivo": "CPF corrigido no cadastro"}]), encoding="utf-8")
-        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"))], previous=anterior,
+        report = self.run_case(drafts=complete(rows(), titulares_rows(("c1", "p1"))), previous=anterior,
                                justifications=justificativas)
         self.assertEqual([], report.blocks)
         self.assert_says(report.released, "contaId=c1, parteId=p2")
@@ -423,11 +527,32 @@ class Conferencia(unittest.TestCase):
         self.assert_says(report.blocks, "parteId=p2")
         self.assert_says(report.errors, "justificativa sem motivo")
 
+    def test_justificativa_com_chave_fora_da_forma_e_erro_e_nao_libera(self) -> None:
+        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"), ("c1", "p2"))))
+        justificativas = self.root / "justificativas.json"
+        justificativas.write_text(json.dumps([{
+            "documentId": "br.bcb.simba.titulares", "dataset": "partes",
+            "key": ["c1", "p2"], "motivo": "CPF corrigido no cadastro"}]), encoding="utf-8")
+        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"))], previous=anterior,
+                               justifications=justificativas)
+        self.assert_says(report.errors, "há justificativa fora da forma")
+        self.assert_says(report.blocks, "parteId=p2")
+
     def test_linha_nova_e_so_aviso(self) -> None:
-        anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"))))
-        report = self.run_case(drafts=[rows(), titulares_rows(("c1", "p1"), ("c2", "p3"))], previous=anterior)
+        anterior = self.rows_folder("final", final(*complete(rows(), titulares_rows(("c1", "p1")))))
+        report = self.run_case(drafts=complete(rows(), titulares_rows(("c1", "p1"), ("c2", "p3"))), previous=anterior)
         self.assertEqual([], report.blocks)
         self.assert_says(report.warnings, "br.bcb.simba.titulares partes: 1 linha(s) novas")
+
+    def test_documento_ausente_das_duas_pastas_bloqueia(self) -> None:
+        anterior = self.rows_folder("final", final(rows()))
+        report = self.run_case(drafts=[rows()], previous=anterior)
+        self.assert_says(report.blocks, "br.bcb.simba.origem-destino: nem rascunho novo nem envio anterior nas pastas")
+        self.assert_says(report.blocks, "br.bcb.simba.titulares: nem rascunho novo nem envio anterior nas pastas")
+
+    def test_os_cinco_documentos_nas_duas_pastas_nao_bloqueiam(self) -> None:
+        anterior = self.rows_folder("final", final(*complete(rows())))
+        self.assertEqual([], self.run_case(drafts=complete(rows()), previous=anterior).blocks)
 
     def test_documento_do_final_sem_rascunho_bloqueia(self) -> None:
         anterior = self.rows_folder("final", final(rows(), titulares_rows(("c1", "p1"))))
@@ -549,6 +674,10 @@ class Deriva(unittest.TestCase):
                               "chequeEspecialApos"},
                              self.fields("extrato", conf.EXTRATO_ENTRIES))
 
+    def test_o_reenvio_confere_os_cinco_documentos(self) -> None:
+        self.assertEqual({"br.bcb.simba.agencias", "br.bcb.simba.contas", "br.bcb.simba.titulares",
+                          "br.bcb.simba.extrato", "br.bcb.simba.origem-destino"}, conf.expected_documents())
+
     def test_os_ids_dos_documentos_existem(self) -> None:
         ids = {self.contract(f)["metadata"]["id"] for f in ("contas", "extrato")}
         self.assertEqual({conf.CONTAS_DOCUMENT, conf.EXTRATO_DOCUMENT}, ids)
@@ -616,6 +745,28 @@ class Mutations(unittest.TestCase):
                 unittest.defaultTestLoader.loadTestsFromName(
                     "test_cada_parcela_de_cheque_especial_tem_o_aviso", GabaritoChequeEspecial))
         self.assertEqual(1, len(result.failures))
+
+    def test_aceitar_extrato_de_conta_sem_movimento_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "moved_accounts", lambda contas: {(conf.field(r, 2), conf.field(r, 3), conf.field(r, 4)) for r in contas},
+            "test_conta_do_extrato_sem_movimento_no_contas_e_erro"))
+
+    def test_aceitar_conta_movimentada_sem_extrato_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "unstated_accounts", lambda moved, statement: set(),
+            "test_conta_movimentada_sem_linha_no_extrato_e_erro"))
+
+    def test_esquecer_o_documento_ausente_das_duas_pastas_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "expected_documents", lambda: set(), "test_documento_ausente_das_duas_pastas_bloqueia"))
+
+    def test_ignorar_o_tipo_da_conta_reprova_os_testes(self) -> None:
+        def sem_o_tipo(rows, agency, account, kind):
+            return {(conf.field(r, agency), conf.field(r, account), "") for r in rows}
+
+        for test in ("test_mesmo_numero_movimentado_no_outro_tipo_sem_extrato_e_erro",
+                     "test_extrato_do_tipo_sem_movimento_do_mesmo_numero_e_erro"):
+            self.assertEqual(1, self.failures_with("typed_accounts", sem_o_tipo, test), test)
 
     def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
