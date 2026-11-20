@@ -113,7 +113,8 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   binding): o CRM os guarda como a meia-noite UTC do dia, e a API do CRM normaliza para essa
   meia-noite qualquer valor que receba, com ou sem hora ou fuso (`2026-06-30T00:00:00-03:00`
   vira o dia 30). Um valor gravado fora da API com hora diferente da meia-noite UTC recusa a
-  geracao (RPT-0143).
+  geracao (RPT-0143). Partes gravadas nas versoes beta da v3.5.0 do Midaz anteriores ao tipo
+  de data podem ter essa hora e recusar a geracao; regrave a data pela API.
 
 Nas partes relacionadas, o CRM guarda so documento, nome, papel e as datas de inicio e fim do
 vinculo. O tipo de pessoa da parte (campo 7) sai do tamanho do documento: 11 posicoes CPF
