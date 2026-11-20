@@ -89,6 +89,9 @@ cautelar. Revise as linhas com `125`/`218` antes de aprovar.
    (o exemplo declara `9`, outros). Nenhuma aplicacao Lerian registra o canal por lancamento.
 5. **Fonte `midaz_metadata`**: o Mongo da metadata do Midaz (colecoes `transaction` e
    `operation`), que a configuracao padrao do Reporter nao traz; cadastre-a antes.
+6. **Fontes dos plugins de Pix** (`pix_lerian`, `pix_jd`), as mesmas do ORIGEM-DESTINO: o
+   TxId do campo 26 esta so no plugin. Quem nao usa um plugin apaga as consultas dele e o
+   conjunto `trilho_*` correspondente do binding.
 
 O CNPJ vem da organizacao do Midaz; tipo da conta do CRM (`regulatory_fields.account_type`).
 
@@ -115,8 +118,11 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
 - 14 (`INFO_ADICIONAIS_LOCAL_TRANSACAO`), 20 a 22 (IP, porta, MAC), 24 e 25 (chave Pix): em
   branco; nenhuma aplicacao Lerian registra o dado, ou a chave nao esta na metadata.
 - 18 e 19: `0000000` e `00`, as sentinelas da IN para localizacao indisponivel.
-- 26 (`ID_TRANSACAO_PIX`): o EndToEndId gravado na metadata da transacao Pix; o txid de QR
-  Code nao esta na metadata (sai no ORIGEM-DESTINO). Fora do Pix, em branco.
+- 26 (`ID_TRANSACAO_PIX`, `TransactionIdentification <TxId>`, IN :195): o TxId que o plugin
+  que liquidou o Pix grava, o mesmo do campo 28 do ORIGEM-DESTINO; nunca o EndToEndId, que e
+  outro identificador. Em branco fora do Pix, no Pix sem TxId (por chave ou manual) e no Pix
+  enviado pelo Pix JD, que repassa o TxId ao SPI sem guarda-lo; o campo 18 do ORIGEM-DESTINO
+  diz o motivo.
 - 8: a descricao da operacao; vazia, a da transacao.
 
 ## Investigado sem conta

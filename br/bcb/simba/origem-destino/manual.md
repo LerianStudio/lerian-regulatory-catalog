@@ -123,10 +123,10 @@ Na tarifa e na contraparte interna, o CNPJ da propria instituicao.
 - 14 a 16 e 20 a 24 (boleto e cheque): nao existem como produto.
 - 25 e 26 (chave Pix da contraparte): a chave fica em outra tabela do Pix lerian, e o tipo
   da chave no Pix JD e um codigo do plugin sem de-para definido.
-- 28 (TxId do Pix, `TransactionIdentification <TxId>`, IN :229): o TxId que o plugin grava;
-  nunca o EndToEndId, que e outro identificador. Sem TxId, o campo sai em branco e o campo 18
-  da linha do Pix diz por que (IN art. 2o, § 1o), depois do motivo do tipo de conta e antes do
-  motivo do CNPJ, separados por `; `:
+- 28 (TxId do Pix, `TransactionIdentification <TxId>`, IN :229): o TxId que o plugin grava, o
+  mesmo do campo 26 do EXTRATO; nunca o EndToEndId, que e outro identificador. Sem TxId, o
+  campo sai em branco e o campo 18 da linha do Pix diz por que (IN art. 2o, § 1o), depois do
+  motivo do tipo de conta e antes do motivo do CNPJ, separados por `; `:
   - `TxId nao informado: Pix sem identificador de conciliacao`: o Pix nao tem TxId (Pix por
     chave ou manual, ou QR estatico sem TxId), ou seja, inexistencia da informacao. Vale para
     o Pix recebido nos dois plugins e para o Pix enviado pelo Pix lerian;

@@ -201,6 +201,52 @@ queries:
       - {field: deleted_at, operator: isNull}
     select: [id]
 
+  # O TxId do Pix (campo 26, IN :195) esta so no plugin que liquidou o Pix, na mesma linha
+  # que o ORIGEM-DESTINO le para a contraparte: tx_id no Pix lerian, conciliation_id no Pix
+  # JD. Mesmas consultas do ORIGEM-DESTINO, so com a referencia e o TxId. Quem nao usa um
+  # plugin apaga as consultas dele e o conjunto trilho_* correspondente.
+  - name: pix_lerian_envios_txid
+    description: Pix enviados pelo Pix lerian, com o TxId.
+    dataSource: pix_lerian
+    table: transfers
+    filters:
+      - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.end_to_end_id}]}
+      - {field: direction, operator: eq, values: ["OUTBOUND"]}
+    select: [end_to_end_id, tx_id]
+
+  - name: pix_lerian_recebimentos_txid
+    description: Pix recebidos pelo Pix lerian, com o TxId.
+    dataSource: pix_lerian
+    table: transfers
+    filters:
+      - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.inbound_end_to_end_id}]}
+      - {field: direction, operator: eq, values: ["INBOUND"]}
+    select: [end_to_end_id, tx_id]
+
+  # Pix JD: flow 2 e o envio (CASH_OUT), flow 1 o recebimento (CASH_IN); a linha de
+  # devolucao (is_refund) fica fora. O plugin so grava o TxId no recebimento.
+  - name: pix_jd_envios_txid
+    description: Pix enviados pelo Pix JD, com o TxId.
+    dataSource: pix_jd
+    table: transaction
+    filters:
+      - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
+      - {field: flow, operator: eq, values: ["2"]}
+      - {field: is_refund, operator: eq, values: ["false"]}
+      - {field: deleted_at, operator: isNull}
+    select: [id, conciliation_id]
+
+  - name: pix_jd_recebimentos_txid
+    description: Pix recebidos pelo Pix JD, com o TxId.
+    dataSource: pix_jd
+    table: transaction
+    filters:
+      - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
+      - {field: flow, operator: eq, values: ["1"]}
+      - {field: is_refund, operator: eq, values: ["false"]}
+      - {field: deleted_at, operator: isNull}
+    select: [id, conciliation_id]
+
 datasets:
 
   instituicao:
@@ -268,5 +314,33 @@ datasets:
       query: taxas_lancamento
     fields:
       operacaoId: {from: query, column: entity_id}
+
+  trilho_pix_lerian_envios:
+    from:
+      query: pix_lerian_envios_txid
+    fields:
+      referencia: {from: query, column: end_to_end_id}
+      txid: {from: query, column: tx_id}
+
+  trilho_pix_lerian_recebimentos:
+    from:
+      query: pix_lerian_recebimentos_txid
+    fields:
+      referencia: {from: query, column: end_to_end_id}
+      txid: {from: query, column: tx_id}
+
+  trilho_pix_jd_envios:
+    from:
+      query: pix_jd_envios_txid
+    fields:
+      referencia: {from: query, column: id}
+      txid: {from: query, column: conciliation_id}
+
+  trilho_pix_jd_recebimentos:
+    from:
+      query: pix_jd_recebimentos_txid
+    fields:
+      referencia: {from: query, column: id}
+      txid: {from: query, column: conciliation_id}
 
 manualOverrides: []

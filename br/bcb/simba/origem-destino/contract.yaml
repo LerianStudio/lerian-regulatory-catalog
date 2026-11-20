@@ -406,8 +406,8 @@ datasets:
         required: false
         pattern: '^[^\t\r\n]*$'
         description: >-
-          TxId do Pix (TransactionIdentification, campo 28, IN :229). Sem ele, o campo sai em branco e o campo 18
-          diz por que.
+          TxId do Pix (TransactionIdentification, campo 28, IN :229), o mesmo do EXTRATO 26. Sem ele, o campo sai em
+          branco e o campo 18 diz por que.
       - name: tipoConta
         type: string
         required: true
@@ -470,8 +470,8 @@ datasets:
         required: false
         pattern: '^[^\t\r\n]*$'
         description: >-
-          TxId do Pix (TransactionIdentification, campo 28, IN :229). Sem ele, o campo sai em branco e o campo 18
-          diz por que.
+          TxId do Pix (TransactionIdentification, campo 28, IN :229), o mesmo do EXTRATO 26. Sem ele, o campo sai em
+          branco e o campo 18 diz por que.
       - name: tipoConta
         type: string
         required: true
@@ -540,8 +540,8 @@ datasets:
         required: false
         pattern: '^[^\t\r\n]*$'
         description: >-
-          TxId do Pix (TransactionIdentification, campo 28, IN :229). Sem ele, o campo sai em branco e o campo 18
-          diz por que.
+          TxId do Pix (TransactionIdentification, campo 28, IN :229), o mesmo do EXTRATO 26. Sem ele, o campo sai em
+          branco e o campo 18 diz por que.
       - name: tipoConta
         type: string
         required: true
@@ -606,8 +606,8 @@ datasets:
         required: false
         pattern: '^[^\t\r\n]*$'
         description: >-
-          TxId do Pix (TransactionIdentification, campo 28, IN :229). Sem ele, o campo sai em branco e o campo 18
-          diz por que.
+          TxId do Pix (TransactionIdentification, campo 28, IN :229), o mesmo do EXTRATO 26. Sem ele, o campo sai em
+          branco e o campo 18 diz por que.
       - name: tipoConta
         type: string
         required: true

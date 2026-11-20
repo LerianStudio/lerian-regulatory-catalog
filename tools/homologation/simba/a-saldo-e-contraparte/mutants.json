@@ -739,5 +739,31 @@
       "line": 15,
       "field": 18
     }
+  },
+  {
+    "name": "EXTRATO 26 com o E2E no lugar do TxId",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "trilho_pix_lerian_envios|where:chaveR %}{{ pa.txid }}",
+    "new": "trilho_pix_lerian_envios|where:chaveR %}{{ l.e2eEnvio }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 31,
+      "field": 26
+    }
+  },
+  {
+    "name": "EXTRATO 26 do recebido lido do envio",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% if l.natureza == \"D\" %}{% for pa in trilho_pix_lerian_envios",
+    "new": "{% if l.natureza == \"C\" %}{% for pa in trilho_pix_lerian_envios",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 1,
+      "field": 26
+    }
   }
 ]
