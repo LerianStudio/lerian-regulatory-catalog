@@ -443,6 +443,79 @@ def exchange_refusal_off(root: Path) -> list[str]:
         problems.append("titulares: uma comparação com != recusaria o operaCambio pendente (vazio)")
     return problems
 
+
+# O arquivo é ASCII (IN art. 3º). O macro ascii dos templates converte uma lista fixa de letras;
+# todo campo de texto que passa por ele declara um pattern feito dessa mesma lista, e o que o
+# macro não converte recusa a geração. Texto livre (a mensagem do Pix, a descrição do
+# lançamento) fica fora até o Reporter transliterar: um emoji não pode recusar o arquivo.
+ASCII_FIELDS = {
+    "agencias": {(ds, f) for ds in ("agencias_do_caso", "agencias_contraparte")
+                 for f in ("endereco", "nomeAgencia", "pais", "telefone")} | {("instituicao", "nomeUnicad")},
+    "contas": {("instituicao", "nomeUnicad")},
+    "titulares": {(ds, f) for ds in ("titulares", "titulares_contraparte")
+                  for f in ("nome", "nomeSocial", "logradouro", "complemento", "nomePais", "celular",
+                            "outroTelefone", "emailPrincipal", "emailSecundario")}
+                 | {("partes", "nome"), ("partes_contraparte", "nome"), ("instituicao", "nomeUnicad")},
+    "extrato": {("instituicao", "nomeUnicad")},
+    "origem-destino": {(ds, "nome") for ds in ("trilho_pix_lerian_envios", "trilho_pix_lerian_recebimentos",
+                                               "trilho_pix_jd_envios", "trilho_pix_jd_recebimentos",
+                                               "trilho_ted_enviadas", "titulares_od")}
+                      | {("instituicao", "nomeUnicad")},
+}
+# Argumentos do ascii que não são um campo com pattern: o parâmetro do próprio macro (s), os do
+# macro trilho do OD (nome, comentario), a junção de campos do TITULARES (e) e o texto livre.
+ASCII_ARGS_OUTSIDE = {"s", "e", "nome", "comentario", "descricao", "descricaoTransacao"}
+NOT_ASCII = ("°", "’", "–", "ø", "ß", "🙏")
+
+
+def _macro_letters(text: str) -> str:
+    import re
+
+    macro = re.search(r"\{% macro ascii\(s\) %\}(.*?)\{% endmacro %\}", text, re.S)
+    if not macro:
+        return ""
+    return "".join(sorted({a for a, _ in re.findall(r'replace:"([^":]+):([^"]*)"', macro.group(1))
+                           if any(ord(ch) > 126 for ch in a)}))
+
+
+def ascii_fields_off(root: Path, found: dict[str, dict]) -> list[str]:
+    """Campos que passam pelo ascii sem o pattern ASCII do macro, ou com um pattern diferente dele."""
+    import re
+
+    problems = []
+    for document, wanted in sorted(ASCII_FIELDS.items()):
+        text = (root / FAMILY / document / "template.tpl").read_text(encoding="utf-8")
+        letters = _macro_letters(text)
+        fields = {(d.get("name"), f.get("name")): f for d in found.get(document, {}).get("datasets") or []
+                  for f in d.get("fields") or []}
+        names = {f for _, f in wanted}
+        for arg in sorted(set(re.findall(r"ascii\(([A-Za-z_.]+)\)", text))):
+            name = arg.split(".")[-1]
+            if name not in names and name not in ASCII_ARGS_OUTSIDE:
+                problems.append(f"{document}: ascii({arg}) escreve um campo sem o pattern ASCII")
+        for key in sorted(wanted):
+            pattern = (fields.get(key) or {}).get("pattern")
+            if not pattern:
+                problems.append(f"{document}: '{key[0]}.{key[1]}' passa pelo ascii sem pattern")
+                continue
+            compiled = re.compile(pattern)
+            if not compiled.fullmatch("Ab 09 ~!" + letters + "\t\r\n"):
+                problems.append(f"{document}: '{key[0]}.{key[1]}' recusa o que o macro converte")
+            leaks = [c for c in NOT_ASCII if compiled.fullmatch("a" + c)]
+            if leaks:
+                problems.append(f"{document}: '{key[0]}.{key[1]}' aceita {''.join(leaks)}, que o macro não converte")
+    return problems
+
+
+def reversed_period_allowed(found: dict[str, dict]) -> list[str]:
+    """Os documentos cujo fim não declara notBefore: inicio."""
+    problems = []
+    for document in sorted(ASCII_FIELDS):
+        fim = [p for p in found.get(document, {}).get("parameters") or [] if p.get("name") == "fim"]
+        if not fim or fim[0].get("notBefore") != "inicio":
+            problems.append(f"{document}: o fim não declara notBefore: inicio")
+    return problems
+
 def queries_of(binding: dict) -> dict[str, dict]:
     return {q["name"]: q for q in binding.get("queries") or []
             if isinstance(q, dict) and isinstance(q.get("name"), str)}
@@ -558,6 +631,12 @@ class SimbaBindings(unittest.TestCase):
     def test_renda_e_faturamento_so_saem_em_brl(self) -> None:
         self.assertEqual([], currency_rules_off(contracts(ROOT)))
 
+    def test_texto_que_passa_pelo_ascii_tem_o_pattern_do_macro(self) -> None:
+        self.assertEqual([], ascii_fields_off(ROOT, contracts(ROOT)))
+
+    def test_periodo_invertido_e_recusado(self) -> None:
+        self.assertEqual([], reversed_period_allowed(contracts(ROOT)))
+
     def test_so_o_cambio_declarado_sim_recusa_a_geracao(self) -> None:
         self.assertEqual([], exchange_refusal_off(ROOT))
 
@@ -661,6 +740,43 @@ class Mutations(unittest.TestCase):
                 if f["name"] == "moedaRenda":
                     f.pop("pattern", None)
         self.assertIn("titulares: 'titulares.moedaRenda' = '$BRL' passaria fora do formato ISO", currency_rules_off(found))
+
+    def test_campo_ascii_sem_o_pattern_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["titulares"]["datasets"]:
+            for f in d.get("fields") or []:
+                if d["name"] == "titulares" and f["name"] == "logradouro":
+                    f.pop("pattern")
+        self.assertEqual(["titulares: 'titulares.logradouro' passa pelo ascii sem pattern"],
+                         ascii_fields_off(ROOT, found))
+
+    def test_pattern_que_deixa_passar_o_grau_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["agencias"]["datasets"]:
+            for f in d.get("fields") or []:
+                if d["name"] == "agencias_do_caso" and f["name"] == "endereco":
+                    f["pattern"] = "^.*$"
+        self.assertIn("agencias: 'agencias_do_caso.endereco' aceita °’–øß🙏, que o macro não converte",
+                      ascii_fields_off(ROOT, found))
+
+    def test_ascii_num_campo_novo_sem_pattern_e_pego(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            for document in ASCII_FIELDS:
+                target = Path(tmp) / FAMILY / document
+                target.mkdir(parents=True)
+                text = (ROOT / FAMILY / document / "template.tpl").read_text(encoding="utf-8")
+                if document == "contas":
+                    text += "{{ ascii(c.apelido) }}"
+                (target / "template.tpl").write_text(text, encoding="utf-8")
+            self.assertEqual(["contas: ascii(c.apelido) escreve um campo sem o pattern ASCII"],
+                             ascii_fields_off(Path(tmp), contracts(ROOT)))
+
+    def test_fim_sem_o_not_before_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for p in found["extrato"]["parameters"]:
+            if p["name"] == "fim":
+                p.pop("notBefore")
+        self.assertEqual(["extrato: o fim não declara notBefore: inicio"], reversed_period_allowed(found))
 
     def test_cambio_comparado_com_nao_e_pego(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
