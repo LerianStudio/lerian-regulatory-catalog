@@ -134,7 +134,7 @@ datasets:
       - name: numeroConta
         type: string
         required: true
-        pattern: '^.{1,20}$'
+        pattern: '^[^\t\r\n]{1,20}$'
         description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :120).
       - name: tipoConta
         type: string
@@ -184,7 +184,7 @@ datasets:
       - name: numeroConta
         type: string
         required: true
-        pattern: '^.{1,20}$'
+        pattern: '^[^\t\r\n]{1,20}$'
         description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :120).
       - name: tipoConta
         type: string

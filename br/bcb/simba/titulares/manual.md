@@ -97,7 +97,12 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
 - Renda (campo 18): da pessoa natural, a renda mensal bruta declarada; da pessoa juridica, o
   faturamento anual bruto declarado, como esta no cadastro, sem dividir por 12 (a IN pede a
   renda declarada e nao fixa o periodo). Em centavos sem separador (`500050` para
-  R$ 5.000,50); a data de referencia de cada um no campo 19.
+  R$ 5.000,50); a data de referencia de cada um no campo 19. So sai renda ou faturamento em
+  BRL: em outra moeda a geracao e recusada (regras moeda-da-renda e moeda-do-faturamento), porque
+  o catalogo nao converte moeda; a IN nao fala de moeda no campo 18 e o leiaute so da exemplos
+  em R$ (art. 3o, VIII). A API do CRM exige a moeda junto do valor: sem moeda nao ha renda, e o
+  campo 18 sai em branco. Residuo: um valor gravado sem moeda direto no banco, fora da API, sai
+  como declarado, sem conferencia de moeda.
 - E-mail (campo 25): o principal e o secundario, separados por `;`.
 - Inicio e fim do vinculo (campos 20 e 21): abertura e encerramento da conta.
 
@@ -174,8 +179,9 @@ requisicao.
 - **Numero da conta**: sai como o CRM o guarda (`banking_details.account`), ate 20 posicoes;
   confira que o valor cadastrado inclui o DV.
 - **Texto sem acento**: nomes, endereco, telefones e e-mails passam pela conversao para ASCII
-  do template, e TAB vira espaco. **Quebra de linha (CR ou LF) dentro de um valor nao e
-  retirada.**
+  do template, e TAB, CR e LF viram espaco: uma quebra de linha no cadastro nao parte o
+  registro. O numero da conta nao passa pela conversao: com TAB, CR ou LF ele recusa a
+  geracao.
 - **Pessoa investigada nas partes**: o campo 6 compara o documento da parte com cada
   elemento da lista `documentos` da ordem, que vem so com digitos. Vale igual nas contas de
   contraparte: um investigado que e procurador numa delas sai `1`.

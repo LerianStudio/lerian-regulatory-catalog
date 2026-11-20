@@ -107,7 +107,8 @@ requisicao.
 - **Numero da conta**: sai como o CRM o guarda (`banking_details.account`), ate 20 posicoes;
   confira que o valor cadastrado inclui o DV.
 - **Texto sem acento**: o nome da instituicao passa pela conversao para ASCII do template, e
-  TAB vira espaco. **Quebra de linha (CR ou LF) dentro de um valor nao e retirada.**
+  TAB, CR e LF viram espaco. O numero da conta nao passa pela conversao: com TAB, CR ou LF
+  ele recusa a geracao.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa uma macro. A geracao nao.
 - **Uma instituicao por arquivo**: um documento entregue em base individual nao soma
