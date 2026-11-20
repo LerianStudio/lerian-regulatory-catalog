@@ -463,7 +463,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
-      "line": 32,
+      "line": 33,
       "field": 18
     }
   },
@@ -476,7 +476,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
-      "line": 33,
+      "line": 34,
       "field": 18
     }
   },
@@ -554,7 +554,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
-      "line": 34,
+      "line": 35,
       "field": 5
     }
   },
@@ -567,7 +567,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
-      "line": 37,
+      "line": 38,
       "field": 5
     }
   },
@@ -580,7 +580,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
-      "line": 35,
+      "line": 36,
       "field": 5
     }
   },
@@ -593,7 +593,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
-      "line": 35,
+      "line": 36,
       "field": 9
     }
   },
@@ -606,7 +606,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
-      "line": 39,
+      "line": 40,
       "field": 9
     }
   },
@@ -619,7 +619,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
-      "line": 40,
+      "line": 41,
       "field": 9
     }
   },
@@ -632,7 +632,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
-      "line": 41,
+      "line": 42,
       "field": 9
     }
   },
@@ -658,7 +658,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
-      "line": 42,
+      "line": 43,
       "field": 5
     }
   },
@@ -801,7 +801,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
-      "line": 43,
+      "line": 32,
       "field": 26
     }
   }

@@ -29,15 +29,15 @@
 29	29	1250	29	237	77	88882		2	12345678000190	Recebedor Exemplo Ltda						0	tipo de conta do recebedor SLRY sem codigo correspondente na IN; TxId nao informado: o plugin de Pix nao grava o TxId do Pix enviado	60746948000112									
 30	30	1250	30	237	77	88882		2	12345678000190	Recebedor Exemplo Ltda						0	tipo de conta do recebedor OTHR sem codigo correspondente na IN; TxId nao informado: o plugin de Pix nao grava o TxId do Pix enviado	60746948000112									
 31	31	1250	31	237	77	8888	1	2	12345678000190	Recebedor Exemplo Ltda						0		60746948000112									QRLERIANENVIO20261206A32
-32	32	1250	32	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CPAY sem codigo unico na IN	60746948000112									
+32	32	100	32	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
 33	33	1250	33	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CPAY sem codigo unico na IN	60746948000112									
-34	34	1250	34	237			1									0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente	60746948000112									
-35	35	200	35	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
-36	36	3000	36	237			1									0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente	60746948000112									
-37	37	200	37	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
-38	38	3000	38													0	contraparte nao identificada pelo trilho										
-39	39	100	39	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
-40	40	500	40													0	contraparte nao identificada pelo trilho										
+34	34	1250	34	237	4321	555666				Recebedor TED Exemplo						0	tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor; tipo de conta do recebedor CPAY sem codigo unico na IN	60746948000112									
+35	35	1250	35	237			1									0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente	60746948000112									
+36	36	200	36	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
+37	37	3000	37	237			1									0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente	60746948000112									
+38	38	200	38	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
+39	39	3000	39													0	contraparte nao identificada pelo trilho										
+40	40	100	40	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
 41	41	500	41													0	contraparte nao identificada pelo trilho										
-42	42	5000	42													0	contraparte nao identificada: mais de uma perna interna de mesmo valor										
-43	43	100	43	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
+42	42	500	42													0	contraparte nao identificada pelo trilho										
+43	43	5000	43													0	contraparte nao identificada: mais de uma perna interna de mesmo valor										
