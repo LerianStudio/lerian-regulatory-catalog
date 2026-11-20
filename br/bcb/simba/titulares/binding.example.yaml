@@ -31,6 +31,11 @@
 # A RENDA (campos 18 e 19): da pessoa natural, a renda mensal bruta declarada; da
 # pessoa juridica, o faturamento anual declarado, como esta no cadastro (sem
 # dividir por 12). A data e a `reference_date` de cada um.
+# A moeda (`currency`) de cada um vai junto: o catalogo nao converte moeda, e um
+# valor em outra moeda que nao BRL recusa a geracao (regras moeda-da-renda e
+# moeda-do-faturamento). A IN nao fala de moeda no campo 18 (IN :154); o leiaute so
+# da exemplos em R$ (art. 3o, VIII, IN :73). A recusa e uma trava do catalogo, nao
+# uma exigencia escrita do Banco Central.
 #
 # CONTRATO DE CAMBIO (campo 28): declare em `operaCambio` se a instituicao firma
 # contrato de cambio. "nao" escreve 0 em toda linha; "sim" recusa a geracao, porque
@@ -663,7 +668,7 @@ queries:
             "ZW": {constant: "Zimbábue"}
             "zw": {constant: "Zimbábue"}
           otherwise: {constant: "-"}
-    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date]
+    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, natural_person.monthly_gross_income.currency, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date, legal_person.annual_gross_revenue.currency]
 
   # Uma linha por parte relacionada de cada conta do caso.
   - name: partes_dados
@@ -1341,7 +1346,7 @@ queries:
             "ZW": {constant: "Zimbábue"}
             "zw": {constant: "Zimbábue"}
           otherwise: {constant: "-"}
-    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date]
+    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, natural_person.monthly_gross_income.currency, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date, legal_person.annual_gross_revenue.currency]
 
   # Uma linha por parte relacionada de cada conta de contraparte.
   - name: partes_contraparte_dados
@@ -1425,6 +1430,8 @@ datasets:
       dataRenda: {from: query, column: natural_person.monthly_gross_income.reference_date}
       faturamento: {from: query, column: legal_person.annual_gross_revenue.value}
       dataFaturamento: {from: query, column: legal_person.annual_gross_revenue.reference_date}
+      moedaRenda: {from: query, column: natural_person.monthly_gross_income.currency}
+      moedaFaturamento: {from: query, column: legal_person.annual_gross_revenue.currency}
       dataInicio: {from: query, column: banking_details.opening_date}
       dataFim: {from: query, column: banking_details.closing_date}
       nomeSocial: {from: query, column: natural_person.social_name}
@@ -1469,6 +1476,8 @@ datasets:
       dataRenda: {from: query, column: natural_person.monthly_gross_income.reference_date}
       faturamento: {from: query, column: legal_person.annual_gross_revenue.value}
       dataFaturamento: {from: query, column: legal_person.annual_gross_revenue.reference_date}
+      moedaRenda: {from: query, column: natural_person.monthly_gross_income.currency}
+      moedaFaturamento: {from: query, column: legal_person.annual_gross_revenue.currency}
       dataInicio: {from: query, column: banking_details.opening_date}
       dataFim: {from: query, column: banking_details.closing_date}
       nomeSocial: {from: query, column: natural_person.social_name}
