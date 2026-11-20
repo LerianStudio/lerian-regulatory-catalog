@@ -98,8 +98,10 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   faturamento anual bruto declarado, como esta no cadastro, sem dividir por 12 (a IN pede a
   renda declarada e nao fixa o periodo). Em centavos sem separador (`500050` para
   R$ 5.000,50); a data de referencia de cada um no campo 19. So sai renda ou faturamento em
-  BRL: em outra moeda a geracao e recusada (regras moeda-da-renda e moeda-do-faturamento), porque
-  o catalogo nao converte moeda; a IN nao fala de moeda no campo 18 e o leiaute so da exemplos
+  BRL: a figura que o campo 18 imprime (a renda da pessoa natural, o faturamento da juridica) em
+  outra moeda recusa a geracao (regras moeda-da-renda e moeda-do-faturamento); a outra figura do
+  cadastro nao e conferida, porque nao vai ao arquivo. Moeda fora do formato ISO (tres letras
+  maiusculas) tambem recusa. O catalogo nao converte moeda; a IN nao fala de moeda no campo 18 e o leiaute so da exemplos
   em R$ (art. 3o, VIII). A API do CRM exige a moeda junto do valor: sem moeda nao ha renda, e o
   campo 18 sai em branco. Residuo: um valor gravado sem moeda direto no banco, fora da API, sai
   como declarado, sem conferencia de moeda.
