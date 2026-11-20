@@ -192,8 +192,9 @@ o contrato na carga.
   vazia.
 - **Conta com duas pernas opostas na mesma transacao** (por exemplo, entre duas chaves de
   saldo da mesma conta): a propria conta pode sair como contraparte interna.
-- **Texto sem acento**: nomes e mensagem passam pela conversao para ASCII do template, e TAB
-  vira espaco. **Quebra de linha (CR ou LF) dentro de um valor nao e retirada.**
+- **Texto sem acento**: nomes e mensagem passam pela conversao para ASCII do template, e TAB,
+  CR e LF viram espaco: uma quebra de linha no cadastro nao parte o registro. O numero da
+  conta nao passa pela conversao: com TAB, CR ou LF ele recusa a geracao.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa macros. A geracao nao.
 

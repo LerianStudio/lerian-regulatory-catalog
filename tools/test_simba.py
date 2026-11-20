@@ -349,6 +349,75 @@ def required_fields_off(found: dict[str, dict]) -> list[str]:
             problems.append(f"{document}: '{dataset}.{field}' não é required: true")
     return problems
 
+
+# O número da conta sai sem passar pela troca de TAB, CR e LF do macro ascii: um desses
+# caracteres partiria o registro (TAB entre colunas, CR LF no fim da linha).
+ACCOUNT_FIELDS = {"contas": "numeroConta", "titulares": "numeroConta", "extrato": "numeroConta",
+                  "origem-destino": "numeroConta"}
+DELIMITERS = ("\t", "\r", "\n")
+
+
+def account_patterns_off(found: dict[str, dict]) -> list[str]:
+    """Os padrões do número da conta que aceitam TAB, CR ou LF (ou recusam um número comum)."""
+    import re
+
+    problems = []
+    for document, name in sorted(ACCOUNT_FIELDS.items()):
+        for d in found.get(document, {}).get("datasets") or []:
+            for f in d.get("fields") or []:
+                if f.get("name") != name:
+                    continue
+                pattern = re.compile(f.get("pattern") or ".*")
+                leaks = [repr(c) for c in DELIMITERS if pattern.fullmatch("123" + c + "4")]
+                if leaks:
+                    problems.append(f"{document}: '{d.get('name')}.{name}' aceita {', '.join(leaks)}")
+                if not pattern.fullmatch("1234567-8"):
+                    problems.append(f"{document}: '{d.get('name')}.{name}' recusa um número de conta comum")
+    return problems
+
+
+# A renda e o faturamento do TITULARES só saem em BRL: o catálogo não converte moeda.
+CURRENCY_FIELDS = {("titulares", "moedaRenda"), ("titulares", "moedaFaturamento"),
+                   ("titulares_contraparte", "moedaRenda"), ("titulares_contraparte", "moedaFaturamento")}
+
+
+def _refuses(rule: dict, value: str) -> bool:
+    where, check = rule.get("where") or {}, (rule.get("check") or {}).get("notStartsWith") or {}
+    if value in (where.get("notIn") or []):
+        return False
+    return any(value.startswith(v) for v in check.get("values") or [])
+
+
+def currency_rules_off(found: dict[str, dict]) -> list[str]:
+    """Onde uma moeda que não é BRL passaria, ou BRL e a moeda ausente seriam recusadas."""
+    rules = [r for r in found.get("titulares", {}).get("rules") or [] if isinstance(r, dict)]
+    problems = []
+    for dataset, field in sorted(CURRENCY_FIELDS):
+        mine = [r for r in rules if r.get("appliesTo") == dataset and (r.get("where") or {}).get("field") == field
+                and ((r.get("check") or {}).get("notStartsWith") or {}).get("field") == field
+                and r.get("severity") == "error"]
+        if not mine:
+            problems.append(f"titulares: nenhuma regra recusa '{dataset}.{field}' fora de BRL")
+            continue
+        for value in ("USD", "eur", "999"):
+            if not any(_refuses(r, value) for r in mine):
+                problems.append(f"titulares: '{dataset}.{field}' = {value!r} passaria")
+        for value in ("BRL", ""):
+            if any(_refuses(r, value) for r in mine):
+                problems.append(f"titulares: '{dataset}.{field}' = {value!r} seria recusado")
+    return problems
+
+
+def exchange_refusal_off(root: Path) -> list[str]:
+    """O TITULARES recusa a geração só com operaCambio "sim": o pendente (vazio) deixa o rascunho sair."""
+    text = (root / FAMILY / "titulares" / "template.tpl").read_text(encoding="utf-8")
+    problems = []
+    if '{%- if instituicao.operaCambio == "sim" %}{% fail ' not in text:
+        problems.append('titulares: a recusa do campo 28 não é condicionada a operaCambio == "sim"')
+    if "operaCambio !=" in text:
+        problems.append("titulares: uma comparação com != recusaria o operaCambio pendente (vazio)")
+    return problems
+
 def queries_of(binding: dict) -> dict[str, dict]:
     return {q["name"]: q for q in binding.get("queries") or []
             if isinstance(q, dict) and isinstance(q.get("name"), str)}
@@ -458,6 +527,15 @@ class SimbaBindings(unittest.TestCase):
     def test_campos_que_o_template_supoe_presentes_sao_obrigatorios(self) -> None:
         self.assertEqual([], required_fields_off(contracts(ROOT)))
 
+    def test_numero_da_conta_nao_aceita_tab_cr_nem_lf(self) -> None:
+        self.assertEqual([], account_patterns_off(contracts(ROOT)))
+
+    def test_renda_e_faturamento_so_saem_em_brl(self) -> None:
+        self.assertEqual([], currency_rules_off(contracts(ROOT)))
+
+    def test_so_o_cambio_declarado_sim_recusa_a_geracao(self) -> None:
+        self.assertEqual([], exchange_refusal_off(ROOT))
+
 
 class Mutations(unittest.TestCase):
     """Cada conferência acima, vista recusando: uma quebra deliberada numa cópia."""
@@ -519,6 +597,40 @@ class Mutations(unittest.TestCase):
             if d["name"] == ENTRIES:
                 d["fields"].append({"name": "campoSoDoOd", "type": "string"})
         self.assertTrue(any("campoSoDoOd" in p for p in entries_mismatch(found)))
+
+    def test_padrao_da_conta_que_aceita_cr_e_pego(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["contas"]["datasets"]:
+            for f in d.get("fields") or []:
+                if f["name"] == "numeroConta":
+                    f["pattern"] = "^.{1,20}$"
+        self.assertTrue(any("aceita" in p and "\\r" in p for p in account_patterns_off(found)))
+
+    def test_regra_de_moeda_que_deixa_passar_usd_e_pega(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        found["titulares"]["rules"] = [r for r in found["titulares"]["rules"]
+                                       if not str(r.get("id", "")).startswith("moeda-da-renda")]
+        problems = currency_rules_off(found)
+        self.assertIn("titulares: nenhuma regra recusa 'titulares.moedaRenda' fora de BRL", problems)
+        self.assertIn("titulares: nenhuma regra recusa 'titulares_contraparte.moedaRenda' fora de BRL", problems)
+
+    def test_regra_de_moeda_que_recusa_brl_e_pega(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for r in found["titulares"]["rules"]:
+            if r.get("id") == "moeda-da-renda":
+                r["where"]["notIn"] = [""]
+        self.assertIn("titulares: 'titulares.moedaRenda' = 'BRL' seria recusado", currency_rules_off(found))
+
+    def test_cambio_comparado_com_nao_e_pego(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / FAMILY / "titulares"
+            target.mkdir(parents=True)
+            text = (ROOT / FAMILY / "titulares" / "template.tpl").read_text(encoding="utf-8")
+            (target / "template.tpl").write_text(
+                text.replace('operaCambio == "sim"', 'operaCambio != "nao"'), encoding="utf-8")
+            self.assertEqual(['titulares: a recusa do campo 28 não é condicionada a operaCambio == "sim"',
+                              "titulares: uma comparação com != recusaria o operaCambio pendente (vazio)"],
+                             exchange_refusal_off(Path(tmp)))
 
     def test_campo_obrigatorio_que_vira_opcional_e_pego(self) -> None:
         found = copy.deepcopy(contracts(ROOT))

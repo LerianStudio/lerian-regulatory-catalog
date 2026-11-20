@@ -6,7 +6,7 @@
     "tipoConta": "1",
     "tipoPessoa": "1",
     "documento": "12345678909",
-    "nome": "Maria Exemplo",
+    "nome": "Maria\nExemplo",
     "logradouro": "Rua Um 100",
     "codigoUf": "35",
     "pais": "BR",
@@ -23,7 +23,7 @@
     "tipoConta": "1",
     "tipoPessoa": "1",
     "documento": "98765432100",
-    "nome": "Juan Ejemplo",
+    "nome": "Juan\rEjemplo",
     "logradouro": "Calle Falsa 123",
     "codigoUf": "42",
     "pais": "AR",
@@ -43,7 +43,10 @@
     "codigoUf": "33",
     "nomePais": "-",
     "cep": "20040002",
-    "dataInicio": "2025-05-06"
+    "dataInicio": "2025-05-06",
+    "renda": "5000.50",
+    "dataRenda": "2026-06-30",
+    "moedaRenda": "BRL"
   },
   {
     "contaId": "c4",
