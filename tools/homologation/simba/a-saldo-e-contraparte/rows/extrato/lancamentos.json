@@ -909,5 +909,27 @@
     "saldoApos": "0.00",
     "bloqueadoApos": "0.00",
     "chequeEspecialApos": "0.004"
+  },
+  {
+    "operacaoId": "o43",
+    "transacaoId": "t43",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-06T13:00:00Z",
+    "horaLancamento": "2026-12-06T13:00:00Z",
+    "descricao": "Transferencia",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "50.00",
+    "natureza": "D",
+    "naturezaOposta": "C",
+    "tipoOperacao": "DEBIT",
+    "rail": "INTERNAL",
+    "fluxo": "P2P",
+    "direcao": "OUT",
+    "saldoApos": "0.00",
+    "bloqueadoApos": "0.00",
+    "chequeEspecialApos": "0.004"
   }
 ]

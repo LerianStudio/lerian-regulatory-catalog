@@ -648,5 +648,31 @@
       "line": 6,
       "field": 18
     }
+  },
+  {
+    "name": "perna interna ambigua impressa duas vezes",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if ps|length > 1 %}",
+    "new": "{% if ps|length > 9 %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 42,
+      "field": 5
+    }
+  },
+  {
+    "name": "conta da perna interna com hifen",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "contract.yaml",
+    "old": "        normalize: digits\n        pattern: '^[0-9]{1,20}$'\n        description: >-\n          Numero da conta com o digito verificador, so digitos",
+    "new": "        pattern: '^[^\\t\\r\\n]{1,20}$'\n        description: >-\n          Numero da conta com o digito verificador, so digitos",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 5,
+      "field": 7
+    }
   }
 ]
