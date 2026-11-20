@@ -2,7 +2,7 @@
 2	2	3000	2	237	1234	991		1	22233344455	Pagador Pix						0	tipo de conta do pagador nao informado pelo plugin	60746948000112									E1
 3	3	3000	3	001	1	5550		2	AB12CD34000155	Loja Exemplo						0	tipo de conta do recebedor nao informado pelo plugin	00000000000191								compra	E2
 4	4	7000	4	001	1	5550		2	AB12CD34000155	Loja Exemplo						0	tipo de conta do recebedor nao informado pelo plugin	00000000000191								compra	E2
-5	5	000	5	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0		11222333000181									
+5	5	000	5	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
 6	6	100	6	001	1	5550		2	AB12CD34000155	Loja Exemplo						0	tipo de conta do recebedor nao informado pelo plugin	00000000000191								compra	E2
 7	7	000	7	237	77	88882		2	12345678000190	Recebedor Exemplo Ltda						0	tipo de conta do recebedor nao informado pelo plugin	60746948000112									E3
 8	8	2000	8	237	77	88882		2	12345678000190	Recebedor Exemplo Ltda						0	tipo de conta do recebedor nao informado pelo plugin	60746948000112									E3
