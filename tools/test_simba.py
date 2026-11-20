@@ -371,7 +371,9 @@ def account_patterns_off(found: dict[str, dict]) -> list[str]:
                 leaks = [repr(c) for c in DELIMITERS if pattern.fullmatch("123" + c + "4")]
                 if leaks:
                     problems.append(f"{document}: '{d.get('name')}.{name}' aceita {', '.join(leaks)}")
-                if not pattern.fullmatch("1234567-8"):
+                # Com normalize: digits o valor chega ao pattern já sem o hífen do DV.
+                sample = "12345678" if f.get("normalize") == "digits" else "1234567-8"
+                if not pattern.fullmatch(sample):
                     problems.append(f"{document}: '{d.get('name')}.{name}' recusa um número de conta comum")
     return problems
 
