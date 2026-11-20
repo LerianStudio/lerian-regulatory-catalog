@@ -376,37 +376,62 @@ def account_patterns_off(found: dict[str, dict]) -> list[str]:
     return problems
 
 
-# A renda e o faturamento do TITULARES só saem em BRL: o catálogo não converte moeda.
-CURRENCY_FIELDS = {("titulares", "moedaRenda"), ("titulares", "moedaFaturamento"),
-                   ("titulares_contraparte", "moedaRenda"), ("titulares_contraparte", "moedaFaturamento")}
+# A renda e o faturamento do TITULARES só saem em BRL: o catálogo não converte moeda. O campo 18
+# leva o faturamento da pessoa jurídica (tipoPessoa 2) e a renda dos demais; só a figura que vai
+# ao arquivo é conferida. Fora do formato ISO (três maiúsculas), a moeda recusa sempre.
+HOLDER_CURRENCIES = ("titulares", "titulares_contraparte")
+FILED = {"moedaRenda": ("1", "2"), "moedaFaturamento": ("2", "1")}  # campo -> (tipo que imprime, tipo que não)
 
 
-def _refuses(rule: dict, value: str) -> bool:
-    where, check = rule.get("where") or {}, (rule.get("check") or {}).get("notStartsWith") or {}
-    if value in (where.get("notIn") or []):
-        return False
-    return any(value.startswith(v) for v in check.get("values") or [])
+def _row_refused(contract_doc: dict, dataset: str, row: dict) -> bool:
+    import re
+
+    for d in contract_doc.get("datasets") or []:
+        if d.get("name") != dataset:
+            continue
+        for f in d.get("fields") or []:
+            value = row.get(f.get("name"))
+            if value is not None and f.get("pattern") and not re.fullmatch(f["pattern"], value):
+                return True
+    for r in contract_doc.get("rules") or []:
+        if not isinstance(r, dict) or r.get("appliesTo") != dataset or r.get("severity") != "error":
+            continue
+        where, check = r.get("where") or {}, (r.get("check") or {}).get("notStartsWith") or {}
+        if check.get("field") not in FILED:
+            continue
+        held = row.get(where.get("field"), "")
+        if "equals" in where and held != where["equals"]:
+            continue
+        if "in" in where and held not in where["in"]:
+            continue
+        if "notIn" in where and held in where["notIn"]:
+            continue
+        value = row.get(check["field"], "")
+        if any(value.startswith(v) for v in check.get("values") or []):
+            return True
+    return False
 
 
 def currency_rules_off(found: dict[str, dict]) -> list[str]:
-    """Onde uma moeda que não é BRL passaria, ou BRL e a moeda ausente seriam recusadas."""
-    rules = [r for r in found.get("titulares", {}).get("rules") or [] if isinstance(r, dict)]
+    """Onde a moeda da figura impressa não é conferida, a da outra figura é, ou BRL e o vazio seriam recusados."""
+    doc = found.get("titulares", {})
     problems = []
-    for dataset, field in sorted(CURRENCY_FIELDS):
-        mine = [r for r in rules if r.get("appliesTo") == dataset and (r.get("where") or {}).get("field") == field
-                and ((r.get("check") or {}).get("notStartsWith") or {}).get("field") == field
-                and r.get("severity") == "error"]
-        if not mine:
-            problems.append(f"titulares: nenhuma regra recusa '{dataset}.{field}' fora de BRL")
-            continue
-        for value in ("USD", "eur", "999"):
-            if not any(_refuses(r, value) for r in mine):
-                problems.append(f"titulares: '{dataset}.{field}' = {value!r} passaria")
-        for value in ("BRL", ""):
-            if any(_refuses(r, value) for r in mine):
-                problems.append(f"titulares: '{dataset}.{field}' = {value!r} seria recusado")
+    for dataset in HOLDER_CURRENCIES:
+        for field, (filed, other) in sorted(FILED.items()):
+            def refused(tipo: str, value: str) -> bool:
+                return _row_refused(doc, dataset, {"tipoPessoa": tipo, field: value})
+            for value in ("USD", "BRA", "BZD"):
+                if not refused(filed, value):
+                    problems.append(f"titulares: '{dataset}.{field}' = {value!r} passaria com tipoPessoa {filed}")
+            if refused(other, "USD"):
+                problems.append(f"titulares: '{dataset}.{field}' = 'USD' recusaria tipoPessoa {other}, que não o imprime")
+            for value in ("BRL", ""):
+                if refused(filed, value):
+                    problems.append(f"titulares: '{dataset}.{field}' = {value!r} seria recusado")
+            for value in ("$BRL", " BRL", "brl"):
+                if not refused(other, value):
+                    problems.append(f"titulares: '{dataset}.{field}' = {value!r} passaria fora do formato ISO")
     return problems
-
 
 def exchange_refusal_off(root: Path) -> list[str]:
     """O TITULARES recusa a geração só com operaCambio "sim": o pendente (vazio) deixa o rascunho sair."""
@@ -611,15 +636,31 @@ class Mutations(unittest.TestCase):
         found["titulares"]["rules"] = [r for r in found["titulares"]["rules"]
                                        if not str(r.get("id", "")).startswith("moeda-da-renda")]
         problems = currency_rules_off(found)
-        self.assertIn("titulares: nenhuma regra recusa 'titulares.moedaRenda' fora de BRL", problems)
-        self.assertIn("titulares: nenhuma regra recusa 'titulares_contraparte.moedaRenda' fora de BRL", problems)
+        self.assertIn("titulares: 'titulares.moedaRenda' = 'USD' passaria com tipoPessoa 1", problems)
+        self.assertIn("titulares: 'titulares_contraparte.moedaRenda' = 'USD' passaria com tipoPessoa 1", problems)
 
     def test_regra_de_moeda_que_recusa_brl_e_pega(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
         for r in found["titulares"]["rules"]:
             if r.get("id") == "moeda-da-renda":
-                r["where"]["notIn"] = [""]
+                r["check"]["notStartsWith"]["values"].append("B")
         self.assertIn("titulares: 'titulares.moedaRenda' = 'BRL' seria recusado", currency_rules_off(found))
+
+    def test_regra_de_moeda_que_olha_a_figura_nao_impressa_e_pega(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for r in found["titulares"]["rules"]:
+            if r.get("id") == "moeda-do-faturamento":
+                r["where"] = {"field": "moedaFaturamento", "notIn": ["BRL", ""]}
+        self.assertIn("titulares: 'titulares.moedaFaturamento' = 'USD' recusaria tipoPessoa 1, que não o imprime",
+                      currency_rules_off(found))
+
+    def test_moeda_sem_o_formato_iso_e_pega(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["titulares"]["datasets"]:
+            for f in d.get("fields") or []:
+                if f["name"] == "moedaRenda":
+                    f.pop("pattern", None)
+        self.assertIn("titulares: 'titulares.moedaRenda' = '$BRL' passaria fora do formato ISO", currency_rules_off(found))
 
     def test_cambio_comparado_com_nao_e_pego(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -688,7 +729,7 @@ class Mutations(unittest.TestCase):
     def test_recusa_de_pais_que_esquece_uma_letra_e_pega(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
         for r in found["titulares"]["rules"]:
-            if r["appliesTo"] == "titulares" and r["where"].get("equals"):
+            if r["appliesTo"] == "titulares" and r["where"].get("field") == "nomePais" and r["where"].get("equals"):
                 r["check"]["notStartsWith"]["values"].remove("z")
         self.assertEqual(["titulares: 'titulares' não recusa o país informado que a tabela não tem"],
                          domicile_rules_missing(found))

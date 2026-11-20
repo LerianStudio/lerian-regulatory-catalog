@@ -31,8 +31,9 @@
 # A RENDA (campos 18 e 19): da pessoa natural, a renda mensal bruta declarada; da
 # pessoa juridica, o faturamento anual declarado, como esta no cadastro (sem
 # dividir por 12). A data e a `reference_date` de cada um.
-# A moeda (`currency`) de cada um vai junto: o catalogo nao converte moeda, e um
-# valor em outra moeda que nao BRL recusa a geracao (regras moeda-da-renda e
+# A moeda (`currency`) de cada um vai junto: o catalogo nao converte moeda, e a
+# figura que o campo 18 imprime (renda da pessoa natural, faturamento da juridica)
+# em outra moeda que nao BRL recusa a geracao (regras moeda-da-renda e
 # moeda-do-faturamento). A IN nao fala de moeda no campo 18 (IN :154); o leiaute so
 # da exemplos em R$ (art. 3o, VIII, IN :73). A recusa e uma trava do catalogo, nao
 # uma exigencia escrita do Banco Central.
