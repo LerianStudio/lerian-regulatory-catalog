@@ -130,8 +130,8 @@ datasets:
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
                 nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
-                celular: first, outroTelefone: first, renda: first, dataRenda: first, faturamento: first,
-                dataFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
+                celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
+                dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
                 emailSecundario: first}
     fields:
       - name: contaId
@@ -146,7 +146,7 @@ datasets:
       - name: numeroConta
         type: string
         required: true
-        pattern: '^.{1,20}$'
+        pattern: '^[^\t\r\n]{1,20}$'
         description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
       - name: tipoConta
         type: string
@@ -215,7 +215,7 @@ datasets:
         type: decimal
         required: false
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Renda mensal bruta declarada pela pessoa natural, em reais (campo 18, IN :154).
+        description: Renda mensal bruta declarada pela pessoa natural (campo 18, IN :154), na moeda de moedaRenda (so BRL sai).
       - name: dataRenda
         type: date
         required: false
@@ -225,12 +225,24 @@ datasets:
         required: false
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
         description: >-
-          Faturamento anual bruto declarado pela pessoa juridica, em reais, como esta no cadastro (campo 18, IN :154). A
+          Faturamento anual bruto declarado pela pessoa juridica, na moeda de moedaFaturamento (so BRL sai), como esta no cadastro (campo 18, IN :154). A
           IN pede a renda declarada e nao fixa o periodo: o valor anual vai sem conversao.
       - name: dataFaturamento
         type: date
         required: false
         description: Data de referencia do faturamento declarado pela pessoa juridica (campo 19, IN :155).
+      - name: moedaRenda
+        type: string
+        required: false
+        description: >-
+          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
+          (regra moeda-da-renda).
+      - name: moedaFaturamento
+        type: string
+        required: false
+        description: >-
+          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
+          em BRL sai (regra moeda-do-faturamento).
       - name: dataInicio
         type: date
         required: false
@@ -278,7 +290,7 @@ datasets:
       - name: numeroConta
         type: string
         required: true
-        pattern: '^.{1,20}$'
+        pattern: '^[^\t\r\n]{1,20}$'
         description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
       - name: tipoConta
         type: string
@@ -323,8 +335,8 @@ datasets:
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
                 nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
-                celular: first, outroTelefone: first, renda: first, dataRenda: first, faturamento: first,
-                dataFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
+                celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
+                dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
                 emailSecundario: first}
     fields:
       - name: contaId
@@ -339,7 +351,7 @@ datasets:
       - name: numeroConta
         type: string
         required: true
-        pattern: '^.{1,20}$'
+        pattern: '^[^\t\r\n]{1,20}$'
         description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
       - name: tipoConta
         type: string
@@ -408,7 +420,7 @@ datasets:
         type: decimal
         required: false
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Renda mensal bruta declarada pela pessoa natural, em reais (campo 18, IN :154).
+        description: Renda mensal bruta declarada pela pessoa natural (campo 18, IN :154), na moeda de moedaRenda (so BRL sai).
       - name: dataRenda
         type: date
         required: false
@@ -418,12 +430,24 @@ datasets:
         required: false
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
         description: >-
-          Faturamento anual bruto declarado pela pessoa juridica, em reais, como esta no cadastro (campo 18, IN :154). A
+          Faturamento anual bruto declarado pela pessoa juridica, na moeda de moedaFaturamento (so BRL sai), como esta no cadastro (campo 18, IN :154). A
           IN pede a renda declarada e nao fixa o periodo: o valor anual vai sem conversao.
       - name: dataFaturamento
         type: date
         required: false
         description: Data de referencia do faturamento declarado pela pessoa juridica (campo 19, IN :155).
+      - name: moedaRenda
+        type: string
+        required: false
+        description: >-
+          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
+          (regra moeda-da-renda).
+      - name: moedaFaturamento
+        type: string
+        required: false
+        description: >-
+          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
+          em BRL sai (regra moeda-do-faturamento).
       - name: dataInicio
         type: date
         required: false
@@ -471,7 +495,7 @@ datasets:
       - name: numeroConta
         type: string
         required: true
-        pattern: '^.{1,20}$'
+        pattern: '^[^\t\r\n]{1,20}$'
         description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
       - name: tipoConta
         type: string
@@ -550,6 +574,62 @@ rules:
     message: >-
       O pais do endereco principal e um codigo que a tabela de paises da Receita nao tem, e o campo 15 pede o nome do
       pais (IN :151). Corrija o cadastro antes de gerar.
+
+  - id: moeda-da-renda
+    severity: error
+    appliesTo: titulares
+    where: {field: moedaRenda, notIn: ["BRL", ""]}
+    check:
+      notStartsWith: {field: moedaRenda, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                                "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                                "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                                "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+    message: >-
+      A renda declarada no cadastro esta numa moeda que nao e BRL, e o catalogo nao converte moeda: o campo 18 (IN
+      :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN :73). Declare a
+      renda em BRL no cadastro antes de gerar.
+
+  - id: moeda-do-faturamento
+    severity: error
+    appliesTo: titulares
+    where: {field: moedaFaturamento, notIn: ["BRL", ""]}
+    check:
+      notStartsWith: {field: moedaFaturamento, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                                "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                                "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                                "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+    message: >-
+      O faturamento declarado no cadastro esta numa moeda que nao e BRL, e o catalogo nao converte moeda: o campo 18 (IN
+      :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN :73). Declare o
+      faturamento em BRL no cadastro antes de gerar.
+
+  - id: moeda-da-renda-contraparte
+    severity: error
+    appliesTo: titulares_contraparte
+    where: {field: moedaRenda, notIn: ["BRL", ""]}
+    check:
+      notStartsWith: {field: moedaRenda, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                                "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                                "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                                "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+    message: >-
+      A renda declarada no cadastro esta numa moeda que nao e BRL, e o catalogo nao converte moeda: o campo 18 (IN
+      :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN :73). Declare a
+      renda em BRL no cadastro antes de gerar.
+
+  - id: moeda-do-faturamento-contraparte
+    severity: error
+    appliesTo: titulares_contraparte
+    where: {field: moedaFaturamento, notIn: ["BRL", ""]}
+    check:
+      notStartsWith: {field: moedaFaturamento, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                                "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                                "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                                "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+    message: >-
+      O faturamento declarado no cadastro esta numa moeda que nao e BRL, e o catalogo nao converte moeda: o campo 18 (IN
+      :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN :73). Declare o
+      faturamento em BRL no cadastro antes de gerar.
 
 knownGaps:
   - id: so-titular
