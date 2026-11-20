@@ -102,5 +102,31 @@
       "line": 5,
       "field": 13
     }
+  },
+  {
+    "name": "quebra de linha (LF) no nome parte o registro",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "|replace:cr|replace:lf }}",
+    "new": "|replace:cr }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 1,
+      "field": 9
+    }
+  },
+  {
+    "name": "retorno de carro (CR) no nome fica no registro",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "|replace:cr|replace:lf }}",
+    "new": "|replace:lf }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 2,
+      "field": 9
+    }
   }
 ]
