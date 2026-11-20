@@ -76,6 +76,7 @@ parameters:
     type: date
     closed: true
     required: true
+    notBefore: inicio
     description: Ultimo dia do afastamento do sigilo.
 
 filing:
