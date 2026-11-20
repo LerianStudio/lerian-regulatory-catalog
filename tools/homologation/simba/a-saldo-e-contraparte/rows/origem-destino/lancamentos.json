@@ -559,8 +559,7 @@
     "fluxo": "CASH_OUT",
     "direcao": "OUT",
     "agregado": "A29",
-    "saldoApos": "0.00",
-    "e2e": "E29"
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o30",
@@ -581,8 +580,7 @@
     "fluxo": "CASH_OUT",
     "direcao": "OUT",
     "agregado": "A30",
-    "saldoApos": "0.00",
-    "e2e": "E30"
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o31",
@@ -603,8 +601,7 @@
     "fluxo": "CASH_OUT",
     "direcao": "OUT",
     "agregado": "A31",
-    "saldoApos": "0.00",
-    "e2e": "E31"
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o32",
@@ -621,12 +618,28 @@
     "natureza": "D",
     "naturezaOposta": "C",
     "tipoOperacao": "DEBIT",
-    "rail": "PIX",
-    "fluxo": "CASH_OUT",
-    "direcao": "OUT",
-    "agregado": "A32",
     "saldoApos": "0.00",
-    "e2e": "E32"
+    "e2eEnvio": "E32",
+    "iniciacao": "I32"
+  },
+  {
+    "operacaoId": "o46",
+    "transacaoId": "t32",
+    "contaId": "c1",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "dataLancamento": "2026-12-04T13:00:00Z",
+    "horaLancamento": "2026-12-04T13:00:00Z",
+    "descricao": "Tarifa",
+    "descricaoTransacao": "Transacao exemplo",
+    "valor": "1.00",
+    "natureza": "D",
+    "naturezaOposta": "C",
+    "tipoOperacao": "DEBIT",
+    "saldoApos": "0.00",
+    "e2eEnvio": "E32",
+    "iniciacao": "I32"
   },
   {
     "operacaoId": "o33",

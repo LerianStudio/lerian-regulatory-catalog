@@ -7,8 +7,7 @@
     "documento": "AB.12C.D34/0001-55",
     "nome": "Pagadora Exemplo Ltda",
     "comentario": "pagamento exemplo",
-    "txid": "",
-    "e2e": "E00000000202612021300EXEMPLO0001",
+    "txid": "QRLERIANRECEBIDO2026120201",
     "tipoConta": "1",
     "tipoContaInformado": "CACC"
   },
@@ -20,8 +19,7 @@
     "documento": "AB.12C.D34/0001-55",
     "nome": "Pagadora Exemplo Ltda",
     "comentario": "pagamento exemplo",
-    "txid": "",
-    "e2e": "E00000000202612021300EXEMPLO0016",
+    "txid": "****",
     "tipoConta": "TRAN",
     "tipoContaInformado": "TRAN"
   },
@@ -34,7 +32,6 @@
     "nome": "Pagadora Exemplo Ltda",
     "comentario": "pagamento exemplo",
     "txid": "",
-    "e2e": "E00000000202612021300EXEMPLO0017",
     "tipoConta": "OTHR",
     "tipoContaInformado": "OTHR"
   },
@@ -47,7 +44,6 @@
     "nome": "Pagadora Exemplo Ltda",
     "comentario": "pagamento exemplo",
     "txid": "",
-    "e2e": "E00000000202612021300EXEMPLO0018",
     "tipoConta": "-",
     "tipoContaInformado": "CC"
   }

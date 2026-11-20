@@ -35,7 +35,7 @@ metadata:
   summary: >-
     Lancamentos das contas investigadas no periodo do afastamento do sigilo, com valor,
     natureza, saldo apos o lancamento e o codigo do tipo de lancamento do Anexo II.
-  version: 1.0.0
+  version: 1.0.1
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -135,7 +135,7 @@ datasets:
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
                 valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, chaveSaldo: first, bloqueadoApos: first,
                 chequeEspecialApos: first, rail: first, fluxo: first, direcao: first,
-                agregado: first, e2e: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
+                agregado: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
                 iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
     fields:
       - name: operacaoId
@@ -245,11 +245,6 @@ datasets:
         type: string
         required: false
         description: Id do registro do plugin TED ou Pix JD que a transacao liquida. Liga a contraparte do ORIGEM-DESTINO.
-      - name: e2e
-        type: string
-        required: false
-        pattern: '^[^\t\r\n]*$'
-        description: EndToEndId gravado pelo plugin TED ou Pix JD.
       - name: tipoPagamento
         type: string
         required: false
@@ -311,6 +306,81 @@ datasets:
         required: true
         description: A operacao de tarifa. Nao vai ao arquivo.
 
+  # O TxId do Pix (campo 26) pela linha do plugin que liquidou o Pix, a mesma que o
+  # ORIGEM-DESTINO le (campo 28): um conjunto por plugin e sentido. A referencia e o E2E
+  # (Pix lerian) ou o id da linha no plugin (Pix JD: o aggregateId da metadata).
+  - name: trilho_pix_lerian_envios
+    description: Os Pix enviados pelo Pix lerian.
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {txid: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O E2E do Pix. Nao vai ao arquivo.
+      - name: txid
+        type: string
+        required: false
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: TxId do Pix (TransactionIdentification, campo 26, IN :195). Sem ele, o campo sai em branco.
+
+  - name: trilho_pix_lerian_recebimentos
+    description: Os Pix recebidos pelo Pix lerian.
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {txid: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O E2E do Pix. Nao vai ao arquivo.
+      - name: txid
+        type: string
+        required: false
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: TxId do Pix (TransactionIdentification, campo 26, IN :195). Sem ele, o campo sai em branco.
+
+  - name: trilho_pix_jd_envios
+    description: Os Pix enviados pelo Pix JD.
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {txid: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O id da linha no Pix JD. Nao vai ao arquivo.
+      - name: txid
+        type: string
+        required: false
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: TxId do Pix (TransactionIdentification, campo 26, IN :195). Sem ele, o campo sai em branco.
+
+  - name: trilho_pix_jd_recebimentos
+    description: Os Pix recebidos pelo Pix JD.
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {txid: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O id da linha no Pix JD. Nao vai ao arquivo.
+      - name: txid
+        type: string
+        required: false
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: TxId do Pix (TransactionIdentification, campo 26, IN :195). Sem ele, o campo sai em branco.
+
 knownGaps:
   - id: saldo-do-midaz
     description: >-
@@ -351,10 +421,8 @@ knownGaps:
   - id: chave-e-txid-pix
     description: >-
       Os campos 24 e 25 (chave Pix) saem em branco: a chave nao esta na metadata da transacao. O campo 26 sai com o
-      EndToEndId gravado na metadata; o txid de QR Code so aparece no ORIGEM-DESTINO, que le o plugin. A IN descreve
-      os dois campos (EXTRATO 26, ORIGEM-DESTINO 28) do mesmo jeito, e o mesmo Pix por QR Code sai com valores
-      diferentes nos dois. No Pix JD de chave digitada, a metadata fica sem o EndToEndId: o campo 26 sai em branco, e
-      o ORIGEM-DESTINO traz o do plugin.
+      TxId que o plugin grava, o mesmo do ORIGEM-DESTINO 28, e em branco no Pix sem TxId (chave ou manual) e no Pix
+      enviado pelo Pix JD, que repassa o TxId ao SPI sem guarda-lo; o ORIGEM-DESTINO diz o motivo no campo 18.
   - id: instante-em-utc
     description: >-
       A hora (campo 23) sai do instante do lancamento como o motor o entrega. Instante que nao chega em UTC recusa a

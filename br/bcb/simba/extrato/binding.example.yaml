@@ -31,7 +31,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.extrato
-contractVersion: 1.0.0
+contractVersion: 1.0.1
 
 queries:
 
@@ -167,7 +167,7 @@ queries:
     select: [account_id, banking_details.account, numero_agencia, tipo_conta]
 
   # A metadata que os plugins gravam na transacao do Midaz (Mongo do Midaz, colecao
-  # `transaction`): rail, flow, direction, aggregateId e endToEndId do contrato de
+  # `transaction`): rail, flow, direction e aggregateId do contrato de
   # correlacao (TED e Pix JD); payment_type, initiation_type e os E2E do Pix lerian.
   - name: metadados_transacao
     description: A metadata de cada transacao dos lancamentos do caso.
@@ -176,7 +176,7 @@ queries:
     filters:
       - {field: entity_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
       - {field: deleted_at, operator: isNull}
-    select: [entity_id, metadata.rail, metadata.flow, metadata.direction, metadata.aggregateId, metadata.endToEndId, metadata.payment_type, metadata.initiation_type, metadata.end_to_end_id, metadata.initiation_id, metadata.inbound_end_to_end_id, metadata.refund_id, metadata.original_end_to_end_id]
+    select: [entity_id, metadata.rail, metadata.flow, metadata.direction, metadata.aggregateId, metadata.payment_type, metadata.initiation_type, metadata.end_to_end_id, metadata.initiation_id, metadata.inbound_end_to_end_id, metadata.refund_id, metadata.original_end_to_end_id]
 
   # A perna de tarifa: o motor de tarifas do Midaz grava feeLeg = "true" na metadata
   # da operacao que ele criou (colecao `operation`).
@@ -200,6 +200,53 @@ queries:
       - {field: parent_transaction_id, operator: notNull}
       - {field: deleted_at, operator: isNull}
     select: [id]
+
+  # O TxId do Pix (campo 26, IN :195) esta so no plugin que liquidou o Pix, na mesma linha
+  # que o ORIGEM-DESTINO le para a contraparte: tx_id no Pix lerian, conciliation_id no Pix
+  # JD. Mesmas consultas do ORIGEM-DESTINO, so com a referencia e o TxId. Quem nao usa um
+  # plugin apaga as consultas dele e declara vazio cada conjunto trilho_* dele com
+  # `emptyReason` (apagado, o conjunto fica pendente e o rascunho nao pode ser aprovado).
+  - name: pix_lerian_envios_txid
+    description: Pix enviados pelo Pix lerian, com o TxId.
+    dataSource: pix_lerian
+    table: transfers
+    filters:
+      - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.end_to_end_id}]}
+      - {field: direction, operator: eq, values: ["OUTBOUND"]}
+    select: [end_to_end_id, tx_id]
+
+  - name: pix_lerian_recebimentos_txid
+    description: Pix recebidos pelo Pix lerian, com o TxId.
+    dataSource: pix_lerian
+    table: transfers
+    filters:
+      - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.inbound_end_to_end_id}]}
+      - {field: direction, operator: eq, values: ["INBOUND"]}
+    select: [end_to_end_id, tx_id]
+
+  # Pix JD: flow 2 e o envio (CASH_OUT), flow 1 o recebimento (CASH_IN); a linha de
+  # devolucao (is_refund) fica fora. O plugin so grava o TxId no recebimento.
+  - name: pix_jd_envios_txid
+    description: Pix enviados pelo Pix JD, com o TxId.
+    dataSource: pix_jd
+    table: transaction
+    filters:
+      - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
+      - {field: flow, operator: eq, values: ["2"]}
+      - {field: is_refund, operator: eq, values: ["false"]}
+      - {field: deleted_at, operator: isNull}
+    select: [id, conciliation_id]
+
+  - name: pix_jd_recebimentos_txid
+    description: Pix recebidos pelo Pix JD, com o TxId.
+    dataSource: pix_jd
+    table: transaction
+    filters:
+      - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
+      - {field: flow, operator: eq, values: ["1"]}
+      - {field: is_refund, operator: eq, values: ["false"]}
+      - {field: deleted_at, operator: isNull}
+    select: [id, conciliation_id]
 
 datasets:
 
@@ -248,7 +295,6 @@ datasets:
       fluxo: {from: query, column: metadata.flow}
       direcao: {from: query, column: metadata.direction}
       agregado: {from: query, column: metadata.aggregateId}
-      e2e: {from: query, column: metadata.endToEndId}
       tipoPagamento: {from: query, column: metadata.payment_type}
       tipoIniciacao: {from: query, column: metadata.initiation_type}
       e2eEnvio: {from: query, column: metadata.end_to_end_id}
@@ -268,5 +314,33 @@ datasets:
       query: taxas_lancamento
     fields:
       operacaoId: {from: query, column: entity_id}
+
+  trilho_pix_lerian_envios:
+    from:
+      query: pix_lerian_envios_txid
+    fields:
+      referencia: {from: query, column: end_to_end_id}
+      txid: {from: query, column: tx_id}
+
+  trilho_pix_lerian_recebimentos:
+    from:
+      query: pix_lerian_recebimentos_txid
+    fields:
+      referencia: {from: query, column: end_to_end_id}
+      txid: {from: query, column: tx_id}
+
+  trilho_pix_jd_envios:
+    from:
+      query: pix_jd_envios_txid
+    fields:
+      referencia: {from: query, column: id}
+      txid: {from: query, column: conciliation_id}
+
+  trilho_pix_jd_recebimentos:
+    from:
+      query: pix_jd_recebimentos_txid
+    fields:
+      referencia: {from: query, column: id}
+      txid: {from: query, column: conciliation_id}
 
 manualOverrides: []

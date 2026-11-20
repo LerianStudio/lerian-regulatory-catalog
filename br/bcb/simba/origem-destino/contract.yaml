@@ -32,7 +32,7 @@ metadata:
   summary: >-
     Origem e destino dos recursos de cada lancamento do EXTRATO: a contraparte pelo plugin
     Pix ou TED da transacao, pela outra perna interna, ou a propria instituicao na tarifa.
-  version: 1.0.0
+  version: 1.0.1
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -126,7 +126,7 @@ datasets:
       columns: {contaId: first, numeroAgencia: first, numeroConta: first, tipoConta: first,
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
                 valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, rail: first, fluxo: first, direcao: first,
-                agregado: first, e2e: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
+                agregado: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
                 iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
     fields:
       - name: operacaoId
@@ -218,10 +218,6 @@ datasets:
         type: string
         required: false
         description: Id do registro do plugin TED ou Pix JD que a transacao liquida. Liga a contraparte do ORIGEM-DESTINO.
-      - name: e2e
-        type: string
-        required: false
-        description: EndToEndId gravado pelo plugin TED ou Pix JD.
       - name: tipoPagamento
         type: string
         required: false
@@ -363,7 +359,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first, tipoContaInformado: first}
+      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -404,11 +400,10 @@ datasets:
       - name: txid
         type: string
         required: false
-        description: txid do Pix por QR Code (campo 28, IN :229). Sem ele, sai o E2E.
-      - name: e2e
-        type: string
-        required: false
-        description: EndToEndId do Pix (campo 28 quando nao ha txid).
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: >-
+          TxId do Pix (TransactionIdentification, campo 28, IN :229), o mesmo do EXTRATO 26. Sem ele, o campo sai em
+          branco e o campo 18 diz por que.
       - name: tipoConta
         type: string
         required: true
@@ -428,7 +423,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first, tipoContaInformado: first}
+      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -469,11 +464,10 @@ datasets:
       - name: txid
         type: string
         required: false
-        description: txid do Pix por QR Code (campo 28, IN :229). Sem ele, sai o E2E.
-      - name: e2e
-        type: string
-        required: false
-        description: EndToEndId do Pix (campo 28 quando nao ha txid).
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: >-
+          TxId do Pix (TransactionIdentification, campo 28, IN :229), o mesmo do EXTRATO 26. Sem ele, o campo sai em
+          branco e o campo 18 diz por que.
       - name: tipoConta
         type: string
         required: true
@@ -493,7 +487,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first}
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first}
     fields:
       - name: referencia
         type: string
@@ -540,11 +534,10 @@ datasets:
       - name: txid
         type: string
         required: false
-        description: txid do Pix por QR Code (campo 28, IN :229). Sem ele, sai o E2E.
-      - name: e2e
-        type: string
-        required: false
-        description: EndToEndId do Pix (campo 28 quando nao ha txid).
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: >-
+          TxId do Pix (TransactionIdentification, campo 28, IN :229), o mesmo do EXTRATO 26. Sem ele, o campo sai em
+          branco e o campo 18 diz por que.
       - name: tipoConta
         type: string
         required: true
@@ -560,7 +553,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, e2e: first, tipoConta: first}
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first}
     fields:
       - name: referencia
         type: string
@@ -607,11 +600,10 @@ datasets:
       - name: txid
         type: string
         required: false
-        description: txid do Pix por QR Code (campo 28, IN :229). Sem ele, sai o E2E.
-      - name: e2e
-        type: string
-        required: false
-        description: EndToEndId do Pix (campo 28 quando nao ha txid).
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: >-
+          TxId do Pix (TransactionIdentification, campo 28, IN :229), o mesmo do EXTRATO 26. Sem ele, o campo sai em
+          branco e o campo 18 diz por que.
       - name: tipoConta
         type: string
         required: true

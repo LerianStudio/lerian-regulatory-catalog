@@ -1,14 +1,13 @@
 [
   {
-    "referencia": "A32",
+    "referencia": "E32",
     "ispb": "60746948",
     "agencia": "77",
     "conta": "8888",
     "documento": "12345678000190",
     "nome": "Recebedor Exemplo Ltda",
     "comentario": "",
-    "txid": "",
-    "e2e": "E32",
+    "txid": "QRLERIANENVIO20261206A32",
     "tipoConta": "1",
     "tipoContaInformado": "CACC"
   }

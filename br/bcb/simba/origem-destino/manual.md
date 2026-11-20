@@ -50,7 +50,7 @@ Na ordem, a primeira que existe:
    cliente, e o campo 18 diz isso: `tarifa da propria instituicao; sem conta de contraparte` (IN art. 2o, § 1o).
 2. **O plugin que liquidou a transacao**, lido no banco dele:
    - Pix lerian: a origem do Pix recebido e o destino do Pix enviado (banco, agencia, conta,
-     CPF/CNPJ, nome, mensagem e txid; sem txid, o EndToEndId);
+     CPF/CNPJ, nome, mensagem e TxId);
    - Pix JD: o pagador do Pix recebido e o recebedor do Pix enviado (idem; a conta sai com o
      digito);
    - tipo de conta (campo 8, IN :209): no Pix lerian, pelo dominio do SPI (catalogo de
@@ -107,7 +107,10 @@ Na tarifa e na contraparte interna, o CNPJ da propria instituicao.
 2. **Codigo Compe** (`compe`) e **nome no Unicad** (`nomeUnicad`) da instituicao.
 3. **Fontes de dados**: `midaz_metadata` (o Mongo da metadata do Midaz) e uma fonte por plugin
    usado: `pix_lerian`, `pix_jd`, `bank_transfer`. Quem nao usa um plugin apaga as consultas
-   dele e o conjunto `trilho_*` correspondente do binding.
+   dele e declara vazio cada conjunto `trilho_*` dele, com o motivo:
+   `trilho_pix_jd_envios: {emptyReason: "a instituicao nao usa o Pix JD"}`. Nao apague o
+   conjunto: sem origem, os campos obrigatorios dele ficam pendentes e o rascunho nao pode
+   ser aprovado.
 
 ## Campos em branco, e por que
 
@@ -123,6 +126,17 @@ Na tarifa e na contraparte interna, o CNPJ da propria instituicao.
 - 14 a 16 e 20 a 24 (boleto e cheque): nao existem como produto.
 - 25 e 26 (chave Pix da contraparte): a chave fica em outra tabela do Pix lerian, e o tipo
   da chave no Pix JD e um codigo do plugin sem de-para definido.
+- 28 (TxId do Pix, `TransactionIdentification <TxId>`, IN :229): o TxId que o plugin grava, o
+  mesmo do campo 26 do EXTRATO; nunca o EndToEndId, que e outro identificador. Sem TxId, o
+  campo sai em branco e o campo 18 da linha do Pix diz por que (IN art. 2o, § 1o), depois do
+  motivo do tipo de conta e antes do motivo do CNPJ, separados por `; `:
+  - `TxId nao informado: Pix sem identificador de conciliacao`: o Pix nao tem TxId (Pix por
+    chave ou manual, ou QR estatico sem TxId, que traz `***` no lugar dele: Manual de Padroes
+    para Iniciacao do Pix, 2.6.2, nota 25), ou seja, inexistencia da informacao. Vale para o
+    Pix recebido nos dois plugins e para o Pix enviado pelo Pix lerian;
+  - `TxId nao informado: o plugin de Pix nao grava o TxId do Pix enviado`: Pix enviado pelo Pix
+    JD, inclusive o pagamento de QR dinamico, que tem TxId: o plugin o repassa ao SPI e nao o
+    guarda, ou seja, inviabilidade tecnica.
 - 27 e 28 fora do Pix.
 
 ## Investigado sem conta
