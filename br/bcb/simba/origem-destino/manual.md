@@ -196,7 +196,11 @@ o contrato na carga.
   saldo da mesma conta): a propria conta pode sair como contraparte interna.
 - **Texto sem acento**: nomes e mensagem passam pela conversao para ASCII do template, e TAB,
   CR e LF viram espaco: uma quebra de linha no cadastro nao parte o registro. O numero da
-  conta nao passa pela conversao: com TAB, CR ou LF ele recusa a geracao.
+  conta nao passa pela conversao: com TAB, CR ou LF ele recusa a geracao. Nos nomes, um
+  caractere fora do ASCII que a conversao nao cobre (por exemplo `°`, `’`, `–`, `ø`) recusa a
+  geracao, porque o arquivo e ASCII (IN art. 3o). A mensagem do Pix (campo 27) e texto livre:
+  ate o filtro de transliteracao do Reporter, ela pode levar ao arquivo um caractere fora do
+  ASCII que a conversao nao cobre (um emoji, por exemplo), em vez de recusar o arquivo inteiro.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa macros. A geracao nao.
 
