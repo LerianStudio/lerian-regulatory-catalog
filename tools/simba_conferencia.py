@@ -17,6 +17,10 @@ ERRO (corrigir ou gerar de novo antes de aprovar):
     numeração: gere os dois de novo);
   * conta do EXTRATO ou do TITULARES que não está no CONTAS; agência do CONTAS que
     não está no AGENCIAS;
+  * conta do EXTRATO que o CONTAS não dá como investigada com movimento (campo 7 = 1),
+    ou conta de campo 7 = 1 sem linha no EXTRATO: o EXTRATO traz só os lançamentos das
+    contas investigadas (IN art. 2º, IV), e o CONTAS marca o movimento pelos mesmos
+    documentos e período (um arquivo gerado com outros parâmetros);
   * arquivo que falta, ou EXTRATO e ORIGEM-DESTINO sem linha nenhuma, quando alguma
     conta do CONTAS teve lançamento no período (campo 7 = 1).
 
@@ -216,6 +220,27 @@ def check_membership(files: dict[str, list[list[str]]], report: Report) -> None:
             report.error(f"{name}: a conta {key[1]} da agência {key[0]} não está no CONTAS")
     for branch in sorted({field(r, 2) for r in files["CONTAS"]} - branches):
         report.error(f"CONTAS: a agência {branch} não está no AGENCIAS")
+    # O TITULARES traz também os titulares das contas de contraparte (campo 7 = 3); o
+    # EXTRATO, só as contas investigadas que tiveram lançamento.
+    moved = moved_accounts(files["CONTAS"])
+    statement = {(field(r, 3), field(r, 4)) for r in files["EXTRATO"]}
+    for key in sorted((statement & accounts) - moved):
+        report.error(f"EXTRATO: a conta {key[1]} da agência {key[0]} tem lançamento, e o CONTAS não a dá como "
+                     "investigada com movimento (campo 7 = 1); gere os cinco arquivos com os mesmos parâmetros")
+    if files["EXTRATO"]:
+        for key in sorted(unstated_accounts(moved, statement)):
+            report.error(f"CONTAS: a conta {key[1]} da agência {key[0]} teve lançamento no período (campo 7 = 1) e "
+                         "não tem linha no EXTRATO; gere os cinco arquivos com os mesmos parâmetros")
+
+
+def moved_accounts(contas: list[list[str]]) -> set[tuple[str, str]]:
+    """(agência, conta) das contas investigadas com lançamento no período (CONTAS campo 7 = 1)."""
+    return {(field(r, 2), field(r, 3)) for r in contas if field(r, 7) == MOVED}
+
+
+def unstated_accounts(moved: set[tuple[str, str]], statement: set[tuple[str, str]]) -> set[tuple[str, str]]:
+    """As contas de campo 7 = 1 que o EXTRATO não traz."""
+    return moved - statement
 
 
 def check_balances(extrato: list[list[str]], contas: list[list[str]], drafts: dict[str, dict] | None,

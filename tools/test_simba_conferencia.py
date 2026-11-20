@@ -231,6 +231,19 @@ class Conferencia(unittest.TestCase):
         files["EXTRATO"][1] = lancamento("2", "0001", "999999", "135", "1000", "D", "4000", "C")
         self.assert_says(self.run_case(files).errors, "EXTRATO: a conta 999999 da agência 0001 não está no CONTAS")
 
+    def test_conta_do_extrato_sem_movimento_no_contas_e_erro(self) -> None:
+        files = case()
+        files["EXTRATO"].append(lancamento("3", "0001", "654321", "135", "100", "D", "400", "C"))
+        files["ORIGEM_DESTINO"].append(od("3", "3", "100"))
+        self.assert_says(self.run_case(files).errors, "EXTRATO: a conta 654321 da agência 0001 tem lançamento, e o "
+                                                      "CONTAS não a dá como investigada com movimento")
+
+    def test_conta_movimentada_sem_linha_no_extrato_e_erro(self) -> None:
+        files = case()
+        files["CONTAS"][1] = conta("0001", "654321", "1", "500", "500")
+        self.assert_says(self.run_case(files).errors, "CONTAS: a conta 654321 da agência 0001 teve lançamento no "
+                                                      "período (campo 7 = 1) e não tem linha no EXTRATO")
+
     def test_conta_do_titulares_fora_do_contas_e_erro(self) -> None:
         files = case()
         files["TITULARES"].append(titular("0001", "888888"))
@@ -616,6 +629,16 @@ class Mutations(unittest.TestCase):
                 unittest.defaultTestLoader.loadTestsFromName(
                     "test_cada_parcela_de_cheque_especial_tem_o_aviso", GabaritoChequeEspecial))
         self.assertEqual(1, len(result.failures))
+
+    def test_aceitar_extrato_de_conta_sem_movimento_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "moved_accounts", lambda contas: {(conf.field(r, 2), conf.field(r, 3)) for r in contas},
+            "test_conta_do_extrato_sem_movimento_no_contas_e_erro"))
+
+    def test_aceitar_conta_movimentada_sem_extrato_reprova_o_teste(self) -> None:
+        self.assertEqual(1, self.failures_with(
+            "unstated_accounts", lambda moved, statement: set(),
+            "test_conta_movimentada_sem_linha_no_extrato_e_erro"))
 
     def test_rebaixar_o_bloqueio_a_aviso_reprova_o_teste(self) -> None:
         self.assertEqual(1, self.failures_with(
