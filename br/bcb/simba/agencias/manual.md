@@ -26,6 +26,8 @@ Os mesmos nos cinco documentos SIMBA:
 
 O `fim` tem de ser um dia que ja acabou no calendario do Reporter: a geracao le um periodo
 fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos.
+O `fim` tambem nao pode ser anterior ao `inicio`: um periodo invertido e recusado ao gerar,
+em vez de sair um arquivo sem lancamento nenhum.
 
 Duas geracoes do mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho
 anterior, mesmo com documentos ou periodo corrigidos.
@@ -125,7 +127,9 @@ requisicao.
   contas.
 - **Texto sem acento**: todo texto passa pela conversao para ASCII do template (acentos,
   cedilha, til, ordinais) e TAB, CR e LF dentro de um valor viram espaco: uma quebra de
-  linha no cadastro nao parte o registro.
+  linha no cadastro nao parte o registro. Um caractere fora do ASCII que a conversao nao cobre (por exemplo `°`, `’`, `–`, `ø`)
+  recusa a geracao, porque o arquivo e ASCII (IN art. 3o): a recusa mostra o campo e o valor,
+  e o cadastro tem de ser corrigido.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa uma macro. A geracao nao.
 - **Uma instituicao por arquivo**: um documento entregue em base individual nao soma
