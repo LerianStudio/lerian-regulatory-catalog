@@ -43,7 +43,9 @@ Na ordem, a primeira que existe:
 
 1. **Tarifa** (a operacao que o motor de tarifas do Midaz marcou com `feeLeg`, e a cobranca
    ou o reembolso de divida de tarifa, operacoes `FEE_SETTLEMENT` e `FEE_REFUND`, que o Midaz
-   grava sem `feeLeg`): a propria instituicao (Compe, CNPJ, nome no Unicad, pessoa juridica).
+   grava sem `feeLeg`): a propria instituicao (Compe, CNPJ, nome no Unicad, pessoa juridica). Conta
+   e tipo de conta (campos 7 e 8) ficam em branco, porque a contraparte nao e uma conta de
+   cliente, e o campo 18 diz isso: `tarifa da propria instituicao; sem conta de contraparte` (IN art. 2o, § 1o).
 2. **O plugin que liquidou a transacao**, lido no banco dele:
    - Pix lerian: a origem do Pix recebido e o destino do Pix enviado (banco, agencia, conta,
      CPF/CNPJ, nome, mensagem e txid; sem txid, o EndToEndId);
