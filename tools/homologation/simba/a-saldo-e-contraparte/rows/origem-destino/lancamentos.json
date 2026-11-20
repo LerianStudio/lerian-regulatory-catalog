@@ -559,8 +559,7 @@
     "fluxo": "CASH_OUT",
     "direcao": "OUT",
     "agregado": "A29",
-    "saldoApos": "0.00",
-    "e2e": "E29"
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o30",
@@ -581,8 +580,7 @@
     "fluxo": "CASH_OUT",
     "direcao": "OUT",
     "agregado": "A30",
-    "saldoApos": "0.00",
-    "e2e": "E30"
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o31",
@@ -603,8 +601,7 @@
     "fluxo": "CASH_OUT",
     "direcao": "OUT",
     "agregado": "A31",
-    "saldoApos": "0.00",
-    "e2e": "E31"
+    "saldoApos": "0.00"
   },
   {
     "operacaoId": "o32",

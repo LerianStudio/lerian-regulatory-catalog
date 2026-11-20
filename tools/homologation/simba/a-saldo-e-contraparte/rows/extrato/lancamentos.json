@@ -615,8 +615,7 @@
     "agregado": "A29",
     "saldoApos": "0.00",
     "bloqueadoApos": "0.00",
-    "chequeEspecialApos": "0.004",
-    "e2e": "E29"
+    "chequeEspecialApos": "0.004"
   },
   {
     "operacaoId": "o30",
@@ -639,8 +638,7 @@
     "agregado": "A30",
     "saldoApos": "0.00",
     "bloqueadoApos": "0.00",
-    "chequeEspecialApos": "0.004",
-    "e2e": "E30"
+    "chequeEspecialApos": "0.004"
   },
   {
     "operacaoId": "o31",
@@ -663,8 +661,7 @@
     "agregado": "A31",
     "saldoApos": "0.00",
     "bloqueadoApos": "0.00",
-    "chequeEspecialApos": "0.004",
-    "e2e": "E31"
+    "chequeEspecialApos": "0.004"
   },
   {
     "operacaoId": "o32",

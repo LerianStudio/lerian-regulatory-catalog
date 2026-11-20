@@ -521,14 +521,14 @@ def reversed_period_allowed(found: dict[str, dict]) -> list[str]:
 
 # Os identificadores da metadata (EndToEndId de envio e de recebimento) chegam crus ao template,
 # que liga por eles o lançamento ao trilho: a metadata do Midaz aceita TAB, CR e LF.
-RAW_METADATA_FIELDS = ("e2e", "e2eEnvio", "e2eRecebimento")
+RAW_METADATA_FIELDS = ("e2eEnvio", "e2eRecebimento")
 # Uma transação é uma sessão do EXTRATO (campo 27): o motor ordena cada conjunto pelo grão, e
 # só com a transação na frente as operações dela ficam juntas.
 ENTRY_GRAIN = ["transacaoId", "operacaoId"]
 
 
 def raw_metadata_unguarded(found: dict[str, dict]) -> list[str]:
-    """Os identificadores da metadata que o EXTRATO imprime sem um pattern que recuse TAB, CR e LF."""
+    """Os identificadores da metadata que o EXTRATO lê sem um pattern que recuse TAB, CR e LF."""
     import re
 
     fields = {f.get("name"): f for d in found.get("extrato", {}).get("datasets") or []

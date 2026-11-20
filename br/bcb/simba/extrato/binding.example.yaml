@@ -167,7 +167,7 @@ queries:
     select: [account_id, banking_details.account, numero_agencia, tipo_conta]
 
   # A metadata que os plugins gravam na transacao do Midaz (Mongo do Midaz, colecao
-  # `transaction`): rail, flow, direction, aggregateId e endToEndId do contrato de
+  # `transaction`): rail, flow, direction e aggregateId do contrato de
   # correlacao (TED e Pix JD); payment_type, initiation_type e os E2E do Pix lerian.
   - name: metadados_transacao
     description: A metadata de cada transacao dos lancamentos do caso.
@@ -176,7 +176,7 @@ queries:
     filters:
       - {field: entity_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
       - {field: deleted_at, operator: isNull}
-    select: [entity_id, metadata.rail, metadata.flow, metadata.direction, metadata.aggregateId, metadata.endToEndId, metadata.payment_type, metadata.initiation_type, metadata.end_to_end_id, metadata.initiation_id, metadata.inbound_end_to_end_id, metadata.refund_id, metadata.original_end_to_end_id]
+    select: [entity_id, metadata.rail, metadata.flow, metadata.direction, metadata.aggregateId, metadata.payment_type, metadata.initiation_type, metadata.end_to_end_id, metadata.initiation_id, metadata.inbound_end_to_end_id, metadata.refund_id, metadata.original_end_to_end_id]
 
   # A perna de tarifa: o motor de tarifas do Midaz grava feeLeg = "true" na metadata
   # da operacao que ele criou (colecao `operation`).
@@ -295,7 +295,6 @@ datasets:
       fluxo: {from: query, column: metadata.flow}
       direcao: {from: query, column: metadata.direction}
       agregado: {from: query, column: metadata.aggregateId}
-      e2e: {from: query, column: metadata.endToEndId}
       tipoPagamento: {from: query, column: metadata.payment_type}
       tipoIniciacao: {from: query, column: metadata.initiation_type}
       e2eEnvio: {from: query, column: metadata.end_to_end_id}
