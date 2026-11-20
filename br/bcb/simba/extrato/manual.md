@@ -22,6 +22,8 @@ mesmo `caso` sao a mesma entrega: a mais nova substitui o rascunho anterior.
 
 O `fim` tem de ser um dia que ja acabou no calendario do Reporter: a geracao le um periodo
 fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos.
+O `fim` tambem nao pode ser anterior ao `inicio`: um periodo invertido e recusado ao gerar,
+em vez de sair um arquivo sem lancamento nenhum.
 
 ## Quais lancamentos entram
 

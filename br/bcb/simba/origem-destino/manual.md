@@ -21,6 +21,8 @@ contas do investigado.
 
 O `fim` tem de ser um dia que ja acabou no calendario do Reporter: a geracao le um periodo
 fechado, e o lancamento gravado depois nao desloca a numeracao entre os arquivos.
+O `fim` tambem nao pode ser anterior ao `inicio`: um periodo invertido e recusado ao gerar,
+em vez de sair um arquivo sem lancamento nenhum.
 
 Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter restringe
 `organization.id` a organizacao dela; sem isso a leitura traz todas, e a geracao e recusada
