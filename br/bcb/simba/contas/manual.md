@@ -83,6 +83,11 @@ data).
 
 Sem data de encerramento, o campo 6 sai `31129999`, a sentinela da IN.
 
+A data de encerramento e lida como dia (`civilDate` no binding): o CRM a guarda como a
+meia-noite UTC do dia, e a API do CRM normaliza para essa meia-noite qualquer valor que
+receba, com ou sem hora ou fuso (`2026-06-30T00:00:00-03:00` vira o dia 30). Um valor gravado
+fora da API com hora diferente da meia-noite UTC recusa a geracao (RPT-0143).
+
 ## Investigado sem conta
 
 Quando nenhum documento da ordem tem conta na instituicao, nao ha arquivo a gerar: os
