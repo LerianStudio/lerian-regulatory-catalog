@@ -106,7 +106,12 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   campo 18 sai em branco. Residuo: um valor gravado sem moeda direto no banco, fora da API, sai
   como declarado, sem conferencia de moeda.
 - E-mail (campo 25): o principal e o secundario, separados por `;`.
-- Inicio e fim do vinculo (campos 20 e 21): abertura e encerramento da conta.
+- Inicio e fim do vinculo (campos 20 e 21): abertura e encerramento da conta. O encerramento
+  da conta e o inicio e o fim do vinculo das partes sao lidos como dia (`civilDate` no
+  binding): o CRM os guarda como a meia-noite UTC do dia, e a API do CRM normaliza para essa
+  meia-noite qualquer valor que receba, com ou sem hora ou fuso (`2026-06-30T00:00:00-03:00`
+  vira o dia 30). Um valor gravado fora da API com hora diferente da meia-noite UTC recusa a
+  geracao (RPT-0143).
 
 Nas partes relacionadas, o CRM guarda so documento, nome, papel e as datas de inicio e fim do
 vinculo. O tipo de pessoa da parte (campo 7) sai do tamanho do documento: 11 posicoes CPF
