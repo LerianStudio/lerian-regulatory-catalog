@@ -124,9 +124,8 @@ requisicao.
   transacoes. Nenhuma aplicacao Lerian registra isso; o arquivo leva so as agencias das
   contas.
 - **Texto sem acento**: todo texto passa pela conversao para ASCII do template (acentos,
-  cedilha, til, ordinais) e TAB dentro de um valor vira espaco. **Quebra de linha (CR ou LF)
-  dentro de um valor nao e retirada** e quebraria a linha do arquivo: confira nomes e
-  enderecos do cadastro antes de aprovar.
+  cedilha, til, ordinais) e TAB, CR e LF dentro de um valor viram espaco: uma quebra de
+  linha no cadastro nao parte o registro.
 - **Preview do template**: a pre-visualizacao de template do manager recusa este template,
   porque ele usa uma macro. A geracao nao.
 - **Uma instituicao por arquivo**: um documento entregue em base individual nao soma

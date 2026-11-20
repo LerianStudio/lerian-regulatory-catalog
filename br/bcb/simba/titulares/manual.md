@@ -174,8 +174,9 @@ requisicao.
 - **Numero da conta**: sai como o CRM o guarda (`banking_details.account`), ate 20 posicoes;
   confira que o valor cadastrado inclui o DV.
 - **Texto sem acento**: nomes, endereco, telefones e e-mails passam pela conversao para ASCII
-  do template, e TAB vira espaco. **Quebra de linha (CR ou LF) dentro de um valor nao e
-  retirada.**
+  do template, e TAB, CR e LF viram espaco: uma quebra de linha no cadastro nao parte o
+  registro. O numero da conta nao passa pela conversao: com TAB, CR ou LF ele recusa a
+  geracao.
 - **Pessoa investigada nas partes**: o campo 6 compara o documento da parte com cada
   elemento da lista `documentos` da ordem, que vem so com digitos. Vale igual nas contas de
   contraparte: um investigado que e procurador numa delas sai `1`.
