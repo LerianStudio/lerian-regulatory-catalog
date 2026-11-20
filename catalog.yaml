@@ -221,7 +221,7 @@ documents:
     document: EXTRATO
     family: simba
     title: SIMBA — Extrato
-    version: 1.0.0
+    version: 1.0.1
     status: draft
     periodicity: eventual
     appliesTo:
@@ -237,7 +237,7 @@ documents:
     document: ORIGEM-DESTINO
     family: simba
     title: SIMBA — Origem-Destino
-    version: 1.0.0
+    version: 1.0.1
     status: draft
     periodicity: eventual
     appliesTo:

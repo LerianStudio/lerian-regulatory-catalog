@@ -28,7 +28,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.origem-destino
-contractVersion: 1.0.0
+contractVersion: 1.0.1
 
 queries:
 
