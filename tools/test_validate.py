@@ -126,6 +126,18 @@ def fechado_generatable(bundle: dict) -> dict:
     return bundle
 
 
+def chained_filter(bundle: dict, **value) -> dict:
+    """HIER com `detalhado` filtrado pelos titulares que `por_titular` entrega.
+
+    O filtro encadeado: os valores do `in` são uma coluna de outra consulta do binding.
+    Sem argumentos é o caso válido; `value` troca chaves do valor de consulta.
+    """
+    source = {"query": "por_titular", "column": "titular", **value}
+    query(bundle[HIER]["binding"], "detalhado")["filters"] = [
+        {"field": "titular", "operator": "in", "values": [source]}]
+    return bundle
+
+
 class Mutation:
     """Uma quebra deliberada e a reprovação que ela deve provocar.
 
@@ -156,6 +168,28 @@ def _mutate_template(bundle: dict, doc: str, old: str, new: str) -> None:
     assert old in text, f"template de {doc} não contém {old!r}"
     bundle[doc]["template"] = text.replace(old, new, 1)
 
+
+def _ispb_block_without_guard() -> str:
+    """O trecho ISPB→COMPE gerado, com a guarda de ISPB vazio tirada à mão."""
+    import ispb_compe
+
+    block = ispb_compe.render_block("ispb", ispb_compe.read_codes())
+    guard = '{% if ispb == None or ispb == "" %}999{% else %}'
+    assert block.startswith(guard) and block.endswith("{% endif %}")
+    return "{# ISPB_COMPE_BLOCK: ispb #}" + block[len(guard):-len("{% endif %}")] + ispb_compe.END
+
+
+
+def _cnpj_reason_without_guard() -> str:
+    """O trecho do motivo do CNPJ em branco, com a guarda de ISPB vazio tirada à mão."""
+    import ispb_cnpj
+
+    reason = ispb_cnpj.render_reason("ispb", "observacao", ispb_cnpj.read_cnpjs())
+    guard = ('{% if ispb == None or ispb == "" %}{% if observacao %}; {% endif %}'
+             + ispb_cnpj.REASON + "{% else %}")
+    assert reason.startswith(guard) and reason.endswith("{% endif %}")
+    return ("{# ISPB_CNPJ_REASON: ispb observacao #}" + reason[len(guard):-len("{% endif %}")]
+            + ispb_cnpj.END_REASON)
 
 MUTATIONS: list[Mutation] = [
     # ---------------------------------------------------------------- template
@@ -191,6 +225,19 @@ MUTATIONS: list[Mutation] = [
         "filha alcançada pelo pai errado é seção que o render nunca popula",
         lambda b: _mutate_template(b, HIER, "for d in r.detalhes", "for d in t.detalhes"),
         "não resolve para nenhum conjunto",
+    ),
+    Mutation(
+        "template-campo-inexistente-numa-condicao",
+        "um campo posto numa condição é lido como o de um `{{ }}`: nome trocado ali não passa calado",
+        lambda b: _mutate_template(b, HIER, "|R|{{ r.codTitular }}|",
+                                   "|R|{% if r.campoFantasma %}{{ r.codTitular }}{% endif %}|"),
+        "template usa resumos.campoFantasma, que o contrato não declara",
+    ),
+    Mutation(
+        "template-campo-inexistente-num-argumento-de-macro",
+        "o campo passado a uma macro (`{{ ascii(r.x) }}`) é posicionado por ela; nome trocado ali não passa",
+        lambda b: _mutate_template(b, HIER, "{{ r.total }}", "{{ fmt(r.totalFantasma) }}"),
+        "template usa resumos.totalFantasma, que o contrato não declara",
     ),
 
     # ------------------------------------------------- separação de camadas
@@ -983,6 +1030,87 @@ MUTATIONS: list[Mutation] = [
         "uma chave que o motor não lê é regra que o curador acha que existe e não existe",
         lambda b: b[PLANO]["contract"]["filing"].update({"periodo": ["dataBase"]}),
         "que o motor não conhece",
+    ),
+    # ---------------------------------------------------------------- ISPB→COMPE
+    # ---------------------------------------------------------------- multiple no período
+    Mutation(
+        "periodo-nomeia-multiple",
+        "um parâmetro lista no período iria junto em cada relatório; o motor recusa",
+        lambda b: b[HIER]["contract"]["filing"].update({"period": ["dataBase", "titularesPedidos"]}),
+        "que é multiple",
+    ),
+    Mutation(
+        "periodo-derivado-com-multiple",
+        "sem filing.period, o período é todo parâmetro, a lista inclusive; o motor recusa",
+        lambda b: b[HIER]["contract"].pop("filing"),
+        "que é multiple",
+    ),
+    Mutation(
+        "ispb-compe-marca-sem-trecho",
+        "a marca sem o trecho gerado escreve o campo em branco",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + "{# ISPB_COMPE_BLOCK: ispb #}"}),
+        "não é o que tools/ispb_compe.py",
+    ),
+    Mutation(
+        "ispb-compe-marca-malformada",
+        "uma marca escrita sem o espaco nao e achada, e o trecho ao lado passaria sem conferencia",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + "{# ISPB_COMPE_BLOCK:ispb #}999"}),
+        "fora de uma marca bem escrita",
+    ),
+    Mutation(
+        "ispb-compe-sem-guarda",
+        "sem a guarda, o ISPB vazio é completado a 00000000 e sai como Banco do Brasil",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + _ispb_block_without_guard()}),
+        "não é o que tools/ispb_compe.py",
+    ),
+    Mutation(
+        "ispb-cnpj-marca-sem-trecho",
+        "a marca sem o trecho gerado escreve o campo 19 em branco",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + "{# ISPB_CNPJ_BLOCK: ispb #}"}),
+        "não é o que tools/ispb_cnpj.py",
+    ),
+    Mutation(
+        "ispb-cnpj-motivo-sem-trecho",
+        "a marca do motivo sem o trecho gerado deixa o campo 19 em branco sem dizer por quê",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"]
+                                   + "{# ISPB_CNPJ_REASON: ispb observacao #}{# /ISPB_CNPJ_REASON #}"}),
+        "não é o que tools/ispb_cnpj.py",
+    ),
+    Mutation(
+        "ispb-cnpj-marca-malformada",
+        "uma marca escrita sem o espaco nao e achada, e o trecho ao lado passaria sem conferencia",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + "{# ISPB_CNPJ_BLOCK:ispb #}00000000000191"}),
+        "fora de uma marca bem escrita",
+    ),
+    Mutation(
+        "ispb-cnpj-motivo-sem-guarda",
+        "sem a guarda, o ISPB vazio é completado a 00000000 e o motivo some, como se fosse o Banco do Brasil",
+        lambda b: b[PLANO].update({"template": b[PLANO]["template"] + _cnpj_reason_without_guard()}),
+        "não é o que tools/ispb_cnpj.py",
+    ),
+    Mutation(
+        "filing-approve-maiusculo",
+        "o motor só lê any ou newest; outra grafia recusa o contrato na carga",
+        lambda b: b[PLANO]["contract"]["filing"].update({"approve": "Newest"}),
+        "aceita ['any', 'newest']",
+    ),
+    Mutation(
+        "filing-approve-booleano",
+        "approve: true parece ligar a regra, e o motor o recusa",
+        lambda b: b[PLANO]["contract"]["filing"].update({"approve": True}),
+        "aceita ['any', 'newest']",
+    ),
+    Mutation(
+        "filing-approve-vazio",
+        "approve vazio não diz qual geração se aprova",
+        lambda b: b[PLANO]["contract"]["filing"].update({"approve": ""}),
+        "aceita ['any', 'newest']",
+    ),
+    Mutation(
+        "filing-allow-empty-texto",
+        "allowEmpty escrito como texto parece ligar o arquivo vazio, e o motor o recusa na carga",
+        lambda b: b[PLANO]["contract"]["filing"].update({"allowEmpty": "true"}),
+        "allowEmpty é 'true'; é true ou false",
     ),
     Mutation(
         "filing-period-vazio",
@@ -2321,6 +2449,250 @@ MUTATIONS: list[Mutation] = [
                    b[FECHADO]["binding"]["incompleteFields"].append("tipos")),
         "`incompleteFields` lista tipos",
     ),
+
+    # ------------------------------------------------- parâmetro múltiplo
+    Mutation(
+        "parametro-com-list-antigo",
+        "`list: true` saiu do formato; o motor não o lê e a lista viraria um valor só",
+        lambda b: (parameter(b[HIER]["contract"], "titularesPedidos").pop("multiple"),
+                   parameter(b[HIER]["contract"], "titularesPedidos").update({"list": True})),
+        "parâmetro 'titularesPedidos' declara list",
+    ),
+    Mutation(
+        "parametro-multiple-nao-booleano",
+        "`multiple: \"true\"` seria lido pelo motor com outra regra",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"multiple": "true"}),
+        "parâmetro 'titularesPedidos' tem multiple 'true'; é true ou false",
+    ),
+    Mutation(
+        "parametro-multiple-de-tipo-sem-lista",
+        "uma lista de datas não é o que o motor aceita como valor múltiplo",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"type": "date"}),
+        "parâmetro 'titularesPedidos' declara multiple e é do tipo 'date'",
+    ),
+    Mutation(
+        "parametro-multiple-com-default",
+        "uma lista não tem um valor padrão a assumir",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"default": "A"}),
+        "parâmetro 'titularesPedidos' declara multiple e default",
+    ),
+    Mutation(
+        "parametro-maxitems-sem-multiple",
+        "um limite de itens num parâmetro que não é lista não limita nada",
+        lambda b: parameter(b[PLANO]["contract"], "tipoRemessa").update({"maxItems": 10}),
+        "parâmetro 'tipoRemessa' declara maxItems sem multiple: true",
+    ),
+    Mutation(
+        "parametro-maxitems-fora-da-faixa",
+        "o motor aceita de 1 a 1000 valores numa lista",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"maxItems": 1001}),
+        "parâmetro 'titularesPedidos' tem maxItems 1001",
+    ),
+    Mutation(
+        "parametro-maxitems-booleano",
+        "`maxItems: true` é bool, e bool é int em Python: passaria como 1",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"maxItems": True}),
+        "parâmetro 'titularesPedidos' tem maxItems True",
+    ),
+    Mutation(
+        "parametro-maxitems-zero",
+        "`maxItems: 0` escrito: o motor recusa; ausente é que vale o máximo",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"maxItems": 0}),
+        "parâmetro 'titularesPedidos' tem maxItems 0",
+    ),
+    Mutation(
+        "parametro-multiple-com-closed",
+        "fechar o período é de um month ou date",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"closed": True}),
+        "parâmetro 'titularesPedidos' declara multiple e closed",
+    ),
+    Mutation(
+        "parametro-multiple-com-businessDay",
+        "dia útil é de uma date",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"businessDay": True}),
+        "parâmetro 'titularesPedidos' declara multiple e businessDay",
+    ),
+    Mutation(
+        "parametro-multiple-com-appliesTo",
+        "uma lista não nomeia o período que fecha",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"appliesTo": "dataBase"}),
+        "parâmetro 'titularesPedidos' declara multiple e appliesTo",
+    ),
+    Mutation(
+        "parametro-multiple-com-pattern",
+        "o pattern confere UM valor escrito inteiro",
+        lambda b: parameter(b[HIER]["contract"], "titularesPedidos").update({"pattern": "[0-9]+"}),
+        "parâmetro 'titularesPedidos' declara multiple e pattern",
+    ),
+    Mutation(
+        "parametro-multiple-na-remessa",
+        "a remessa é UM valor, original ou substituição; uma lista não é nenhum dos dois",
+        lambda b: (parameter(b[PLANO]["contract"], "tipoRemessa").pop("default"),
+                   parameter(b[PLANO]["contract"], "tipoRemessa").update({"multiple": True})),
+        "remittance.parameter nomeia 'tipoRemessa', que é uma lista (multiple)",
+    ),
+    Mutation(
+        "parametro-multiple-escrito-num-campo",
+        "uma lista é o conjunto de um filtro; escrita numa célula viraria o texto dela inteira",
+        lambda b: b[HIER]["binding"]["datasets"]["titulares"]["fields"].update(
+            {"tipo": {"from": "parameter", "parameter": "titularesPedidos"}}),
+        "titulares.tipo escreve o parâmetro 'titularesPedidos', que é uma lista (multiple)",
+    ),
+    Mutation(
+        "parametro-multiple-escrito-num-caso-de-classe",
+        "o caso de classe é o outro caminho do mesmo campo e tem a mesma conferência",
+        lambda b: (b[FECHADO]["contract"].setdefault("parameters", []).append(
+                       {"name": "pedidos", "type": "string", "required": False, "multiple": True,
+                        "description": "Lista."}),
+                   b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1].update(
+                       {"from": "parameter", "parameter": "pedidos"})),
+        "linhas.valor.byRowClass[1] escreve o parâmetro 'pedidos', que é uma lista (multiple)",
+    ),
+    Mutation(
+        "parametro-de-campo-que-nao-e-nome",
+        "um campo `from: parameter` nomeia um parâmetro; uma lista no lugar do nome estourava a ferramenta",
+        lambda b: b[HIER]["binding"]["datasets"]["titulares"]["fields"].update(
+            {"tipo": {"from": "parameter", "parameter": ["titularesPedidos"]}}),
+        "titulares.tipo resolve por parameter com parameter ['titularesPedidos']",
+    ),
+    Mutation(
+        "parametro-de-campo-vazio",
+        "um nome vazio não nomeia parâmetro nenhum; o motor o recusa na carga",
+        lambda b: b[HIER]["binding"]["datasets"]["titulares"]["fields"].update(
+            {"tipo": {"from": "parameter", "parameter": ""}}),
+        "titulares.tipo resolve por parameter com parameter ''",
+    ),
+    Mutation(
+        "valor-de-consulta-derivada-da-propria-origem-que-seleciona",
+        "o select fecha o que a origem entrega antes das derivadas dela, como no motor",
+        lambda b: (b[HIER]["binding"]["queries"].append(
+                       {"name": "selecionada", "dataSource": "crm", "table": "holders", "select": ["_id"],
+                        "derive": [{"as": "dia_sel", "from": "criado_em", "apply": "date"}]}),
+                   chained_filter(b, query="selecionada", column="dia_sel")),
+        "lê a coluna 'dia_sel' de 'selecionada', que ela não entrega antes do junte",
+    ),
+    Mutation(
+        "parametro-de-caso-de-classe-que-nao-e-nome",
+        "o caso de classe é o outro caminho do mesmo campo e tem a mesma conferência de forma",
+        lambda b: b[FECHADO]["binding"]["datasets"]["linhas"]["fields"]["valor"]["byRowClass"][1].update(
+            {"from": "parameter", "parameter": {"nome": "x"}}),
+        "linhas.valor.byRowClass[1] resolve por parameter com parameter {'nome': 'x'}",
+    ),
+    Mutation(
+        "parametro-multiple-com-ponta-de-periodo",
+        "uma lista de valores não tem início nem fim de período",
+        lambda b: query(b[HIER]["binding"], "base_titulares").update({"filters": [
+            {"field": "_id", "operator": "lt", "values": [{"parameter": "titularesPedidos", "at": "end"}]}]}),
+        "lê o end do parâmetro 'titularesPedidos', que é uma lista (multiple)",
+    ),
+    Mutation(
+        "parametro-multiple-com-operador-de-valor-unico",
+        "`eq` com uma lista compara a coluna com um valor só",
+        lambda b: query(b[HIER]["binding"], "base_titulares")["filters"][0].update({"operator": "eq"}),
+        "lê o parâmetro 'titularesPedidos', que é uma lista (multiple), com 'eq'",
+    ),
+    Mutation(
+        "parametro-multiple-em-having-aninhado",
+        "o mesmo uso em `having`, dentro de anyOf: o caminho gêmeo",
+        lambda b: query(b[HIER]["binding"], "por_titular")["having"][0]["anyOf"].append(
+            {"allOf": [{"field": "titular", "operator": "gte", "values": [{"parameter": "titularesPedidos"}]}]}),
+        "filtro 'titular' de 'por_titular': lê o parâmetro 'titularesPedidos', que é uma lista (multiple), com 'gte'",
+    ),
+
+    # ------------------------------------------- filtro encadeado {query, column}
+    Mutation(
+        "valor-de-consulta-com-chave-a-mais",
+        "uma chave que o motor não conhece no valor de consulta",
+        lambda b: chained_filter(b, at="end"),
+        "um valor de consulta é exatamente query e column",
+    ),
+    Mutation(
+        "valor-de-consulta-sem-coluna",
+        "column vazia: o `in` não teria de onde ler",
+        lambda b: chained_filter(b, column=""),
+        "o valor de consulta tem column ''; query e column são nomes, em texto",
+    ),
+    Mutation(
+        "valor-de-consulta-com-operador-de-valor-unico",
+        "os valores de outra consulta são um conjunto; só `in` os lê",
+        lambda b: query(chained_filter(b)[HIER]["binding"], "detalhado")["filters"][0].update({"operator": "eq"}),
+        "lê os valores de uma consulta com 'eq'; só in lê um conjunto",
+    ),
+    Mutation(
+        "valor-de-consulta-misturado-com-literal",
+        "um valor escrito ao lado dos de outra consulta",
+        lambda b: query(chained_filter(b)[HIER]["binding"], "detalhado")["filters"][0]["values"].append("X"),
+        "lê os valores de uma consulta e outros valores",
+    ),
+    Mutation(
+        "valor-de-consulta-misturado-com-parametro",
+        "um parâmetro ao lado dos valores de outra consulta",
+        lambda b: query(chained_filter(b)[HIER]["binding"], "detalhado")["filters"][0]["values"].append(
+            {"parameter": "titularesPedidos"}),
+        "lê os valores de uma consulta e outros valores",
+    ),
+    Mutation(
+        "valor-de-consulta-inexistente",
+        "nome trocado: o `in` vazio não devolveria linha nenhuma, em silêncio",
+        lambda b: chained_filter(b, query="por_titulr"),
+        "lê os valores da consulta 'por_titulr', que não existe",
+    ),
+    Mutation(
+        "valor-de-consulta-propria",
+        "a consulta não filtra pelo que ela mesma entrega",
+        lambda b: chained_filter(b, query="detalhado", column="titular"),
+        "lê os valores da própria consulta",
+    ),
+    Mutation(
+        "valor-de-consulta-em-ciclo",
+        "a base de por_titular passa a depender de por_titular",
+        lambda b: query(b[HIER]["binding"], "movimento").update({"filters": [
+            {"field": "titular", "operator": "in", "values": [{"query": "por_titular", "column": "titular"}]}]}),
+        "consultas em ciclo por `from` e valor de consulta: movimento -> por_titular -> movimento",
+    ),
+    Mutation(
+        "valor-de-consulta-coluna-que-nao-sai",
+        "a coluna lida não está entre as que a consulta de origem entrega",
+        lambda b: chained_filter(b, column="montante"),
+        "lê a coluna 'montante' de 'por_titular', que ela não entrega",
+    ),
+    Mutation(
+        "valor-de-consulta-coluna-do-junte",
+        "o motor lê o conjunto antes de juntar: a coluna que a origem só recebe da parceira ainda não existe",
+        lambda b: (query(b[HIER]["binding"], "por_titular").update(
+                       {"join": [{"query": "detalhado", "match": {"titular": "titular"}}]}),
+                   chained_filter(b, column="ident")),
+        "lê a coluna 'ident' de 'por_titular', que ela não entrega antes do junte",
+    ),
+    Mutation(
+        "valor-de-consulta-de-origem-composta",
+        "a origem composta (`from`) entrega o que a consulta de baixo seleciona ou agrega, como no motor",
+        lambda b: (b[HIER]["binding"]["queries"].append({"name": "filtrado", "from": "por_titular"}),
+                   chained_filter(b, query="filtrado", column="nao_existe")),
+        "lê a coluna 'nao_existe' de 'filtrado', que ela não entrega antes do junte",
+    ),
+    Mutation(
+        "valor-de-consulta-em-having-aninhado",
+        "o mesmo valor em `having`, dentro de allOf: o caminho gêmeo",
+        lambda b: query(b[HIER]["binding"], "por_titular")["having"][0]["anyOf"].append(
+            {"allOf": [{"field": "titular", "operator": "in",
+                        "values": [{"query": "sumida", "column": "titular"}]}]}),
+        "filtro 'titular' de 'por_titular': lê os valores da consulta 'sumida' em having",
+    ),
+    Mutation(
+        "valor-de-consulta-dentro-de-anyof",
+        "o motor recusa o valor de consulta combinado com outras condições: ele é uma condição própria",
+        lambda b: query(b[HIER]["binding"], "detalhado").update({"filters": [{"anyOf": [
+            {"field": "titular", "operator": "in", "values": [{"query": "por_titular", "column": "titular"}]},
+            {"field": "titular", "operator": "eq", "values": ["x"]}]}]}),
+        "filtro 'titular' de 'detalhado': lê os valores da consulta 'por_titular' dentro de anyOf ou allOf",
+    ),
+    Mutation(
+        "valor-de-consulta-de-origem-aberta",
+        "uma origem que não seleciona nem agrega não diz que colunas entrega; o motor pede o select",
+        lambda b: chained_filter(b, query="base_titulares", column="_id"),
+        "lê a coluna '_id' de 'base_titulares', que não seleciona nem agrega",
+    ),
 ]
 
 
@@ -2344,6 +2716,8 @@ _NOT_CONTRACT_KEYS = {
     "rows", "masked",
     # natureza.yaml — a tabela de naturezas do elenco
     "byPrefix", "sha256",
+    # a grafia antiga do parâmetro múltiplo: lida só para ser recusada, nomeando `multiple`
+    "list",
 }
 
 
@@ -2525,6 +2899,84 @@ class ValidatorSuite(unittest.TestCase):
 
         com_crua = {**agregada, "join": [{"query": "c", "match": {"k": "_id"}}]}
         self.assertIsNone(validate.produced_columns(com_crua, {"a": com_crua, "c": crua}))
+
+    def test_a_document_inside_a_family_folder_is_checked(self) -> None:
+        """`<país>/<regulador>/<família>/<documento>/` é um documento como os de três níveis.
+
+        Os documentos do SIMBA vivem numa pasta da família (br/bcb/simba/agencias). Uma
+        varredura de três níveis não os via: o índice os anunciava sem contrato, e nada
+        do que o contrato declara era conferido. O `schema/` continua material de
+        curadoria, mesmo quando traz um arquivo chamado contract.yaml.
+        """
+        familia = "zz/fixture/familia/plano"
+
+        def with_family(broken: bool) -> dict:
+            data = fixtures.bundle()
+            parts = copy.deepcopy(data[PLANO])
+            parts["contract"]["metadata"]["id"] = "zz.fixture.familia.plano"
+            parts["binding"]["contract"] = "zz.fixture.familia.plano"
+            if broken:
+                dataset(parts["contract"], "saldos")["fields"][0]["type"] = "texto"
+            data[familia] = parts
+            return data
+
+        root = self._write(with_family(broken=False))
+        stray = root / PLANO / "schema" / "contract.yaml"
+        stray.write_text(yaml.safe_dump({"metadata": {"id": "zz.fixture.rascunho"}}), encoding="utf-8")
+        # Mais fundo que a pasta de família não é documento: o Reporter não o lê.
+        deep = root / familia / "anexo" / "contract.yaml"
+        deep.parent.mkdir(parents=True)
+        deep.write_text(yaml.safe_dump({"metadata": {"id": "zz.fixture.fundo"}}), encoding="utf-8")
+        code, out = _run(root)
+        self.assertEqual(code, 0, f"o documento de quatro níveis deveria validar e o schema/ e o "
+                                  f"contrato de cinco níveis ficar de fora:\n{out}")
+        self.assertIn("5 documento(s) conferido(s)", out)
+
+        code, out = _run(self._write(with_family(broken=True)))
+        self.assertEqual(code, 1, f"o contrato de quatro níveis deveria ser conferido:\n{out}")
+        self.assertIn(f"{familia}", out)
+
+    def test_a_filter_read_from_another_query_is_valid(self) -> None:
+        """`{query, column}`: o `in` lê os valores de uma coluna de outra consulta.
+
+        É o filtro encadeado do SIMBA (as contas dos titulares pedidos). A consulta de
+        origem existe, não é a própria e entrega a coluna lida.
+        """
+        code, out = _run(self._write(chained_filter(fixtures.bundle())))
+        self.assertEqual(code, 0, f"o filtro encadeado deveria validar:\n{out}")
+
+    def test_a_cycle_through_from_alone_is_reported_once(self) -> None:
+        """O ciclo só de `from` continua com a mensagem dele, uma vez.
+
+        O ciclo que passa por um valor de consulta é outra conferência; as duas não
+        podem dizer a mesma coisa duas vezes.
+        """
+        data = fixtures.bundle()
+        query(data[HIER]["binding"], "movimento")["from"] = "por_titular"
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 1, f"o ciclo por from deveria reprovar:\n{out}")
+        self.assertEqual(1, out.count("consultas em ciclo"), out)
+
+    def test_a_list_of_integers_read_by_nin_is_valid(self) -> None:
+        """`multiple` de integer, sem `maxItems` (o motor aceita o máximo), lido por `nin`.
+
+        A fixture já prova a lista de texto com limite lida por `in`; esta é a outra
+        metade do que o motor aceita.
+        """
+        data = fixtures.bundle()
+        pedidos = parameter(data[HIER]["contract"], "titularesPedidos")
+        pedidos["type"] = "integer"
+        pedidos.pop("maxItems")
+        query(data[HIER]["binding"], "base_titulares")["filters"][0]["operator"] = "nin"
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"uma lista de inteiros lida por nin deveria validar:\n{out}")
+
+    def test_filing_allow_empty_is_valid(self) -> None:
+        """`filing.allowEmpty: true`: o documento que, num caso legítimo, sai sem linha (0 byte)."""
+        data = fixtures.bundle()
+        data[PLANO]["contract"]["filing"]["allowEmpty"] = True
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"filing.allowEmpty booleano deveria validar:\n{out}")
 
     def test_fixtures_are_valid(self) -> None:
         """A base é válida — sem isso, toda mutação passaria por acidente."""

@@ -17,6 +17,11 @@ cadoc-4111:
   - changed-files:
       - any-glob-to-any-file: 'br/bcb/cadoc-4111/**/*'
 
+# SIMBA — bank secrecy breach responses (one folder per document)
+simba:
+  - changed-files:
+      - any-glob-to-any-file: 'br/bcb/simba/**/*'
+
 # COSIF chart of accounts (regulator source)
 cosif:
   - changed-files:

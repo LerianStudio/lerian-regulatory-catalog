@@ -56,6 +56,31 @@ def warn(msg: str) -> None:
     WARNINGS.append(msg)
 
 
+# A pasta de material de curadoria de um documento. Um arquivo dentro dela nunca é
+# o contrato do documento, nem o de outro, mesmo que se chame contract.yaml.
+CURATION_DIR = "schema"
+# As profundidades de um contract.yaml, contando o próprio arquivo: sem e com a pasta
+# de família. Um contrato mais fundo não é documento: o Reporter monta o caminho pelo
+# id e lê só estes dois níveis.
+CONTRACT_DEPTHS = (4, 5)
+
+
+def contract_paths(root: Path) -> list[Path]:
+    """Todo contrato do catálogo, em `<país>/<regulador>/<documento>/` ou dentro de uma
+    pasta de família (`<país>/<regulador>/<família>/<documento>/`).
+
+    A varredura era de três níveis fixos, e um documento do SIMBA (br/bcb/simba/agencias)
+    ficava de fora sem aviso: o índice o anunciava, nada do contrato era conferido. Uma
+    porta só, lida pelo validador, por tools/natureza.py e por tools/tabelas_receita.py,
+    para os três não divergirem.
+    """
+    return sorted(
+        path for path in root.rglob("contract.yaml")
+        if len(path.relative_to(root).parts) in CONTRACT_DEPTHS
+        and CURATION_DIR not in path.relative_to(root).parts[:-1]
+    )
+
+
 def load(path: Path):
     """Lê um YAML do catálogo, reprovando em vez de estourar.
 
@@ -425,6 +450,31 @@ def check_template(doc_dir: Path, contract: dict) -> None:
 
     refs = set(re.findall(r"\{\{\s*([A-Za-z_]\w*)\.(\w+)", body))
 
+    # Um campo também é posicionado DENTRO de uma expressão: argumento de macro
+    # (`{{ ascii(t.nome) }}`), condição (`{% if t.dataFim %}`) ou `with`. Só o começo
+    # do `{{` contava, e o campo posto assim aparecia como "nenhum template o
+    # posiciona" — e um nome trocado ali passava calado. Strings saem antes (um
+    # `"a.b"` não é campo), e a tag `for` só liga nomes (o iterável é conjunto, não
+    # campo). Numa tag `{% %}` uma cabeça que não é laço sobre conjunto (forloop, um
+    # nome do `with`) é ignorada; num `{{ }}` ela é conferida como sempre.
+    tag_refs: set[tuple[str, str]] = set()
+    for opener, inner in re.findall(r"(\{\{|\{%)-?(.*?)-?(?:\}\}|%\})", body, flags=re.DOTALL):
+        expr = re.sub(r"\"[^\"]*\"|'[^']*'", "", inner)
+        if opener == "{%" and re.match(r"\s*(for|endfor|macro|endmacro)\b", expr):
+            continue
+        for head, field in re.findall(r"(?<![\w.])([A-Za-z_]\w*)\.([A-Za-z_]\w*)", expr):
+            if head in ("forloop", "parentloop"):
+                continue
+            if opener == "{{":
+                refs.add((head, field))
+            else:
+                tag_refs.add((head, field))
+    for head, field in tag_refs - refs:
+        # `{% if Op.Venc %}` pergunta se o conjunto filho tem linha: Venc é conjunto,
+        # não campo de Op.
+        if head != "system" and field not in datasets and dataset_of(head) is not None:
+            refs.add((head, field))
+
     # As pontas de um período (`span`) chegam ao template como
     # system.periods.<parâmetro>.start/.end (o motor publica `periods` em `system`, e
     # por isso o nome é reservado). Só um parâmetro que declara span tem período: um
@@ -582,10 +632,13 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
             f"'{binding.get('contract')}', não para este contrato"
         )
 
+    multiple = multiple_parameters(contract)
+
     check_binding_queries(doc_dir, binding)
     check_parent_match(doc_dir, contract, binding)
     check_column_survival(doc_dir, binding)
     _check_span_edges(doc_dir, contract, binding)
+    _check_filter_values(doc_dir, contract, binding)
     raw_rows = _raw_rows(example)
 
     queries = {q.get("name") for q in query_list(binding)}
@@ -758,6 +811,9 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                             f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}] "
                             f"resolve por {case.get('from')!r}; use {', '.join(sorted(valid))}"
                         )
+                    if case.get("from") == "parameter":
+                        _check_field_parameter(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}.byRowClass[{i}]",
+                                               case.get("parameter"), multiple)
                     # A MESMA precondição do caminho direto: `rowSet` só significa
                     # algo se o conjunto declarar rowSet no contrato. Aplicá-la num
                     # caminho e não no outro é o furo de sempre — a origem existe em
@@ -795,6 +851,11 @@ def check_binding_example(doc_dir: Path, contract: dict) -> None:
                     f"{doc_dir.relative_to(ROOT)}: {dataset}.{field} resolve por "
                     f"{how!r}; use query, constant, parameter, manual, rowSet ou byRowClass"
                 )
+
+            # Mesma conferência do caso de classe acima: a origem existe nos dois caminhos.
+            if how == "parameter":
+                _check_field_parameter(f"{doc_dir.relative_to(ROOT)}: {dataset}.{field}",
+                                       spec.get("parameter"), multiple)
 
             # `rowSet` só significa algo se o CONJUNTO declarar rowSet no contrato:
             # aceitar o nome da origem sem conferir a precondição deixa o campo
@@ -1552,6 +1613,16 @@ REMOVED_MEASURE_KEYS = {
     "statedIn": "a natureza é regra do contrato (`rules`, tabela `natureza`)",
 }
 PARAMETER_VALUE_KEYS = {"parameter", "at", "of", "calendar"}
+# O valor de filtro lido de OUTRA consulta do binding (o filtro encadeado): os valores
+# de uma coluna dela. Grafia da gramática do motor, ainda provisória: os nomes
+# vivem só aqui para trocar num lugar quando ela fixar.
+QUERY_VALUE_KEYS = ("query", "column")
+QUERY_VALUE_OPERATOR = "in"
+
+
+def is_query_value(value: object) -> bool:
+    """O valor de filtro que nomeia uma consulta, bem ou mal formado."""
+    return isinstance(value, dict) and QUERY_VALUE_KEYS[0] in value
 
 
 def _check_removed_grammar(doc_dir: Path, qname: str, query: dict) -> None:
@@ -1634,6 +1705,8 @@ def _check_parameter_values(doc_dir: Path, qname: str, filters: object) -> None:
         references = [v for v in values if isinstance(v, dict)]
         if not references:
             continue
+        if any(is_query_value(v) for v in references):
+            continue  # _check_filter_values confere o valor de consulta, em todo caminho
 
         where = f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}'"
         if len(values) != 1:
@@ -1696,6 +1769,136 @@ def _check_span_edges(doc_dir: Path, contract: dict, binding: dict) -> None:
         qname = query.get("name", "<sem nome>")
         walk(qname, query.get("filters"))
         walk(qname, query.get("having"))
+
+
+def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
+    """De onde um filtro lê os seus valores, conferido em todo caminho.
+
+    Um parâmetro `multiple` é uma lista: só se lê como o conjunto de um `in` ou `nin`,
+    e nunca pela ponta (`at`) de um período, que uma lista não tem.
+
+    Um valor de consulta (`{query, column}`) é o conjunto de valores de uma coluna de
+    outra consulta, lido só por `in`, sozinho na condição e só no nível de cima de
+    filters (nunca em having nem dentro de anyOf/allOf). A consulta existe, não é a
+    própria, seleciona ou agrega, e entrega a coluna antes dos juntes. Um nome trocado não
+    falharia na escrita: o `in` sairia vazio e o documento, sem linha, com cara de certo.
+
+    Como em _check_span_edges, em filters e em having, a qualquer profundidade de anyOf
+    e allOf.
+    """
+    multiple = multiple_parameters(contract)
+    queries = {q["name"]: q for q in query_list(binding) if isinstance(q.get("name"), str)}
+    # Arestas de valor de consulta, para o ciclo: a origem tem de ser extraída antes.
+    reads: dict[str, set[str]] = {}
+
+    def check_query_value(where: str, qname: str, condition: dict, values: list, value: dict) -> None:
+        if set(value) != set(QUERY_VALUE_KEYS):
+            fail(f"{where}: um valor de consulta é exatamente {' e '.join(QUERY_VALUE_KEYS)}; "
+                 f"traz {sorted(map(str, value))}")
+            return
+        source, column = (value.get(key) for key in QUERY_VALUE_KEYS)
+        for key, written in zip(QUERY_VALUE_KEYS, (source, column)):
+            if not isinstance(written, str) or not written:
+                fail(f"{where}: o valor de consulta tem {key} {written!r}; query e column são nomes, em texto")
+                return
+        if condition.get("operator") != QUERY_VALUE_OPERATOR:
+            fail(f"{where}: lê os valores de uma consulta com {condition.get('operator')!r}; "
+                 f"só {QUERY_VALUE_OPERATOR} lê um conjunto")
+        if len(values) != 1:
+            fail(f"{where}: lê os valores de uma consulta e outros valores; a condição lê uma coisa só")
+        if source == qname:
+            fail(f"{where}: lê os valores da própria consulta; um filtro lê de outra")
+            return
+        if source not in queries:
+            fail(f"{where}: lê os valores da consulta '{source}', que não existe")
+            return
+        if isinstance(qname, str):  # um name que não é texto já foi recusado; não vira chave
+            reads.setdefault(qname, set()).add(source)
+        produced = own_columns(queries[source], queries)
+        if produced is None:
+            fail(f"{where}: lê a coluna '{column}' de '{source}', que não seleciona nem agrega; "
+                 f"a consulta de origem declara no select a coluna que entrega")
+        elif column not in produced:
+            fail(f"{where}: lê a coluna '{column}' de '{source}', que ela não entrega antes do junte "
+                 f"(entrega {sorted(produced)})")
+
+    def walk(qname: str, conditions: object, nested: bool = False, having: bool = False) -> None:
+        if not isinstance(conditions, list):
+            return
+        for condition in conditions:
+            if not isinstance(condition, dict):
+                continue
+            walk(qname, condition.get("anyOf"), True, having)
+            walk(qname, condition.get("allOf"), True, having)
+            values = condition.get("values")
+            where = f"{doc_dir.relative_to(ROOT)}: filtro '{condition.get('field')}' de '{qname}'"
+            operator = condition.get("operator")
+            for value in values if isinstance(values, list) else []:
+                if not isinstance(value, dict):
+                    continue
+                if is_query_value(value):
+                    # O motor recusa na carga o valor de consulta em having e dentro de
+                    # anyOf/allOf: ele estreita as linhas lidas, antes de agrupar, e é uma
+                    # condição própria em filters.
+                    if having:
+                        fail(f"{where}: lê os valores da consulta '{value.get(QUERY_VALUE_KEYS[0])}' em "
+                             f"having; um filtro lido de outra consulta estreita as linhas lidas, antes "
+                             f"de agrupar, e vai em filters")
+                    elif nested:
+                        fail(f"{where}: lê os valores da consulta '{value.get(QUERY_VALUE_KEYS[0])}' dentro "
+                             f"de anyOf ou allOf; um filtro lido de outra consulta é uma condição própria "
+                             f"em filters, nunca combinada com outras")
+                    else:
+                        check_query_value(where, qname, condition, values, value)
+                    continue
+                name = value.get("parameter")
+                if not isinstance(name, str) or name not in multiple:
+                    continue
+                if "at" in value:
+                    fail(f"{where}: lê o {value.get('at')} do parâmetro '{name}', que é uma lista (multiple); "
+                         f"uma lista não tem ponta de período")
+                elif operator not in MULTIPLE_OPERATORS:
+                    fail(f"{where}: lê o parâmetro '{name}', que é uma lista (multiple), com {operator!r}; "
+                         f"uma lista se lê com {' ou '.join(MULTIPLE_OPERATORS)}")
+
+    for query in query_list(binding):
+        qname = query.get("name", "<sem nome>")
+        walk(qname, query.get("filters"))
+        walk(qname, query.get("having"), having=True)
+
+    _check_query_value_cycles(doc_dir, queries, reads)
+
+
+def _check_query_value_cycles(doc_dir: Path, queries: dict[str, dict], reads: dict[str, set[str]]) -> None:
+    """Ciclo que passa por um valor de consulta, pelas arestas de `from` e de valor.
+
+    O junte fica fora: ele não ordena a extração. Só o ciclo com ao menos uma aresta
+    de valor é dito aqui; o de `from` puro já sai, uma vez, em check_binding_queries.
+    Cada ciclo sai uma vez, por mais arestas de valor que tenha.
+    """
+    def edges(name: str) -> list[str]:
+        base = queries[name].get("from")
+        out = sorted(reads.get(name, set()))
+        return out + [base] if isinstance(base, str) and base in queries else out
+
+    reported: set[frozenset[str]] = set()
+    for reader in sorted(reads):
+        for source in sorted(reads[reader]):
+            # Um caminho de volta de `source` até `reader` fecha o ciclo.
+            paths, visited = [[source]], {source}
+            while paths:
+                path = paths.pop(0)
+                if path[-1] == reader:
+                    cycle = frozenset(path)
+                    if cycle not in reported:
+                        reported.add(cycle)
+                        fail(f"{doc_dir.relative_to(ROOT)}: consultas em ciclo por `from` e valor de "
+                             f"consulta: {' -> '.join([reader, *path])}")
+                    break
+                for nxt in edges(path[-1]):
+                    if nxt not in visited:
+                        visited.add(nxt)
+                        paths.append([*path, nxt])
 
 
 def check_binding_queries(doc_dir: Path, binding: dict) -> None:
@@ -1862,6 +2065,74 @@ def _reaches(by_name: dict[str, dict], start: str, goal: str) -> bool:
     return False
 
 
+def check_ispb_block(doc_dir: Path) -> None:
+    """O trecho que troca ISPB por código COMPE é EXATAMENTE o que tools/ispb_compe.py
+    gera da lista de participantes do STR publicada em br/bcb/simba/tabelas/.
+
+    Escrito ou retocado à mão, ele erra em silêncio: um código trocado manda a
+    contraparte para outro banco, e a guarda de ISPB vazio removida faz o vazio virar
+    00000000, que é o Banco do Brasil.
+    """
+    path = doc_dir / "template.tpl"
+    if not path.is_file():
+        return
+    with path.open(encoding="utf-8", newline="") as handle:
+        text = handle.read()
+    if "ISPB_COMPE_BLOCK" not in text:
+        return
+
+    import ispb_compe
+
+    if ispb_compe.malformed_markers(text):
+        fail(f"{doc_dir.relative_to(ROOT)}: o template menciona ISPB_COMPE_BLOCK fora de uma marca bem escrita "
+             f"(`{{# ISPB_COMPE_BLOCK: <expressao> #}}` ... `{ispb_compe.END}`); o trecho ao lado nao seria conferido")
+        return
+
+    try:
+        expected = ispb_compe.expected_template(text, ispb_compe.read_codes())
+    except (OSError, ispb_compe.TableError) as problem:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→COMPE não pôde ser conferido contra a tabela do STR: {problem}")
+        return
+    if text != expected:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→COMPE do template não é o que tools/ispb_compe.py "
+             "gera da tabela do STR; regere")
+
+
+def check_cnpj_block(doc_dir: Path) -> None:
+    """Os trechos que trocam ISPB pelo CNPJ da instituição (campo 19) e escrevem o motivo do
+    CNPJ em branco (campo 18) são EXATAMENTE o que tools/ispb_cnpj.py gera da lista de
+    participantes do Pix publicada em br/bcb/simba/tabelas/.
+
+    Escrito ou retocado à mão, o trecho erra em silêncio: um CNPJ trocado põe a contraparte
+    em outra instituição, e um ISPB fora da lista sairia em branco sem o motivo.
+    """
+    path = doc_dir / "template.tpl"
+    if not path.is_file():
+        return
+    with path.open(encoding="utf-8", newline="") as handle:
+        text = handle.read()
+
+    import ispb_cnpj
+
+    if not any(token in text for token in ispb_cnpj.TOKENS):
+        return
+    if ispb_cnpj.malformed_markers(text):
+        fail(f"{doc_dir.relative_to(ROOT)}: o template menciona ISPB_CNPJ_BLOCK ou ISPB_CNPJ_REASON fora de uma marca "
+             f"bem escrita (`{{# ISPB_CNPJ_BLOCK: <expressao> #}}` ... `{ispb_cnpj.END}`, "
+             f"`{{# ISPB_CNPJ_REASON: <expressao> <observacao> #}}` ... `{ispb_cnpj.END_REASON}`); "
+             "o trecho ao lado nao seria conferido")
+        return
+
+    try:
+        expected = ispb_cnpj.expected_template(text, ispb_cnpj.read_cnpjs())
+    except (OSError, ispb_cnpj.TableError) as problem:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→CNPJ não pôde ser conferido contra a lista do Pix: {problem}")
+        return
+    if text != expected:
+        fail(f"{doc_dir.relative_to(ROOT)}: o trecho ISPB→CNPJ do template não é o que tools/ispb_cnpj.py "
+             "gera da lista de participantes do Pix; regere")
+
+
 def check_template_parses(doc_dir: Path) -> None:
     """Regras do MOTOR de template que uma leitura por regex não pega.
 
@@ -1957,6 +2228,82 @@ def _aggregation(query: object) -> dict | None:
     aggregate = query.get("aggregate")
 
     return aggregate if isinstance(aggregate, dict) else None
+
+
+def _check_field_parameter(where: str, name: object, multiple: set[str]) -> None:
+    """Um campo `from: parameter` nomeia UM parâmetro, e ele não é uma lista.
+
+    Uma lista (`multiple`) é o conjunto de um filtro, nunca o valor de um campo:
+    escrita numa célula, viraria o texto da lista inteira. A forma vem antes: um
+    nome que não é texto não pode nem ser procurado entre as listas.
+    """
+    if not isinstance(name, str) or not name:
+        fail(f"{where} resolve por parameter com parameter {name!r}; parameter é o nome de um parâmetro, em texto")
+    elif name in multiple:
+        fail(f"{where} escreve o parâmetro '{name}', que é uma lista (multiple); um campo recebe um valor só")
+
+
+def _as_names(items: object) -> set[str] | None:
+    """Os `as` de uma lista de colunas calculadas; None se a forma não é uma lista de mapas."""
+    if items is None:
+        return set()
+    if not isinstance(items, list):
+        return None
+    return {i["as"] for i in items if isinstance(i, dict) and isinstance(i.get("as"), str) and i["as"]}
+
+
+def own_columns(query: dict, queries: dict[str, dict]) -> set[str] | None:
+    """As colunas que uma consulta tem ANTES dos juntes: o que um valor de consulta lê.
+
+    O motor resolve o conjunto de um `{query, column}` quando lê as consultas, e só
+    depois junta as linhas; a coluna que a origem recebe de uma parceira de junte
+    ainda não existe ali, e o `in` sairia vazio. Por isso não é produced_columns,
+    que soma as parceiras.
+
+    Como o motor (ownOutputs): segue a cadeia de `from` até a consulta que seleciona
+    (`select`) ou agrega, somando as derivadas do caminho. Agregada: groupBy e medidas;
+    com `select`: as colunas selecionadas. Colunas de `compute` não entram por conta
+    própria: o motor só as entrega se o `select` as nomeia. Sem `select` nem agregação
+    na cadeia o esquema é o da tabela, que este repositório não conhece; forma
+    malformada também: None, "não confira" (a forma é recusada onde é conferida).
+    """
+    derived: set[str] = set()
+    seen: set[str] = set()
+    cursor = query
+
+    while isinstance(cursor, dict):
+        name = cursor.get("name")
+        if isinstance(name, str):
+            if name in seen:
+                return None  # ciclo de `from`: já recusado em check_binding_queries
+            seen.add(name)
+
+        names = _as_names(cursor.get("derive"))
+        if names is None:
+            return None
+
+        aggregate = _aggregation(cursor)
+        if aggregate:
+            group = aggregate.get("groupBy") or []
+            measures = _as_names(aggregate.get("measures"))
+            if not isinstance(group, list) or measures is None:
+                return None
+            return {g for g in group if isinstance(g, str)} | measures | names | derived
+
+        # O `select` fecha o que a consulta entrega antes das derivadas dela: as que
+        # contam são as das consultas de cima, que compõem sobre esta (resolveSelected).
+        select = cursor.get("select")
+        if isinstance(select, list) and select:
+            return {c for c in select if isinstance(c, str)} | derived
+
+        derived |= names
+
+        base = cursor.get("from")
+        if not isinstance(base, str) or base not in queries:
+            return None
+        cursor = queries[base]
+
+    return None
 
 
 def produced_columns(
@@ -2790,8 +3137,40 @@ def _check_childof_cycles(doc_dir: Path, contract: dict) -> None:
 
 
 
-FILING_KEYS = {"period", "remittance"}
+FILING_KEYS = {"period", "remittance", "approve", "allowEmpty"}
+# Quais gerações de uma entrega podem ser aprovadas: qualquer uma (o padrão, igual a
+# não escrever) ou só a que nada mais novo da mesma entrega substitui.
+FILING_APPROVE = ("any", "newest")
 REMITTANCE_KEYS = {"parameter", "original", "replacement", "reference"}
+
+
+def check_multiple_period(doc_dir: Path, contract: dict) -> None:
+    """Um parâmetro `multiple` nunca faz parte do período da entrega.
+
+    O período é congelado em cada relatório e repetido na leitura de quem substitui
+    quem; uma lista de até 1000 valores iria junto em cada um. O motor recusa o
+    contrato na carga quando o período tem um parâmetro `multiple`, nomeado em
+    `filing.period` ou derivado: sem `period` (com ou sem bloco `filing`), o período é
+    todo parâmetro menos o da remessa e a referência dela. `period: []` declara um
+    documento sem período.
+    """
+    filing = contract.get("filing") if isinstance(contract.get("filing"), dict) else {}
+    params = {p["name"]: p for p in parameters_of(contract)
+              if isinstance(p, dict) and isinstance(p.get("name"), str)}
+    if "period" in filing:
+        named = filing.get("period") if isinstance(filing.get("period"), list) else []
+        period = [n for n in named if isinstance(n, str)]
+        how = "filing.period nomeia"
+    else:
+        remittance = filing.get("remittance") if isinstance(filing.get("remittance"), dict) else {}
+        outside = {remittance.get("parameter"), remittance.get("reference")}
+        period = [n for n in params if n not in outside]
+        how = "sem filing.period, o período é todo parâmetro menos o da remessa, e inclui"
+    for name in period:
+        if params.get(name, {}).get("multiple") is True:
+            fail(f"{doc_dir.relative_to(ROOT)}: {how} {name!r}, que é multiple; o período é um valor por "
+                 "parâmetro, e o motor recusa a lista nele: declare filing.period só com parâmetros escalares, "
+                 "ou `period: []` para um documento sem período")
 
 
 def check_filing(doc_dir: Path, contract: dict) -> None:
@@ -2809,12 +3188,23 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
 
     where = f"{doc_dir.relative_to(ROOT)}: filing"
     filing = mapping_at(where, contract.get("filing"),
-                        "filing é um mapeamento de period e remittance")
+                        "filing é um mapeamento de period, remittance, approve e allowEmpty")
     if filing is None:
         return
 
     for key in sorted(set(filing) - FILING_KEYS):
         fail(f"{where} declara {key!r}, que o motor não conhece; filing aceita {sorted(FILING_KEYS)}")
+
+    # O motor recusa na carga qualquer outra grafia, inclusive "" e true: a regra de
+    # aprovar só a mais nova não pode ficar desligada por um valor que parece certo.
+    if "approve" in filing and filing.get("approve") not in FILING_APPROVE:
+        fail(f"{where}.approve é {filing.get('approve')!r}; aceita {list(FILING_APPROVE)}")
+
+    # `allowEmpty: true` deixa o motor congelar um arquivo de 0 byte (o documento que, num
+    # caso legítimo, não tem linha); sem a chave, o vazio é recusado. O motor recusa na
+    # carga um valor que não seja booleano.
+    if "allowEmpty" in filing and not isinstance(filing.get("allowEmpty"), bool):
+        fail(f"{where}.allowEmpty é {filing.get('allowEmpty')!r}; é true ou false")
 
     params = {}
     for param in parameters_of(contract):
@@ -2868,6 +3258,10 @@ def check_filing(doc_dir: Path, contract: dict) -> None:
             fail(f"{rwhere}.parameter nomeia {name!r}, que não é parâmetro deste contrato")
         elif name in period:
             fail(f"{rwhere}.parameter {name!r} também está em period; a remessa não é parte do período")
+        elif params[name].get("multiple") is True:
+            # A remessa é UM valor, o da original ou o de uma substituição; numa lista as
+            # regras de original e substituição deixariam de valer sem aviso.
+            fail(f"{rwhere}.parameter nomeia {name!r}, que é uma lista (multiple); a remessa é um valor só")
         else:
             domain = params[name].get("domain")
             values = domain if isinstance(domain, list) else []
@@ -3090,6 +3484,8 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
         if "required" in param and not isinstance(required, bool):
             fail(f"{where} tem required {required!r}; é true ou false")
 
+        _check_multiple(where, param, ptype, default)
+
         if domain is not None and not isinstance(domain, list):
             fail(f"{where} tem domain {domain!r}; um domínio é a lista fechada de valores aceitos")
             domain = None
@@ -3160,6 +3556,70 @@ def check_parameters(doc_dir: Path, contract: dict) -> None:
                 fail(f"{where} tem allowedMonths com {month!r}; um mês é de '01' a '12', com dois dígitos")
 
     _check_parameter_relations(doc_dir, contract)
+
+
+# Um parâmetro `multiple` é uma LISTA de valores do `type`, que é o tipo de cada um.
+MULTIPLE_TYPES = ("string", "integer")
+# Quantos valores uma lista aceita (`maxItems`); ausente, o motor aceita o máximo.
+MIN_ITEMS, MAX_ITEMS = 1, 1000
+# Os operadores com que um filtro do binding lê uma lista, na grafia do motor
+# (pkg/reporter/filterval/operators.go). Não confundir com o `notIn` de `where`.
+MULTIPLE_OPERATORS = ("in", "nin")
+# O que um parâmetro `multiple` não declara, e por quê. `allowedMonths`, `span`,
+# `within` e `notBefore` não estão aqui: o tipo de uma lista é string ou integer, e
+# cada uma delas já é recusada fora de month ou date. `closed` está, porque
+# `closed: false` passa pela regra de tipo. `businessDay` e `appliesTo` não são lidas
+# em mais nenhum ponto deste validador: aqui só a combinação com `multiple` é recusada.
+MULTIPLE_EXCLUDES = {
+    "closed": "fechar um período é de um month ou de uma date, e uma lista não nomeia período",
+    "businessDay": "dia útil é de uma date, e uma lista não é um dia",
+    "appliesTo": "uma lista de valores não nomeia o período que fecha",
+    "pattern": "o pattern confere UM valor escrito inteiro, e uma lista traz vários",
+}
+
+
+def _check_multiple(where: str, param: dict, ptype, default) -> None:
+    """`multiple` e `maxItems` lidos sozinhos: a forma e onde valem.
+
+    `list: true` foi a primeira grafia proposta, e o formato adotou `multiple`
+    (`list` já tem outro sentido no binding). O motor não a lê, então a lista pedida viraria um parâmetro de um valor
+    só sem ninguém ver: aqui ela é recusada nomeando a chave que a substitui.
+    """
+    if "list" in param:
+        fail(f"{where} declara list, que saiu do formato; uma lista de valores é `multiple: true`")
+
+    multiple = optional_at(where, param, "multiple")
+    if multiple is not None and not isinstance(multiple, bool):
+        fail(f"{where} tem multiple {multiple!r}; é true ou false")
+    elif multiple is True:
+        if ptype is not None and ptype not in MULTIPLE_TYPES:
+            fail(f"{where} declara multiple e é do tipo {ptype!r}; uma lista é de {' ou '.join(MULTIPLE_TYPES)}, "
+                 f"e type é o tipo de cada valor")
+        if default is not None:
+            fail(f"{where} declara multiple e default; uma lista vem inteira da requisição, sem valor padrão")
+        for key, why in MULTIPLE_EXCLUDES.items():
+            if key in param:
+                fail(f"{where} declara multiple e {key}; {why}")
+
+    if "maxItems" not in param:
+        return
+    # Antes de qualquer comparação: bool é int em Python, e `maxItems: true` passaria como 1.
+    limit = optional_at(where, param, "maxItems")
+    if limit is None:
+        pass  # optional_at já reprovou a chave escrita e vazia
+    elif multiple is not True:
+        fail(f"{where} declara maxItems sem multiple: true; o limite é de quantos valores uma lista aceita")
+    elif isinstance(limit, bool) or not isinstance(limit, int) or not MIN_ITEMS <= limit <= MAX_ITEMS:
+        fail(f"{where} tem maxItems {limit!r}; é quantos valores a lista aceita, um inteiro de "
+             f"{MIN_ITEMS} a {MAX_ITEMS} (ausente, {MAX_ITEMS})")
+
+
+def multiple_parameters(contract: dict) -> set[str]:
+    """Os parâmetros que o contrato declara como lista (`multiple: true`)."""
+    return {
+        p["name"] for p in parameters_of(contract)
+        if isinstance(p, dict) and isinstance(p.get("name"), str) and p.get("multiple") is True
+    }
 
 
 # O nome que o motor reserva para os limites dos períodos (pongo.PeriodsContextKey).
@@ -3554,7 +4014,7 @@ def main() -> int:
 
     contracts: dict[str, dict] = {}
 
-    for path in sorted(ROOT.glob("*/*/*/contract.yaml")):
+    for path in contract_paths(ROOT):
         contract = load(path)
         if contract is None:
             continue
@@ -3579,9 +4039,12 @@ def main() -> int:
         check_engine_parity(doc_dir, contract)
         check_parameters(doc_dir, contract)
         check_filing(doc_dir, contract)
+        check_multiple_period(doc_dir, contract)
         check_consolidation(doc_dir, contract)
         check_structure(doc_dir, contract)
         check_template_parses(doc_dir)
+        check_ispb_block(doc_dir)
+        check_cnpj_block(doc_dir)
         check_binding_example(doc_dir, contract)
         check_references(doc_dir, contract)
         check_tables(doc_dir, contract)
