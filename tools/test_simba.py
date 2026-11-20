@@ -143,6 +143,8 @@ HOLDER_SETS = ("titulares", "titulares_contraparte")
 # A data em que o binding leu as linhas vigentes da tabela de países (o comentário dele diz).
 COUNTRIES_READ_ON = datetime.date(2026, 11, 19)
 NO_UF, NO_COUNTRY = "00", "-"
+# UF (sigla) -> código IBGE, a tabela do catálogo de onde o bloco de UF dos bindings é copiado.
+UF_TABLE = ROOT / "br" / "bcb" / "simba" / "tabelas" / "uf-ibge.yaml"
 LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)] + [chr(c) for c in range(ord("a"), ord("z") + 1)]
 
 
@@ -155,6 +157,7 @@ def country_names_mismatch(found: dict[str, dict]) -> list[str]:
     # O motor compara o texto como está: o código vem nas duas grafias (BR e br).
     expected = {spelled: {"constant": name} for code, name in
                 tabelas_receita.load("paises.txt", COUNTRIES_READ_ON).items() for spelled in (code, code.lower())}
+    ufs = {sigla: {"constant": code} for sigla, code in yaml.safe_load(UF_TABLE.read_text(encoding="utf-8")).items()}
     queries = queries_of(found.get("titulares", {}))
     problems = []
     for name in HOLDER_QUERIES:
@@ -176,6 +179,15 @@ def country_names_mismatch(found: dict[str, dict]) -> list[str]:
         uf = _compute(queries[name], "codigo_uf").get("case") or {}
         if uf.get("otherwise") != {"constant": NO_UF}:
             problems.append(f"titulares: '{name}' não marca a UF sem tradução com {NO_UF!r}")
+        if uf.get("column") != "addresses.primary.state":
+            problems.append(f"titulares: '{name}' não traduz addresses.primary.state em codigo_uf")
+        uf_when = uf.get("when") or {}
+        for code in sorted(set(ufs) ^ set(uf_when)):
+            problems.append(f"titulares: '{name}' traduz a UF {code!r}, que a tabela do IBGE "
+                            + ("não tem" if code in uf_when else "tem e a consulta não"))
+        for code in sorted(set(ufs) & set(uf_when)):
+            if uf_when[code] != ufs[code]:
+                problems.append(f"titulares: '{name}' escreve {uf_when[code]} para a UF {code}, e a tabela, {ufs[code]}")
     return problems
 
 
@@ -905,6 +917,19 @@ class Mutations(unittest.TestCase):
         found = copy.deepcopy(self.found)
         _compute(queries_of(found["titulares"])["cadastro_titulares"], "nome_pais")["case"]["otherwise"] = "refuse"
         self.assertTrue(any("marca o país" in p for p in country_names_mismatch(found)))
+
+    def test_codigo_de_uf_diferente_da_tabela_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        _compute(queries_of(found["titulares"])["cadastro_contraparte"], "codigo_uf")["case"]["when"]["SP"] = {
+            "constant": "33"}
+        self.assertEqual(["titulares: 'cadastro_contraparte' escreve {'constant': '33'} para a UF SP, e a tabela, "
+                          "{'constant': '35'}"], country_names_mismatch(found))
+
+    def test_uf_que_falta_numa_consulta_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        del _compute(queries_of(found["titulares"])["cadastro_titulares"], "codigo_uf")["case"]["when"]["DF"]
+        self.assertEqual(["titulares: 'cadastro_titulares' traduz a UF 'DF', que a tabela do IBGE tem e a consulta não"],
+                         country_names_mismatch(found))
 
     def test_uf_sem_traducao_que_recusa_e_pega(self) -> None:
         found = copy.deepcopy(self.found)
