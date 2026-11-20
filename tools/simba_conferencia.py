@@ -19,7 +19,7 @@ ERRO (corrigir ou gerar de novo antes de aprovar):
   * conta do EXTRATO ou do TITULARES que não está no CONTAS; agência do CONTAS que
     não está no AGENCIAS;
   * Compe da instituição diferente entre AGENCIAS, CONTAS, TITULARES e EXTRATO, ou
-    conta com tipo de conta diferente no CONTAS, no TITULARES e no EXTRATO;
+    conta do TITULARES ou do EXTRATO com um tipo de conta que o CONTAS não lhe dá;
   * conta do EXTRATO que o CONTAS não dá como investigada com movimento (campo 7 = 1),
     ou conta de campo 7 = 1 sem linha no EXTRATO: o EXTRATO traz só os lançamentos das
     contas investigadas (IN art. 2º, IV), e o CONTAS marca o movimento pelos mesmos
@@ -258,24 +258,29 @@ def check_membership(files: dict[str, list[list[str]]], report: Report) -> None:
 
 
 def check_institution_and_types(files: dict[str, list[list[str]]], report: Report) -> None:
-    """O Compe da instituição e o tipo de cada conta, iguais nos arquivos que os repetem.
+    """O Compe da instituição igual nos arquivos, e o tipo de cada conta do TITULARES e do EXTRATO no CONTAS.
 
     O Compe é um valor do mapeamento de cada documento, digitado em cada binding; o tipo da conta
-    vem do cadastro, lido em cada geração.
+    vem do cadastro, lido em cada geração. Duas contas distintas podem ter o mesmo número com
+    tipos diferentes (corrente e poupança: por isso o Anexo I leva o tipo ao lado do número), e o
+    CONTAS as traz em duas linhas; erro é o TITULARES ou o EXTRATO trazerem, para o número, um
+    tipo que o CONTAS não tem.
     """
     compes = {name: sorted({field(r, number) for r in files[name]}) for name, number in COMPE_FIELDS.items()}
     if len({value for values in compes.values() for value in values}) > 1:
         found = "; ".join(f"{name} {', '.join(values)}" for name, values in compes.items() if values)
         report.error(f"o Compe da instituição difere entre os arquivos ({found}); corrija o mapeamento")
-    types: dict[tuple[str, str], dict[str, set[str]]] = {}
+    types: dict[str, dict[tuple[str, str], set[str]]] = {}
     for name, (agency, account, kind) in ACCOUNT_TYPE_FIELDS.items():
         for r in files[name]:
-            types.setdefault((field(r, agency), field(r, account)), {}).setdefault(name, set()).add(field(r, kind))
-    for key, by_file in sorted(types.items()):
-        if len(set().union(*by_file.values())) > 1:
-            found = "; ".join(f"{name} {', '.join(sorted(values))}" for name, values in sorted(by_file.items()))
-            report.error(f"a conta {key[1]} da agência {key[0]} tem tipos de conta diferentes ({found}); "
-                         "gere os arquivos de novo")
+            types.setdefault(name, {}).setdefault((field(r, agency), field(r, account)), set()).add(field(r, kind))
+    contas = types.get("CONTAS", {})
+    for name in sorted(set(types) - {"CONTAS"}):
+        for key, values in sorted(types[name].items()):
+            if key in contas and values - contas[key]:
+                report.error(f"{name}: a conta {key[1]} da agência {key[0]} tem o tipo "
+                             f"{', '.join(sorted(values - contas[key]))}, e o CONTAS, {', '.join(sorted(contas[key]))}; "
+                             "gere os arquivos de novo")
 
 
 def moved_accounts(contas: list[list[str]]) -> set[tuple[str, str]]:

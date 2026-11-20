@@ -277,8 +277,24 @@ class Conferencia(unittest.TestCase):
     def test_tipo_de_conta_diferente_no_titulares_e_erro(self) -> None:
         files = case()
         files["TITULARES"][0][3] = "1"
-        self.assert_says(self.run_case(files).errors, "a conta 123456 da agência 0001 tem tipos de conta diferentes "
-                                                      "(CONTAS 6; EXTRATO 6; TITULARES 1)")
+        self.assert_says(self.run_case(files).errors, "TITULARES: a conta 123456 da agência 0001 tem o tipo 1, e o "
+                                                      "CONTAS, 6")
+
+    def test_tipo_de_conta_do_extrato_fora_do_contas_e_erro(self) -> None:
+        files = case()
+        files["EXTRATO"][1][4] = "2"
+        self.assert_says(self.run_case(files).errors, "EXTRATO: a conta 123456 da agência 0001 tem o tipo 2, e o "
+                                                      "CONTAS, 6")
+
+    def test_mesmo_numero_com_dois_tipos_no_contas_passa(self) -> None:
+        # Corrente e poupança com o mesmo número: duas contas, duas linhas no CONTAS e no TITULARES.
+        files = case()
+        files["CONTAS"].append(conta("0001", "123456", "2", "300", "300"))
+        files["CONTAS"][2][3] = "2"
+        files["TITULARES"].append(titular("0001", "123456"))
+        files["TITULARES"][2][3] = "2"
+        report = self.run_case(files)
+        self.assertEqual([], [e for e in report.errors if "tipo" in e])
 
     def test_agencia_fora_do_agencias_e_erro(self) -> None:
         files = case()
