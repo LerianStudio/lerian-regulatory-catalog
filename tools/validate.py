@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -4002,6 +4003,105 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
             fail(f"catalog.yaml: contrato '{doc_id}' existe e não está no índice")
 
 
+# A tag de uma release estável do catálogo: só estas chegam à produção (canal stable).
+STABLE_TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+# A versão de um documento, como o contrato a declara.
+DOCUMENT_VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+# No CI a guarda de versão TEM de rodar: um clone raso não traz tag nenhuma, e sem tag a
+# guarda passaria verde sobre nada.
+REQUIRE_RELEASES = "CATALOG_REQUIRE_RELEASES"
+
+
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, check=False)
+
+
+def released_tags() -> list[str] | None:
+    """As tags estáveis do catálogo, da mais nova para a mais velha; None fora de um checkout git."""
+    try:
+        inside = _git("rev-parse", "--is-inside-work-tree")
+    except OSError:
+        return None
+    if inside.returncode != 0 or inside.stdout.strip() != b"true":
+        return None
+    tags = [t for t in _git("tag", "-l", "v*").stdout.decode().split() if STABLE_TAG.match(t)]
+    return sorted(tags, key=lambda t: tuple(int(n) for n in STABLE_TAG.match(t).groups()), reverse=True)
+
+
+def _published_files(tag: str, path: str) -> dict[str, bytes]:
+    """Os arquivos que a release `tag` publicou para o documento em `path`, pelo caminho dentro dele."""
+    listed = _git("ls-tree", "-r", "--name-only", tag, "--", path).stdout.decode().splitlines()
+    files = {}
+    for name in listed:
+        relative = name[len(path):].lstrip("/")
+        if CURATION_DIR in Path(relative).parts:
+            continue
+        files[relative] = _git("show", f"{tag}:{name}").stdout
+    return files
+
+
+def _current_files(doc_dir: Path) -> dict[str, bytes]:
+    return {item.relative_to(doc_dir).as_posix(): item.read_bytes() for item in sorted(doc_dir.rglob("*"))
+            if item.is_file() and CURATION_DIR not in item.relative_to(doc_dir).parts}
+
+
+def check_released_versions(contracts: dict[str, dict], dirs: dict[str, Path]) -> None:
+    """Documento já lançado que muda de conteúdo sem subir metadata.version.
+
+    A assinatura de um tenant fixa a VERSÃO do documento, e o Reporter recusa substituir a
+    cópia que o tenant tem por outro conteúdo com o mesmo número (RPT-0154): a correção
+    publicada sem subir a versão nunca chega a quem já adotou. Conta como conteúdo tudo o
+    que a release publica do documento (contrato, template, binding de exemplo, manual,
+    tabelas), comparado com a release estável mais nova que o publicou. Versionar:
+    CONTRIBUTING.md, "Versionar".
+    """
+    tags = released_tags()
+    required = os.environ.get(REQUIRE_RELEASES) == "1"
+    if tags is None:
+        message = "guarda de versão não rodou: a raiz do catálogo não é um checkout git"
+        (fail if required else warn)(message)
+        return
+    if not tags:
+        message = ("guarda de versão não rodou: nenhuma tag estável (vX.Y.Z) visível; um clone raso não traz "
+                   "tags — no CI, checkout com fetch-depth: 0")
+        (fail if required else warn)(message)
+        return
+
+    indexes: dict[str, dict] = {}
+    for doc_id, contract in sorted(contracts.items()):
+        current = str((contract.get("metadata") or {}).get("version"))
+        for tag in tags:
+            if tag not in indexes:
+                raw = _git("show", f"{tag}:catalog.yaml").stdout
+                try:
+                    indexes[tag] = {e["id"]: e for e in (yaml.safe_load(raw) or {}).get("documents") or []
+                                    if isinstance(e, dict) and isinstance(e.get("id"), str)}
+                except yaml.YAMLError:
+                    indexes[tag] = {}
+            entry = indexes[tag].get(doc_id)
+            if entry is None:
+                continue
+            released = str(entry.get("version"))
+            if not DOCUMENT_VERSION.match(current) or not DOCUMENT_VERSION.match(released):
+                fail(f"{doc_id}: a versão {current!r} (ou a {released!r} publicada em {tag}) não é X.Y.Z; "
+                     "a guarda de versão não compara")
+                break
+            now = tuple(int(n) for n in DOCUMENT_VERSION.match(current).groups())
+            then = tuple(int(n) for n in DOCUMENT_VERSION.match(released).groups())
+            if now < then:
+                fail(f"{doc_id}: metadata.version {current} é menor que a {released} que a release {tag} publicou")
+                break
+            before = _published_files(tag, str(entry.get("path", "")).strip("/"))
+            after = _current_files(dirs[doc_id])
+            changed = sorted(name for name in set(before) | set(after) if before.get(name) != after.get(name))
+            if changed and now == then:
+                fail(f"{doc_id}: {', '.join(changed)} mudou desde a release {tag}, que o publicou na versão "
+                     f"{released}, e metadata.version continua {current}. Suba a versão (CONTRIBUTING.md, "
+                     "Versionar: patch, minor ou major): o Reporter recusa conteúdo novo sob uma versão que o "
+                     "tenant já adotou, e a mudança nunca chegaria a ele")
+            break
+
+
 def main() -> int:
     FAILURES.clear()
     WARNINGS.clear()
@@ -4013,6 +4113,7 @@ def main() -> int:
         return 1
 
     contracts: dict[str, dict] = {}
+    dirs: dict[str, Path] = {}
 
     for path in contract_paths(ROOT):
         contract = load(path)
@@ -4031,6 +4132,7 @@ def main() -> int:
             continue
 
         contracts[doc_id] = contract
+        dirs[doc_id] = doc_dir
         check_dataset_shapes(doc_dir, contract)
         check_template(doc_dir, contract)
         check_formatting_not_duplicated(doc_dir)
@@ -4052,6 +4154,7 @@ def main() -> int:
 
     check_nature_copies()
     check_index(catalog, contracts)
+    check_released_versions(contracts, dirs)
 
     for warning in WARNINGS:
         print(f"aviso: {warning}")

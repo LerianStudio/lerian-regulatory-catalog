@@ -50,6 +50,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -3322,6 +3323,137 @@ class ValidatorSuite(unittest.TestCase):
         code, out = _run(empty)
         self.assertEqual(code, 1, f"deveria reprovar:\n{out}")
         self.assertNotIn("Traceback", out, f"estourou em vez de reprovar:\n{out}")
+
+
+def _git(root: Path, *args: str) -> None:
+    """Git na árvore de teste, sem assinar: a config global de quem roda a suíte pode exigir GPG."""
+    subprocess.run(["git", "-C", str(root), "-c", "user.name=fixture", "-c", "user.email=fixture@example.com",
+                    "-c", "commit.gpgsign=false", "-c", "tag.gpgSign=false", *args],
+                   check=True, capture_output=True)
+
+
+class ReleasedVersions(unittest.TestCase):
+    """A guarda de versão: documento lançado em release estável não muda sem subir metadata.version.
+
+    O Reporter recusa substituir a cópia do tenant por outro conteúdo sob a mesma versão
+    (RPT-0154): uma correção publicada sem subir a versão nunca chega a quem já adotou.
+    """
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="catalog-releases-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def released(self, *, index_without_plano: bool = False, tag: bool = True) -> Path:
+        """As fixtures num repositório git, commitadas e com a release estável v1.0.0."""
+        root = self.tmp / "catalog"
+        root.mkdir()
+        fixtures.write(root, fixtures.bundle())
+        index = root / "catalog.yaml"
+        full = index.read_bytes()
+        if index_without_plano:
+            data = yaml.safe_load(full)
+            data["documents"] = [d for d in data["documents"] if d.get("path") != PLANO]
+            index.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        _git(root, "init", "-q")
+        _git(root, "add", "-A")
+        _git(root, "commit", "-q", "-m", "fixtures")
+        if tag:
+            _git(root, "tag", "v1.0.0")
+        index.write_bytes(full)
+        return root
+
+    def version(self, root: Path, value: str) -> None:
+        """Troca a versão do PLANO no contrato e no índice, que a guarda de índice exige iguais."""
+        contract = root / PLANO / "contract.yaml"
+        data = yaml.safe_load(contract.read_text(encoding="utf-8"))
+        data["metadata"]["version"] = value
+        contract.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        index = yaml.safe_load((root / "catalog.yaml").read_text(encoding="utf-8"))
+        for entry in index["documents"]:
+            if entry.get("path") == PLANO:
+                entry["version"] = value
+        (root / "catalog.yaml").write_text(yaml.safe_dump(index, allow_unicode=True, sort_keys=False),
+                                           encoding="utf-8")
+
+    def edit_template(self, root: Path) -> None:
+        with (root / PLANO / "template.tpl").open("a", encoding="utf-8") as fh:
+            fh.write("\n")
+
+    def run_validate(self, root: Path, require: bool = False) -> tuple[int, str]:
+        previous = validate.ROOT
+        validate.ROOT = root
+        out, err = io.StringIO(), io.StringIO()
+        env = {validate.REQUIRE_RELEASES: "1"} if require else {}
+        try:
+            with mock.patch.dict(os.environ, env), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                code = validate.main()
+        finally:
+            validate.ROOT = previous
+        return code, out.getvalue() + err.getvalue()
+
+    def test_mudanca_sem_subir_a_versao_reprova(self) -> None:
+        root = self.released()
+        self.edit_template(root)
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("template.tpl mudou desde a release v1.0.0, que o publicou na versão 1.0.0", out)
+
+    def test_mudanca_com_a_versao_subida_passa(self) -> None:
+        root = self.released()
+        self.edit_template(root)
+        self.version(root, "1.0.1")
+        code, out = self.run_validate(root)
+        self.assertNotIn("mudou desde a release", out)
+        self.assertEqual(0, code, out)
+
+    def test_versao_menor_que_a_publicada_reprova(self) -> None:
+        root = self.released()
+        self.version(root, "0.9.0")
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("é menor que a 1.0.0 que a release v1.0.0 publicou", out)
+
+    def test_documento_ainda_nao_lancado_nao_e_conferido(self) -> None:
+        root = self.released(index_without_plano=True)
+        self.edit_template(root)
+        code, out = self.run_validate(root)
+        self.assertNotIn("mudou desde a release", out)
+        self.assertEqual(0, code, out)
+
+    def test_fora_de_um_checkout_git_so_avisa(self) -> None:
+        root = self.tmp / "solto"
+        root.mkdir()
+        fixtures.write(root, fixtures.bundle())
+        code, out = self.run_validate(root)
+        self.assertEqual(0, code, out)
+        self.assertIn("aviso: guarda de versão não rodou: a raiz do catálogo não é um checkout git", out)
+
+    def test_ci_sem_tag_estavel_reprova(self) -> None:
+        # Um clone raso não traz tag: sem esta exigência, a guarda passaria verde sobre nada.
+        code, out = self.run_validate(self.released(tag=False), require=True)
+        self.assertEqual(1, code, out)
+        self.assertIn("nenhuma tag estável (vX.Y.Z) visível", out)
+
+    def test_ci_fora_de_um_checkout_git_reprova(self) -> None:
+        root = self.tmp / "solto"
+        root.mkdir()
+        fixtures.write(root, fixtures.bundle())
+        code, out = self.run_validate(root, require=True)
+        self.assertEqual(1, code, out)
+        self.assertIn("não é um checkout git", out)
+
+    def test_o_publicado_e_o_mesmo_do_pacote(self) -> None:
+        # A guarda compara o que a release publica; a pasta de curadoria fica fora nos dois lados.
+        import release
+
+        self.assertEqual(release.EXCLUDED_DIR, validate.CURATION_DIR)
+
+    def test_tirar_a_guarda_reprova_o_teste(self) -> None:
+        with mock.patch.object(validate, "check_released_versions", lambda contracts, dirs: None):
+            result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(
+                unittest.defaultTestLoader.loadTestsFromName("test_mudanca_sem_subir_a_versao_reprova",
+                                                             ReleasedVersions))
+        self.assertEqual(1, len(result.failures))
 
 
 if __name__ == "__main__":
