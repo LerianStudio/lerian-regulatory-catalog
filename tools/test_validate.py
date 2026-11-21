@@ -3477,7 +3477,7 @@ class ReleasedVersions(unittest.TestCase):
         self.assertIn("mudou desde a release v1.1.0-beta.1", out)
         self.assertNotIn("mudou desde a release v1.1.0-beta.2", out)
 
-    def test_versao_menor_que_a_maior_publicada_em_qualquer_release_reprova(self) -> None:
+    def test_versao_menor_que_a_maior_publicada_na_historia_reprova(self) -> None:
         root = self.released(tag="v1.1.0-beta.1")
         self.version(root, "1.0.1")
         _git(root, "add", "-A")
@@ -3575,6 +3575,32 @@ class ReleasedVersions(unittest.TestCase):
         code, out = self.run_validate(root)
         self.assertEqual(0, code, out)
         self.assertIn("não vale mais (a versão é 1.0.1); pode sair", out)
+
+    def side_release(self, root: Path, tag: str, change) -> None:
+        """Corta `tag` num commit fora da história do HEAD, como uma beta da develop vista do PR rc → main."""
+        _git(root, "checkout", "-q", "-b", "lateral")
+        change(root)
+        _git(root, "add", "-A")
+        _git(root, "commit", "-q", "-m", "linha lateral")
+        _git(root, "tag", tag)
+        _git(root, "checkout", "-q", "--detach", "HEAD~1")
+
+    def test_versao_maior_numa_tag_fora_da_historia_nao_barra(self) -> None:
+        # A rc publicou 1.0.0; a develop subiu para 1.0.1 e cortou uma beta depois. O PR rc → main
+        # não tem a beta na história e continua em 1.0.0: a promoção passa.
+        root = self.released(tag="v1.1.0-rc.1")
+        self.side_release(root, "v1.2.0-beta.1", lambda r: (self.edit_template(r), self.version(r, "1.0.1")))
+        code, out = self.run_validate(root, require=True)
+        self.assertNotIn("é menor que", out)
+        self.assertEqual(0, code, out)
+
+    def test_mesma_versao_com_outro_conteudo_numa_tag_fora_da_historia_reprova(self) -> None:
+        # A colisão entre linhas continua: a mesma 1.0.0 com outro conteúdo, venha a tag de onde vier.
+        root = self.released(tag="v1.1.0-rc.1")
+        self.side_release(root, "v1.2.0-beta.1", self.edit_template)
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("template.tpl mudou desde a release v1.2.0-beta.1, que o publicou na versão 1.0.0", out)
 
     def test_mudanca_so_na_pasta_de_curadoria_passa(self) -> None:
         # schema/ não sai na release (release.EXCLUDED_DIR): mudar ali não muda o que o tenant adotou.

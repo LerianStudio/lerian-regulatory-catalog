@@ -4046,6 +4046,11 @@ def released_tags() -> list[str] | None:
     return sorted(tags, key=release_order)
 
 
+def merged_tags() -> set[str]:
+    """As tags de release que estão na história do HEAD (o merge do PR, no CI)."""
+    return set(_git("tag", "--merged", "HEAD", "-l", "v*").stdout.decode().split())
+
+
 def _published_files(tag: str, path: str) -> dict[str, bytes]:
     """Os arquivos que a release `tag` publicou para o documento em `path`, pelo caminho dentro dele."""
     listed = [n for n in _git("ls-tree", "-r", "-z", "--name-only", tag, "--", path).stdout.decode().split("\0") if n]
@@ -4111,13 +4116,16 @@ def load_exemptions(contracts: dict[str, dict]) -> dict[tuple[str, str], dict]:
 
 
 def released_version_problems(contracts: dict[str, dict], dirs: dict[str, Path], tags: list[str],
-                              exemptions: dict[tuple[str, str], dict] | None = None) -> list[str]:
-    """As violações da guarda de versão, contra TODAS as releases que publicaram cada documento.
+                              exemptions: dict[tuple[str, str], dict] | None = None,
+                              merged: set[str] | None = None) -> list[str]:
+    """As violações da guarda de versão, contra as releases que publicaram cada documento.
 
-    Duas regras. (1) Toda release que publicou o documento com a versão de agora publicou o
-    MESMO conteúdo: um tenant que adotou aquela versão em qualquer delas tem a cópia travada,
-    e o Reporter recusa outro conteúdo sob o mesmo número (RPT-0154). (2) A versão de agora
-    não é menor que a maior que alguma release já publicou.
+    Duas regras. (1) Toda release que publicou o documento com a versão de agora, em qualquer
+    linha, publicou o MESMO conteúdo: um tenant que adotou aquela versão em qualquer delas tem
+    a cópia travada, e o Reporter recusa outro conteúdo sob o mesmo número (RPT-0154). (2) A
+    versão de agora não é menor que a maior que uma release da história do HEAD (`merged`;
+    None = todas) já publicou. Só a história: uma beta cortada da develop depois da rc não
+    barra a promoção da rc para a main.
     """
     problems = []
     indexes = {tag: _published_index(tag) for tag in tags}
@@ -4143,7 +4151,7 @@ def released_version_problems(contracts: dict[str, dict], dirs: dict[str, Path],
             if released is None:
                 problems.append(f"{doc_id}: a release {tag} o publicou com a versão {released_text!r}, que não é X.Y.Z")
                 continue
-            if highest is None or released > highest[0]:
+            if (merged is None or tag in merged) and (highest is None or released > highest[0]):
                 highest = (released, released_text, tag)
             if released != current:
                 continue
@@ -4181,7 +4189,7 @@ def check_released_versions(contracts: dict[str, dict], dirs: dict[str, Path]) -
         current = str((contracts[doc_id].get("metadata") or {}).get("version"))
         if current != version:
             warn(f"{EXEMPTIONS_FILE}: a isenção de '{doc_id}' {version} não vale mais (a versão é {current}); pode sair")
-    for problem in released_version_problems(contracts, dirs, tags, exemptions):
+    for problem in released_version_problems(contracts, dirs, tags, exemptions, merged_tags()):
         fail(problem)
 
 
