@@ -227,6 +227,9 @@ em `tools/release-guard-exemptions.yaml`, com as tags em conflito, o conteúdo d
 conteúdo for o registrado: mudou de novo sem subir a versão, reprova. Subiu a versão, a
 isenção perde o efeito (a guarda avisa) e pode sair.
 
+Um hotfix na `main` que sobe a versão de um documento reprova todo PR na `develop` até a `main`
+voltar para ela por merge: a versão da `develop` fica menor que a publicada pela tag do hotfix.
+
 ## Branches
 
 O consumo do catálogo é por **tag** (`br.bcb.cadoc-4010/v1.0.0`): é o que a
