@@ -4111,13 +4111,18 @@ def load_exemptions(contracts: dict[str, dict]) -> dict[tuple[str, str], dict]:
         if entry["document"] not in contracts:
             fail(f"{where} cita '{entry['document']}', que não é documento deste catálogo")
             continue
-        exemptions[(entry["document"], str(entry["version"]))] = entry
+        key = (entry["document"], str(entry["version"]))
+        if key in exemptions:
+            fail(f"{where} repete '{key[0]}' {key[1]}; junte as tags numa entrada só")
+            continue
+        exemptions[key] = entry
     return exemptions
 
 
 def released_version_problems(contracts: dict[str, dict], dirs: dict[str, Path], tags: list[str],
                               exemptions: dict[tuple[str, str], dict] | None = None,
-                              merged: set[str] | None = None) -> list[str]:
+                              merged: set[str] | None = None,
+                              used: set[tuple[str, str, str]] | None = None) -> list[str]:
     """As violações da guarda de versão, contra as releases que publicaram cada documento.
 
     Duas regras. (1) Toda release que publicou o documento com a versão de agora, em qualquer
@@ -4125,7 +4130,8 @@ def released_version_problems(contracts: dict[str, dict], dirs: dict[str, Path],
     a cópia travada, e o Reporter recusa outro conteúdo sob o mesmo número (RPT-0154). (2) A
     versão de agora não é menor que a maior que uma release da história do HEAD (`merged`;
     None = todas) já publicou. Só a história: uma beta cortada da develop depois da rc não
-    barra a promoção da rc para a main.
+    barra a promoção da rc para a main. `used` recebe cada (documento, versão, tag) que uma
+    isenção de fato calou.
     """
     problems = []
     indexes = {tag: _published_index(tag) for tag in tags}
@@ -4140,6 +4146,7 @@ def released_version_problems(contracts: dict[str, dict], dirs: dict[str, Path],
             continue
         after = _current_files(dirs[doc_id])
         exemption = (exemptions or {}).get((doc_id, current_text))
+        listed = set(exemption["tags"]) if exemption is not None else set()
         if exemption is not None and exemption.get("contentSha256") != content_digest(after):
             problems.append(f"{doc_id}: a isenção da versão {current_text} ({EXEMPTIONS_FILE}) vale só para o "
                             "conteúdo registrado, e o documento mudou desde ela; suba a versão")
@@ -4155,6 +4162,8 @@ def released_version_problems(contracts: dict[str, dict], dirs: dict[str, Path],
                 highest = (released, released_text, tag)
             if released != current:
                 continue
+            if tag in listed and used is not None:
+                used.add((doc_id, current_text, tag))
             if exemption is not None and tag in exemption["tags"]:
                 continue
             before = _published_files(tag, str(entry.get("path", "")).strip("/"))
@@ -4185,12 +4194,21 @@ def check_released_versions(contracts: dict[str, dict], dirs: dict[str, Path]) -
         (fail if required else warn)(message)
         return
     exemptions = load_exemptions(contracts)
-    for (doc_id, version) in sorted(exemptions):
+    used: set[tuple[str, str, str]] = set()
+    for problem in released_version_problems(contracts, dirs, tags, exemptions, merged_tags(), used):
+        fail(problem)
+    # Isenção que não cala nada é isenção esquecida: no CI reprova, para sair no mesmo PR.
+    for (doc_id, version), entry in sorted(exemptions.items()):
         current = str((contracts[doc_id].get("metadata") or {}).get("version"))
         if current != version:
-            warn(f"{EXEMPTIONS_FILE}: a isenção de '{doc_id}' {version} não vale mais (a versão é {current}); pode sair")
-    for problem in released_version_problems(contracts, dirs, tags, exemptions, merged_tags()):
-        fail(problem)
+            (fail if required else warn)(
+                f"{EXEMPTIONS_FILE}: a isenção de '{doc_id}' {version} não vale mais (a versão é {current}); tire-a")
+            continue
+        for tag in entry["tags"]:
+            if (doc_id, version, tag) not in used:
+                (fail if required else warn)(
+                    f"{EXEMPTIONS_FILE}: a isenção de '{doc_id}' {version} lista a tag {tag}, que não publicou "
+                    f"o documento nessa versão; tire a tag")
 
 
 def main() -> int:

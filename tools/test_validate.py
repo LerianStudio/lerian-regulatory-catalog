@@ -3539,6 +3539,8 @@ class ReleasedVersions(unittest.TestCase):
         self.assertEqual(1, code, out)
         self.assertIn("vale só para o conteúdo registrado, e o documento mudou desde ela", out)
         self.assertIn("template.tpl mudou desde a release v1.0.0", out)
+        # A tag listada publicou a versão: o digest divergente reprova uma vez, sem "tag não usada".
+        self.assertNotIn("lista a tag", out)
 
     def test_isencao_vale_so_para_as_tags_listadas(self) -> None:
         root = self.released(tag="v1.1.0-beta.1")
@@ -3567,14 +3569,44 @@ class ReleasedVersions(unittest.TestCase):
         self.assertEqual(1, code, out)
         self.assertIn("cita 'zz.fixture.nao-existe', que não é documento deste catálogo", out)
 
-    def test_isencao_de_versao_ja_subida_so_avisa(self) -> None:
+    def test_isencao_de_versao_ja_subida_avisa_e_reprova_no_ci(self) -> None:
+        # Isenção que não cala nada é isenção esquecida: no CI tem de sair no mesmo PR do bump.
         root = self.released()
         self.edit_template(root)
         self.exempt(root, ["v1.0.0"])
         self.version(root, "1.0.1")
         code, out = self.run_validate(root)
         self.assertEqual(0, code, out)
-        self.assertIn("não vale mais (a versão é 1.0.1); pode sair", out)
+        self.assertIn("aviso: tools/release-guard-exemptions.yaml: a isenção de 'zz.fixture.plano' 1.0.0 não vale "
+                      "mais (a versão é 1.0.1); tire-a", out)
+        code, out = self.run_validate(root, require=True)
+        self.assertEqual(1, code, out)
+        self.assertIn("erro: tools/release-guard-exemptions.yaml: a isenção de 'zz.fixture.plano' 1.0.0 não vale "
+                      "mais", out)
+
+    def test_isencao_com_tag_que_nao_publicou_a_versao_avisa_e_reprova_no_ci(self) -> None:
+        root = self.released()
+        self.edit_template(root)
+        self.exempt(root, ["v1.0.0", "v9.9.9"])
+        code, out = self.run_validate(root)
+        self.assertEqual(0, code, out)
+        self.assertIn("lista a tag v9.9.9, que não publicou o documento nessa versão; tire a tag", out)
+        self.assertNotIn("lista a tag v1.0.0", out)
+        code, out = self.run_validate(root, require=True)
+        self.assertEqual(1, code, out)
+        self.assertIn("erro: tools/release-guard-exemptions.yaml: a isenção de 'zz.fixture.plano' 1.0.0 lista a "
+                      "tag v9.9.9", out)
+
+    def test_isencao_repetida_reprova(self) -> None:
+        root = self.released()
+        self.exempt(root, ["v1.0.0"])
+        path = root / validate.EXEMPTIONS_FILE
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data["exemptions"].append(dict(data["exemptions"][0]))
+        path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("repete 'zz.fixture.plano' 1.0.0; junte as tags numa entrada só", out)
 
     def side_release(self, root: Path, tag: str, change) -> None:
         """Corta `tag` num commit fora da história do HEAD, como uma beta da develop vista do PR rc → main."""
