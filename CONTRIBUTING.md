@@ -211,6 +211,14 @@ versão anterior do contrato, que é como um erro se perpetua.
 - Mudança que altera arquivos já gerados e aceitos: major, e explique na descrição
   da tag o que muda para quem já adotou.
 
+O `tools/validate.py` confere isso contra a release estável mais nova que publicou o
+documento: qualquer arquivo publicado do documento (contrato, template, binding de exemplo,
+manual, tabelas) que mudou desde ela, com `metadata.version` igual, reprova. O motivo é o
+Reporter: ele recusa substituir a cópia de um tenant por outro conteúdo sob a mesma versão,
+e a mudança nunca chegaria a quem já adotou. A guarda precisa das tags (`git fetch --tags`
+num clone raso); fora de um checkout git ela só avisa, e no CI
+(`CATALOG_REQUIRE_RELEASES=1`) a falta de tag reprova.
+
 ## Branches
 
 O consumo do catálogo é por **tag** (`br.bcb.cadoc-4010/v1.0.0`): é o que a
