@@ -57,6 +57,10 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The version guard compares each released document with the newest stable
+          # tag that published it: it needs the tags, which a shallow clone lacks.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -69,3 +73,6 @@ jobs:
       - run: python3 tools/test_ispb_compe.py
       - run: python3 tools/test_ispb_cnpj.py
       - run: python3 tools/validate.py
+        env:
+          # Without tags the guard would pass green over nothing: here it must run.
+          CATALOG_REQUIRE_RELEASES: "1"
