@@ -61,6 +61,15 @@ import yaml  # noqa: E402
 import fixtures  # noqa: E402
 import validate  # noqa: E402
 
+
+def setUpModule() -> None:
+    # O passo validate do CI liga CATALOG_REQUIRE_RELEASES; quem roda a suíte com ela exportada
+    # não reprova as fixtures, que vivem fora de um checkout git. Cada teste da guarda a liga
+    # quando precisa (ReleasedVersions.run_validate). Sem cleanup de módulo: o runner aninhado
+    # de test_tirar_a_guarda_reprova_o_teste o dispararia e devolveria a variável no meio da suíte.
+    os.environ.pop(validate.REQUIRE_RELEASES, None)
+
+
 TOOLS = Path(__file__).resolve().parent
 VALIDATE = TOOLS / "validate.py"
 
@@ -2719,6 +2728,8 @@ _NOT_CONTRACT_KEYS = {
     "byPrefix", "sha256",
     # a grafia antiga do parâmetro múltiplo: lida só para ser recusada, nomeando `multiple`
     "list",
+    # tools/release-guard-exemptions.yaml — as isenções da guarda de versão (ReleasedVersions)
+    "exemptions", "tags", "contentSha256",
 }
 
 
@@ -3333,7 +3344,7 @@ def _git(root: Path, *args: str) -> None:
 
 
 class ReleasedVersions(unittest.TestCase):
-    """A guarda de versão: documento lançado em release estável não muda sem subir metadata.version.
+    """A guarda de versão: documento publicado em alguma release não muda sem subir metadata.version.
 
     O Reporter recusa substituir a cópia do tenant por outro conteúdo sob a mesma versão
     (RPT-0154): uma correção publicada sem subir a versão nunca chega a quem já adotou.
@@ -3343,8 +3354,8 @@ class ReleasedVersions(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="catalog-releases-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
 
-    def released(self, *, index_without_plano: bool = False, tag: bool = True) -> Path:
-        """As fixtures num repositório git, commitadas e com a release estável v1.0.0."""
+    def released(self, *, index_without_plano: bool = False, tag: str | None = "v1.0.0") -> Path:
+        """As fixtures num repositório git, commitadas e com uma release (a estável v1.0.0, por padrão)."""
         root = self.tmp / "catalog"
         root.mkdir()
         fixtures.write(root, fixtures.bundle())
@@ -3358,7 +3369,7 @@ class ReleasedVersions(unittest.TestCase):
         _git(root, "add", "-A")
         _git(root, "commit", "-q", "-m", "fixtures")
         if tag:
-            _git(root, "tag", "v1.0.0")
+            _git(root, "tag", tag)
         index.write_bytes(full)
         return root
 
@@ -3383,9 +3394,12 @@ class ReleasedVersions(unittest.TestCase):
         previous = validate.ROOT
         validate.ROOT = root
         out, err = io.StringIO(), io.StringIO()
-        env = {validate.REQUIRE_RELEASES: "1"} if require else {}
         try:
-            with mock.patch.dict(os.environ, env), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            # O ambiente de quem roda o teste não decide o resultado: a variável vale só quando pedida.
+            with mock.patch.dict(os.environ, {validate.REQUIRE_RELEASES: "1"}), \
+                    contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                if not require:
+                    del os.environ[validate.REQUIRE_RELEASES]
                 code = validate.main()
         finally:
             validate.ROOT = previous
@@ -3428,11 +3442,56 @@ class ReleasedVersions(unittest.TestCase):
         self.assertEqual(0, code, out)
         self.assertIn("aviso: guarda de versão não rodou: a raiz do catálogo não é um checkout git", out)
 
-    def test_ci_sem_tag_estavel_reprova(self) -> None:
+    def test_ci_sem_tag_de_release_reprova(self) -> None:
         # Um clone raso não traz tag: sem esta exigência, a guarda passaria verde sobre nada.
-        code, out = self.run_validate(self.released(tag=False), require=True)
+        code, out = self.run_validate(self.released(tag=None), require=True)
         self.assertEqual(1, code, out)
-        self.assertIn("nenhuma tag estável (vX.Y.Z) visível", out)
+        self.assertIn("nenhuma tag de release (vX.Y.Z, vX.Y.Z-rc.N, vX.Y.Z-beta.N) visível", out)
+
+    def test_mudanca_sem_subir_a_versao_sobre_uma_beta_reprova(self) -> None:
+        # O dev lê a beta: um tenant que assinou ali tem a cópia travada como na estável.
+        root = self.released(tag="v1.1.0-beta.1")
+        self.edit_template(root)
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("template.tpl mudou desde a release v1.1.0-beta.1, que o publicou na versão 1.0.0", out)
+
+    def test_mudanca_com_a_versao_subida_sobre_uma_beta_passa(self) -> None:
+        root = self.released(tag="v1.1.0-beta.1")
+        self.edit_template(root)
+        self.version(root, "1.0.1")
+        code, out = self.run_validate(root)
+        self.assertNotIn("mudou desde a release", out)
+        self.assertEqual(0, code, out)
+
+    def test_toda_release_da_mesma_versao_e_conferida_nao_so_a_mais_nova(self) -> None:
+        # A beta.1 publicou a 1.0.0 com um conteúdo; a beta.2 publicou a MESMA 1.0.0 com outro, e é
+        # igual ao de agora. Quem assinou na beta.1 tem a cópia antiga travada: reprova contra ela.
+        root = self.released(tag="v1.1.0-beta.1")
+        self.edit_template(root)
+        _git(root, "add", "-A")
+        _git(root, "commit", "-q", "-m", "muda sem subir")
+        _git(root, "tag", "v1.1.0-beta.2")
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("mudou desde a release v1.1.0-beta.1", out)
+        self.assertNotIn("mudou desde a release v1.1.0-beta.2", out)
+
+    def test_versao_menor_que_a_maior_publicada_em_qualquer_release_reprova(self) -> None:
+        root = self.released(tag="v1.1.0-beta.1")
+        self.version(root, "1.0.1")
+        _git(root, "add", "-A")
+        _git(root, "commit", "-q", "-m", "sobe")
+        _git(root, "tag", "v1.1.0-beta.2")
+        self.version(root, "1.0.0")
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("é menor que a 1.0.1 que a release v1.1.0-beta.2 publicou", out)
+
+    def test_ordem_das_releases_e_numerica(self) -> None:
+        tags = ["v1.1.0", "v1.1.0-beta.10", "v1.0.0", "v1.1.0-rc.1", "v1.1.0-beta.9", "v1.1.0-rc.2", "v1.0.10"]
+        self.assertEqual(["v1.0.0", "v1.0.10", "v1.1.0-beta.9", "v1.1.0-beta.10", "v1.1.0-rc.1", "v1.1.0-rc.2",
+                          "v1.1.0"], sorted(tags, key=validate.release_order))
 
     def test_ci_fora_de_um_checkout_git_reprova(self) -> None:
         root = self.tmp / "solto"
@@ -3447,6 +3506,100 @@ class ReleasedVersions(unittest.TestCase):
         import release
 
         self.assertEqual(release.EXCLUDED_DIR, validate.CURATION_DIR)
+
+    def plano_id(self, root: Path) -> str:
+        return yaml.safe_load((root / PLANO / "contract.yaml").read_text(encoding="utf-8"))["metadata"]["id"]
+
+    def exempt(self, root: Path, tags: list[str], **overrides: object) -> None:
+        """Isenta o PLANO 1.0.0 nas `tags`, registrando o conteúdo de agora."""
+        entry = {"document": self.plano_id(root), "version": "1.0.0", "tags": tags,
+                 "contentSha256": validate.content_digest(validate._current_files(root / PLANO)),
+                 "reason": "publicado com conteúdos diferentes antes da guarda", "date": "2026-11-21"}
+        entry.update(overrides)
+        entry = {k: v for k, v in entry.items() if v is not None}
+        path = root / validate.EXEMPTIONS_FILE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(yaml.safe_dump({"exemptions": [entry]}, allow_unicode=True, sort_keys=False),
+                        encoding="utf-8")
+
+    def test_isencao_registrada_passa(self) -> None:
+        root = self.released()
+        self.edit_template(root)
+        self.exempt(root, ["v1.0.0"])
+        code, out = self.run_validate(root, require=True)
+        self.assertNotIn("mudou desde a release", out)
+        self.assertEqual(0, code, out)
+
+    def test_mudanca_depois_da_isencao_reprova(self) -> None:
+        root = self.released()
+        self.edit_template(root)
+        self.exempt(root, ["v1.0.0"])
+        self.edit_template(root)
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("vale só para o conteúdo registrado, e o documento mudou desde ela", out)
+        self.assertIn("template.tpl mudou desde a release v1.0.0", out)
+
+    def test_isencao_vale_so_para_as_tags_listadas(self) -> None:
+        root = self.released(tag="v1.1.0-beta.1")
+        self.edit_template(root)
+        _git(root, "add", "-A")
+        _git(root, "commit", "-q", "-m", "muda sem subir")
+        _git(root, "tag", "v1.1.0-beta.2")
+        self.edit_template(root)
+        self.exempt(root, ["v1.1.0-beta.1"])
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertNotIn("mudou desde a release v1.1.0-beta.1", out)
+        self.assertIn("mudou desde a release v1.1.0-beta.2", out)
+
+    def test_isencao_sem_motivo_reprova(self) -> None:
+        root = self.released()
+        self.exempt(root, ["v1.0.0"], reason=None)
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("sem reason", out)
+
+    def test_isencao_de_documento_desconhecido_reprova(self) -> None:
+        root = self.released()
+        self.exempt(root, ["v1.0.0"], document="zz.fixture.nao-existe")
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("cita 'zz.fixture.nao-existe', que não é documento deste catálogo", out)
+
+    def test_isencao_de_versao_ja_subida_so_avisa(self) -> None:
+        root = self.released()
+        self.edit_template(root)
+        self.exempt(root, ["v1.0.0"])
+        self.version(root, "1.0.1")
+        code, out = self.run_validate(root)
+        self.assertEqual(0, code, out)
+        self.assertIn("não vale mais (a versão é 1.0.1); pode sair", out)
+
+    def test_mudanca_so_na_pasta_de_curadoria_passa(self) -> None:
+        # schema/ não sai na release (release.EXCLUDED_DIR): mudar ali não muda o que o tenant adotou.
+        root = self.released()
+        curation = root / PLANO / validate.CURATION_DIR
+        curation.mkdir(exist_ok=True)
+        (curation / "nota.md").write_text("curadoria\n", encoding="utf-8")
+        code, out = self.run_validate(root)
+        self.assertNotIn("mudou desde a release", out)
+        self.assertEqual(0, code, out)
+
+    def test_arquivo_removido_sem_subir_a_versao_reprova(self) -> None:
+        root = self.released()
+        (root / PLANO / "template.tpl").unlink()
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("template.tpl mudou desde a release v1.0.0", out)
+
+    def test_ambiente_de_quem_roda_nao_liga_a_exigencia(self) -> None:
+        root = self.tmp / "solto"
+        root.mkdir()
+        fixtures.write(root, fixtures.bundle())
+        with mock.patch.dict(os.environ, {validate.REQUIRE_RELEASES: "1"}):
+            code, out = self.run_validate(root)
+        self.assertEqual(0, code, out)
 
     def test_tirar_a_guarda_reprova_o_teste(self) -> None:
         with mock.patch.object(validate, "check_released_versions", lambda contracts, dirs: None):
