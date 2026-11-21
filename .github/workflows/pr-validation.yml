@@ -58,8 +58,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # The version guard compares each released document with the newest stable
-          # tag that published it: it needs the tags, which a shallow clone lacks.
+          # The version guard compares each released document with every release tag
+          # that published it: it needs the tags, which a shallow clone lacks.
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
