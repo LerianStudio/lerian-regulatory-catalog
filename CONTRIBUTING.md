@@ -211,13 +211,21 @@ versão anterior do contrato, que é como um erro se perpetua.
 - Mudança que altera arquivos já gerados e aceitos: major, e explique na descrição
   da tag o que muda para quem já adotou.
 
-O `tools/validate.py` confere isso contra a release estável mais nova que publicou o
-documento: qualquer arquivo publicado do documento (contrato, template, binding de exemplo,
-manual, tabelas) que mudou desde ela, com `metadata.version` igual, reprova. O motivo é o
-Reporter: ele recusa substituir a cópia de um tenant por outro conteúdo sob a mesma versão,
-e a mudança nunca chegaria a quem já adotou. A guarda precisa das tags (`git fetch --tags`
-num clone raso); fora de um checkout git ela só avisa, e no CI
-(`CATALOG_REQUIRE_RELEASES=1`) a falta de tag reprova.
+O `tools/validate.py` confere isso contra TODA release que publicou o documento, de
+qualquer canal (beta, rc e estável): se alguma delas o publicou com a `metadata.version` de
+agora, qualquer arquivo publicado do documento (contrato, template, binding de exemplo,
+manual, tabelas) que mudou desde ela reprova; e a versão de agora não pode ser menor que a
+maior já publicada. O motivo é o Reporter: ele recusa substituir a cópia de um tenant por
+outro conteúdo sob a mesma versão, e a mudança nunca chegaria a quem já adotou, mesmo que
+tenha adotado numa beta. A guarda precisa das tags (`git fetch --tags` num clone raso); fora
+de um checkout git ela só avisa, e no CI (`CATALOG_REQUIRE_RELEASES=1`) a falta de tag
+reprova.
+
+Documentos que já saíram com conteúdos diferentes sob a mesma versão antes da guarda estão
+em `tools/release-guard-exemptions.yaml`, com as tags em conflito, o conteúdo de hoje
+(`contentSha256`), o motivo e a data. A isenção vale só para aquelas tags e só enquanto o
+conteúdo for o registrado: mudou de novo sem subir a versão, reprova. Subiu a versão, a
+isenção perde o efeito (a guarda avisa) e pode sair.
 
 ## Branches
 
