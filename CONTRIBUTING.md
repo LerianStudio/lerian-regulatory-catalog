@@ -215,20 +215,24 @@ O `tools/validate.py` confere isso contra TODA release que publicou o documento,
 qualquer canal (beta, rc e estável): se alguma delas o publicou com a `metadata.version` de
 agora, qualquer arquivo publicado do documento (contrato, template, binding de exemplo,
 manual, tabelas) que mudou desde ela reprova; e a versão de agora não pode ser menor que a
-maior já publicada. O motivo é o Reporter: ele recusa substituir a cópia de um tenant por
-outro conteúdo sob a mesma versão, e a mudança nunca chegaria a quem já adotou, mesmo que
-tenha adotado numa beta. A guarda precisa das tags (`git fetch --tags` num clone raso); fora
+maior que uma release da história do branch já publicou (`git tag --merged HEAD`). O
+motivo é o Reporter: ele recusa substituir a cópia de um tenant por outro conteúdo sob a
+mesma versão, e a mudança nunca chegaria a quem já adotou, mesmo que tenha adotado numa
+beta. A guarda precisa das tags (`git fetch --tags` num clone raso); fora
 de um checkout git ela só avisa, e no CI (`CATALOG_REQUIRE_RELEASES=1`) a falta de tag
 reprova.
 
 Documentos que já saíram com conteúdos diferentes sob a mesma versão antes da guarda estão
 em `tools/release-guard-exemptions.yaml`, com as tags em conflito, o conteúdo de hoje
 (`contentSha256`), o motivo e a data. A isenção vale só para aquelas tags e só enquanto o
-conteúdo for o registrado: mudou de novo sem subir a versão, reprova. Subiu a versão, a
-isenção perde o efeito (a guarda avisa) e pode sair.
+conteúdo for o registrado: mudou de novo sem subir a versão, reprova. Isenção que não cala
+mais nada (a versão subiu, ou uma tag listada não publicou o documento naquela versão) avisa
+localmente e reprova no CI: sai no mesmo PR.
 
-Um hotfix na `main` que sobe a versão de um documento reprova todo PR na `develop` até a `main`
-voltar para ela por merge: a versão da `develop` fica menor que a publicada pela tag do hotfix.
+A versão mínima olha só a história do branch: uma beta cortada da `develop` depois da rc não
+barra a promoção da rc para a `main`, e um hotfix na `main` que sobe um documento não barra a
+`develop` por versão. Ele barra só quando a `develop` chega à mesma versão com outro conteúdo,
+que é a colisão que a primeira regra reprova venha a tag de onde vier.
 
 ## Branches
 
