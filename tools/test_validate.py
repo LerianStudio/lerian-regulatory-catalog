@@ -3634,6 +3634,28 @@ class ReleasedVersions(unittest.TestCase):
         self.assertEqual(1, code, out)
         self.assertIn("template.tpl mudou desde a release v1.2.0-beta.1, que o publicou na versão 1.0.0", out)
 
+    def move_plano(self, root: Path, to: str) -> None:
+        (root / PLANO).rename(root / to)
+        index = yaml.safe_load((root / "catalog.yaml").read_text(encoding="utf-8"))
+        for entry in index["documents"]:
+            if entry.get("path") == PLANO:
+                entry["path"] = to
+        (root / "catalog.yaml").write_text(yaml.safe_dump(index, allow_unicode=True, sort_keys=False),
+                                           encoding="utf-8")
+
+    def test_documento_movido_e_comparado_pelo_caminho_da_release(self) -> None:
+        # A release guarda o caminho dela no índice: o documento movido é comparado com o publicado.
+        root = self.released()
+        self.move_plano(root, "zz/fixture/plano-movido")
+        code, out = self.run_validate(root)
+        self.assertNotIn("mudou desde a release", out)
+        self.assertEqual(0, code, out)
+        with (root / "zz/fixture/plano-movido/template.tpl").open("a", encoding="utf-8") as fh:
+            fh.write("\n")
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("template.tpl mudou desde a release v1.0.0", out)
+
     def test_mudanca_so_na_pasta_de_curadoria_passa(self) -> None:
         # schema/ não sai na release (release.EXCLUDED_DIR): mudar ali não muda o que o tenant adotou.
         root = self.released()
