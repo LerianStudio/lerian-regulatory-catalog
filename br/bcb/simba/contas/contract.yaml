@@ -31,7 +31,7 @@ metadata:
   summary: >-
     Contas investigadas e contas da mesma instituicao com as quais elas transacionaram
     no periodo do afastamento do sigilo, com abertura, encerramento e saldos.
-  version: 1.0.0
+  version: 1.0.1
   status: draft
   output: txt
   timezone: America/Sao_Paulo
