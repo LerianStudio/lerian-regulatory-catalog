@@ -16,8 +16,10 @@ substitui.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -4002,6 +4004,222 @@ def check_index(catalog: dict, contracts: dict[str, dict]) -> None:
             fail(f"catalog.yaml: contrato '{doc_id}' existe e não está no índice")
 
 
+# A tag de uma release do catálogo, de qualquer canal: estável (vX.Y.Z), rc (-rc.N) ou beta
+# (-beta.N). Toda release chega a algum tenant — o dev lê a beta, o staging a rc —, e a cópia
+# que ele adotou trava o conteúdo daquela versão do documento.
+RELEASE_TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)(?:-(rc|beta)\.(\d+))?$")
+# Na mesma X.Y.Z, a estável vem depois da rc, que vem depois da beta; o número compara como
+# número (beta.10 depois de beta.9), nunca como texto.
+CHANNEL_RANK = {"beta": 0, "rc": 1, None: 2}
+# A versão de um documento, como o contrato a declara.
+DOCUMENT_VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+# No CI a guarda de versão TEM de rodar: um clone raso não traz tag nenhuma, e sem tag a
+# guarda passaria verde sobre nada.
+REQUIRE_RELEASES = "CATALOG_REQUIRE_RELEASES"
+
+
+# As isenções datadas da guarda de versão: documento+versão que já saíram com conteúdos
+# diferentes antes da guarda existir. Cada uma vale só para as tags listadas e só enquanto o
+# conteúdo for o registrado; qualquer mudança nova sem subir a versão volta a reprovar.
+EXEMPTIONS_FILE = Path("tools") / "release-guard-exemptions.yaml"
+
+
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, check=False)
+
+
+def release_order(tag: str) -> tuple[int, ...]:
+    """A ordem de uma tag de release: X.Y.Z numérico, depois o canal, depois o número do pré-lançamento."""
+    major, minor, patch, channel, number = RELEASE_TAG.match(tag).groups()
+    return int(major), int(minor), int(patch), CHANNEL_RANK[channel], int(number or 0)
+
+
+def released_tags() -> list[str] | None:
+    """As tags de release do catálogo, de qualquer canal, da mais velha para a mais nova; None fora do git."""
+    try:
+        inside = _git("rev-parse", "--is-inside-work-tree")
+    except OSError:
+        return None
+    if inside.returncode != 0 or inside.stdout.strip() != b"true":
+        return None
+    tags = [t for t in _git("tag", "-l", "v*").stdout.decode().split() if RELEASE_TAG.match(t)]
+    return sorted(tags, key=release_order)
+
+
+def merged_tags() -> set[str]:
+    """As tags de release que estão na história do HEAD (o merge do PR, no CI)."""
+    return set(_git("tag", "--merged", "HEAD", "-l", "v*").stdout.decode().split())
+
+
+def _published_files(tag: str, path: str) -> dict[str, bytes]:
+    """Os arquivos que a release `tag` publicou para o documento em `path`, pelo caminho dentro dele."""
+    listed = [n for n in _git("ls-tree", "-r", "-z", "--name-only", tag, "--", path).stdout.decode().split("\0") if n]
+    files = {}
+    for name in listed:
+        relative = name[len(path):].lstrip("/")
+        if CURATION_DIR in Path(relative).parts:
+            continue
+        files[relative] = _git("show", f"{tag}:{name}").stdout
+    return files
+
+
+def _current_files(doc_dir: Path) -> dict[str, bytes]:
+    return {item.relative_to(doc_dir).as_posix(): item.read_bytes() for item in sorted(doc_dir.rglob("*"))
+            if item.is_file() and CURATION_DIR not in item.relative_to(doc_dir).parts}
+
+
+def _version(text: str) -> tuple[int, int, int] | None:
+    match = DOCUMENT_VERSION.match(text)
+    return tuple(int(n) for n in match.groups()) if match else None
+
+
+def content_digest(files: dict[str, bytes]) -> str:
+    """O sha256 do que se publica de um documento: cada caminho e o seu conteúdo, em ordem."""
+    digest = hashlib.sha256()
+    for name in sorted(files):
+        digest.update(name.encode() + b"\0" + files[name] + b"\0")
+    return digest.hexdigest()
+
+
+def _published_index(tag: str) -> dict[str, dict]:
+    raw = _git("show", f"{tag}:catalog.yaml").stdout
+    try:
+        documents = (yaml.safe_load(raw) or {}).get("documents") or []
+    except yaml.YAMLError:
+        warn(f"guarda de versão: o catalog.yaml da release {tag} não se lê; os documentos dela não foram conferidos")
+        return {}
+    return {e["id"]: e for e in documents if isinstance(e, dict) and isinstance(e.get("id"), str)}
+
+
+def load_exemptions(contracts: dict[str, dict]) -> dict[tuple[str, str], dict]:
+    """As isenções do arquivo versionado, por (documento, versão); reprova uma entrada malformada."""
+    path = ROOT / EXEMPTIONS_FILE
+    if not path.exists():
+        return {}
+    data = mapping_at(str(EXEMPTIONS_FILE), load(path) or {}, "o arquivo é um mapeamento com a lista exemptions")
+    if data is None:
+        return {}
+    exemptions: dict[tuple[str, str], dict] = {}
+    for entry in sequence_at(f"{EXEMPTIONS_FILE}: exemptions", data.get("exemptions"),
+                             "exemptions é a lista das isenções"):
+        where = f"{EXEMPTIONS_FILE}: uma isenção"
+        if mapping_at(where, entry, "cada isenção é um mapeamento") is None:
+            continue
+        missing = [k for k in ("document", "version", "tags", "contentSha256", "reason", "date") if not entry.get(k)]
+        if missing:
+            fail(f"{where} ({entry.get('document')!r}) sem {', '.join(missing)}; "
+                 "cada isenção diz o documento, a versão, as tags, o conteúdo, o motivo e a data")
+            continue
+        # Texto, e não só presente: o documento e a versão viram chave, e as tags viram conjunto.
+        texts = [required_text(f"{where}: {k}", entry[k], f"{k} é texto")
+                 for k in ("document", "version", "contentSha256", "reason", "date")]
+        tags = [required_text(f"{where}: uma tag", tag, "cada tag é o nome de uma release, em texto")
+                for tag in sequence_at(f"{where}: tags", entry["tags"], "tags é a lista das releases isentas")]
+        if None in texts or None in tags or not isinstance(entry["tags"], list):
+            continue
+        if entry["document"] not in contracts:
+            fail(f"{where} cita '{entry['document']}', que não é documento deste catálogo")
+            continue
+        key = (entry["document"], str(entry["version"]))
+        if key in exemptions:
+            fail(f"{where} repete '{key[0]}' {key[1]}; junte as tags numa entrada só")
+            continue
+        exemptions[key] = entry
+    return exemptions
+
+
+def released_version_problems(contracts: dict[str, dict], dirs: dict[str, Path], tags: list[str],
+                              exemptions: dict[tuple[str, str], dict] | None = None,
+                              merged: set[str] | None = None,
+                              used: set[tuple[str, str, str]] | None = None) -> list[str]:
+    """As violações da guarda de versão, contra as releases que publicaram cada documento.
+
+    Duas regras. (1) Toda release que publicou o documento com a versão de agora, em qualquer
+    linha, publicou o MESMO conteúdo: um tenant que adotou aquela versão em qualquer delas tem
+    a cópia travada, e o Reporter recusa outro conteúdo sob o mesmo número (RPT-0154). (2) A
+    versão de agora não é menor que a maior que uma release da história do HEAD (`merged`;
+    None = todas) já publicou. Só a história: uma beta cortada da develop depois da rc não
+    barra a promoção da rc para a main. `used` recebe cada (documento, versão, tag) que uma
+    isenção de fato calou.
+    """
+    problems = []
+    indexes = {tag: _published_index(tag) for tag in tags}
+    for doc_id, contract in sorted(contracts.items()):
+        current_text = str((contract.get("metadata") or {}).get("version"))
+        current = _version(current_text)
+        published = [(tag, indexes[tag][doc_id]) for tag in tags if doc_id in indexes[tag]]
+        if not published:
+            continue
+        if current is None:
+            problems.append(f"{doc_id}: metadata.version {current_text!r} não é X.Y.Z; a guarda de versão não compara")
+            continue
+        after = _current_files(dirs[doc_id])
+        exemption = (exemptions or {}).get((doc_id, current_text))
+        listed = set(exemption["tags"]) if exemption is not None else set()
+        if exemption is not None and exemption.get("contentSha256") != content_digest(after):
+            problems.append(f"{doc_id}: a isenção da versão {current_text} ({EXEMPTIONS_FILE}) vale só para o "
+                            "conteúdo registrado, e o documento mudou desde ela; suba a versão")
+            exemption = None
+        highest = None
+        for tag, entry in published:
+            released_text = str(entry.get("version"))
+            released = _version(released_text)
+            if released is None:
+                problems.append(f"{doc_id}: a release {tag} o publicou com a versão {released_text!r}, que não é X.Y.Z")
+                continue
+            if (merged is None or tag in merged) and (highest is None or released > highest[0]):
+                highest = (released, released_text, tag)
+            if released != current:
+                continue
+            if tag in listed and used is not None:
+                used.add((doc_id, current_text, tag))
+            if exemption is not None and tag in exemption["tags"]:
+                continue
+            before = _published_files(tag, str(entry.get("path", "")).strip("/"))
+            changed = sorted(name for name in set(before) | set(after) if before.get(name) != after.get(name))
+            if changed:
+                problems.append(
+                    f"{doc_id}: {', '.join(changed)} mudou desde a release {tag}, que o publicou na versão "
+                    f"{released_text}, e metadata.version continua {current_text}. Suba a versão (CONTRIBUTING.md, "
+                    "Versionar: patch, minor ou major): o Reporter recusa conteúdo novo sob uma versão que o "
+                    "tenant já adotou, e a mudança nunca chegaria a ele")
+        if highest is not None and current < highest[0]:
+            problems.append(f"{doc_id}: metadata.version {current_text} é menor que a {highest[1]} que a release "
+                            f"{highest[2]} publicou")
+    return problems
+
+
+def check_released_versions(contracts: dict[str, dict], dirs: dict[str, Path]) -> None:
+    """Documento já publicado em alguma release que muda de conteúdo sem subir metadata.version."""
+    tags = released_tags()
+    required = os.environ.get(REQUIRE_RELEASES) == "1"
+    if tags is None:
+        message = "guarda de versão não rodou: a raiz do catálogo não é um checkout git"
+        (fail if required else warn)(message)
+        return
+    if not tags:
+        message = ("guarda de versão não rodou: nenhuma tag de release (vX.Y.Z, vX.Y.Z-rc.N, vX.Y.Z-beta.N) "
+                   "visível; um clone raso não traz tags — no CI, checkout com fetch-depth: 0")
+        (fail if required else warn)(message)
+        return
+    exemptions = load_exemptions(contracts)
+    used: set[tuple[str, str, str]] = set()
+    for problem in released_version_problems(contracts, dirs, tags, exemptions, merged_tags(), used):
+        fail(problem)
+    # Isenção que não cala nada é isenção esquecida: no CI reprova, para sair no mesmo PR.
+    for (doc_id, version), entry in sorted(exemptions.items()):
+        current = str((contracts[doc_id].get("metadata") or {}).get("version"))
+        if current != version:
+            (fail if required else warn)(
+                f"{EXEMPTIONS_FILE}: a isenção de '{doc_id}' {version} não vale mais (a versão é {current}); tire-a")
+            continue
+        for tag in entry["tags"]:
+            if (doc_id, version, tag) not in used:
+                (fail if required else warn)(
+                    f"{EXEMPTIONS_FILE}: a isenção de '{doc_id}' {version} lista a tag {tag}, que não publicou "
+                    f"o documento nessa versão; tire a tag")
+
+
 def main() -> int:
     FAILURES.clear()
     WARNINGS.clear()
@@ -4013,6 +4231,7 @@ def main() -> int:
         return 1
 
     contracts: dict[str, dict] = {}
+    dirs: dict[str, Path] = {}
 
     for path in contract_paths(ROOT):
         contract = load(path)
@@ -4030,7 +4249,15 @@ def main() -> int:
             fail(f"{path.relative_to(ROOT)}: metadata.id é {doc_id!r}; é o identificador do documento, escrito como texto")
             continue
 
+        # A guarda de versão lê a pasta de cada id; com o id repetido, ela leria uma pasta e o
+        # pacote levaria a outra (a do índice), e a mudança passaria sem subir a versão.
+        if doc_id in dirs:
+            fail(f"{path.relative_to(ROOT)}: metadata.id '{doc_id}' repete o de "
+                 f"{dirs[doc_id].relative_to(ROOT)}; cada documento tem um id só")
+            continue
+
         contracts[doc_id] = contract
+        dirs[doc_id] = doc_dir
         check_dataset_shapes(doc_dir, contract)
         check_template(doc_dir, contract)
         check_formatting_not_duplicated(doc_dir)
@@ -4052,6 +4279,7 @@ def main() -> int:
 
     check_nature_copies()
     check_index(catalog, contracts)
+    check_released_versions(contracts, dirs)
 
     for warning in WARNINGS:
         print(f"aviso: {warning}")
