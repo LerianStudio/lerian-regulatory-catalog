@@ -4096,17 +4096,26 @@ def load_exemptions(contracts: dict[str, dict]) -> dict[tuple[str, str], dict]:
     path = ROOT / EXEMPTIONS_FILE
     if not path.exists():
         return {}
-    data = load(path) or {}
+    data = mapping_at(str(EXEMPTIONS_FILE), load(path) or {}, "o arquivo é um mapeamento com a lista exemptions")
+    if data is None:
+        return {}
     exemptions: dict[tuple[str, str], dict] = {}
-    for entry in data.get("exemptions") or []:
+    for entry in sequence_at(f"{EXEMPTIONS_FILE}: exemptions", data.get("exemptions"),
+                             "exemptions é a lista das isenções"):
         where = f"{EXEMPTIONS_FILE}: uma isenção"
-        if not isinstance(entry, dict):
-            fail(f"{where} não é um mapeamento")
+        if mapping_at(where, entry, "cada isenção é um mapeamento") is None:
             continue
         missing = [k for k in ("document", "version", "tags", "contentSha256", "reason", "date") if not entry.get(k)]
-        if missing or not isinstance(entry.get("tags"), list):
-            fail(f"{where} ({entry.get('document')}) sem {', '.join(missing) or 'a lista de tags'}; "
+        if missing:
+            fail(f"{where} ({entry.get('document')!r}) sem {', '.join(missing)}; "
                  "cada isenção diz o documento, a versão, as tags, o conteúdo, o motivo e a data")
+            continue
+        # Texto, e não só presente: o documento e a versão viram chave, e as tags viram conjunto.
+        texts = [required_text(f"{where}: {k}", entry[k], f"{k} é texto")
+                 for k in ("document", "version", "contentSha256", "reason", "date")]
+        tags = [required_text(f"{where}: uma tag", tag, "cada tag é o nome de uma release, em texto")
+                for tag in sequence_at(f"{where}: tags", entry["tags"], "tags é a lista das releases isentas")]
+        if None in texts or None in tags or not isinstance(entry["tags"], list):
             continue
         if entry["document"] not in contracts:
             fail(f"{where} cita '{entry['document']}', que não é documento deste catálogo")

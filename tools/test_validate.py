@@ -3608,6 +3608,27 @@ class ReleasedVersions(unittest.TestCase):
         self.assertEqual(1, code, out)
         self.assertIn("repete 'zz.fixture.plano' 1.0.0; junte as tags numa entrada só", out)
 
+    def test_isencao_malformada_reprova_com_mensagem(self) -> None:
+        # YAML entrega lista, número ou mapa onde o leitor espera texto: reprova nomeando, não estoura.
+        casos = {
+            "raiz que não é mapeamento": "- a\n",
+            "exemptions que não é lista": "exemptions: 1\n",
+            "document que é lista": ("exemptions:\n  - {document: [zz.fixture.plano], version: '1.0.0', tags: [v1.0.0],"
+                                     " contentSha256: x, reason: r, date: '2026-11-21'}\n"),
+            "tag que é lista": ("exemptions:\n  - {document: zz.fixture.plano, version: '1.0.0', tags: [[v1.0.0]],"
+                                " contentSha256: x, reason: r, date: '2026-11-21'}\n"),
+        }
+        for caso, texto in casos.items():
+            with self.subTest(caso):
+                shutil.rmtree(self.tmp / "catalog", ignore_errors=True)
+                root = self.released()
+                path = root / validate.EXEMPTIONS_FILE
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(texto, encoding="utf-8")
+                code, out = self.run_validate(root)
+                self.assertEqual(1, code, out)
+                self.assertIn("erro: tools/release-guard-exemptions.yaml", out)
+
     def test_id_repetido_em_duas_pastas_reprova(self) -> None:
         # Com o id repetido, a guarda leria uma pasta e o pacote levaria a outra (a do índice).
         root = self.released()
