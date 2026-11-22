@@ -4240,6 +4240,13 @@ def main() -> int:
             fail(f"{path.relative_to(ROOT)}: metadata.id é {doc_id!r}; é o identificador do documento, escrito como texto")
             continue
 
+        # A guarda de versão lê a pasta de cada id; com o id repetido, ela leria uma pasta e o
+        # pacote levaria a outra (a do índice), e a mudança passaria sem subir a versão.
+        if doc_id in dirs:
+            fail(f"{path.relative_to(ROOT)}: metadata.id '{doc_id}' repete o de "
+                 f"{dirs[doc_id].relative_to(ROOT)}; cada documento tem um id só")
+            continue
+
         contracts[doc_id] = contract
         dirs[doc_id] = doc_dir
         check_dataset_shapes(doc_dir, contract)

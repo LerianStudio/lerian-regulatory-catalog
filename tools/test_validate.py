@@ -3608,6 +3608,14 @@ class ReleasedVersions(unittest.TestCase):
         self.assertEqual(1, code, out)
         self.assertIn("repete 'zz.fixture.plano' 1.0.0; junte as tags numa entrada só", out)
 
+    def test_id_repetido_em_duas_pastas_reprova(self) -> None:
+        # Com o id repetido, a guarda leria uma pasta e o pacote levaria a outra (a do índice).
+        root = self.released()
+        shutil.copytree(root / PLANO, root / "zz/fixture/plano-copia")
+        code, out = self.run_validate(root)
+        self.assertEqual(1, code, out)
+        self.assertIn("metadata.id 'zz.fixture.plano' repete o de", out)
+
     def side_release(self, root: Path, tag: str, change) -> None:
         """Corta `tag` num commit fora da história do HEAD, como uma beta da develop vista do PR rc → main."""
         _git(root, "checkout", "-q", "-b", "lateral")
