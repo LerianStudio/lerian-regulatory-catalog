@@ -211,6 +211,30 @@ versão anterior do contrato, que é como um erro se perpetua.
 - Mudança que altera arquivos já gerados e aceitos: major, e explique na descrição
   da tag o que muda para quem já adotou.
 
+O `tools/validate.py` confere isso contra TODA release que publicou o documento, de
+qualquer canal (beta, rc e estável): se alguma delas o publicou com a `metadata.version` de
+agora, qualquer arquivo publicado do documento (contrato, template, binding de exemplo,
+manual, tabelas) que mudou desde ela reprova; e a versão de agora não pode ser menor que a
+maior que uma release da história do branch já publicou (`git tag --merged HEAD`). O
+motivo é o Reporter: ele recusa substituir a cópia de um tenant por outro conteúdo sob a
+mesma versão, e a mudança nunca chegaria a quem já adotou, mesmo que tenha adotado numa
+beta. A guarda precisa das tags e da história que leva a elas (`git fetch --unshallow --tags`
+num clone raso: só `--tags` traz as tags, mas a regra da versão mínima não as alcança); fora
+de um checkout git ela só avisa, e no CI (`CATALOG_REQUIRE_RELEASES=1`) a falta de tag
+reprova.
+
+Documentos que já saíram com conteúdos diferentes sob a mesma versão antes da guarda estão
+em `tools/release-guard-exemptions.yaml`, com as tags em conflito, o conteúdo de hoje
+(`contentSha256`), o motivo e a data. A isenção vale só para aquelas tags e só enquanto o
+conteúdo for o registrado: mudou de novo sem subir a versão, reprova. Isenção que não cala
+mais nada (a versão subiu, ou uma tag listada não publicou o documento naquela versão) avisa
+localmente e reprova no CI: sai no mesmo PR.
+
+A versão mínima olha só a história do branch: uma beta cortada da `develop` depois da rc não
+barra a promoção da rc para a `main`, e um hotfix na `main` que sobe um documento não barra a
+`develop` por versão. Ele barra só quando a `develop` chega à mesma versão com outro conteúdo,
+que é a colisão que a primeira regra reprova venha a tag de onde vier.
+
 ## Branches
 
 O consumo do catálogo é por **tag** (`br.bcb.cadoc-4010/v1.0.0`): é o que a
