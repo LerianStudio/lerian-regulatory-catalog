@@ -218,7 +218,8 @@ manual, tabelas) que mudou desde ela reprova; e a versão de agora não pode ser
 maior que uma release da história do branch já publicou (`git tag --merged HEAD`). O
 motivo é o Reporter: ele recusa substituir a cópia de um tenant por outro conteúdo sob a
 mesma versão, e a mudança nunca chegaria a quem já adotou, mesmo que tenha adotado numa
-beta. A guarda precisa das tags (`git fetch --tags` num clone raso); fora
+beta. A guarda precisa das tags e da história que leva a elas (`git fetch --unshallow --tags`
+num clone raso: só `--tags` traz as tags, mas a regra da versão mínima não as alcança); fora
 de um checkout git ela só avisa, e no CI (`CATALOG_REQUIRE_RELEASES=1`) a falta de tag
 reprova.
 
