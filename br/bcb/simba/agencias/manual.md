@@ -101,6 +101,21 @@ nem sentinela, o campo sai **em branco**:
   atributos (o motor recusa valor vazio num `case`). Na implantacao, a agencia fisica
   entra com o cadastro completo, telefone inclusive; sem isso ela nao pode ser listada.
 
+## Nome dos arquivos na entrega
+
+O arquivo baixado do Reporter tem o nome do relatorio (o identificador da geracao, com
+extensao `.txt`), e nao o nome que a entrega exige. Antes de validar e transmitir, renomeie
+cada um dos cinco arquivos com o prefixo do numero do caso, no formato
+`999-XXX-999999-99_ARQUIVO.TXT` (Memorando de Instrucao MI 001 - ASSPA/PGR, item 1.4, b). O
+numero do caso e o mesmo informado no parametro `caso` da geracao, como esta no oficio. Este
+arquivo e o `<caso>_AGENCIAS.TXT`; para o caso 001-MPF-005097-79, por exemplo,
+`001-MPF-005097-79_AGENCIAS.TXT`.
+
+Os cinco arquivos de uma entrega levam o mesmo prefixo: `<caso>_AGENCIAS.TXT`,
+`<caso>_CONTAS.TXT`, `<caso>_TITULARES.TXT`, `<caso>_EXTRATO.TXT` e
+`<caso>_ORIGEM_DESTINO.TXT` (com sublinhado no ORIGEM_DESTINO, como no memorando). So o nome
+muda: o conteudo do arquivo nao e alterado.
+
 ## Investigado sem conta
 
 Quando nenhum documento da ordem tem conta na instituicao, nao ha arquivo a gerar: os

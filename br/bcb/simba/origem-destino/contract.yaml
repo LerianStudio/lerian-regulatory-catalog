@@ -32,7 +32,7 @@ metadata:
   summary: >-
     Origem e destino dos recursos de cada lancamento do EXTRATO: a contraparte pelo plugin
     Pix ou TED da transacao, pela outra perna interna, ou a propria instituicao na tarifa.
-  version: 1.0.1
+  version: 1.0.2
   status: draft
   output: txt
   timezone: America/Sao_Paulo

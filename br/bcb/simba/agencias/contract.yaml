@@ -34,7 +34,7 @@ metadata:
   summary: >-
     Agencias das contas investigadas e das contas da mesma instituicao com as quais
     elas transacionaram no periodo do afastamento do sigilo, uma linha por agencia.
-  version: 1.0.0
+  version: 1.0.1
   status: draft
   output: txt
   timezone: America/Sao_Paulo
