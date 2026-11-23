@@ -60,7 +60,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 5,
+      "line": 6,
       "field": 15
     }
   },
@@ -86,7 +86,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 5,
+      "line": 6,
       "field": 14
     }
   },
@@ -99,7 +99,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 5,
+      "line": 6,
       "field": 13
     }
   },
@@ -140,6 +140,32 @@
       "document": "br/bcb/simba/titulares",
       "line": 3,
       "field": 18
+    }
+  },
+  {
+    "name": "Brasil sem UF escreve 00",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% else %}{{ t.codigoUf }}{% endif %}",
+    "new": "{% else %}{% if t.codigoUf %}{{ t.codigoUf }}{% else %}00{% endif %}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 5,
+      "field": 14
+    }
+  },
+  {
+    "name": "contraparte no Brasil sem UF escreve 00",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% else %}{{ u.codigoUf }}{% endif %}",
+    "new": "{% else %}{% if u.codigoUf %}{{ u.codigoUf }}{% else %}00{% endif %}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 7,
+      "field": 14
     }
   }
 ]

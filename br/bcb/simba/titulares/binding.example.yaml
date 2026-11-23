@@ -51,9 +51,11 @@
 #
 # A UF DO TITULAR (campo 14) converte a sigla do endereco principal no codigo IBGE,
 # com a tabela de br/bcb/simba/tabelas/uf-ibge.compute.yaml. Sigla ausente ou fora
-# da tabela vira "00": para quem mora no Brasil (pais BR ou ausente), a regra
-# `uf-do-brasil` do contrato recusa a geracao; para quem mora no exterior, o
-# template escreve "00" em qualquer caso (IN :150).
+# da tabela chega crua, e a ausente, nula. Para quem mora no Brasil (pais BR ou ausente),
+# a regra `uf-do-brasil` confere o codigo na tabela de codigos (codigos-uf.yaml): a sigla
+# fora da tabela recusa a geracao, e a AUSENTE deixa o campo em branco, porque a
+# informacao nao existe no cadastro (IN art. 2o, paragrafo 1o, :49). Para quem mora no
+# exterior, o template escreve "00" (IN :150).
 #
 # O PAIS (campo 15) e o nome do codigo ISO 3166-1 alfa-2 do endereco principal, da
 # tabela de paises da Receita (br/rfb/e-financeira/tabelas/paises.txt, linhas
@@ -70,7 +72,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.titulares
-contractVersion: 1.0.1
+contractVersion: 1.1.0
 
 queries:
   - name: declarante
@@ -172,7 +174,9 @@ queries:
             SE: {constant: "28"}
             SP: {constant: "35"}
             TO: {constant: "17"}
-          otherwise: {constant: "00"}
+          # Fora da tabela: a sigla crua (ausente fica nula). A regra uf-do-brasil a recusa para quem
+          # mora no Brasil; para quem mora no exterior o template escreve "00".
+          otherwise: {column: addresses.primary.state}
       - as: nome_pais
         case:
           column: addresses.primary.country
@@ -850,7 +854,9 @@ queries:
             SE: {constant: "28"}
             SP: {constant: "35"}
             TO: {constant: "17"}
-          otherwise: {constant: "00"}
+          # Fora da tabela: a sigla crua (ausente fica nula). A regra uf-do-brasil a recusa para quem
+          # mora no Brasil; para quem mora no exterior o template escreve "00".
+          otherwise: {column: addresses.primary.state}
       - as: nome_pais
         case:
           column: addresses.primary.country

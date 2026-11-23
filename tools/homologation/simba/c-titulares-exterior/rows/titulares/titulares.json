@@ -62,5 +62,17 @@
     "nomePais": "Brasil",
     "cep": "30110001",
     "dataInicio": "2025-09-10"
+  },
+  {
+    "contaId": "c5",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333335",
+    "tipoConta": "1",
+    "tipoPessoa": "1",
+    "documento": "33344455508",
+    "nome": "Rui Sem Endereco",
+    "pais": "BR",
+    "nomePais": "Brasil",
+    "dataInicio": "2025-03-04"
   }
 ]

@@ -91,7 +91,9 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   tratada como no Brasil.
 - UF (campo 14): para quem mora no Brasil, a sigla do endereco principal convertida no
   codigo IBGE pela tabela de `br/bcb/simba/tabelas/uf-ibge.compute.yaml`; para quem mora no
-  exterior, `00` (IN :150), mesmo que o cadastro traga uma sigla igual a de uma UF.
+  exterior, `00` (IN :150), mesmo que o cadastro traga uma sigla igual a de uma UF. Quem mora
+  no Brasil sem sigla no cadastro sai com o campo em branco: a IN so da o `00` para o
+  exterior, e a informacao que nao existe fica sem preencher (art. 2o, paragrafo 1o, IN :49).
 - Pais (campo 15): o nome do pais do codigo ISO 3166-1 alfa-2 do cadastro, pela tabela de
   paises da Receita (`br/rfb/e-financeira/tabelas/paises.txt`), sem acentos e cortado em 40
   caracteres; `BR` sai `Brasil`. Sem pais no cadastro, o campo sai em branco.
@@ -141,8 +143,9 @@ sai em branco:
   aberta, ou parte sem data de fim). A IN nao da codigo para vinculo ativo.
 - `DISPOSITIVO_MOVEL_CADASTRADO` e `COMPUTADOR_CADASTRADO` (campos 26 e 27): sempre em
   branco. Nenhuma aplicacao Lerian registra os dispositivos cadastrados do cliente.
-- Do titular, quando o cadastro nao tem o dado: endereco (12), CEP (16), telefone (17),
-  renda e data da renda (18 e 19), nome social (24) e abertura da conta (20).
+- Do titular, quando o cadastro nao tem o dado: endereco (12), UF (14) de quem mora no Brasil,
+  CEP (16), telefone (17), renda e data da renda (18 e 19), nome social (24) e abertura da
+  conta (20).
 - Das partes relacionadas: campos 12 a 19 e 24 em branco, porque a parte no CRM nao tem
   endereco, telefone, renda nem nome social.
 
@@ -185,11 +188,12 @@ requisicao.
   mesmo `caso` substitui a anterior, entao o caso nao se divide em duas). Nao suportado
   nesta versao; tratar fora do Reporter. Gerar com o periodo mais amplo poria no arquivo
   movimento fora do afastamento.
-- **UF e pais do titular**: quem mora no Brasil (pais `BR` ou sem pais) sem UF no endereco
-  principal, ou com sigla fora da tabela, recusa a geracao, porque a IN so da o `00` para
-  quem mora no exterior. Um pais informado que a tabela da Receita nao tem tambem recusa,
-  porque o campo 15 pede o nome. As duas recusas valem tambem para o titular de uma conta de
-  contraparte. Corrija o cadastro antes de gerar.
+- **UF e pais do titular**: quem mora no Brasil (pais `BR` ou sem pais) com uma sigla de UF
+  que a tabela nao tem recusa a geracao, porque a IN so da o `00` para quem mora no exterior.
+  Sem sigla nenhuma, nao recusa: o campo 14 sai em branco (a informacao nao existe no
+  cadastro). Um pais informado que a tabela da Receita nao tem tambem recusa, porque o campo
+  15 pede o nome. As duas recusas valem tambem para o titular de uma conta de contraparte.
+  Corrija o cadastro antes de gerar.
 - **Titular sem cadastro**: o cadastro do titular vem do CRM pelo documento da ordem e pelo
   `holder_id` da conta. Conta do caso cujo titular nao e encontrado no cadastro (apagado, ou
   com documento diferente do da ordem) fica sem tipo de pessoa, documento e nome, e a geracao
