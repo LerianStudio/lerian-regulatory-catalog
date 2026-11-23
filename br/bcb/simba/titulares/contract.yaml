@@ -34,7 +34,7 @@ metadata:
     Titulares, cotitulares, representantes e procuradores das contas investigadas e das
     contas com que elas transacionaram, uma linha por vinculo da pessoa com a conta, com
     cadastro, renda e datas do vinculo.
-  version: 1.0.2
+  version: 1.1.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
