@@ -204,7 +204,10 @@ o contrato na carga.
   grava o documento cifrado: o campo 18 diz isso, mais o motivo do tipo de conta quando o
   campo 8 tambem sai em branco. O tipo do recebedor e obrigatorio: toda TED enviada que
   chega ao arquivo o tem (a devolucao de uma TED recebida, que o plugin grava sem ele, sai
-  pelo revert do Midaz, ver Devolucao e estorno).
+  pelo revert do Midaz, ver Devolucao e estorno). A instituicao declara a circunstancia pela
+  ressalva de inviabilidade tecnica da IN 636 (art. 2o, paragrafo 1o): o motivo vai no campo
+  18 de cada linha. O memorando de leiaute do MPF pede o maior numero possivel de
+  identificacoes do ordenante; a autoridade pode pedir esses dados a parte.
 - **Devolucao e estorno**: nao herdam a contraparte da transacao original, e as linhas de
   devolucao dos plugins nao sao lidas: a devolucao e o revert do Midaz saem com a outra
   perna interna ou com a linha vazia. Excecao: a devolucao de uma TED recebida (revert do Midaz)
