@@ -146,9 +146,9 @@ NO_UF, NO_COUNTRY = "00", "-"
 # UF (sigla) -> código IBGE, a tabela do catálogo de onde o bloco de UF dos bindings é copiado.
 UF_TABLE = ROOT / "br" / "bcb" / "simba" / "tabelas" / "uf-ibge.yaml"
 LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)] + [chr(c) for c in range(ord("a"), ord("z") + 1)]
-# A sigla de UF fora da tabela começa com letra ou dígito; a da tabela vira "-" e a ausente, nada.
-ALNUM = LETTERS + [chr(c) for c in range(ord("0"), ord("9") + 1)]
-UF_IN_TABLE = "-"
+# A tabela de códigos que a regra uf-do-brasil consulta (equalsLookup), publicada pelo contrato.
+UF_CODES_TABLE = ROOT / "br" / "bcb" / "simba" / "titulares" / "codigos-uf.yaml"
+UF_RAW = {"column": "addresses.primary.state"}
 
 
 def _compute(query: dict, name: str) -> dict:
@@ -180,8 +180,9 @@ def country_names_mismatch(found: dict[str, dict]) -> list[str]:
         if country.get("otherwise") != {"constant": NO_COUNTRY}:
             problems.append(f"titulares: '{name}' não marca o país sem tradução com {NO_COUNTRY!r}")
         uf = _compute(queries[name], "codigo_uf").get("case") or {}
-        if uf.get("otherwise") != {"constant": NO_UF}:
-            problems.append(f"titulares: '{name}' não marca a UF sem tradução com {NO_UF!r}")
+        # Fora da tabela, a sigla crua: a regra separa a inválida (recusa) da ausente (nula, campo 14 em branco).
+        if uf.get("otherwise") != UF_RAW:
+            problems.append(f"titulares: '{name}' não marca a UF sem tradução com a sigla crua")
         if uf.get("column") != "addresses.primary.state":
             problems.append(f"titulares: '{name}' não traduz addresses.primary.state em codigo_uf")
         uf_when = uf.get("when") or {}
@@ -191,18 +192,6 @@ def country_names_mismatch(found: dict[str, dict]) -> list[str]:
         for code in sorted(set(ufs) & set(uf_when)):
             if uf_when[code] != ufs[code]:
                 problems.append(f"titulares: '{name}' escreve {uf_when[code]} para a UF {code}, e a tabela, {ufs[code]}")
-        # A sigla fora da tabela, separada da ausente: a regra uf-do-brasil recusa só ela, e a
-        # ausente deixa o campo 14 em branco (IN art. 2º § 1º, :49).
-        off = _compute(queries[name], "uf_fora_da_tabela").get("case") or {}
-        if off.get("column") != "addresses.primary.state" or off.get("otherwise") != {"column": "addresses.primary.state"}:
-            problems.append(f"titulares: '{name}' não separa a sigla de UF fora da tabela em uf_fora_da_tabela")
-        off_when = off.get("when") or {}
-        for code in sorted(set(ufs) ^ set(off_when)):
-            problems.append(f"titulares: '{name}' marca em uf_fora_da_tabela a UF {code!r}, que a tabela do IBGE "
-                            + ("não tem" if code in off_when else "tem e a consulta não"))
-        for code in sorted(set(ufs) & set(off_when)):
-            if off_when[code] != {"constant": UF_IN_TABLE}:
-                problems.append(f"titulares: '{name}' não marca a UF {code} da tabela com {UF_IN_TABLE!r} em uf_fora_da_tabela")
     return problems
 
 
@@ -218,44 +207,60 @@ def domicile_rules_missing(found: dict[str, dict]) -> list[str]:
 
     problems = []
     for target in HOLDER_SETS:
-        if not has(target, {"field": "nomePais", "in": ["Brasil", NO_COUNTRY]}, "ufForaDaTabela", ALNUM):
+        if not any(r.get("appliesTo") == target and r.get("severity") == "error"
+                   and r.get("where") == {"field": "nomePais", "in": ["Brasil", NO_COUNTRY]}
+                   and (r.get("check") or {}).get("equalsLookup") == {"field": "codigoUf", "table": "codigos-uf",
+                                                                     "key": "codigoUf"} for r in rules):
             problems.append(f"titulares: '{target}' não recusa quem mora no Brasil com a sigla de UF fora da tabela")
         if not has(target, {"field": "nomePais", "equals": NO_COUNTRY}, "pais", LETTERS):
             problems.append(f"titulares: '{target}' não recusa o país informado que a tabela não tem")
     return problems
 
 
-def _normalized(field: dict, text: str) -> str:
-    """O texto como o motor o lê numa regra: normalizado como o campo declara
-    (reporter pkg/reporter/contract/populate.go:751-771, `normalize`; rules.go:778-799, textOfField)."""
-    if field.get("normalize") == "digits":
-        return "".join(c for c in text if "0" <= c <= "9")
-    if field.get("normalize") == "alphanumeric":
-        return "".join(c.upper() for c in text if c.isascii() and c.isalnum())
-    return text
+def uf_codes_off() -> list[str]:
+    """A tabela de códigos da regra uf-do-brasil traz os 27 códigos da tabela de UF, cada um apontando para si."""
+    table = (yaml.safe_load(UF_CODES_TABLE.read_text(encoding="utf-8")) or {}).get("byPrefix") or {}
+    codes = {str(v) for v in yaml.safe_load(UF_TABLE.read_text(encoding="utf-8")).values()}
+    problems = [f"titulares: codigos-uf.yaml não tem o código {c} da tabela de UF" for c in sorted(codes - set(table))]
+    problems += [f"titulares: codigos-uf.yaml tem {k}, que a tabela de UF não tem" for k in sorted(set(table) - codes)]
+    problems += [f"titulares: codigos-uf.yaml aponta {k} para {v}" for k, v in sorted(table.items()) if str(v) != str(k)]
+    return problems
 
 
-# Siglas que quem mora no Brasil não pode ter (a regra recusa) e as que deixam o campo 14
-# em branco ou com o código (a regra deixa passar). O valor é o que uf_fora_da_tabela
-# entrega: a sigla crua fora da tabela, "-" na tabela, nada quando falta.
-UF_REFUSED = ["XX", "sp", " SP", "(SP)", "-SP", "S P", "1X"]
-UF_PASSES = ["-", ""]
+# O que codigo_uf entrega para quem mora no Brasil e a regra precisa RECUSAR: sigla fora da tabela
+# (crua), com espaço, pontuação, só pontuação, não ASCII, minúscula, e o "00" de um binding da 1.0.1;
+# e o que ela deixa PASSAR: um código da tabela e o vazio da sigla ausente.
+UF_REFUSED = ["XX", "sp", " SP", "(SP)", "-SP", "S P", "1X", "-", "...", "ＳＰ", "00", "35A"]
+UF_PASSES = ["35", "53", ""]
+
+
+def _equals_lookup(table: dict, value: str) -> bool:
+    """O equalsLookup do motor (reporter pkg/reporter/contract/rules.go, checkLookup): vazio não é conferido; a
+    chave é procurada pelo prefixo mais longo (match: longestPrefix) e o valor tem de ser o que a tabela publica."""
+    if value == "":
+        return True
+    keys = [k for k in table if value.startswith(k)]
+    return bool(keys) and value == str(table[max(keys, key=len)])
 
 
 def uf_rule_lets_through(found: dict[str, dict]) -> list[str]:
-    """Roda a regra uf-do-brasil de cada conjunto de titular contra valores reais."""
+    """Roda a regra uf-do-brasil de cada conjunto de titular, com a tabela publicada, contra valores reais."""
     contract = found.get("titulares", {})
+    tables = {t.get("name"): t for t in contract.get("tables") or [] if isinstance(t, dict)}
     problems = []
     for target in HOLDER_SETS:
         rule = next((r for r in contract.get("rules") or [] if isinstance(r, dict) and r.get("appliesTo") == target
                      and (r.get("where") or {}).get("in")), None)
-        check = ((rule or {}).get("check") or {}).get("notStartsWith") or {}
-        ds = next((d for d in contract.get("datasets") or [] if isinstance(d, dict) and d.get("name") == target), {})
-        field = next((f for f in ds.get("fields") or [] if isinstance(f, dict) and f.get("name") == check.get("field")), {})
-        refuses = lambda raw: any(_normalized(field, raw).startswith(v) for v in check.get("values") or [])
-        problems += [f"titulares: '{target}' deixa passar a sigla {raw!r}" for raw in UF_REFUSED if not refuses(raw)]
-        problems += [f"titulares: '{target}' recusa {raw!r}, que não é sigla fora da tabela" for raw in UF_PASSES
-                     if refuses(raw)]
+        lookup = ((rule or {}).get("check") or {}).get("equalsLookup") or {}
+        spec = tables.get(lookup.get("table"))
+        if not spec:
+            problems.append(f"titulares: '{target}' não confere a UF numa tabela publicada")
+            continue
+        table = {str(k): str(v) for k, v in ((yaml.safe_load((UF_CODES_TABLE.parent / spec["from"]).read_text(
+            encoding="utf-8")) or {}).get("byPrefix") or {}).items()}
+        problems += [f"titulares: '{target}' deixa passar a sigla {raw!r}" for raw in UF_REFUSED
+                     if _equals_lookup(table, raw)]
+        problems += [f"titulares: '{target}' recusa {raw!r}" for raw in UF_PASSES if not _equals_lookup(table, raw)]
     return problems
 
 
@@ -732,6 +737,9 @@ class SimbaBindings(unittest.TestCase):
     def test_a_regra_da_uf_recusa_sigla_com_lixo_e_deixa_passar_a_ausente(self) -> None:
         self.assertEqual([], uf_rule_lets_through(contracts(ROOT)))
 
+    def test_a_tabela_de_codigos_da_uf_segue_a_tabela_de_uf(self) -> None:
+        self.assertEqual([], uf_codes_off())
+
     def test_sem_conta_nenhuma_o_cadastro_nao_sai(self) -> None:
         self.assertEqual([], empty_case_rules_off(contracts(ROOT)))
 
@@ -1026,36 +1034,27 @@ class Mutations(unittest.TestCase):
         self.assertEqual(["titulares: 'titulares_contraparte' não recusa quem mora no Brasil com a sigla de UF "
                           "fora da tabela"], domicile_rules_missing(found))
 
-    def test_recusa_de_uf_que_esquece_um_digito_e_pega(self) -> None:
+    def test_recusa_de_uf_por_outro_campo_e_pega(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
         for r in found["titulares"]["rules"]:
             if r["appliesTo"] == "titulares" and r["where"].get("in"):
-                r["check"]["notStartsWith"]["values"].remove("9")
+                r["check"]["equalsLookup"]["field"] = "pais"
         self.assertEqual(["titulares: 'titulares' não recusa quem mora no Brasil com a sigla de UF fora da tabela"],
                          domicile_rules_missing(found))
 
-    def test_uf_fora_da_tabela_sem_normalizar_e_pega(self) -> None:
+    def test_regra_da_uf_sem_tabela_e_pega(self) -> None:
         found = copy.deepcopy(contracts(ROOT))
-        for d in found["titulares"]["datasets"]:
-            for f in d.get("fields") or []:
-                if f.get("name") == "ufForaDaTabela":
-                    f.pop("normalize", None)
+        found["titulares"]["tables"] = []
         problems = uf_rule_lets_through(found)
         for target in HOLDER_SETS:
-            self.assertIn(f"titulares: '{target}' deixa passar a sigla ' SP'", problems)
+            self.assertIn(f"titulares: '{target}' não confere a UF numa tabela publicada", problems)
 
-    def test_uf_fora_da_tabela_que_esquece_uma_sigla_e_pega(self) -> None:
+    def test_codigo_uf_que_volta_a_dar_00_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
-        del _compute(queries_of(found["titulares"])["cadastro_titulares"], "uf_fora_da_tabela")["case"]["when"]["SP"]
-        self.assertEqual(["titulares: 'cadastro_titulares' marca em uf_fora_da_tabela a UF 'SP', que a tabela do IBGE "
-                          "tem e a consulta não"], country_names_mismatch(found))
-
-    def test_uf_fora_da_tabela_que_nao_devolve_a_sigla_e_pega(self) -> None:
-        found = copy.deepcopy(self.found)
-        _compute(queries_of(found["titulares"])["cadastro_contraparte"], "uf_fora_da_tabela")["case"]["otherwise"] = {
+        _compute(queries_of(found["titulares"])["cadastro_contraparte"], "codigo_uf")["case"]["otherwise"] = {
             "constant": "00"}
-        self.assertEqual(["titulares: 'cadastro_contraparte' não separa a sigla de UF fora da tabela em "
-                          "uf_fora_da_tabela"], country_names_mismatch(found))
+        self.assertIn("titulares: 'cadastro_contraparte' não marca a UF sem tradução com a sigla crua",
+                      country_names_mismatch(found))
 
     def test_recusa_de_pais_que_esquece_uma_letra_e_pega(self) -> None:
         found = copy.deepcopy(contracts(ROOT))

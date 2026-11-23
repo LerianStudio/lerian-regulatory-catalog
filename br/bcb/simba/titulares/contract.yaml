@@ -131,7 +131,7 @@ datasets:
       key: [contaId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
-                nome: first, logradouro: first, complemento: first, codigoUf: first, ufForaDaTabela: first, pais: first, nomePais: first, cep: first,
+                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
                 celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
                 dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
                 emailSecundario: first}
@@ -184,23 +184,13 @@ datasets:
       - name: codigoUf
         type: string
         required: false
-        pattern: '^[0-9]{2}$'
         description: >-
-          Codigo IBGE da UF do endereco principal (campo 14, IN :150); "00" quando a sigla falta ou esta fora da tabela.
-          Para quem mora no exterior o template escreve "00" mesmo que a sigla coincida com a de uma UF (a provincia
-          SC de outro pais vem 42 aqui e sai 00 no arquivo). Para quem mora no Brasil, a sigla fora da tabela e
-          recusada (uf-do-brasil), e o 00 que sobra e a sigla ausente: o campo 14 sai em branco, a informacao nao
-          existe no cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
-      - name: ufForaDaTabela
-        type: string
-        required: false
-        normalize: alphanumeric
-        description: >-
-          A sigla da UF do endereco principal quando ela nao esta na tabela de UFs; "-" quando esta; ausente quando o
-          cadastro nao tem sigla. So a regra uf-do-brasil a le: separa a sigla invalida (recusa) da ausente (campo 14
-          em branco). Normalizada (so letras e digitos, em maiuscula): uma sigla com espaco ou pontuacao, como " SP"
-          ou "(SP)", nao casa a tabela e chega a regra como SP, que a recusa; o "-" da sigla da tabela vira vazio e
-          passa.
+          Codigo IBGE da UF do endereco principal (campo 14, IN :150) quando a sigla esta na tabela; a sigla crua quando
+          nao esta; ausente quando o cadastro nao tem sigla. Para quem mora no exterior o template escreve "00" em
+          qualquer caso (IN :150). Para quem mora no Brasil, a regra uf-do-brasil confere o valor na tabela de codigos:
+          o que nao for um codigo de UF recusa (sigla fora da tabela, com espaco, pontuacao ou minuscula, e tambem o
+          "00" de um binding anterior), e o ausente deixa o campo 14 em branco, porque a informacao nao existe no
+          cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
       - name: pais
         type: string
         required: false
@@ -360,7 +350,7 @@ datasets:
       key: [contaId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
-                nome: first, logradouro: first, complemento: first, codigoUf: first, ufForaDaTabela: first, pais: first, nomePais: first, cep: first,
+                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
                 celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
                 dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
                 emailSecundario: first}
@@ -413,23 +403,13 @@ datasets:
       - name: codigoUf
         type: string
         required: false
-        pattern: '^[0-9]{2}$'
         description: >-
-          Codigo IBGE da UF do endereco principal (campo 14, IN :150); "00" quando a sigla falta ou esta fora da tabela.
-          Para quem mora no exterior o template escreve "00" mesmo que a sigla coincida com a de uma UF (a provincia
-          SC de outro pais vem 42 aqui e sai 00 no arquivo). Para quem mora no Brasil, a sigla fora da tabela e
-          recusada (uf-do-brasil), e o 00 que sobra e a sigla ausente: o campo 14 sai em branco, a informacao nao
-          existe no cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
-      - name: ufForaDaTabela
-        type: string
-        required: false
-        normalize: alphanumeric
-        description: >-
-          A sigla da UF do endereco principal quando ela nao esta na tabela de UFs; "-" quando esta; ausente quando o
-          cadastro nao tem sigla. So a regra uf-do-brasil a le: separa a sigla invalida (recusa) da ausente (campo 14
-          em branco). Normalizada (so letras e digitos, em maiuscula): uma sigla com espaco ou pontuacao, como " SP"
-          ou "(SP)", nao casa a tabela e chega a regra como SP, que a recusa; o "-" da sigla da tabela vira vazio e
-          passa.
+          Codigo IBGE da UF do endereco principal (campo 14, IN :150) quando a sigla esta na tabela; a sigla crua quando
+          nao esta; ausente quando o cadastro nao tem sigla. Para quem mora no exterior o template escreve "00" em
+          qualquer caso (IN :150). Para quem mora no Brasil, a regra uf-do-brasil confere o valor na tabela de codigos:
+          o que nao for um codigo de UF recusa (sigla fora da tabela, com espaco, pontuacao ou minuscula, e tambem o
+          "00" de um binding anterior), e o ausente deixa o campo 14 em branco, porque a informacao nao existe no
+          cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
       - name: pais
         type: string
         required: false
@@ -578,13 +558,18 @@ datasets:
         required: false
         description: Fim do vinculo da parte; ausente, o vinculo esta ativo e o campo sai em branco (campo 21, IN :157).
 
+tables:
+  - name: codigos-uf
+    from: codigos-uf.yaml      # codigo IBGE da UF -> ele mesmo, das 27 UFs
+    match: longestPrefix
+
 rules:
   - id: uf-do-brasil
     severity: error
     appliesTo: titulares
     where: {field: nomePais, in: ["Brasil", "-"]}
     check:
-      notStartsWith: {field: ufForaDaTabela, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+      equalsLookup: {field: codigoUf, table: codigos-uf, key: codigoUf}
     message: >-
       Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que nao casa a tabela de UFs,
       que tem as 27 siglas em maiuscula e sem espaco nem pontuacao ("sp" ou " SP" nao casam SP): a IN so da o codigo
@@ -609,7 +594,7 @@ rules:
     appliesTo: titulares_contraparte
     where: {field: nomePais, in: ["Brasil", "-"]}
     check:
-      notStartsWith: {field: ufForaDaTabela, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
+      equalsLookup: {field: codigoUf, table: codigos-uf, key: codigoUf}
     message: >-
       Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que nao casa a tabela de UFs,
       que tem as 27 siglas em maiuscula e sem espaco nem pontuacao ("sp" ou " SP" nao casam SP): a IN so da o codigo

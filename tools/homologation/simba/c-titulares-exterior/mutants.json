@@ -3,7 +3,7 @@
     "name": "UF do exterior pela sigla",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}00{% elif t.codigoUf != \"00\" %}{{ t.codigoUf }}{% endif %}",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}00{% else %}{{ t.codigoUf }}{% endif %}",
     "new": "{{ t.codigoUf }}",
     "count": 1,
     "expect": {
@@ -81,7 +81,7 @@
     "name": "UF da contraparte no exterior pela sigla",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}00{% elif u.codigoUf != \"00\" %}{{ u.codigoUf }}{% endif %}",
+    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}00{% else %}{{ u.codigoUf }}{% endif %}",
     "new": "{{ u.codigoUf }}",
     "count": 1,
     "expect": {
@@ -146,8 +146,8 @@
     "name": "Brasil sem UF escreve 00",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% elif t.codigoUf != \"00\" %}{{ t.codigoUf }}{% endif %}",
-    "new": "{% else %}{{ t.codigoUf }}{% endif %}",
+    "old": "{% else %}{{ t.codigoUf }}{% endif %}",
+    "new": "{% else %}{% if t.codigoUf %}{{ t.codigoUf }}{% else %}00{% endif %}{% endif %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
@@ -159,8 +159,8 @@
     "name": "contraparte no Brasil sem UF escreve 00",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% elif u.codigoUf != \"00\" %}{{ u.codigoUf }}{% endif %}",
-    "new": "{% else %}{{ u.codigoUf }}{% endif %}",
+    "old": "{% else %}{{ u.codigoUf }}{% endif %}",
+    "new": "{% else %}{% if u.codigoUf %}{{ u.codigoUf }}{% else %}00{% endif %}{% endif %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
