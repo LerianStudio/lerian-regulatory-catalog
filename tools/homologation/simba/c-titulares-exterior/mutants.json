@@ -154,5 +154,18 @@
       "line": 5,
       "field": 14
     }
+  },
+  {
+    "name": "contraparte no Brasil sem UF escreve 00",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% elif u.codigoUf != \"00\" %}{{ u.codigoUf }}{% endif %}",
+    "new": "{% else %}{{ u.codigoUf }}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 7,
+      "field": 14
+    }
   }
 ]
