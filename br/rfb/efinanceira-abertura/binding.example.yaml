@@ -1,0 +1,138 @@
+# Binding do evtAberturaeFinanceira — QUEM PREENCHE É O CLIENTE.
+#
+# Exemplo preenchido contra o Midaz. O CNPJ da declarante vem da organização do
+# Midaz, como no evtCadDeclarante; todo o resto — o ambiente de destino, o
+# responsável pelas RMF, os responsáveis pela e-Financeira e o representante legal
+# — o Midaz não guarda, e fica `manual`, sem valor e com o motivo: o cliente
+# preenche UMA vez aqui no mapeamento, e preencher não tira o mapeamento da
+# referência. Os responsáveis pela e-Financeira são linhas escritas à mão (`rows`),
+# uma por pessoa. Enquanto um campo ou conjunto obrigatório está pendente, o
+# rascunho sai com a pendência, e não pode ser aprovado nem baixado.
+#
+# O semestre, as datas de abertura ou encerramento no meio dele, o indicador de
+# retificação e o recibo não são mapeados: são os parâmetros da geração.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.rfb.efinanceira-abertura
+contractVersion: 1.0.0
+
+queries:
+  - name: declarante
+    description: A organização do Midaz, que é a entidade declarante — o CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    # Qual organização: o escopo da instituição, que filtra organization.id pela
+    # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
+    # uma linha só recusa a geração em vez de escolher uma.
+    filters:
+      # Uma organização apagada não declara nada.
+      - field: deleted_at
+        operator: isNull
+
+datasets:
+  declarante:
+    from:
+      query: declarante
+    fields:
+      # Para onde o cliente envia: 2 enquanto testa na produção restrita, 1 em produção.
+      tpAmb:
+        from: manual
+        pendingReason: "o ambiente de destino: 1 produção, 2 produção restrita (testes)"
+      # O leiaute separa o aplicativo da própria declarante (1) dos geradores de
+      # terceiros usados em contingência (2). O Reporter é o gerador que a
+      # instituição opera no dia a dia, então a referência diz 1; quem entender que
+      # é 2 troca aqui. Nenhuma regra da Receita confere este campo.
+      aplicEmi:
+        from: constant
+        value: "1"
+      # O leiaute pede a versão do aplicativo, até 20 posições, para controle da
+      # própria declarante; o motor não expõe a versão dele ao mapeamento. Ajuste se
+      # quiser registrar a versão em uso.
+      verAplic:
+        from: constant
+        value: Lerian Reporter
+      cnpj:
+        from: query
+        column: legal_document
+
+  # O responsável pelo atendimento às Requisições de Movimentação Financeira. O
+  # endereço é o do Cadastro CNPJ do CNPJ informado aqui (a declarante ou a filial
+  # que atende a RMF), e o município vai pelo NOME, não pelo código.
+  responsavelRMF:
+    fields:
+      cnpj:
+        from: manual
+        pendingReason: "o CNPJ da entidade que atende as RMF: o da própria declarante ou o de uma filial"
+      cpf:
+        from: manual
+        pendingReason: "o CPF de quem responde as RMF, onze dígitos"
+      nome:
+        from: manual
+        pendingReason: "o nome de quem responde as RMF"
+      setor:
+        from: manual
+        pendingReason: "o setor em que trabalha quem responde as RMF"
+      ddd:
+        from: manual
+        pendingReason: "o DDD do telefone de quem responde as RMF"
+      telefone:
+        from: manual
+        pendingReason: "o número do telefone de quem responde as RMF"
+      ramal:
+        from: manual
+        pendingReason: "o ramal do telefone de quem responde as RMF, quando houver"
+      logradouro:
+        from: manual
+        pendingReason: "o logradouro do endereço do Cadastro CNPJ da entidade que atende as RMF"
+      numero:
+        from: manual
+        pendingReason: "o número no logradouro desse endereço"
+      complemento:
+        from: manual
+        pendingReason: "o complemento desse endereço, quando houver"
+      bairro:
+        from: manual
+        pendingReason: "o bairro desse endereço"
+      cep:
+        from: manual
+        pendingReason: "o CEP desse endereço, oito algarismos"
+      municipio:
+        from: manual
+        pendingReason: "o nome do município desse endereço"
+      uf:
+        from: manual
+        pendingReason: "a sigla da UF desse endereço"
+
+  # Os responsáveis pela e-Financeira: uma linha por pessoa, ao menos uma. Cada
+  # linha leva cpf, nome, setor, ddd, telefone, ramal (opcional), logradouro,
+  # numero, complemento (opcional), bairro, cep, municipio (o nome), uf e email.
+  # Escreva as linhas no lugar de `rows: []` e apague o pendingReason, por exemplo:
+  #   rows:
+  #     - {cpf: "...", nome: "...", setor: "...", ddd: "11", telefone: "33334444",
+  #        logradouro: "...", numero: "100", bairro: "...", cep: "01310100",
+  #        municipio: "São Paulo", uf: SP, email: "..."}
+  respeFin:
+    rows: []
+    pendingReason: "cada pessoa que responde pela e-Financeira perante a Receita — CPF, nome, setor, telefone, endereço e e-mail —, ao menos uma"
+
+  # O representante legal é opcional no leiaute; quando vem, vem com CPF, setor,
+  # DDD e número do telefone.
+  represLegal:
+    fields:
+      cpf:
+        from: manual
+        pendingReason: "o CPF do representante legal da instituição perante a Receita, quando informado"
+      setor:
+        from: manual
+        pendingReason: "o setor em que trabalha o representante legal, quando informado"
+      ddd:
+        from: manual
+        pendingReason: "o DDD do telefone do representante legal, quando informado"
+      telefone:
+        from: manual
+        pendingReason: "o número do telefone do representante legal, quando informado"
+      ramal:
+        from: manual
+        pendingReason: "o ramal do telefone do representante legal, quando houver"

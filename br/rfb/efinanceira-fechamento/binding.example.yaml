@@ -1,0 +1,58 @@
+# Binding do evtFechamentoeFinanceira — QUEM PREENCHE É O CLIENTE.
+#
+# Exemplo preenchido contra o Midaz. O CNPJ da declarante vem da organização do
+# Midaz, como na abertura; o ambiente de destino o Midaz não guarda, e fica
+# `manual`, sem valor e com o motivo: o cliente preenche UMA vez aqui no
+# mapeamento. Enquanto ele está pendente, o rascunho sai com a pendência, e não
+# pode ser aprovado nem baixado.
+#
+# O semestre, as datas de abertura ou encerramento no meio dele, a remessa (o
+# indicador de retificação e o recibo) e os indicadores do fechamento (situação
+# especial, movimento de operações financeiras, contas CRS e FATCA) não são
+# mapeados: são os parâmetros da geração, escolhidos a cada
+# fechamento.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.rfb.efinanceira-fechamento
+contractVersion: 1.0.0
+
+queries:
+  - name: declarante
+    description: A organização do Midaz, que é a entidade declarante — o CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    # Qual organização: o escopo da instituição, que filtra organization.id pela
+    # organização da entrega. Sem escopo a leitura traria todas, e o conjunto de
+    # uma linha só recusa a geração em vez de escolher uma.
+    filters:
+      # Uma organização apagada não declara nada.
+      - field: deleted_at
+        operator: isNull
+
+datasets:
+  declarante:
+    from:
+      query: declarante
+    fields:
+      # Para onde o cliente envia: 2 enquanto testa na produção restrita, 1 em produção.
+      tpAmb:
+        from: manual
+        pendingReason: "o ambiente de destino: 1 produção, 2 produção restrita (testes)"
+      # O leiaute separa o aplicativo da própria declarante (1) dos geradores de
+      # terceiros usados em contingência (2). O Reporter é o gerador que a
+      # instituição opera no dia a dia, então a referência diz 1; quem entender que
+      # é 2 troca aqui. Nenhuma regra da Receita confere este campo.
+      aplicEmi:
+        from: constant
+        value: "1"
+      # O leiaute pede a versão do aplicativo, até 20 posições, para controle da
+      # própria declarante; o motor não expõe a versão dele ao mapeamento. Ajuste se
+      # quiser registrar a versão em uso.
+      verAplic:
+        from: constant
+        value: Lerian Reporter
+      cnpj:
+        from: query
+        column: legal_document

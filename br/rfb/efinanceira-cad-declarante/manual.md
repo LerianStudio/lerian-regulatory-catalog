@@ -34,7 +34,7 @@ Um original já aprovado impede outro original da mesma instituição. Uma retif
 informa o recibo não precisa de um original aprovado no Reporter: o original pode ter
 sido enviado por outra ferramenta.
 
-Cada geração tira um **id de evento novo** (`ID` + 18 dígitos, crescente no tempo): uma
+Cada geração tira um **id de evento novo** (`ID` + 18 dígitos, ordenado pelo instante da geração): uma
 retificação é um evento novo, ligado ao anterior pelo recibo, nunca pelo id.
 
 ## O arquivo sai sem assinatura
@@ -105,7 +105,8 @@ correção; o hífen duplo o Reporter não confere (ver abaixo).
 - **Assinatura e transmissão**: da etapa que envia o arquivo.
 - **GIIN obrigatório pelo histórico**: o GIIN passa a ser obrigatório quando a instituição
   já enviou movimentação reportável aos EUA; isso depende do histórico na Receita.
-- **Hífen duplo** (`--`) num campo de texto: a Receita recusa (MS1124).
+- **Hífen duplo** (`--`) num campo de texto: a Receita recusa (MS1124, "caracteres especiais restritos", do Manual de
+  Orientação do Usuário da e-Financeira v1.2, §6.2).
 - **NIF de um só caractere repetido** (`AAAAAAAAA`): a Receita recusa (MS1233).
 - **Razão social igual à do Cadastro CNPJ**: o nome vem da sua base.
 - **Recibo do último evento**: só o formato é conferido.

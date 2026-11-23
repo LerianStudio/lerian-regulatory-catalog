@@ -94,7 +94,7 @@ datasets:
     fields:
       # O id do evento (A II p.4): "ID" + 18 dígitos, gerado pela declarante, único
       # por instituição e tipo de evento. O motor gera os 18 dígitos a cada geração,
-      # crescentes no tempo e únicos entre os relatórios do tenant; o template
+      # ordenados pelo instante da geração e únicos entre os relatórios do tenant; o template
       # escreve o "ID" na frente. Nenhum binding o mapeia, e não se corrige: uma
       # retificação é um evento NOVO, com id novo — o vínculo é o recibo.
       - name: eventId
@@ -174,7 +174,7 @@ datasets:
         description: Categoria de declarante (tabela Categorias de Declarante; FATCA602 para instituição brasileira informante).
 
       # Razão social, idêntica à do Cadastro CNPJ, até 100 posições, sem os
-      # caracteres que a Receita proíbe (manual §2.3: aspas, apóstrofo, cerquilha).
+      # caracteres que a Receita proíbe (caracteres especiais restritos, MS1124, sem lista oficial: aspas, apóstrofo, cerquilha).
       - name: nome
         type: string
         required: true
@@ -447,7 +447,7 @@ knownGaps:
       O GIIN passa a ser obrigatório quando a declarante já enviou movimentação reportável aos EUA (REGRA_OBRIGATORIO_GIIN). Isso depende do histórico na Receita, que o Reporter não vê; o contrato confere só o formato quando o GIIN vem.
   - id: hifen-duplo
     description: >-
-      O manual (§2.3) proíbe também "--" no conteúdo. O contrato recusa aspas, apóstrofo e cerquilha nos campos de texto livre, mas não o hífen duplo: a forma de expressão do motor (uma expressão regular sem lookahead) não junta essa recusa ao limite de tamanho do campo. Um "--" num nome ou endereço passa daqui e é recusado pela Receita (MS1124).
+      A Receita recusa caracteres especiais restritos no conteúdo (MS1124) sem listá-los; o "--" é tratado aqui como um deles. O contrato recusa aspas, apóstrofo e cerquilha nos campos de texto livre, mas não o hífen duplo: a forma de expressão do motor (uma expressão regular sem lookahead) não junta essa recusa ao limite de tamanho do campo. Um "--" num nome ou endereço passa daqui e é recusado pela Receita (MS1124, "caracteres especiais restritos", que está no Manual de Orientação do Usuário da e-Financeira v1.2, ADE Cofis 12/2025, §6.2, e não no Anexo II).
   - id: nif-caractere-repetido
     description: >-
       O NIF formado por um só caractere repetido (AAAAAAAAA, 222222222) é recusado pela Receita (REGRA_VALIDA_NIF, MS1233). O contrato recusa "not required" e as sequências de nove números, mas não o caractere repetido: a expressão regular do motor não tem referência para trás. A referência declara o NIF vazio; quem o mapeia confere isso na fonte.

@@ -1,0 +1,44 @@
+# Bloco canonico: UF (sigla) -> codigo IBGE de 2 digitos, como item de `compute`
+# de uma consulta do binding (forma de tools/validate.py _check_computes).
+# Os valores sao os de uf-ibge.yaml (mesma origem, sha256 do uf.txt
+# 5816106201212a3ba1a17b787f278b7de6491342184f47ca5de041ccb66983ef).
+# No binding de cada documento, troque os marcadores:
+#   as:     <NOME_DA_COLUNA_CALCULADA>  ex.: codigo_uf
+#   column: <COLUNA_COM_A_SIGLA_DA_UF>  ex.: address_state
+# Exterior / sem agencia fisica = "00" (IN BCB 636 Anexo I, Agencias campo 6,
+# normas/IN-BCB-636-2025.md L106) NAO entra aqui: e condicao do template.
+# Sigla fora da lista recusa (otherwise: refuse). O TITULARES troca o otherwise por
+# {constant: "00"}: quem mora no exterior nao tem UF da tabela, e a regra uf-do-brasil
+# do contrato recusa o 00 de quem mora no Brasil.
+- as: UF_IBGE_AS
+  case:
+    column: UF_SIGLA_COLUMN
+    when:
+      AC: {constant: "12"}
+      AL: {constant: "27"}
+      AM: {constant: "13"}
+      AP: {constant: "16"}
+      BA: {constant: "29"}
+      CE: {constant: "23"}
+      DF: {constant: "53"}
+      ES: {constant: "32"}
+      GO: {constant: "52"}
+      MA: {constant: "21"}
+      MG: {constant: "31"}
+      MS: {constant: "50"}
+      MT: {constant: "51"}
+      PA: {constant: "15"}
+      PB: {constant: "25"}
+      PE: {constant: "26"}
+      PI: {constant: "22"}
+      PR: {constant: "41"}
+      RJ: {constant: "33"}
+      RN: {constant: "24"}
+      RO: {constant: "11"}
+      RR: {constant: "14"}
+      RS: {constant: "43"}
+      SC: {constant: "42"}
+      SE: {constant: "28"}
+      SP: {constant: "35"}
+      TO: {constant: "17"}
+    otherwise: refuse

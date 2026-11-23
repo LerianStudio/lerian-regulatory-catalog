@@ -218,8 +218,10 @@ def documents_declaring(file_name: str) -> list[Path]:
     """Os diretórios de documento cujo contrato declara uma tabela `from: file_name`."""
     import yaml  # pyyaml, já usado pelo validador
 
+    from validate import contract_paths  # noqa: PLC0415 — a mesma varredura do validador
+
     found = []
-    for contract_path in sorted(ROOT.glob("*/*/*/contract.yaml")):
+    for contract_path in contract_paths(ROOT):
         try:
             contract = yaml.safe_load(contract_path.read_text(encoding="utf-8")) or {}
         except (OSError, UnicodeDecodeError) as err:

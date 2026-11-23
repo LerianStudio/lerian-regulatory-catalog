@@ -1,0 +1,1510 @@
+# Binding do SIMBA TITULARES — QUEM PREENCHE E O CLIENTE.
+#
+# Exemplo preenchido contra o Midaz (`midaz_onboarding`) e o CRM do Midaz
+# (`plugin_crm`). As contas do caso saem de `contas_do_caso`, a mesma consulta
+# (mesmo texto) nos bindings de AGENCIAS, CONTAS, EXTRATO e ORIGEM-DESTINO: trocar
+# de onde vem o conjunto de contas do caso e trocar SO essa consulta. As demais
+# leem os ids dela.
+#
+# O NUMERO DA AGENCIA (5 digitos; 00001 sem agencia fisica) sai do cadastro de
+# agencias do tenant, o MESMO `case` do binding do AGENCIAS (valores SINTETICOS
+# aqui: "0001" digital, "0002" fisica ficticia). Agencia fora do cadastro recusa.
+#
+# O TIPO DA CONTA vem de `regulatory_fields.account_type` do CRM, cujos valores o
+# proprio Midaz documenta com os codigos da IN (midaz pkg/mmodel/instrument.go:19).
+#
+# AS CONTAS DE CONTRAPARTE (IN art. 2o, III: os titulares das contas do arquivo
+# CONTAS, que lista tambem as contas com que as do caso transacionaram, codigo 3)
+# saem de `contas_contraparte`, o MESMO texto (de `lancamentos` a
+# `contas_contraparte`) do binding do CONTAS: trocar de onde vem esse conjunto e
+# trocar nos dois. O campo 6 dessas pessoas segue a pessoa, como nas do caso (IN :142).
+#
+# O PAPEL DE CADA PARTE RELACIONADA (campo 5) e do cliente: o CRM tem os papeis
+# PRIMARY_HOLDER, LEGAL_REPRESENTATIVE e RESPONSIBLE_PARTY, e o campo 5 tem T, 1..n,
+# R, L, P e O. PRIMARY_HOLDER e o cotitular ("C", que o template numera 1, 2... por
+# conta) e LEGAL_REPRESENTATIVE e o representante legal ("L"). O CRM nao define
+# RESPONSIBLE_PARTY; o exemplo declara "O" (outros), o unico codigo que nao afirma
+# procuracao nem representacao. Quem usa o papel para procurador declara "P"; para
+# representante, "R". Declare-o em `vinculo` nas duas consultas de partes. Sem a
+# declaracao, uma parte com esse papel recusa a geracao.
+#
+# DATAS DO CRM GRAVADAS COMO INSTANTE (`civilDate: true`): o CRM do Midaz guarda
+# o encerramento da conta e o inicio e o fim do vinculo das partes
+# (`closing_date`, `start_date`, `end_date`) como data e hora a meia-noite UTC
+# (um documento nao tem tipo de dia). Sem a marca, o motor corta o instante no fuso
+# do documento e o dia sai um antes. Com `civilDate: true` o binding le o dia UTC; um instante fora
+# da meia-noite recusa a geracao. A chave exige o Reporter que a conhece.
+#
+# A RENDA (campos 18 e 19): da pessoa natural, a renda mensal bruta declarada; da
+# pessoa juridica, o faturamento anual declarado, como esta no cadastro (sem
+# dividir por 12). A data e a `reference_date` de cada um.
+# A moeda (`currency`) de cada um vai junto: o catalogo nao converte moeda, e a
+# figura que o campo 18 imprime (renda da pessoa natural, faturamento da juridica)
+# em outra moeda que nao BRL recusa a geracao (regras moeda-da-renda e
+# moeda-do-faturamento). A IN nao fala de moeda no campo 18 (IN :154); o leiaute so
+# da exemplos em R$ (art. 3o, VIII, IN :73). A recusa e uma trava do catalogo, nao
+# uma exigencia escrita do Banco Central.
+#
+# CONTRATO DE CAMBIO (campo 28): declare em `operaCambio` se a instituicao firma
+# contrato de cambio. "nao" escreve 0 em toda linha; "sim" recusa a geracao, porque
+# nenhuma aplicacao Lerian registra o contrato de cambio e nao ha fonte para o 1.
+#
+# A UF DO TITULAR (campo 14) converte a sigla do endereco principal no codigo IBGE,
+# com a tabela de br/bcb/simba/tabelas/uf-ibge.compute.yaml. Sigla ausente ou fora
+# da tabela vira "00": para quem mora no Brasil (pais BR ou ausente), a regra
+# `uf-do-brasil` do contrato recusa a geracao; para quem mora no exterior, o
+# template escreve "00" em qualquer caso (IN :150).
+#
+# O PAIS (campo 15) e o nome do codigo ISO 3166-1 alfa-2 do endereco principal, da
+# tabela de paises da Receita (br/rfb/e-financeira/tabelas/paises.txt, linhas
+# vigentes em 19/11/2026; tools/test_simba.py confere o `case` contra ela), em
+# maiuscula e em minuscula (o motor nao normaliza o texto antes do `case`). Codigo
+# ausente ou fora da tabela vira "-": informado e fora da tabela, a regra
+# `pais-na-tabela` do contrato recusa a geracao; ausente, o campo sai em branco.
+# Quem mora no exterior e decidido pelo nome (nem Brasil nem "-"), nao pelo codigo.
+#
+# Filtro encadeado `{query, column}`: grafia provisoria do motor; se
+# mudar, e `sed` nos bindings.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.simba.titulares
+contractVersion: 1.0.1
+
+queries:
+  - name: declarante
+    description: A organizacao do Midaz, que e a instituicao que responde ao caso. O CNPJ dela e o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    filters:
+      - field: deleted_at
+        operator: isNull
+
+  # As contas do caso: as que o documento investigado TITULA (cotitular, representante e
+  # procurador nao entram). Excluida do CRM fica fora; encerrada entra.
+  - name: contas_do_caso
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: document, operator: in, values: [{parameter: documentos}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
+
+  - name: titulares_dados
+    description: As contas do caso, com agencia, tipo, datas e o cadastro do titular.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+    join:
+      - query: cadastro_titulares
+        match: {holder_id: _id}
+    # Quem junta uma consulta declara o que devolve; o documento e o nome vem do
+    # cadastro do titular, e nao do instrumento.
+    select: [account_id, holder_id, numero_agencia, tipo_conta, banking_details.account, banking_details.opening_date, banking_details.closing_date]
+
+  # O titular de uma conta do caso e um dos documentos da ordem: o cadastro dele
+  # sai pelo documento (o filtro pergunta pelo digest do documento cifrado).
+  - name: cadastro_titulares
+    description: O cadastro de titulares do CRM, das pessoas da ordem.
+    dataSource: plugin_crm
+    table: holders
+    filters:
+      - {field: document, operator: in, values: [{parameter: documentos}]}
+    compute:
+      - as: tipo_pessoa
+        case:
+          column: type
+          when:
+            NATURAL_PERSON: {constant: "1"}
+            LEGAL_PERSON: {constant: "2"}
+          otherwise: refuse
+      - as: codigo_uf
+        case:
+          column: addresses.primary.state
+          when:
+            AC: {constant: "12"}
+            AL: {constant: "27"}
+            AM: {constant: "13"}
+            AP: {constant: "16"}
+            BA: {constant: "29"}
+            CE: {constant: "23"}
+            DF: {constant: "53"}
+            ES: {constant: "32"}
+            GO: {constant: "52"}
+            MA: {constant: "21"}
+            MG: {constant: "31"}
+            MS: {constant: "50"}
+            MT: {constant: "51"}
+            PA: {constant: "15"}
+            PB: {constant: "25"}
+            PE: {constant: "26"}
+            PI: {constant: "22"}
+            PR: {constant: "41"}
+            RJ: {constant: "33"}
+            RN: {constant: "24"}
+            RO: {constant: "11"}
+            RR: {constant: "14"}
+            RS: {constant: "43"}
+            SC: {constant: "42"}
+            SE: {constant: "28"}
+            SP: {constant: "35"}
+            TO: {constant: "17"}
+          otherwise: {constant: "00"}
+      - as: nome_pais
+        case:
+          column: addresses.primary.country
+          when:
+            "AD": {constant: "Andorra"}
+            "ad": {constant: "Andorra"}
+            "AE": {constant: "Emirados Árabes Unidos"}
+            "ae": {constant: "Emirados Árabes Unidos"}
+            "AF": {constant: "Afeganistão"}
+            "af": {constant: "Afeganistão"}
+            "AG": {constant: "Antígua e Barbuda"}
+            "ag": {constant: "Antígua e Barbuda"}
+            "AI": {constant: "Anguilla"}
+            "ai": {constant: "Anguilla"}
+            "AL": {constant: "Albânia"}
+            "al": {constant: "Albânia"}
+            "AM": {constant: "Armênia"}
+            "am": {constant: "Armênia"}
+            "AO": {constant: "Angola"}
+            "ao": {constant: "Angola"}
+            "AQ": {constant: "Antártida"}
+            "aq": {constant: "Antártida"}
+            "AR": {constant: "Argentina"}
+            "ar": {constant: "Argentina"}
+            "AS": {constant: "Samoa Americana"}
+            "as": {constant: "Samoa Americana"}
+            "AT": {constant: "Áustria"}
+            "at": {constant: "Áustria"}
+            "AU": {constant: "Austrália"}
+            "au": {constant: "Austrália"}
+            "AW": {constant: "Aruba"}
+            "aw": {constant: "Aruba"}
+            "AX": {constant: "Ilhas Aland"}
+            "ax": {constant: "Ilhas Aland"}
+            "AZ": {constant: "Azerbaijão"}
+            "az": {constant: "Azerbaijão"}
+            "BA": {constant: "Bósnia-Herzegóvina"}
+            "ba": {constant: "Bósnia-Herzegóvina"}
+            "BB": {constant: "Barbados"}
+            "bb": {constant: "Barbados"}
+            "BD": {constant: "Bangladesh"}
+            "bd": {constant: "Bangladesh"}
+            "BE": {constant: "Bélgica"}
+            "be": {constant: "Bélgica"}
+            "BF": {constant: "Burkina Fasso"}
+            "bf": {constant: "Burkina Fasso"}
+            "BG": {constant: "Bulgária"}
+            "bg": {constant: "Bulgária"}
+            "BH": {constant: "Bahrein"}
+            "bh": {constant: "Bahrein"}
+            "BI": {constant: "Burundi"}
+            "bi": {constant: "Burundi"}
+            "BJ": {constant: "Benin"}
+            "bj": {constant: "Benin"}
+            "BL": {constant: "São Bartolomeu"}
+            "bl": {constant: "São Bartolomeu"}
+            "BM": {constant: "Bermudas"}
+            "bm": {constant: "Bermudas"}
+            "BN": {constant: "Brunei"}
+            "bn": {constant: "Brunei"}
+            "BO": {constant: "Bolívia"}
+            "bo": {constant: "Bolívia"}
+            "BQ": {constant: "Bonaire, Sint Eustatius e Saba"}
+            "bq": {constant: "Bonaire, Sint Eustatius e Saba"}
+            "BR": {constant: "Brasil"}
+            "br": {constant: "Brasil"}
+            "BS": {constant: "Bahamas"}
+            "bs": {constant: "Bahamas"}
+            "BT": {constant: "Butão"}
+            "bt": {constant: "Butão"}
+            "BV": {constant: "Ilha Bouvet (Território da Noruega)"}
+            "bv": {constant: "Ilha Bouvet (Território da Noruega)"}
+            "BW": {constant: "Botsuana"}
+            "bw": {constant: "Botsuana"}
+            "BY": {constant: "Belarus"}
+            "by": {constant: "Belarus"}
+            "BZ": {constant: "Belize"}
+            "bz": {constant: "Belize"}
+            "CA": {constant: "Canadá"}
+            "ca": {constant: "Canadá"}
+            "CC": {constant: "Ilhas Cocos"}
+            "cc": {constant: "Ilhas Cocos"}
+            "CD": {constant: "República Democrática do Congo (ex-Zaire)"}
+            "cd": {constant: "República Democrática do Congo (ex-Zaire)"}
+            "CF": {constant: "República Centro-Africana"}
+            "cf": {constant: "República Centro-Africana"}
+            "CG": {constant: "Congo"}
+            "cg": {constant: "Congo"}
+            "CH": {constant: "Suíça"}
+            "ch": {constant: "Suíça"}
+            "CI": {constant: "Costa do Marfim"}
+            "ci": {constant: "Costa do Marfim"}
+            "CK": {constant: "Ilhas Cook"}
+            "ck": {constant: "Ilhas Cook"}
+            "CL": {constant: "Chile"}
+            "cl": {constant: "Chile"}
+            "CM": {constant: "Camarões"}
+            "cm": {constant: "Camarões"}
+            "CN": {constant: "China"}
+            "cn": {constant: "China"}
+            "CO": {constant: "Colômbia"}
+            "co": {constant: "Colômbia"}
+            "CR": {constant: "Costa Rica"}
+            "cr": {constant: "Costa Rica"}
+            "CU": {constant: "Cuba"}
+            "cu": {constant: "Cuba"}
+            "CV": {constant: "Cabo Verde"}
+            "cv": {constant: "Cabo Verde"}
+            "CW": {constant: "Curaçao"}
+            "cw": {constant: "Curaçao"}
+            "CX": {constant: "Ilha Natal"}
+            "cx": {constant: "Ilha Natal"}
+            "CY": {constant: "Chipre"}
+            "cy": {constant: "Chipre"}
+            "CZ": {constant: "República Tcheca"}
+            "cz": {constant: "República Tcheca"}
+            "DE": {constant: "Alemanha"}
+            "de": {constant: "Alemanha"}
+            "DJ": {constant: "Djibuti"}
+            "dj": {constant: "Djibuti"}
+            "DK": {constant: "Dinamarca"}
+            "dk": {constant: "Dinamarca"}
+            "DM": {constant: "Dominica"}
+            "dm": {constant: "Dominica"}
+            "DO": {constant: "República Dominicana"}
+            "do": {constant: "República Dominicana"}
+            "DZ": {constant: "Argélia"}
+            "dz": {constant: "Argélia"}
+            "EC": {constant: "Equador"}
+            "ec": {constant: "Equador"}
+            "EE": {constant: "Estônia"}
+            "ee": {constant: "Estônia"}
+            "EG": {constant: "Egito"}
+            "eg": {constant: "Egito"}
+            "EH": {constant: "Saara Ocidental (Ex-Spanish Sahara)"}
+            "eh": {constant: "Saara Ocidental (Ex-Spanish Sahara)"}
+            "ER": {constant: "Eritréia"}
+            "er": {constant: "Eritréia"}
+            "ES": {constant: "Espanha"}
+            "es": {constant: "Espanha"}
+            "ET": {constant: "Etiópia"}
+            "et": {constant: "Etiópia"}
+            "FI": {constant: "Finlândia"}
+            "fi": {constant: "Finlândia"}
+            "FJ": {constant: "Fiji"}
+            "fj": {constant: "Fiji"}
+            "FK": {constant: "Ilhas Falkland (Malvinas)"}
+            "fk": {constant: "Ilhas Falkland (Malvinas)"}
+            "FM": {constant: "Micronésia"}
+            "fm": {constant: "Micronésia"}
+            "FO": {constant: "Ilhas Faroes"}
+            "fo": {constant: "Ilhas Faroes"}
+            "FR": {constant: "França"}
+            "fr": {constant: "França"}
+            "GA": {constant: "Gabão"}
+            "ga": {constant: "Gabão"}
+            "GB": {constant: "Grã-Bretanha (Reino Unido, UK)"}
+            "gb": {constant: "Grã-Bretanha (Reino Unido, UK)"}
+            "GD": {constant: "Granada"}
+            "gd": {constant: "Granada"}
+            "GE": {constant: "Geórgia"}
+            "ge": {constant: "Geórgia"}
+            "GF": {constant: "Guiana Francesa"}
+            "gf": {constant: "Guiana Francesa"}
+            "GG": {constant: "Guernsey"}
+            "gg": {constant: "Guernsey"}
+            "GH": {constant: "Gana"}
+            "gh": {constant: "Gana"}
+            "GI": {constant: "Gibraltar"}
+            "gi": {constant: "Gibraltar"}
+            "GL": {constant: "Groelândia"}
+            "gl": {constant: "Groelândia"}
+            "GM": {constant: "Gâmbia"}
+            "gm": {constant: "Gâmbia"}
+            "GN": {constant: "Guiné"}
+            "gn": {constant: "Guiné"}
+            "GP": {constant: "Guadalupe"}
+            "gp": {constant: "Guadalupe"}
+            "GQ": {constant: "Guiné Equatorial"}
+            "gq": {constant: "Guiné Equatorial"}
+            "GR": {constant: "Grécia"}
+            "gr": {constant: "Grécia"}
+            "GS": {constant: "Ilhas Geórgia do Sul e Sandwich do Sul"}
+            "gs": {constant: "Ilhas Geórgia do Sul e Sandwich do Sul"}
+            "GT": {constant: "Guatemala"}
+            "gt": {constant: "Guatemala"}
+            "GU": {constant: "Guam (Território dos Estados Unidos)"}
+            "gu": {constant: "Guam (Território dos Estados Unidos)"}
+            "GW": {constant: "Guiné-Bissau"}
+            "gw": {constant: "Guiné-Bissau"}
+            "GY": {constant: "Guiana"}
+            "gy": {constant: "Guiana"}
+            "HK": {constant: "Hong Kong"}
+            "hk": {constant: "Hong Kong"}
+            "HM": {constant: "Ilhas Heard e McDonald (Território da Austrália)"}
+            "hm": {constant: "Ilhas Heard e McDonald (Território da Austrália)"}
+            "HN": {constant: "Honduras"}
+            "hn": {constant: "Honduras"}
+            "HR": {constant: "Croácia (Hrvatska)"}
+            "hr": {constant: "Croácia (Hrvatska)"}
+            "HT": {constant: "Haiti"}
+            "ht": {constant: "Haiti"}
+            "HU": {constant: "Hungria"}
+            "hu": {constant: "Hungria"}
+            "ID": {constant: "Indonésia"}
+            "id": {constant: "Indonésia"}
+            "IE": {constant: "Irlanda"}
+            "ie": {constant: "Irlanda"}
+            "IL": {constant: "Israel"}
+            "il": {constant: "Israel"}
+            "IM": {constant: "Ilha do Homem"}
+            "im": {constant: "Ilha do Homem"}
+            "IN": {constant: "Índia"}
+            "in": {constant: "Índia"}
+            "IO": {constant: "Território Britânico do Oceano índico"}
+            "io": {constant: "Território Britânico do Oceano índico"}
+            "IQ": {constant: "Iraque"}
+            "iq": {constant: "Iraque"}
+            "IR": {constant: "Irã"}
+            "ir": {constant: "Irã"}
+            "IS": {constant: "Islândia"}
+            "is": {constant: "Islândia"}
+            "IT": {constant: "Itália"}
+            "it": {constant: "Itália"}
+            "JE": {constant: "Jersey"}
+            "je": {constant: "Jersey"}
+            "JM": {constant: "Jamaica"}
+            "jm": {constant: "Jamaica"}
+            "JO": {constant: "Jordânia"}
+            "jo": {constant: "Jordânia"}
+            "JP": {constant: "Japão"}
+            "jp": {constant: "Japão"}
+            "KE": {constant: "Kênia"}
+            "ke": {constant: "Kênia"}
+            "KG": {constant: "Kyrgyzstan"}
+            "kg": {constant: "Kyrgyzstan"}
+            "KH": {constant: "Camboja"}
+            "kh": {constant: "Camboja"}
+            "KI": {constant: "Kiribati"}
+            "ki": {constant: "Kiribati"}
+            "KM": {constant: "Ilhas Comores"}
+            "km": {constant: "Ilhas Comores"}
+            "KN": {constant: "São Cristóvão e Névis"}
+            "kn": {constant: "São Cristóvão e Névis"}
+            "KP": {constant: "Coréia do Norte"}
+            "kp": {constant: "Coréia do Norte"}
+            "KR": {constant: "Coréia do Sul"}
+            "kr": {constant: "Coréia do Sul"}
+            "KW": {constant: "Kuait"}
+            "kw": {constant: "Kuait"}
+            "KY": {constant: "Ilhas Cayman"}
+            "ky": {constant: "Ilhas Cayman"}
+            "KZ": {constant: "Cazaquistão"}
+            "kz": {constant: "Cazaquistão"}
+            "LA": {constant: "Laos"}
+            "la": {constant: "Laos"}
+            "LB": {constant: "Líbano"}
+            "lb": {constant: "Líbano"}
+            "LC": {constant: "Santa Lúcia"}
+            "lc": {constant: "Santa Lúcia"}
+            "LI": {constant: "Liechtenstein"}
+            "li": {constant: "Liechtenstein"}
+            "LK": {constant: "Sri Lanka"}
+            "lk": {constant: "Sri Lanka"}
+            "LR": {constant: "Libéria"}
+            "lr": {constant: "Libéria"}
+            "LS": {constant: "Lesoto"}
+            "ls": {constant: "Lesoto"}
+            "LT": {constant: "Lituânia"}
+            "lt": {constant: "Lituânia"}
+            "LU": {constant: "Luxemburgo"}
+            "lu": {constant: "Luxemburgo"}
+            "LV": {constant: "Látvia"}
+            "lv": {constant: "Látvia"}
+            "LY": {constant: "Líbia"}
+            "ly": {constant: "Líbia"}
+            "MA": {constant: "Marrocos"}
+            "ma": {constant: "Marrocos"}
+            "MC": {constant: "Mônaco"}
+            "mc": {constant: "Mônaco"}
+            "MD": {constant: "Moldova"}
+            "md": {constant: "Moldova"}
+            "ME": {constant: "Montenegro"}
+            "me": {constant: "Montenegro"}
+            "MF": {constant: "São Martim"}
+            "mf": {constant: "São Martim"}
+            "MG": {constant: "Madagascar"}
+            "mg": {constant: "Madagascar"}
+            "MH": {constant: "Ilhas Marshall"}
+            "mh": {constant: "Ilhas Marshall"}
+            "MK": {constant: "Macedônia (República Yugoslava)"}
+            "mk": {constant: "Macedônia (República Yugoslava)"}
+            "ML": {constant: "Mali"}
+            "ml": {constant: "Mali"}
+            "MM": {constant: "Myanma (Ex-Burma)"}
+            "mm": {constant: "Myanma (Ex-Burma)"}
+            "MN": {constant: "Mongólia"}
+            "mn": {constant: "Mongólia"}
+            "MO": {constant: "Macau"}
+            "mo": {constant: "Macau"}
+            "MP": {constant: "Ilhas Marianas do Norte"}
+            "mp": {constant: "Ilhas Marianas do Norte"}
+            "MQ": {constant: "Martinica"}
+            "mq": {constant: "Martinica"}
+            "MR": {constant: "Mauritânia"}
+            "mr": {constant: "Mauritânia"}
+            "MS": {constant: "Montserrat"}
+            "ms": {constant: "Montserrat"}
+            "MT": {constant: "Malta"}
+            "mt": {constant: "Malta"}
+            "MU": {constant: "Maurício"}
+            "mu": {constant: "Maurício"}
+            "MV": {constant: "Maldivas"}
+            "mv": {constant: "Maldivas"}
+            "MW": {constant: "Malaui"}
+            "mw": {constant: "Malaui"}
+            "MX": {constant: "Mexico"}
+            "mx": {constant: "Mexico"}
+            "MY": {constant: "Malásia"}
+            "my": {constant: "Malásia"}
+            "MZ": {constant: "Moçambique"}
+            "mz": {constant: "Moçambique"}
+            "NA": {constant: "Namíbia"}
+            "na": {constant: "Namíbia"}
+            "NC": {constant: "Nova Caledônia"}
+            "nc": {constant: "Nova Caledônia"}
+            "NE": {constant: "Níger"}
+            "ne": {constant: "Níger"}
+            "NF": {constant: "Ilhas Norfolk"}
+            "nf": {constant: "Ilhas Norfolk"}
+            "NG": {constant: "Nigéria"}
+            "ng": {constant: "Nigéria"}
+            "NI": {constant: "Nicarágua"}
+            "ni": {constant: "Nicarágua"}
+            "NL": {constant: "Holanda"}
+            "nl": {constant: "Holanda"}
+            "NO": {constant: "Noruega"}
+            "no": {constant: "Noruega"}
+            "NP": {constant: "Nepal"}
+            "np": {constant: "Nepal"}
+            "NR": {constant: "Nauru"}
+            "nr": {constant: "Nauru"}
+            "NU": {constant: "Niue"}
+            "nu": {constant: "Niue"}
+            "NZ": {constant: "Nova Zelândia"}
+            "nz": {constant: "Nova Zelândia"}
+            "OM": {constant: "Omã"}
+            "om": {constant: "Omã"}
+            "PA": {constant: "Panamá"}
+            "pa": {constant: "Panamá"}
+            "PE": {constant: "Peru"}
+            "pe": {constant: "Peru"}
+            "PF": {constant: "Polinésia Francesa"}
+            "pf": {constant: "Polinésia Francesa"}
+            "PG": {constant: "Papua-Nova Guiné"}
+            "pg": {constant: "Papua-Nova Guiné"}
+            "PH": {constant: "Filipinas"}
+            "ph": {constant: "Filipinas"}
+            "PK": {constant: "Paquistão"}
+            "pk": {constant: "Paquistão"}
+            "PL": {constant: "Polônia"}
+            "pl": {constant: "Polônia"}
+            "PM": {constant: "St. Pierre and Miquelon"}
+            "pm": {constant: "St. Pierre and Miquelon"}
+            "PN": {constant: "Ilha Pitcairn"}
+            "pn": {constant: "Ilha Pitcairn"}
+            "PR": {constant: "Porto Rico"}
+            "pr": {constant: "Porto Rico"}
+            "PS": {constant: "Territórios Palestinos Ocupados"}
+            "ps": {constant: "Territórios Palestinos Ocupados"}
+            "PT": {constant: "Portugal"}
+            "pt": {constant: "Portugal"}
+            "PW": {constant: "Palau"}
+            "pw": {constant: "Palau"}
+            "PY": {constant: "Paraguai"}
+            "py": {constant: "Paraguai"}
+            "QA": {constant: "Qatar"}
+            "qa": {constant: "Qatar"}
+            "RE": {constant: "Ilha Reunião"}
+            "re": {constant: "Ilha Reunião"}
+            "RO": {constant: "Romênia"}
+            "ro": {constant: "Romênia"}
+            "RS": {constant: "Sérvia"}
+            "rs": {constant: "Sérvia"}
+            "RU": {constant: "Federação Russa"}
+            "ru": {constant: "Federação Russa"}
+            "RW": {constant: "Ruanda"}
+            "rw": {constant: "Ruanda"}
+            "SA": {constant: "Arábia Saudita"}
+            "sa": {constant: "Arábia Saudita"}
+            "SB": {constant: "Ilhas Solomão"}
+            "sb": {constant: "Ilhas Solomão"}
+            "SC": {constant: "Ilhas Seychelles"}
+            "sc": {constant: "Ilhas Seychelles"}
+            "SD": {constant: "Sudão"}
+            "sd": {constant: "Sudão"}
+            "SE": {constant: "Suécia"}
+            "se": {constant: "Suécia"}
+            "SG": {constant: "Cingapura"}
+            "sg": {constant: "Cingapura"}
+            "SH": {constant: "Santa Helena"}
+            "sh": {constant: "Santa Helena"}
+            "SI": {constant: "Eslovênia"}
+            "si": {constant: "Eslovênia"}
+            "SJ": {constant: "Ilhas Svalbard e Jan Mayen"}
+            "sj": {constant: "Ilhas Svalbard e Jan Mayen"}
+            "SK": {constant: "Eslováquia"}
+            "sk": {constant: "Eslováquia"}
+            "SL": {constant: "Serra Leoa"}
+            "sl": {constant: "Serra Leoa"}
+            "SM": {constant: "San Marino"}
+            "sm": {constant: "San Marino"}
+            "SN": {constant: "Senegal"}
+            "sn": {constant: "Senegal"}
+            "SO": {constant: "Somália"}
+            "so": {constant: "Somália"}
+            "SR": {constant: "Suriname"}
+            "sr": {constant: "Suriname"}
+            "SS": {constant: "Sudão do Sul"}
+            "ss": {constant: "Sudão do Sul"}
+            "ST": {constant: "São Tomé e Príncipe"}
+            "st": {constant: "São Tomé e Príncipe"}
+            "SV": {constant: "El Salvador"}
+            "sv": {constant: "El Salvador"}
+            "SX": {constant: "São Martinho (Parte Holandesa)"}
+            "sx": {constant: "São Martinho (Parte Holandesa)"}
+            "SY": {constant: "Síria"}
+            "sy": {constant: "Síria"}
+            "SZ": {constant: "Suazilândia"}
+            "sz": {constant: "Suazilândia"}
+            "TC": {constant: "Ilhas Turks e Caicos"}
+            "tc": {constant: "Ilhas Turks e Caicos"}
+            "TD": {constant: "Chade"}
+            "td": {constant: "Chade"}
+            "TF": {constant: "Territórios do Sul da França"}
+            "tf": {constant: "Territórios do Sul da França"}
+            "TG": {constant: "Togo"}
+            "tg": {constant: "Togo"}
+            "TH": {constant: "Tailândia"}
+            "th": {constant: "Tailândia"}
+            "TJ": {constant: "Tadjiquistão"}
+            "tj": {constant: "Tadjiquistão"}
+            "TK": {constant: "Ilhas Tokelau"}
+            "tk": {constant: "Ilhas Tokelau"}
+            "TL": {constant: "Timor Leste (Ex-East Timor)"}
+            "tl": {constant: "Timor Leste (Ex-East Timor)"}
+            "TM": {constant: "Turcomenistão"}
+            "tm": {constant: "Turcomenistão"}
+            "TN": {constant: "Tunísia"}
+            "tn": {constant: "Tunísia"}
+            "TO": {constant: "Tonga"}
+            "to": {constant: "Tonga"}
+            "TR": {constant: "Turquia"}
+            "tr": {constant: "Turquia"}
+            "TT": {constant: "Trinidad and Tobago"}
+            "tt": {constant: "Trinidad and Tobago"}
+            "TV": {constant: "Tuvalu"}
+            "tv": {constant: "Tuvalu"}
+            "TW": {constant: "Taiwan - Província da China"}
+            "tw": {constant: "Taiwan - Província da China"}
+            "TZ": {constant: "Tanzânia"}
+            "tz": {constant: "Tanzânia"}
+            "UA": {constant: "Ucrânia"}
+            "ua": {constant: "Ucrânia"}
+            "UG": {constant: "Uganda"}
+            "ug": {constant: "Uganda"}
+            "UM": {constant: "Ilhas Menores dos Estados Unidos"}
+            "um": {constant: "Ilhas Menores dos Estados Unidos"}
+            "US": {constant: "Estados Unidos"}
+            "us": {constant: "Estados Unidos"}
+            "UY": {constant: "Uruguai"}
+            "uy": {constant: "Uruguai"}
+            "UZ": {constant: "Uzbequistão"}
+            "uz": {constant: "Uzbequistão"}
+            "VA": {constant: "Vaticano"}
+            "va": {constant: "Vaticano"}
+            "VC": {constant: "Saint Vincente e Granadinas"}
+            "vc": {constant: "Saint Vincente e Granadinas"}
+            "VE": {constant: "Venezuela"}
+            "ve": {constant: "Venezuela"}
+            "VG": {constant: "Ilhas Virgens (Inglaterra)"}
+            "vg": {constant: "Ilhas Virgens (Inglaterra)"}
+            "VI": {constant: "Ilhas Virgens (Estados Unidos)"}
+            "vi": {constant: "Ilhas Virgens (Estados Unidos)"}
+            "VN": {constant: "Vietnam"}
+            "vn": {constant: "Vietnam"}
+            "VU": {constant: "Vanuatu"}
+            "vu": {constant: "Vanuatu"}
+            "WF": {constant: "Ilhas Wallis e Futuna"}
+            "wf": {constant: "Ilhas Wallis e Futuna"}
+            "WS": {constant: "Samoa Ocidental"}
+            "ws": {constant: "Samoa Ocidental"}
+            "YE": {constant: "Iêmen"}
+            "ye": {constant: "Iêmen"}
+            "YT": {constant: "Mayotte"}
+            "yt": {constant: "Mayotte"}
+            "ZA": {constant: "África do Sul"}
+            "za": {constant: "África do Sul"}
+            "ZM": {constant: "Zâmbia"}
+            "zm": {constant: "Zâmbia"}
+            "ZW": {constant: "Zimbábue"}
+            "zw": {constant: "Zimbábue"}
+          otherwise: {constant: "-"}
+    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, natural_person.monthly_gross_income.currency, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date, legal_person.annual_gross_revenue.currency]
+
+  # Uma linha por parte relacionada de cada conta do caso.
+  - name: partes_dados
+    description: As partes relacionadas de cada conta do caso, uma linha por parte.
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+      - as: vinculo
+        case:
+          column: related_parties.role
+          when:
+            PRIMARY_HOLDER: {constant: "C"}
+            LEGAL_REPRESENTATIVE: {constant: "L"}
+            # Declare aqui o codigo do papel RESPONSIBLE_PARTY neste cliente
+            # (R representante, P procurador ou O outros). Exemplo:
+            RESPONSIBLE_PARTY: {constant: "O"}
+          otherwise: refuse
+
+  # Contas com que as do caso transacionaram no periodo (IN art. 2o, II, :29;
+  # campo 7 = 3): as outras pernas das transacoes dos lancamentos do caso.
+  - name: lancamentos
+    description: Lancamentos das contas do caso no periodo, so a transacao de cada um.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    select: [transaction_id, account_id]
+
+  # Toda perna das mesmas transacoes, inclusive a propria conta do caso (o motor
+  # nao tem `nin` com valores de consulta): o template nao a repete.
+  - name: outras_pernas
+    description: As pernas das transacoes dos lancamentos do caso.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: transaction_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  # So as outras pernas que sao conta de cliente no CRM. Conta de sistema ou de
+  # liquidacao, sem instrumento, nao entra.
+  - name: contas_contraparte
+    description: Os ids das contas das outras pernas que tem instrumento no CRM.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: outras_pernas, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  # As contas de contraparte, com o titular e as partes, como as do caso.
+  - name: titulares_contraparte_dados
+    description: As contas de contraparte, com agencia, tipo, datas e o cadastro do titular.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+    join:
+      - query: cadastro_contraparte
+        match: {holder_id: _id}
+    # Quem junta uma consulta declara o que devolve; o documento e o nome vem do
+    # cadastro do titular, e nao do instrumento.
+    select: [account_id, holder_id, numero_agencia, tipo_conta, banking_details.account, banking_details.opening_date, banking_details.closing_date]
+
+  # O titular da conta de contraparte nao e pessoa da ordem: o cadastro sai pelo
+  # holder_id do instrumento. Consulta propria porque a origem de um filtro
+  # encadeado declara `select`, e a `contas_contraparte` e a do CONTAS.
+  - name: contraparte_titulares
+    description: O titular (holder_id) de cada conta de contraparte.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, holder_id]
+
+  # O cadastro do titular de cada conta de contraparte, pelo holder_id.
+  - name: cadastro_contraparte
+    description: O cadastro do titular de cada conta de contraparte.
+    dataSource: plugin_crm
+    table: holders
+    filters:
+      - {field: _id, operator: in, values: [{query: contraparte_titulares, column: holder_id}]}
+    compute:
+      - as: tipo_pessoa
+        case:
+          column: type
+          when:
+            NATURAL_PERSON: {constant: "1"}
+            LEGAL_PERSON: {constant: "2"}
+          otherwise: refuse
+      - as: codigo_uf
+        case:
+          column: addresses.primary.state
+          when:
+            AC: {constant: "12"}
+            AL: {constant: "27"}
+            AM: {constant: "13"}
+            AP: {constant: "16"}
+            BA: {constant: "29"}
+            CE: {constant: "23"}
+            DF: {constant: "53"}
+            ES: {constant: "32"}
+            GO: {constant: "52"}
+            MA: {constant: "21"}
+            MG: {constant: "31"}
+            MS: {constant: "50"}
+            MT: {constant: "51"}
+            PA: {constant: "15"}
+            PB: {constant: "25"}
+            PE: {constant: "26"}
+            PI: {constant: "22"}
+            PR: {constant: "41"}
+            RJ: {constant: "33"}
+            RN: {constant: "24"}
+            RO: {constant: "11"}
+            RR: {constant: "14"}
+            RS: {constant: "43"}
+            SC: {constant: "42"}
+            SE: {constant: "28"}
+            SP: {constant: "35"}
+            TO: {constant: "17"}
+          otherwise: {constant: "00"}
+      - as: nome_pais
+        case:
+          column: addresses.primary.country
+          when:
+            "AD": {constant: "Andorra"}
+            "ad": {constant: "Andorra"}
+            "AE": {constant: "Emirados Árabes Unidos"}
+            "ae": {constant: "Emirados Árabes Unidos"}
+            "AF": {constant: "Afeganistão"}
+            "af": {constant: "Afeganistão"}
+            "AG": {constant: "Antígua e Barbuda"}
+            "ag": {constant: "Antígua e Barbuda"}
+            "AI": {constant: "Anguilla"}
+            "ai": {constant: "Anguilla"}
+            "AL": {constant: "Albânia"}
+            "al": {constant: "Albânia"}
+            "AM": {constant: "Armênia"}
+            "am": {constant: "Armênia"}
+            "AO": {constant: "Angola"}
+            "ao": {constant: "Angola"}
+            "AQ": {constant: "Antártida"}
+            "aq": {constant: "Antártida"}
+            "AR": {constant: "Argentina"}
+            "ar": {constant: "Argentina"}
+            "AS": {constant: "Samoa Americana"}
+            "as": {constant: "Samoa Americana"}
+            "AT": {constant: "Áustria"}
+            "at": {constant: "Áustria"}
+            "AU": {constant: "Austrália"}
+            "au": {constant: "Austrália"}
+            "AW": {constant: "Aruba"}
+            "aw": {constant: "Aruba"}
+            "AX": {constant: "Ilhas Aland"}
+            "ax": {constant: "Ilhas Aland"}
+            "AZ": {constant: "Azerbaijão"}
+            "az": {constant: "Azerbaijão"}
+            "BA": {constant: "Bósnia-Herzegóvina"}
+            "ba": {constant: "Bósnia-Herzegóvina"}
+            "BB": {constant: "Barbados"}
+            "bb": {constant: "Barbados"}
+            "BD": {constant: "Bangladesh"}
+            "bd": {constant: "Bangladesh"}
+            "BE": {constant: "Bélgica"}
+            "be": {constant: "Bélgica"}
+            "BF": {constant: "Burkina Fasso"}
+            "bf": {constant: "Burkina Fasso"}
+            "BG": {constant: "Bulgária"}
+            "bg": {constant: "Bulgária"}
+            "BH": {constant: "Bahrein"}
+            "bh": {constant: "Bahrein"}
+            "BI": {constant: "Burundi"}
+            "bi": {constant: "Burundi"}
+            "BJ": {constant: "Benin"}
+            "bj": {constant: "Benin"}
+            "BL": {constant: "São Bartolomeu"}
+            "bl": {constant: "São Bartolomeu"}
+            "BM": {constant: "Bermudas"}
+            "bm": {constant: "Bermudas"}
+            "BN": {constant: "Brunei"}
+            "bn": {constant: "Brunei"}
+            "BO": {constant: "Bolívia"}
+            "bo": {constant: "Bolívia"}
+            "BQ": {constant: "Bonaire, Sint Eustatius e Saba"}
+            "bq": {constant: "Bonaire, Sint Eustatius e Saba"}
+            "BR": {constant: "Brasil"}
+            "br": {constant: "Brasil"}
+            "BS": {constant: "Bahamas"}
+            "bs": {constant: "Bahamas"}
+            "BT": {constant: "Butão"}
+            "bt": {constant: "Butão"}
+            "BV": {constant: "Ilha Bouvet (Território da Noruega)"}
+            "bv": {constant: "Ilha Bouvet (Território da Noruega)"}
+            "BW": {constant: "Botsuana"}
+            "bw": {constant: "Botsuana"}
+            "BY": {constant: "Belarus"}
+            "by": {constant: "Belarus"}
+            "BZ": {constant: "Belize"}
+            "bz": {constant: "Belize"}
+            "CA": {constant: "Canadá"}
+            "ca": {constant: "Canadá"}
+            "CC": {constant: "Ilhas Cocos"}
+            "cc": {constant: "Ilhas Cocos"}
+            "CD": {constant: "República Democrática do Congo (ex-Zaire)"}
+            "cd": {constant: "República Democrática do Congo (ex-Zaire)"}
+            "CF": {constant: "República Centro-Africana"}
+            "cf": {constant: "República Centro-Africana"}
+            "CG": {constant: "Congo"}
+            "cg": {constant: "Congo"}
+            "CH": {constant: "Suíça"}
+            "ch": {constant: "Suíça"}
+            "CI": {constant: "Costa do Marfim"}
+            "ci": {constant: "Costa do Marfim"}
+            "CK": {constant: "Ilhas Cook"}
+            "ck": {constant: "Ilhas Cook"}
+            "CL": {constant: "Chile"}
+            "cl": {constant: "Chile"}
+            "CM": {constant: "Camarões"}
+            "cm": {constant: "Camarões"}
+            "CN": {constant: "China"}
+            "cn": {constant: "China"}
+            "CO": {constant: "Colômbia"}
+            "co": {constant: "Colômbia"}
+            "CR": {constant: "Costa Rica"}
+            "cr": {constant: "Costa Rica"}
+            "CU": {constant: "Cuba"}
+            "cu": {constant: "Cuba"}
+            "CV": {constant: "Cabo Verde"}
+            "cv": {constant: "Cabo Verde"}
+            "CW": {constant: "Curaçao"}
+            "cw": {constant: "Curaçao"}
+            "CX": {constant: "Ilha Natal"}
+            "cx": {constant: "Ilha Natal"}
+            "CY": {constant: "Chipre"}
+            "cy": {constant: "Chipre"}
+            "CZ": {constant: "República Tcheca"}
+            "cz": {constant: "República Tcheca"}
+            "DE": {constant: "Alemanha"}
+            "de": {constant: "Alemanha"}
+            "DJ": {constant: "Djibuti"}
+            "dj": {constant: "Djibuti"}
+            "DK": {constant: "Dinamarca"}
+            "dk": {constant: "Dinamarca"}
+            "DM": {constant: "Dominica"}
+            "dm": {constant: "Dominica"}
+            "DO": {constant: "República Dominicana"}
+            "do": {constant: "República Dominicana"}
+            "DZ": {constant: "Argélia"}
+            "dz": {constant: "Argélia"}
+            "EC": {constant: "Equador"}
+            "ec": {constant: "Equador"}
+            "EE": {constant: "Estônia"}
+            "ee": {constant: "Estônia"}
+            "EG": {constant: "Egito"}
+            "eg": {constant: "Egito"}
+            "EH": {constant: "Saara Ocidental (Ex-Spanish Sahara)"}
+            "eh": {constant: "Saara Ocidental (Ex-Spanish Sahara)"}
+            "ER": {constant: "Eritréia"}
+            "er": {constant: "Eritréia"}
+            "ES": {constant: "Espanha"}
+            "es": {constant: "Espanha"}
+            "ET": {constant: "Etiópia"}
+            "et": {constant: "Etiópia"}
+            "FI": {constant: "Finlândia"}
+            "fi": {constant: "Finlândia"}
+            "FJ": {constant: "Fiji"}
+            "fj": {constant: "Fiji"}
+            "FK": {constant: "Ilhas Falkland (Malvinas)"}
+            "fk": {constant: "Ilhas Falkland (Malvinas)"}
+            "FM": {constant: "Micronésia"}
+            "fm": {constant: "Micronésia"}
+            "FO": {constant: "Ilhas Faroes"}
+            "fo": {constant: "Ilhas Faroes"}
+            "FR": {constant: "França"}
+            "fr": {constant: "França"}
+            "GA": {constant: "Gabão"}
+            "ga": {constant: "Gabão"}
+            "GB": {constant: "Grã-Bretanha (Reino Unido, UK)"}
+            "gb": {constant: "Grã-Bretanha (Reino Unido, UK)"}
+            "GD": {constant: "Granada"}
+            "gd": {constant: "Granada"}
+            "GE": {constant: "Geórgia"}
+            "ge": {constant: "Geórgia"}
+            "GF": {constant: "Guiana Francesa"}
+            "gf": {constant: "Guiana Francesa"}
+            "GG": {constant: "Guernsey"}
+            "gg": {constant: "Guernsey"}
+            "GH": {constant: "Gana"}
+            "gh": {constant: "Gana"}
+            "GI": {constant: "Gibraltar"}
+            "gi": {constant: "Gibraltar"}
+            "GL": {constant: "Groelândia"}
+            "gl": {constant: "Groelândia"}
+            "GM": {constant: "Gâmbia"}
+            "gm": {constant: "Gâmbia"}
+            "GN": {constant: "Guiné"}
+            "gn": {constant: "Guiné"}
+            "GP": {constant: "Guadalupe"}
+            "gp": {constant: "Guadalupe"}
+            "GQ": {constant: "Guiné Equatorial"}
+            "gq": {constant: "Guiné Equatorial"}
+            "GR": {constant: "Grécia"}
+            "gr": {constant: "Grécia"}
+            "GS": {constant: "Ilhas Geórgia do Sul e Sandwich do Sul"}
+            "gs": {constant: "Ilhas Geórgia do Sul e Sandwich do Sul"}
+            "GT": {constant: "Guatemala"}
+            "gt": {constant: "Guatemala"}
+            "GU": {constant: "Guam (Território dos Estados Unidos)"}
+            "gu": {constant: "Guam (Território dos Estados Unidos)"}
+            "GW": {constant: "Guiné-Bissau"}
+            "gw": {constant: "Guiné-Bissau"}
+            "GY": {constant: "Guiana"}
+            "gy": {constant: "Guiana"}
+            "HK": {constant: "Hong Kong"}
+            "hk": {constant: "Hong Kong"}
+            "HM": {constant: "Ilhas Heard e McDonald (Território da Austrália)"}
+            "hm": {constant: "Ilhas Heard e McDonald (Território da Austrália)"}
+            "HN": {constant: "Honduras"}
+            "hn": {constant: "Honduras"}
+            "HR": {constant: "Croácia (Hrvatska)"}
+            "hr": {constant: "Croácia (Hrvatska)"}
+            "HT": {constant: "Haiti"}
+            "ht": {constant: "Haiti"}
+            "HU": {constant: "Hungria"}
+            "hu": {constant: "Hungria"}
+            "ID": {constant: "Indonésia"}
+            "id": {constant: "Indonésia"}
+            "IE": {constant: "Irlanda"}
+            "ie": {constant: "Irlanda"}
+            "IL": {constant: "Israel"}
+            "il": {constant: "Israel"}
+            "IM": {constant: "Ilha do Homem"}
+            "im": {constant: "Ilha do Homem"}
+            "IN": {constant: "Índia"}
+            "in": {constant: "Índia"}
+            "IO": {constant: "Território Britânico do Oceano índico"}
+            "io": {constant: "Território Britânico do Oceano índico"}
+            "IQ": {constant: "Iraque"}
+            "iq": {constant: "Iraque"}
+            "IR": {constant: "Irã"}
+            "ir": {constant: "Irã"}
+            "IS": {constant: "Islândia"}
+            "is": {constant: "Islândia"}
+            "IT": {constant: "Itália"}
+            "it": {constant: "Itália"}
+            "JE": {constant: "Jersey"}
+            "je": {constant: "Jersey"}
+            "JM": {constant: "Jamaica"}
+            "jm": {constant: "Jamaica"}
+            "JO": {constant: "Jordânia"}
+            "jo": {constant: "Jordânia"}
+            "JP": {constant: "Japão"}
+            "jp": {constant: "Japão"}
+            "KE": {constant: "Kênia"}
+            "ke": {constant: "Kênia"}
+            "KG": {constant: "Kyrgyzstan"}
+            "kg": {constant: "Kyrgyzstan"}
+            "KH": {constant: "Camboja"}
+            "kh": {constant: "Camboja"}
+            "KI": {constant: "Kiribati"}
+            "ki": {constant: "Kiribati"}
+            "KM": {constant: "Ilhas Comores"}
+            "km": {constant: "Ilhas Comores"}
+            "KN": {constant: "São Cristóvão e Névis"}
+            "kn": {constant: "São Cristóvão e Névis"}
+            "KP": {constant: "Coréia do Norte"}
+            "kp": {constant: "Coréia do Norte"}
+            "KR": {constant: "Coréia do Sul"}
+            "kr": {constant: "Coréia do Sul"}
+            "KW": {constant: "Kuait"}
+            "kw": {constant: "Kuait"}
+            "KY": {constant: "Ilhas Cayman"}
+            "ky": {constant: "Ilhas Cayman"}
+            "KZ": {constant: "Cazaquistão"}
+            "kz": {constant: "Cazaquistão"}
+            "LA": {constant: "Laos"}
+            "la": {constant: "Laos"}
+            "LB": {constant: "Líbano"}
+            "lb": {constant: "Líbano"}
+            "LC": {constant: "Santa Lúcia"}
+            "lc": {constant: "Santa Lúcia"}
+            "LI": {constant: "Liechtenstein"}
+            "li": {constant: "Liechtenstein"}
+            "LK": {constant: "Sri Lanka"}
+            "lk": {constant: "Sri Lanka"}
+            "LR": {constant: "Libéria"}
+            "lr": {constant: "Libéria"}
+            "LS": {constant: "Lesoto"}
+            "ls": {constant: "Lesoto"}
+            "LT": {constant: "Lituânia"}
+            "lt": {constant: "Lituânia"}
+            "LU": {constant: "Luxemburgo"}
+            "lu": {constant: "Luxemburgo"}
+            "LV": {constant: "Látvia"}
+            "lv": {constant: "Látvia"}
+            "LY": {constant: "Líbia"}
+            "ly": {constant: "Líbia"}
+            "MA": {constant: "Marrocos"}
+            "ma": {constant: "Marrocos"}
+            "MC": {constant: "Mônaco"}
+            "mc": {constant: "Mônaco"}
+            "MD": {constant: "Moldova"}
+            "md": {constant: "Moldova"}
+            "ME": {constant: "Montenegro"}
+            "me": {constant: "Montenegro"}
+            "MF": {constant: "São Martim"}
+            "mf": {constant: "São Martim"}
+            "MG": {constant: "Madagascar"}
+            "mg": {constant: "Madagascar"}
+            "MH": {constant: "Ilhas Marshall"}
+            "mh": {constant: "Ilhas Marshall"}
+            "MK": {constant: "Macedônia (República Yugoslava)"}
+            "mk": {constant: "Macedônia (República Yugoslava)"}
+            "ML": {constant: "Mali"}
+            "ml": {constant: "Mali"}
+            "MM": {constant: "Myanma (Ex-Burma)"}
+            "mm": {constant: "Myanma (Ex-Burma)"}
+            "MN": {constant: "Mongólia"}
+            "mn": {constant: "Mongólia"}
+            "MO": {constant: "Macau"}
+            "mo": {constant: "Macau"}
+            "MP": {constant: "Ilhas Marianas do Norte"}
+            "mp": {constant: "Ilhas Marianas do Norte"}
+            "MQ": {constant: "Martinica"}
+            "mq": {constant: "Martinica"}
+            "MR": {constant: "Mauritânia"}
+            "mr": {constant: "Mauritânia"}
+            "MS": {constant: "Montserrat"}
+            "ms": {constant: "Montserrat"}
+            "MT": {constant: "Malta"}
+            "mt": {constant: "Malta"}
+            "MU": {constant: "Maurício"}
+            "mu": {constant: "Maurício"}
+            "MV": {constant: "Maldivas"}
+            "mv": {constant: "Maldivas"}
+            "MW": {constant: "Malaui"}
+            "mw": {constant: "Malaui"}
+            "MX": {constant: "Mexico"}
+            "mx": {constant: "Mexico"}
+            "MY": {constant: "Malásia"}
+            "my": {constant: "Malásia"}
+            "MZ": {constant: "Moçambique"}
+            "mz": {constant: "Moçambique"}
+            "NA": {constant: "Namíbia"}
+            "na": {constant: "Namíbia"}
+            "NC": {constant: "Nova Caledônia"}
+            "nc": {constant: "Nova Caledônia"}
+            "NE": {constant: "Níger"}
+            "ne": {constant: "Níger"}
+            "NF": {constant: "Ilhas Norfolk"}
+            "nf": {constant: "Ilhas Norfolk"}
+            "NG": {constant: "Nigéria"}
+            "ng": {constant: "Nigéria"}
+            "NI": {constant: "Nicarágua"}
+            "ni": {constant: "Nicarágua"}
+            "NL": {constant: "Holanda"}
+            "nl": {constant: "Holanda"}
+            "NO": {constant: "Noruega"}
+            "no": {constant: "Noruega"}
+            "NP": {constant: "Nepal"}
+            "np": {constant: "Nepal"}
+            "NR": {constant: "Nauru"}
+            "nr": {constant: "Nauru"}
+            "NU": {constant: "Niue"}
+            "nu": {constant: "Niue"}
+            "NZ": {constant: "Nova Zelândia"}
+            "nz": {constant: "Nova Zelândia"}
+            "OM": {constant: "Omã"}
+            "om": {constant: "Omã"}
+            "PA": {constant: "Panamá"}
+            "pa": {constant: "Panamá"}
+            "PE": {constant: "Peru"}
+            "pe": {constant: "Peru"}
+            "PF": {constant: "Polinésia Francesa"}
+            "pf": {constant: "Polinésia Francesa"}
+            "PG": {constant: "Papua-Nova Guiné"}
+            "pg": {constant: "Papua-Nova Guiné"}
+            "PH": {constant: "Filipinas"}
+            "ph": {constant: "Filipinas"}
+            "PK": {constant: "Paquistão"}
+            "pk": {constant: "Paquistão"}
+            "PL": {constant: "Polônia"}
+            "pl": {constant: "Polônia"}
+            "PM": {constant: "St. Pierre and Miquelon"}
+            "pm": {constant: "St. Pierre and Miquelon"}
+            "PN": {constant: "Ilha Pitcairn"}
+            "pn": {constant: "Ilha Pitcairn"}
+            "PR": {constant: "Porto Rico"}
+            "pr": {constant: "Porto Rico"}
+            "PS": {constant: "Territórios Palestinos Ocupados"}
+            "ps": {constant: "Territórios Palestinos Ocupados"}
+            "PT": {constant: "Portugal"}
+            "pt": {constant: "Portugal"}
+            "PW": {constant: "Palau"}
+            "pw": {constant: "Palau"}
+            "PY": {constant: "Paraguai"}
+            "py": {constant: "Paraguai"}
+            "QA": {constant: "Qatar"}
+            "qa": {constant: "Qatar"}
+            "RE": {constant: "Ilha Reunião"}
+            "re": {constant: "Ilha Reunião"}
+            "RO": {constant: "Romênia"}
+            "ro": {constant: "Romênia"}
+            "RS": {constant: "Sérvia"}
+            "rs": {constant: "Sérvia"}
+            "RU": {constant: "Federação Russa"}
+            "ru": {constant: "Federação Russa"}
+            "RW": {constant: "Ruanda"}
+            "rw": {constant: "Ruanda"}
+            "SA": {constant: "Arábia Saudita"}
+            "sa": {constant: "Arábia Saudita"}
+            "SB": {constant: "Ilhas Solomão"}
+            "sb": {constant: "Ilhas Solomão"}
+            "SC": {constant: "Ilhas Seychelles"}
+            "sc": {constant: "Ilhas Seychelles"}
+            "SD": {constant: "Sudão"}
+            "sd": {constant: "Sudão"}
+            "SE": {constant: "Suécia"}
+            "se": {constant: "Suécia"}
+            "SG": {constant: "Cingapura"}
+            "sg": {constant: "Cingapura"}
+            "SH": {constant: "Santa Helena"}
+            "sh": {constant: "Santa Helena"}
+            "SI": {constant: "Eslovênia"}
+            "si": {constant: "Eslovênia"}
+            "SJ": {constant: "Ilhas Svalbard e Jan Mayen"}
+            "sj": {constant: "Ilhas Svalbard e Jan Mayen"}
+            "SK": {constant: "Eslováquia"}
+            "sk": {constant: "Eslováquia"}
+            "SL": {constant: "Serra Leoa"}
+            "sl": {constant: "Serra Leoa"}
+            "SM": {constant: "San Marino"}
+            "sm": {constant: "San Marino"}
+            "SN": {constant: "Senegal"}
+            "sn": {constant: "Senegal"}
+            "SO": {constant: "Somália"}
+            "so": {constant: "Somália"}
+            "SR": {constant: "Suriname"}
+            "sr": {constant: "Suriname"}
+            "SS": {constant: "Sudão do Sul"}
+            "ss": {constant: "Sudão do Sul"}
+            "ST": {constant: "São Tomé e Príncipe"}
+            "st": {constant: "São Tomé e Príncipe"}
+            "SV": {constant: "El Salvador"}
+            "sv": {constant: "El Salvador"}
+            "SX": {constant: "São Martinho (Parte Holandesa)"}
+            "sx": {constant: "São Martinho (Parte Holandesa)"}
+            "SY": {constant: "Síria"}
+            "sy": {constant: "Síria"}
+            "SZ": {constant: "Suazilândia"}
+            "sz": {constant: "Suazilândia"}
+            "TC": {constant: "Ilhas Turks e Caicos"}
+            "tc": {constant: "Ilhas Turks e Caicos"}
+            "TD": {constant: "Chade"}
+            "td": {constant: "Chade"}
+            "TF": {constant: "Territórios do Sul da França"}
+            "tf": {constant: "Territórios do Sul da França"}
+            "TG": {constant: "Togo"}
+            "tg": {constant: "Togo"}
+            "TH": {constant: "Tailândia"}
+            "th": {constant: "Tailândia"}
+            "TJ": {constant: "Tadjiquistão"}
+            "tj": {constant: "Tadjiquistão"}
+            "TK": {constant: "Ilhas Tokelau"}
+            "tk": {constant: "Ilhas Tokelau"}
+            "TL": {constant: "Timor Leste (Ex-East Timor)"}
+            "tl": {constant: "Timor Leste (Ex-East Timor)"}
+            "TM": {constant: "Turcomenistão"}
+            "tm": {constant: "Turcomenistão"}
+            "TN": {constant: "Tunísia"}
+            "tn": {constant: "Tunísia"}
+            "TO": {constant: "Tonga"}
+            "to": {constant: "Tonga"}
+            "TR": {constant: "Turquia"}
+            "tr": {constant: "Turquia"}
+            "TT": {constant: "Trinidad and Tobago"}
+            "tt": {constant: "Trinidad and Tobago"}
+            "TV": {constant: "Tuvalu"}
+            "tv": {constant: "Tuvalu"}
+            "TW": {constant: "Taiwan - Província da China"}
+            "tw": {constant: "Taiwan - Província da China"}
+            "TZ": {constant: "Tanzânia"}
+            "tz": {constant: "Tanzânia"}
+            "UA": {constant: "Ucrânia"}
+            "ua": {constant: "Ucrânia"}
+            "UG": {constant: "Uganda"}
+            "ug": {constant: "Uganda"}
+            "UM": {constant: "Ilhas Menores dos Estados Unidos"}
+            "um": {constant: "Ilhas Menores dos Estados Unidos"}
+            "US": {constant: "Estados Unidos"}
+            "us": {constant: "Estados Unidos"}
+            "UY": {constant: "Uruguai"}
+            "uy": {constant: "Uruguai"}
+            "UZ": {constant: "Uzbequistão"}
+            "uz": {constant: "Uzbequistão"}
+            "VA": {constant: "Vaticano"}
+            "va": {constant: "Vaticano"}
+            "VC": {constant: "Saint Vincente e Granadinas"}
+            "vc": {constant: "Saint Vincente e Granadinas"}
+            "VE": {constant: "Venezuela"}
+            "ve": {constant: "Venezuela"}
+            "VG": {constant: "Ilhas Virgens (Inglaterra)"}
+            "vg": {constant: "Ilhas Virgens (Inglaterra)"}
+            "VI": {constant: "Ilhas Virgens (Estados Unidos)"}
+            "vi": {constant: "Ilhas Virgens (Estados Unidos)"}
+            "VN": {constant: "Vietnam"}
+            "vn": {constant: "Vietnam"}
+            "VU": {constant: "Vanuatu"}
+            "vu": {constant: "Vanuatu"}
+            "WF": {constant: "Ilhas Wallis e Futuna"}
+            "wf": {constant: "Ilhas Wallis e Futuna"}
+            "WS": {constant: "Samoa Ocidental"}
+            "ws": {constant: "Samoa Ocidental"}
+            "YE": {constant: "Iêmen"}
+            "ye": {constant: "Iêmen"}
+            "YT": {constant: "Mayotte"}
+            "yt": {constant: "Mayotte"}
+            "ZA": {constant: "África do Sul"}
+            "za": {constant: "África do Sul"}
+            "ZM": {constant: "Zâmbia"}
+            "zm": {constant: "Zâmbia"}
+            "ZW": {constant: "Zimbábue"}
+            "zw": {constant: "Zimbábue"}
+          otherwise: {constant: "-"}
+    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, natural_person.monthly_gross_income.currency, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date, legal_person.annual_gross_revenue.currency]
+
+  # Uma linha por parte relacionada de cada conta de contraparte.
+  - name: partes_contraparte_dados
+    description: As partes relacionadas de cada conta de contraparte, uma linha por parte.
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+      - as: vinculo
+        case:
+          column: related_parties.role
+          when:
+            PRIMARY_HOLDER: {constant: "C"}
+            LEGAL_REPRESENTATIVE: {constant: "L"}
+            # Declare aqui o codigo do papel RESPONSIBLE_PARTY neste cliente
+            # (R representante, P procurador ou O outros). Exemplo:
+            RESPONSIBLE_PARTY: {constant: "O"}
+          otherwise: refuse
+
+datasets:
+  instituicao:
+    from:
+      query: declarante
+    fields:
+      cnpj:
+        from: query
+        column: legal_document
+      compe:
+        from: manual
+        pendingReason: "o codigo Compe da instituicao, 3 digitos; 999 se ela nao tem codigo Compe"
+      nomeUnicad:
+        from: manual
+        pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
+      # Declaracao da implantacao: "nao" se a instituicao nao firma contrato de
+      # cambio (campo 28 = 0); "sim" se firma, e a geracao e recusada.
+      operaCambio:
+        from: manual
+        pendingReason: "nao se a instituicao nao firma contrato de cambio (campo 28 = 0); sim se firma (a geracao e recusada)"
+
+  titulares:
+    from:
+      query: titulares_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      tipoPessoa: {from: query, column: tipo_pessoa}
+      documento: {from: query, column: document}
+      nome: {from: query, column: name}
+      logradouro: {from: query, column: addresses.primary.line_1}
+      complemento: {from: query, column: addresses.primary.line_2}
+      codigoUf: {from: query, column: codigo_uf}
+      pais: {from: query, column: addresses.primary.country}
+      nomePais: {from: query, column: nome_pais}
+      cep: {from: query, column: addresses.primary.zip_code}
+      celular: {from: query, column: contact.mobile_phone}
+      outroTelefone: {from: query, column: contact.other_phone}
+      renda: {from: query, column: natural_person.monthly_gross_income.value}
+      dataRenda: {from: query, column: natural_person.monthly_gross_income.reference_date}
+      faturamento: {from: query, column: legal_person.annual_gross_revenue.value}
+      dataFaturamento: {from: query, column: legal_person.annual_gross_revenue.reference_date}
+      moedaRenda: {from: query, column: natural_person.monthly_gross_income.currency}
+      moedaFaturamento: {from: query, column: legal_person.annual_gross_revenue.currency}
+      dataInicio: {from: query, column: banking_details.opening_date}
+      dataFim: {from: query, column: banking_details.closing_date, civilDate: true}
+      nomeSocial: {from: query, column: natural_person.social_name}
+      emailPrincipal: {from: query, column: contact.primary_email}
+      emailSecundario: {from: query, column: contact.secondary_email}
+
+  partes:
+    from:
+      query: partes_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      parteId: {from: query, column: related_parties._id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      vinculo: {from: query, column: vinculo}
+      documento: {from: query, column: related_parties.document}
+      nome: {from: query, column: related_parties.name}
+      dataInicio: {from: query, column: related_parties.start_date, civilDate: true}
+      dataFim: {from: query, column: related_parties.end_date, civilDate: true}
+
+  titulares_contraparte:
+    from:
+      query: titulares_contraparte_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      tipoPessoa: {from: query, column: tipo_pessoa}
+      documento: {from: query, column: document}
+      nome: {from: query, column: name}
+      logradouro: {from: query, column: addresses.primary.line_1}
+      complemento: {from: query, column: addresses.primary.line_2}
+      codigoUf: {from: query, column: codigo_uf}
+      pais: {from: query, column: addresses.primary.country}
+      nomePais: {from: query, column: nome_pais}
+      cep: {from: query, column: addresses.primary.zip_code}
+      celular: {from: query, column: contact.mobile_phone}
+      outroTelefone: {from: query, column: contact.other_phone}
+      renda: {from: query, column: natural_person.monthly_gross_income.value}
+      dataRenda: {from: query, column: natural_person.monthly_gross_income.reference_date}
+      faturamento: {from: query, column: legal_person.annual_gross_revenue.value}
+      dataFaturamento: {from: query, column: legal_person.annual_gross_revenue.reference_date}
+      moedaRenda: {from: query, column: natural_person.monthly_gross_income.currency}
+      moedaFaturamento: {from: query, column: legal_person.annual_gross_revenue.currency}
+      dataInicio: {from: query, column: banking_details.opening_date}
+      dataFim: {from: query, column: banking_details.closing_date, civilDate: true}
+      nomeSocial: {from: query, column: natural_person.social_name}
+      emailPrincipal: {from: query, column: contact.primary_email}
+      emailSecundario: {from: query, column: contact.secondary_email}
+
+  partes_contraparte:
+    from:
+      query: partes_contraparte_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      parteId: {from: query, column: related_parties._id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      vinculo: {from: query, column: vinculo}
+      documento: {from: query, column: related_parties.document}
+      nome: {from: query, column: related_parties.name}
+      dataInicio: {from: query, column: related_parties.start_date, civilDate: true}
+      dataFim: {from: query, column: related_parties.end_date, civilDate: true}
+
+manualOverrides: []

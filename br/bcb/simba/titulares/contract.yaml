@@ -1,0 +1,730 @@
+# Contrato do arquivo III TITULARES do SIMBA (IN BCB 636/2025).
+#
+# QUEM CURA: a Lerian, a partir da transcricao oficial da IN BCB 636/2025 em
+# br/bcb/simba/normas/IN-BCB-636-2025.md ("IN :N" abaixo e a linha dessa copia).
+# Leiaute: art. 2o, III (IN :31), art. 3o (IN :57-73) e Anexo I, arquivo III
+# Titulares, campos 1 a 28 (IN :135-164).
+#
+# O QUE E: uma linha por vinculo pessoa-conta. Para cada conta do arquivo CONTAS
+# (as do caso e as de contraparte, IN :31): uma linha do titular (campo 5 = T) e
+# uma linha por parte relacionada da conta no CRM (cotitular numerado 1, 2... por
+# conta; representante legal, procurador e outros pelo codigo do campo 5).
+#
+# FORMA DO ARQUIVO (IN art. 3o): texto ASCII, sem cabecalho, colunas separadas
+# por TAB, linha terminada em CR LF, datas ddmmaaaa, valores em centavos sem
+# separador (IN :73). A forma e do template; o formato de cada campo esta aqui.
+#
+# DE ONDE VEM CADA CAMPO: conta, tipo e partes relacionadas do instrumento do CRM
+# do Midaz; dados da pessoa titular do cadastro de titulares do CRM; numero da
+# agencia do cadastro de agencias do tenant (o mesmo do AGENCIAS); CNPJ da
+# organizacao do Midaz; COMPE, nome no Unicad e se a instituicao firma contrato de
+# cambio preenchidos pelo cliente no mapeamento.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.bcb.simba.titulares
+  country: BR
+  regulator: BCB
+  document: TITULARES            # o nome do arquivo na IN 636 art. 2º (AGENCIAS, CONTAS, TITULARES, EXTRATO, ORIGEM-DESTINO)
+  family: simba
+  title: SIMBA — Titulares
+  summary: >-
+    Titulares, cotitulares, representantes e procuradores das contas investigadas e das
+    contas com que elas transacionaram, uma linha por vinculo da pessoa com a conta, com
+    cadastro, renda e datas do vinculo.
+  version: 1.0.1
+  status: draft
+  output: txt
+  timezone: America/Sao_Paulo
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  periodicity: eventual
+  layout:
+    version: "IN BCB 636/2025"
+    mandatoryFrom: "2026-12-01"
+  sourceOfTruth:
+    layoutManual: https://www.bcb.gov.br/estabilidadefinanceira/exibenormativo?tipo=Instru%C3%A7%C3%A3o%20Normativa%20BCB&numero=636
+
+parameters:
+  - name: caso
+    type: string
+    required: true
+    pattern: '^[0-9]{3}-[A-Z]{2,6}-[0-9]{6}-[0-9]{2}$'
+    description: Numero do caso SIMBA, como esta na ordem.
+  - name: documentos
+    type: string
+    multiple: true
+    required: true
+    description: >-
+      CPFs e CNPJs da ordem, somente digitos, sem pontos, tracos ou barras: o documento formatado nao encontra
+      contas, e o caso sai como resposta vazia para ele, sem erro.
+  - name: contas
+    type: string
+    multiple: true
+    required: false
+    description: >-
+      Numeros de conta da ordem, com DV, so digitos. Preencher so quando o oficio restringir a contas especificas; o
+      normal e nao preencher (ausente, todas as contas dos documentos). Preencher sem a ordem pedir omite contas do
+      investigado.
+  - name: inicio
+    type: date
+    required: true
+    description: Primeiro dia do afastamento do sigilo.
+  - name: fim
+    type: date
+    closed: true
+    required: true
+    notBefore: inicio
+    description: Ultimo dia do afastamento do sigilo.
+
+filing:
+  period: [caso]
+  # Uma ordem pode ser gerada de novo (dado corrigido, cadastro completado). So a
+  # geracao mais nova do mesmo caso pode ser aprovada: aprovar uma anterior
+  # entregaria ao orgao o arquivo que a correcao ja substituiu.
+  approve: newest
+
+datasets:
+  # Os campos 1, 22 e 23 sao da instituicao e se repetem em toda linha (IN :137,
+  # :158, :159); o 28 (IN :164) sai da declaracao operaCambio.
+  - name: instituicao
+    description: A instituicao que responde ao caso, uma linha.
+    grain: singleton
+    fields:
+      - name: compe
+        type: string
+        required: true
+        pattern: '^[0-9]{3}$'
+        description: Codigo Compe da instituicao, ou 999 quando ela nao tem (campo 1, IN :137).
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        normalize: alphanumeric
+        identifiesInstitution: true
+        pattern: '^[0-9A-Z]{14}$'
+        description: CNPJ da instituicao (campo 22, IN :158).
+      - name: nomeUnicad
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome da instituicao como esta no Unicad (campo 23, IN :159). O template o corta em 50 posicoes.
+      - name: operaCambio
+        type: string
+        required: true
+        domain: ["nao", "sim"]
+        description: >-
+          Se a instituicao firma contrato de cambio. Com nao, o campo 28 (IN :164) sai 0 para toda pessoa. Com sim, a
+          geracao e recusada: nenhuma aplicacao Lerian registra contrato de cambio, e nao ha fonte para o 1 (knownGaps).
+
+  # Uma linha por conta do caso: a do titular (campo 5 = T).
+  - name: titulares
+    description: O titular de cada conta do caso, com o cadastro dele no CRM.
+    grain: [contaId]
+    # Investigado sem conta na instituicao: nao ha arquivo a gerar (os arquivos sao das contas, IN art. 1o, :23, e
+    # nao tem cabecalho, art. 3o, I, :59). Sem linha nenhuma a geracao e recusada antes de montar o arquivo, dizendo
+    # o que cada consulta leu; a resposta negativa vai pelo atendimento da requisicao (CCS0012, situacao 03).
+    nonEmpty: true
+    consolidation:
+      key: [contaId]
+      whenKeyRepeats: refuse
+      columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
+                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
+                celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
+                dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
+                emailSecundario: first}
+    fields:
+      - name: contaId
+        type: string
+        required: true
+        description: A conta do Midaz. Nao vai ao arquivo; identifica a linha e liga as partes relacionadas.
+      - name: numeroAgencia
+        type: string
+        required: true
+        pattern: '^[0-9]{5}$'
+        description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :138).
+      - name: numeroConta
+        type: string
+        required: true
+        pattern: '^[^\t\r\n]{1,20}$'
+        description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
+      - name: tipoConta
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5", "6"]
+        description: Tipo da conta no codigo da IN (campo 4, IN :140).
+      - name: tipoPessoa
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: 1 pessoa natural, 2 pessoa juridica (campo 7, IN :143).
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ do titular, sem separadores (campo 8, IN :144).
+      - name: nome
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome completo do titular (campo 9, IN :145). O template o corta em 80 posicoes.
+      - name: logradouro
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Linha 1 do endereco principal (campo 12, IN :148). Ausente, o campo sai em branco.
+      - name: complemento
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Linha 2 do endereco principal; o template a junta ao logradouro e corta em 80 (campo 12, IN :148).
+      - name: codigoUf
+        type: string
+        required: false
+        pattern: '^[0-9]{2}$'
+        description: >-
+          Codigo IBGE da UF do endereco principal (campo 14, IN :150); "00" quando a sigla falta ou esta fora da tabela.
+          Para quem mora no exterior o template escreve "00" mesmo que a sigla coincida com a de uma UF (a provincia
+          SC de outro pais vem 42 aqui e sai 00 no arquivo); para quem mora no Brasil, a regra uf-do-brasil recusa o 00.
+      - name: pais
+        type: string
+        required: false
+        description: >-
+          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda, em maiuscula ou minuscula. Com nome na
+          tabela que nao e Brasil, a pessoa mora no exterior: o template escreve "0000000" no campo 13 e "00" no campo 14
+          (IN :149-150). Ausente, e tratada como no Brasil.
+      - name: nomePais
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do pais do endereco principal, da tabela de paises da Receita (campo 15, IN :151); "-" quando o codigo
+          falta ou esta fora da tabela. O template escreve o nome, e nada para "-"; a regra pais-na-tabela recusa o
+          codigo informado que nao tem nome.
+      - name: cep
+        type: string
+        required: false
+        normalize: digits
+        description: CEP do endereco principal, so digitos (campo 16, IN :152).
+      - name: celular
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Telefone celular do cadastro (campo 17, IN :153). Preferido ao outro telefone.
+      - name: outroTelefone
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Outro telefone do cadastro, usado sem celular (campo 17, IN :153).
+      - name: renda
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Renda mensal bruta declarada pela pessoa natural (campo 18, IN :154), na moeda de moedaRenda (so BRL sai).
+      - name: dataRenda
+        type: date
+        required: false
+        description: Data de referencia da renda declarada pela pessoa natural (campo 19, IN :155).
+      - name: faturamento
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: >-
+          Faturamento anual bruto declarado pela pessoa juridica, na moeda de moedaFaturamento (so BRL sai), como esta no cadastro (campo 18, IN :154). A
+          IN pede a renda declarada e nao fixa o periodo: o valor anual vai sem conversao.
+      - name: dataFaturamento
+        type: date
+        required: false
+        description: Data de referencia do faturamento declarado pela pessoa juridica (campo 19, IN :155).
+      - name: moedaRenda
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
+          (regra moeda-da-renda).
+      - name: moedaFaturamento
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
+          em BRL sai (regra moeda-do-faturamento).
+      - name: dataInicio
+        type: date
+        required: false
+        description: Abertura da conta, inicio do vinculo do titular (campo 20, IN :156).
+      - name: dataFim
+        type: date
+        required: false
+        description: Encerramento da conta, fim do vinculo do titular; ausente, a conta esta aberta e o campo sai em branco (campo 21, IN :157).
+      - name: nomeSocial
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome social da pessoa natural (campo 24, IN :160). O template o corta em 50 posicoes.
+      - name: emailPrincipal
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: E-mail principal (campo 25, IN :161).
+      - name: emailSecundario
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: E-mail secundario, unido ao principal por ";" (campo 25, IN :161).
+
+  # Uma linha por parte relacionada de cada conta do caso.
+  - name: partes
+    description: As partes relacionadas de cada conta do caso no CRM (cotitular, representante legal, procurador, outros).
+    grain: [contaId, parteId]
+    consolidation:
+      key: [contaId, parteId]
+      whenKeyRepeats: refuse
+      columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, vinculo: first, documento: first,
+                nome: first, dataInicio: first, dataFim: first}
+    fields:
+      - name: contaId
+        type: string
+        required: true
+        description: A conta do Midaz. Nao vai ao arquivo; liga a parte ao titular da conta.
+      - name: parteId
+        type: string
+        required: true
+        description: O id da parte no CRM. Nao vai ao arquivo; identifica a linha.
+      - name: numeroAgencia
+        type: string
+        required: true
+        pattern: '^[0-9]{5}$'
+        description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :138).
+      - name: numeroConta
+        type: string
+        required: true
+        pattern: '^[^\t\r\n]{1,20}$'
+        description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
+      - name: tipoConta
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5", "6"]
+        description: Tipo da conta no codigo da IN (campo 4, IN :140).
+      - name: vinculo
+        type: string
+        required: true
+        domain: ["C", "R", "L", "P", "O"]
+        description: >-
+          Papel da parte na conta (campo 5, IN :141). C e o cotitular, que o template numera 1, 2... por conta;
+          R representante, L representante legal, P procurador, O outros vao como estao.
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da parte, sem separadores (campo 8, IN :144). O tamanho da o tipo de pessoa (campo 7).
+      - name: nome
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome da parte como esta no CRM (campo 9, IN :145). O template o corta em 80 posicoes.
+      - name: dataInicio
+        type: date
+        required: true
+        description: Inicio do vinculo da parte com a conta (campo 20, IN :156).
+      - name: dataFim
+        type: date
+        required: false
+        description: Fim do vinculo da parte; ausente, o vinculo esta ativo e o campo sai em branco (campo 21, IN :157).
+
+
+  # Uma linha por conta de contraparte: a do titular (campo 5 = T; campo 6 pela pessoa, IN :142).
+  - name: titulares_contraparte
+    description: >-
+      O titular de cada conta da mesma instituicao com que uma conta do caso transacionou no periodo (CONTAS, campo 7
+      = 3), com o cadastro dele no CRM.
+    grain: [contaId]
+    consolidation:
+      key: [contaId]
+      whenKeyRepeats: refuse
+      columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
+                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
+                celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
+                dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
+                emailSecundario: first}
+    fields:
+      - name: contaId
+        type: string
+        required: true
+        description: A conta do Midaz. Nao vai ao arquivo; identifica a linha e liga as partes relacionadas.
+      - name: numeroAgencia
+        type: string
+        required: true
+        pattern: '^[0-9]{5}$'
+        description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :138).
+      - name: numeroConta
+        type: string
+        required: true
+        pattern: '^[^\t\r\n]{1,20}$'
+        description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
+      - name: tipoConta
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5", "6"]
+        description: Tipo da conta no codigo da IN (campo 4, IN :140).
+      - name: tipoPessoa
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: 1 pessoa natural, 2 pessoa juridica (campo 7, IN :143).
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ do titular, sem separadores (campo 8, IN :144).
+      - name: nome
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome completo do titular (campo 9, IN :145). O template o corta em 80 posicoes.
+      - name: logradouro
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Linha 1 do endereco principal (campo 12, IN :148). Ausente, o campo sai em branco.
+      - name: complemento
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Linha 2 do endereco principal; o template a junta ao logradouro e corta em 80 (campo 12, IN :148).
+      - name: codigoUf
+        type: string
+        required: false
+        pattern: '^[0-9]{2}$'
+        description: >-
+          Codigo IBGE da UF do endereco principal (campo 14, IN :150); "00" quando a sigla falta ou esta fora da tabela.
+          Para quem mora no exterior o template escreve "00" mesmo que a sigla coincida com a de uma UF (a provincia
+          SC de outro pais vem 42 aqui e sai 00 no arquivo); para quem mora no Brasil, a regra uf-do-brasil recusa o 00.
+      - name: pais
+        type: string
+        required: false
+        description: >-
+          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda, em maiuscula ou minuscula. Com nome na
+          tabela que nao e Brasil, a pessoa mora no exterior: o template escreve "0000000" no campo 13 e "00" no campo 14
+          (IN :149-150). Ausente, e tratada como no Brasil.
+      - name: nomePais
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do pais do endereco principal, da tabela de paises da Receita (campo 15, IN :151); "-" quando o codigo
+          falta ou esta fora da tabela. O template escreve o nome, e nada para "-"; a regra pais-na-tabela recusa o
+          codigo informado que nao tem nome.
+      - name: cep
+        type: string
+        required: false
+        normalize: digits
+        description: CEP do endereco principal, so digitos (campo 16, IN :152).
+      - name: celular
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Telefone celular do cadastro (campo 17, IN :153). Preferido ao outro telefone.
+      - name: outroTelefone
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Outro telefone do cadastro, usado sem celular (campo 17, IN :153).
+      - name: renda
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Renda mensal bruta declarada pela pessoa natural (campo 18, IN :154), na moeda de moedaRenda (so BRL sai).
+      - name: dataRenda
+        type: date
+        required: false
+        description: Data de referencia da renda declarada pela pessoa natural (campo 19, IN :155).
+      - name: faturamento
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: >-
+          Faturamento anual bruto declarado pela pessoa juridica, na moeda de moedaFaturamento (so BRL sai), como esta no cadastro (campo 18, IN :154). A
+          IN pede a renda declarada e nao fixa o periodo: o valor anual vai sem conversao.
+      - name: dataFaturamento
+        type: date
+        required: false
+        description: Data de referencia do faturamento declarado pela pessoa juridica (campo 19, IN :155).
+      - name: moedaRenda
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
+          (regra moeda-da-renda).
+      - name: moedaFaturamento
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
+          em BRL sai (regra moeda-do-faturamento).
+      - name: dataInicio
+        type: date
+        required: false
+        description: Abertura da conta, inicio do vinculo do titular (campo 20, IN :156).
+      - name: dataFim
+        type: date
+        required: false
+        description: Encerramento da conta, fim do vinculo do titular; ausente, a conta esta aberta e o campo sai em branco (campo 21, IN :157).
+      - name: nomeSocial
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome social da pessoa natural (campo 24, IN :160). O template o corta em 50 posicoes.
+      - name: emailPrincipal
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: E-mail principal (campo 25, IN :161).
+      - name: emailSecundario
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: E-mail secundario, unido ao principal por ";" (campo 25, IN :161).
+
+  # Uma linha por parte relacionada de cada conta de contraparte (campo 6 pela pessoa, IN :142).
+  - name: partes_contraparte
+    description: As partes relacionadas de cada conta de contraparte no CRM (cotitular, representante legal, procurador, outros).
+    grain: [contaId, parteId]
+    consolidation:
+      key: [contaId, parteId]
+      whenKeyRepeats: refuse
+      columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, vinculo: first, documento: first,
+                nome: first, dataInicio: first, dataFim: first}
+    fields:
+      - name: contaId
+        type: string
+        required: true
+        description: A conta do Midaz. Nao vai ao arquivo; liga a parte ao titular da conta.
+      - name: parteId
+        type: string
+        required: true
+        description: O id da parte no CRM. Nao vai ao arquivo; identifica a linha.
+      - name: numeroAgencia
+        type: string
+        required: true
+        pattern: '^[0-9]{5}$'
+        description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :138).
+      - name: numeroConta
+        type: string
+        required: true
+        pattern: '^[^\t\r\n]{1,20}$'
+        description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :139).
+      - name: tipoConta
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5", "6"]
+        description: Tipo da conta no codigo da IN (campo 4, IN :140).
+      - name: vinculo
+        type: string
+        required: true
+        domain: ["C", "R", "L", "P", "O"]
+        description: >-
+          Papel da parte na conta (campo 5, IN :141). C e o cotitular, que o template numera 1, 2... por conta;
+          R representante, L representante legal, P procurador, O outros vao como estao.
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da parte, sem separadores (campo 8, IN :144). O tamanho da o tipo de pessoa (campo 7).
+      - name: nome
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome da parte como esta no CRM (campo 9, IN :145). O template o corta em 80 posicoes.
+      - name: dataInicio
+        type: date
+        required: true
+        description: Inicio do vinculo da parte com a conta (campo 20, IN :156).
+      - name: dataFim
+        type: date
+        required: false
+        description: Fim do vinculo da parte; ausente, o vinculo esta ativo e o campo sai em branco (campo 21, IN :157).
+
+rules:
+  - id: uf-do-brasil
+    severity: error
+    appliesTo: titulares
+    where: {field: nomePais, in: ["Brasil", "-"]}
+    check:
+      notStartsWith: {field: codigoUf, values: ["0"]}
+    message: >-
+      Quem mora no Brasil (pais BR ou ausente) precisa de uma sigla de UF da tabela no endereco principal: a IN so da
+      o codigo 00 para quem mora no exterior (IN :150). Corrija o cadastro antes de gerar.
+
+  - id: pais-na-tabela
+    severity: error
+    appliesTo: titulares
+    where: {field: nomePais, equals: "-"}
+    check:
+      notStartsWith: {field: pais, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                            "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                            "z"]}
+    message: >-
+      O pais do endereco principal e um codigo que a tabela de paises da Receita nao tem, e o campo 15 pede o nome do
+      pais (IN :151). Corrija o cadastro antes de gerar.
+
+  - id: uf-do-brasil-contraparte
+    severity: error
+    appliesTo: titulares_contraparte
+    where: {field: nomePais, in: ["Brasil", "-"]}
+    check:
+      notStartsWith: {field: codigoUf, values: ["0"]}
+    message: >-
+      Quem mora no Brasil (pais BR ou ausente) precisa de uma sigla de UF da tabela no endereco principal: a IN so da
+      o codigo 00 para quem mora no exterior (IN :150). Corrija o cadastro antes de gerar.
+
+  - id: pais-na-tabela-contraparte
+    severity: error
+    appliesTo: titulares_contraparte
+    where: {field: nomePais, equals: "-"}
+    check:
+      notStartsWith: {field: pais, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                            "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                            "z"]}
+    message: >-
+      O pais do endereco principal e um codigo que a tabela de paises da Receita nao tem, e o campo 15 pede o nome do
+      pais (IN :151). Corrija o cadastro antes de gerar.
+
+  - id: moeda-da-renda
+    severity: error
+    appliesTo: titulares
+    where: {field: tipoPessoa, notIn: ["2"]}
+    check:
+      notStartsWith: {field: moedaRenda, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
+    message: >-
+      A renda declarada no cadastro da pessoa natural esta numa moeda que nao e BRL, e o catalogo nao converte moeda:
+      o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN
+      :73). Declare a renda em BRL no cadastro antes de gerar.
+
+  - id: moeda-do-faturamento
+    severity: error
+    appliesTo: titulares
+    where: {field: tipoPessoa, equals: "2"}
+    check:
+      notStartsWith: {field: moedaFaturamento, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
+    message: >-
+      O faturamento declarado no cadastro da pessoa juridica esta numa moeda que nao e BRL, e o catalogo nao converte
+      moeda: o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII,
+      IN :73). Declare o faturamento em BRL no cadastro antes de gerar.
+
+  - id: moeda-da-renda-contraparte
+    severity: error
+    appliesTo: titulares_contraparte
+    where: {field: tipoPessoa, notIn: ["2"]}
+    check:
+      notStartsWith: {field: moedaRenda, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
+    message: >-
+      A renda declarada no cadastro da pessoa natural esta numa moeda que nao e BRL, e o catalogo nao converte moeda:
+      o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN
+      :73). Declare a renda em BRL no cadastro antes de gerar.
+
+  - id: moeda-do-faturamento-contraparte
+    severity: error
+    appliesTo: titulares_contraparte
+    where: {field: tipoPessoa, equals: "2"}
+    check:
+      notStartsWith: {field: moedaFaturamento, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
+    message: >-
+      O faturamento declarado no cadastro da pessoa juridica esta numa moeda que nao e BRL, e o catalogo nao converte
+      moeda: o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII,
+      IN :73). Declare o faturamento em BRL no cadastro antes de gerar.
+
+knownGaps:
+  - id: so-titular
+    description: >-
+      As contas do caso sao as que o documento investigado TITULA. A conta em que ele e so cotitular, representante
+      ou procurador nao entra: o indice das partes no CRM nao separa o papel.
+  - id: contas-de-contraparte
+    description: >-
+      As pessoas das contas de contraparte (CONTAS campo 7 = 3) entram com o campo 6 pela pessoa (IN :142): 1 se o
+      documento esta na ordem, 0 se nao. Uma conta de contraparte que tambem e do caso sai uma vez, como conta do caso. Titular de conta de
+      contraparte segue as mesmas regras de UF e pais do da conta do caso (uf-do-brasil-contraparte e
+      pais-na-tabela-contraparte).
+  - id: excluida-do-crm
+    description: >-
+      Uma conta apagada do CRM (deleted_at) nao entra. Uma conta encerrada (closing_date) entra, com a data no
+      campo 21 da linha do titular.
+  - id: documento-de-identificacao
+    description: >-
+      Campos 10 e 11 (IN :146-147) sempre em branco: o CRM guarda so CPF/CNPJ, e nenhuma aplicacao Lerian registra RG,
+      CTPS, passaporte ou o documento constitutivo da pessoa juridica. A IN nao da sentinela para esses campos.
+  - id: dispositivos-cadastrados
+    description: >-
+      Campos 26 e 27 (IN :162-163) sempre em branco: nenhuma aplicacao Lerian registra os dispositivos moveis ou os
+      computadores cadastrados do cliente. A IN nao da sentinela para esses campos.
+  - id: cidade-sem-codigo-ibge
+    description: >-
+      Campo 13 (IN :149) em branco para quem mora no Brasil: o CRM guarda o nome da cidade, sem o codigo IBGE, e a
+      conversao do nome nao e confiavel. Para quem mora no exterior (pais diferente de BR) sai 0000000, o codigo que a
+      IN da para esse caso; ele nao e usado no lugar do codigo faltante.
+  - id: uf-fora-da-tabela
+    description: >-
+      O campo 14 converte a sigla da UF do endereco principal do titular para o codigo IBGE. Quem mora no Brasil (pais
+      BR ou ausente) sem UF ou com sigla fora da tabela recusa a geracao (regra uf-do-brasil); corrija o cadastro antes
+      de gerar. Quem mora no exterior sai com 00, e um pais informado fora da tabela da Receita recusa a geracao (regra
+      pais-na-tabela).
+  - id: parte-sem-cadastro
+    description: >-
+      A parte relacionada no CRM tem so documento, nome, papel e datas. Para cotitular, representante e procurador
+      saem em branco os campos 12 a 19 e 24, e o campo 25 sai "e-mail nao declarado". O cadastro completo da parte
+      exigiria ligar a parte ao titular pelo documento, que o CRM guarda cifrado.
+  - id: renda-pessoa-juridica
+    description: >-
+      Campo 18 (IN :154): a pessoa natural declara no CRM a renda mensal, e a pessoa juridica o faturamento anual. A IN
+      pede a renda declarada sem fixar o periodo; o campo leva o valor como declarado, mensal para a pessoa natural e
+      anual para a juridica, sem dividir por 12. O campo 19 e a data de referencia de cada um.
+  - id: ordem-dos-cotitulares
+    description: >-
+      Os cotitulares sao numerados 1, 2... na ordem em que o CRM guarda as partes da conta, que e a ordem de inclusao.
+      O motor nao ordena por data de inicio do vinculo.
+  - id: papel-do-procurador
+    description: >-
+      O CRM tem tres papeis (PRIMARY_HOLDER, LEGAL_REPRESENTATIVE, RESPONSIBLE_PARTY) e o campo 5 tem sete codigos. O
+      binding do cliente declara qual codigo cada papel recebe; papel nao declarado recusa a geracao. O CRM nao define
+      RESPONSIBLE_PARTY: o exemplo declara O (outros), e o cliente que o usa para procurador ou representante declara
+      P ou R.
+  - id: contrato-de-cambio
+    description: >-
+      Campo 28 (IN :164): nenhuma aplicacao Lerian registra contrato de cambio. O documento serve a instituicao que
+      declara nao firmar contrato de cambio (operaCambio nao: 0 para toda pessoa); com operaCambio sim a geracao e
+      recusada, porque nao ha fonte para o 1.
+  - id: vinculo-removido
+    description: >-
+      Uma parte removida do instrumento pela API do CRM sai da lista sem deixar data de fim. O campo 21 so registra o
+      fim do vinculo que o cadastro encerrou com a data, e o historico removido antes disso se perdeu.
