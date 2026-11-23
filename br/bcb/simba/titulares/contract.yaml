@@ -709,9 +709,10 @@ knownGaps:
   - id: uf-fora-da-tabela
     description: >-
       O campo 14 converte a sigla da UF do endereco principal do titular para o codigo IBGE. Quem mora no Brasil (pais
-      BR ou ausente) sem UF ou com sigla fora da tabela recusa a geracao (regra uf-do-brasil); corrija o cadastro antes
-      de gerar. Quem mora no exterior sai com 00, e um pais informado fora da tabela da Receita recusa a geracao (regra
-      pais-na-tabela).
+      BR ou ausente) com sigla fora da tabela (inclusive com espaco, pontuacao ou minuscula) recusa a geracao (regra
+      uf-do-brasil); corrija o cadastro antes de gerar. Sem sigla nenhuma, o campo 14 sai em branco: a informacao nao
+      existe no cadastro (IN art. 2o, paragrafo 1o, :49). Quem mora no exterior sai com 00, e um pais informado fora da
+      tabela da Receita recusa a geracao (regra pais-na-tabela).
   - id: parte-sem-cadastro
     description: >-
       A parte relacionada no CRM tem so documento, nome, papel e datas. Para cotitular, representante e procurador
