@@ -146,6 +146,9 @@ NO_UF, NO_COUNTRY = "00", "-"
 # UF (sigla) -> código IBGE, a tabela do catálogo de onde o bloco de UF dos bindings é copiado.
 UF_TABLE = ROOT / "br" / "bcb" / "simba" / "tabelas" / "uf-ibge.yaml"
 LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)] + [chr(c) for c in range(ord("a"), ord("z") + 1)]
+# A sigla de UF fora da tabela começa com letra ou dígito; a da tabela vira "-" e a ausente, nada.
+ALNUM = LETTERS + [chr(c) for c in range(ord("0"), ord("9") + 1)]
+UF_IN_TABLE = "-"
 
 
 def _compute(query: dict, name: str) -> dict:
@@ -188,6 +191,18 @@ def country_names_mismatch(found: dict[str, dict]) -> list[str]:
         for code in sorted(set(ufs) & set(uf_when)):
             if uf_when[code] != ufs[code]:
                 problems.append(f"titulares: '{name}' escreve {uf_when[code]} para a UF {code}, e a tabela, {ufs[code]}")
+        # A sigla fora da tabela, separada da ausente: a regra uf-do-brasil recusa só ela, e a
+        # ausente deixa o campo 14 em branco (IN art. 2º § 1º, :49).
+        off = _compute(queries[name], "uf_fora_da_tabela").get("case") or {}
+        if off.get("column") != "addresses.primary.state" or off.get("otherwise") != {"column": "addresses.primary.state"}:
+            problems.append(f"titulares: '{name}' não separa a sigla de UF fora da tabela em uf_fora_da_tabela")
+        off_when = off.get("when") or {}
+        for code in sorted(set(ufs) ^ set(off_when)):
+            problems.append(f"titulares: '{name}' marca em uf_fora_da_tabela a UF {code!r}, que a tabela do IBGE "
+                            + ("não tem" if code in off_when else "tem e a consulta não"))
+        for code in sorted(set(ufs) & set(off_when)):
+            if off_when[code] != {"constant": UF_IN_TABLE}:
+                problems.append(f"titulares: '{name}' não marca a UF {code} da tabela com {UF_IN_TABLE!r} em uf_fora_da_tabela")
     return problems
 
 
@@ -203,8 +218,8 @@ def domicile_rules_missing(found: dict[str, dict]) -> list[str]:
 
     problems = []
     for target in HOLDER_SETS:
-        if not has(target, {"field": "nomePais", "in": ["Brasil", NO_COUNTRY]}, "codigoUf", ["0"]):
-            problems.append(f"titulares: '{target}' não recusa quem mora no Brasil com a UF {NO_UF!r}")
+        if not has(target, {"field": "nomePais", "in": ["Brasil", NO_COUNTRY]}, "ufForaDaTabela", ALNUM):
+            problems.append(f"titulares: '{target}' não recusa quem mora no Brasil com a sigla de UF fora da tabela")
         if not has(target, {"field": "nomePais", "equals": NO_COUNTRY}, "pais", LETTERS):
             problems.append(f"titulares: '{target}' não recusa o país informado que a tabela não tem")
     return problems
@@ -971,8 +986,29 @@ class Mutations(unittest.TestCase):
         found = copy.deepcopy(contracts(ROOT))
         found["titulares"]["rules"] = [r for r in found["titulares"]["rules"]
                                        if not (r["appliesTo"] == "titulares_contraparte" and r["where"].get("in"))]
-        self.assertEqual(["titulares: 'titulares_contraparte' não recusa quem mora no Brasil com a UF '00'"],
+        self.assertEqual(["titulares: 'titulares_contraparte' não recusa quem mora no Brasil com a sigla de UF "
+                          "fora da tabela"], domicile_rules_missing(found))
+
+    def test_recusa_de_uf_que_esquece_um_digito_e_pega(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for r in found["titulares"]["rules"]:
+            if r["appliesTo"] == "titulares" and r["where"].get("in"):
+                r["check"]["notStartsWith"]["values"].remove("9")
+        self.assertEqual(["titulares: 'titulares' não recusa quem mora no Brasil com a sigla de UF fora da tabela"],
                          domicile_rules_missing(found))
+
+    def test_uf_fora_da_tabela_que_esquece_uma_sigla_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        del _compute(queries_of(found["titulares"])["cadastro_titulares"], "uf_fora_da_tabela")["case"]["when"]["SP"]
+        self.assertEqual(["titulares: 'cadastro_titulares' marca em uf_fora_da_tabela a UF 'SP', que a tabela do IBGE "
+                          "tem e a consulta não"], country_names_mismatch(found))
+
+    def test_uf_fora_da_tabela_que_nao_devolve_a_sigla_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        _compute(queries_of(found["titulares"])["cadastro_contraparte"], "uf_fora_da_tabela")["case"]["otherwise"] = {
+            "constant": "00"}
+        self.assertEqual(["titulares: 'cadastro_contraparte' não separa a sigla de UF fora da tabela em "
+                          "uf_fora_da_tabela"], country_names_mismatch(found))
 
     def test_recusa_de_pais_que_esquece_uma_letra_e_pega(self) -> None:
         found = copy.deepcopy(contracts(ROOT))

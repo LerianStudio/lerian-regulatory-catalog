@@ -1,5 +1,5 @@
 {
-  "description": "Sintetico. Endereco principal de quem mora no exterior (IN BCB 636/2025, TITULARES campos 13 a 15): pais diferente de BR sai com 0000000 na cidade, 00 na UF e o nome do pais da tabela da Receita, mesmo quando o cadastro traz uma sigla igual a de uma UF (provincia SC, que no Brasil seria 42). Quem tem pais BR, em maiuscula ou minuscula (br), sai com o codigo IBGE da UF e Brasil; quem nao tem pais e tratado como no Brasil, com o pais em branco. A contraparte mora no exterior com uma sigla que tambem e de UF (24, no Brasil o RN) e sai com 0000000 e 00; o nome do pais dela passa pela troca de acentos e e cortado em 40 caracteres. As linhas sao o que as consultas entregam: codigoUf e nomePais ja convertidos pelo case do binding. A recusa de quem mora no Brasil sem UF e a do pais fora da tabela sao regras do contrato, conferidas no test_simba.",
+  "description": "Sintetico. Endereco principal de quem mora no exterior (IN BCB 636/2025, TITULARES campos 13 a 15): pais diferente de BR sai com 0000000 na cidade, 00 na UF e o nome do pais da tabela da Receita, mesmo quando o cadastro traz uma sigla igual a de uma UF (provincia SC, que no Brasil seria 42). Quem tem pais BR, em maiuscula ou minuscula (br), sai com o codigo IBGE da UF e Brasil; quem nao tem pais e tratado como no Brasil, com o pais em branco. A contraparte mora no exterior com uma sigla que tambem e de UF (24, no Brasil o RN) e sai com 0000000 e 00; o nome do pais dela passa pela troca de acentos e e cortado em 40 caracteres. As linhas sao o que as consultas entregam: codigoUf e nomePais ja convertidos pelo case do binding. Quem mora no Brasil sem sigla de UF no cadastro sai com a UF em branco (a informacao nao existe, IN art. 2o, paragrafo 1o); a recusa da sigla fora da tabela e a do pais fora da tabela sao regras do contrato, conferidas no test_simba.",
   "documents": [
     "br/bcb/simba/titulares"
   ],
@@ -11,7 +11,8 @@
       "12345678909",
       "98765432100",
       "11144477735",
-      "22233344405"
+      "22233344405",
+      "33344455508"
     ]
   },
   "institution": {

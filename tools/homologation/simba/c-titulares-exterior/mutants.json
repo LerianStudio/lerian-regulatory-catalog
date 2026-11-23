@@ -3,7 +3,7 @@
     "name": "UF do exterior pela sigla",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}00{% else %}{{ t.codigoUf }}{% endif %}",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}00{% elif t.codigoUf != \"00\" %}{{ t.codigoUf }}{% endif %}",
     "new": "{{ t.codigoUf }}",
     "count": 1,
     "expect": {
@@ -60,7 +60,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 5,
+      "line": 6,
       "field": 15
     }
   },
@@ -81,12 +81,12 @@
     "name": "UF da contraparte no exterior pela sigla",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}00{% else %}{{ u.codigoUf }}{% endif %}",
+    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}00{% elif u.codigoUf != \"00\" %}{{ u.codigoUf }}{% endif %}",
     "new": "{{ u.codigoUf }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 5,
+      "line": 6,
       "field": 14
     }
   },
@@ -99,7 +99,7 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 5,
+      "line": 6,
       "field": 13
     }
   },
@@ -140,6 +140,19 @@
       "document": "br/bcb/simba/titulares",
       "line": 3,
       "field": 18
+    }
+  },
+  {
+    "name": "Brasil sem UF escreve 00",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% elif t.codigoUf != \"00\" %}{{ t.codigoUf }}{% endif %}",
+    "new": "{% else %}{{ t.codigoUf }}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 5,
+      "field": 14
     }
   }
 ]

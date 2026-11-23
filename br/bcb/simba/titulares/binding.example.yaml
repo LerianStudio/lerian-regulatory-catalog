@@ -51,9 +51,10 @@
 #
 # A UF DO TITULAR (campo 14) converte a sigla do endereco principal no codigo IBGE,
 # com a tabela de br/bcb/simba/tabelas/uf-ibge.compute.yaml. Sigla ausente ou fora
-# da tabela vira "00": para quem mora no Brasil (pais BR ou ausente), a regra
-# `uf-do-brasil` do contrato recusa a geracao; para quem mora no exterior, o
-# template escreve "00" em qualquer caso (IN :150).
+# da tabela vira "00". Para quem mora no Brasil (pais BR ou ausente), a sigla FORA da
+# tabela recusa a geracao (regra `uf-do-brasil`, que le `uf_fora_da_tabela`), e a sigla
+# AUSENTE deixa o campo em branco: a informacao nao existe no cadastro (IN art. 2o,
+# paragrafo 1o, :49). Para quem mora no exterior, o template escreve "00" (IN :150).
 #
 # O PAIS (campo 15) e o nome do codigo ISO 3166-1 alfa-2 do endereco principal, da
 # tabela de paises da Receita (br/rfb/e-financeira/tabelas/paises.txt, linhas
@@ -70,7 +71,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.titulares
-contractVersion: 1.0.1
+contractVersion: 1.0.2
 
 queries:
   - name: declarante
@@ -173,6 +174,41 @@ queries:
             SP: {constant: "35"}
             TO: {constant: "17"}
           otherwise: {constant: "00"}
+      # A sigla da UF quando ela NAO esta na tabela; "-" quando esta; nulo quando o cadastro nao a tem.
+      # Separa a sigla ausente (campo 14 em branco, IN :49 e :150) da sigla invalida, que a regra
+      # uf-do-brasil recusa: o codigo_uf acima da "00" para as duas.
+      - as: uf_fora_da_tabela
+        case:
+          column: addresses.primary.state
+          when:
+            AC: {constant: "-"}
+            AL: {constant: "-"}
+            AM: {constant: "-"}
+            AP: {constant: "-"}
+            BA: {constant: "-"}
+            CE: {constant: "-"}
+            DF: {constant: "-"}
+            ES: {constant: "-"}
+            GO: {constant: "-"}
+            MA: {constant: "-"}
+            MG: {constant: "-"}
+            MS: {constant: "-"}
+            MT: {constant: "-"}
+            PA: {constant: "-"}
+            PB: {constant: "-"}
+            PE: {constant: "-"}
+            PI: {constant: "-"}
+            PR: {constant: "-"}
+            RJ: {constant: "-"}
+            RN: {constant: "-"}
+            RO: {constant: "-"}
+            RR: {constant: "-"}
+            RS: {constant: "-"}
+            SC: {constant: "-"}
+            SE: {constant: "-"}
+            SP: {constant: "-"}
+            TO: {constant: "-"}
+          otherwise: {column: addresses.primary.state}
       - as: nome_pais
         case:
           column: addresses.primary.country
@@ -676,7 +712,7 @@ queries:
             "ZW": {constant: "Zimbábue"}
             "zw": {constant: "Zimbábue"}
           otherwise: {constant: "-"}
-    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, natural_person.monthly_gross_income.currency, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date, legal_person.annual_gross_revenue.currency]
+    select: [_id, document, name, tipo_pessoa, codigo_uf, uf_fora_da_tabela, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, natural_person.monthly_gross_income.currency, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date, legal_person.annual_gross_revenue.currency]
 
   # Uma linha por parte relacionada de cada conta do caso.
   - name: partes_dados
@@ -851,6 +887,41 @@ queries:
             SP: {constant: "35"}
             TO: {constant: "17"}
           otherwise: {constant: "00"}
+      # A sigla da UF quando ela NAO esta na tabela; "-" quando esta; nulo quando o cadastro nao a tem.
+      # Separa a sigla ausente (campo 14 em branco, IN :49 e :150) da sigla invalida, que a regra
+      # uf-do-brasil recusa: o codigo_uf acima da "00" para as duas.
+      - as: uf_fora_da_tabela
+        case:
+          column: addresses.primary.state
+          when:
+            AC: {constant: "-"}
+            AL: {constant: "-"}
+            AM: {constant: "-"}
+            AP: {constant: "-"}
+            BA: {constant: "-"}
+            CE: {constant: "-"}
+            DF: {constant: "-"}
+            ES: {constant: "-"}
+            GO: {constant: "-"}
+            MA: {constant: "-"}
+            MG: {constant: "-"}
+            MS: {constant: "-"}
+            MT: {constant: "-"}
+            PA: {constant: "-"}
+            PB: {constant: "-"}
+            PE: {constant: "-"}
+            PI: {constant: "-"}
+            PR: {constant: "-"}
+            RJ: {constant: "-"}
+            RN: {constant: "-"}
+            RO: {constant: "-"}
+            RR: {constant: "-"}
+            RS: {constant: "-"}
+            SC: {constant: "-"}
+            SE: {constant: "-"}
+            SP: {constant: "-"}
+            TO: {constant: "-"}
+          otherwise: {column: addresses.primary.state}
       - as: nome_pais
         case:
           column: addresses.primary.country
@@ -1354,7 +1425,7 @@ queries:
             "ZW": {constant: "Zimbábue"}
             "zw": {constant: "Zimbábue"}
           otherwise: {constant: "-"}
-    select: [_id, document, name, tipo_pessoa, codigo_uf, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, natural_person.monthly_gross_income.currency, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date, legal_person.annual_gross_revenue.currency]
+    select: [_id, document, name, tipo_pessoa, codigo_uf, uf_fora_da_tabela, nome_pais, addresses.primary.line_1, addresses.primary.line_2, addresses.primary.country, addresses.primary.zip_code, contact.mobile_phone, contact.other_phone, contact.primary_email, contact.secondary_email, natural_person.social_name, natural_person.monthly_gross_income.value, natural_person.monthly_gross_income.reference_date, natural_person.monthly_gross_income.currency, legal_person.annual_gross_revenue.value, legal_person.annual_gross_revenue.reference_date, legal_person.annual_gross_revenue.currency]
 
   # Uma linha por parte relacionada de cada conta de contraparte.
   - name: partes_contraparte_dados
@@ -1429,6 +1500,7 @@ datasets:
       logradouro: {from: query, column: addresses.primary.line_1}
       complemento: {from: query, column: addresses.primary.line_2}
       codigoUf: {from: query, column: codigo_uf}
+      ufForaDaTabela: {from: query, column: uf_fora_da_tabela}
       pais: {from: query, column: addresses.primary.country}
       nomePais: {from: query, column: nome_pais}
       cep: {from: query, column: addresses.primary.zip_code}
@@ -1475,6 +1547,7 @@ datasets:
       logradouro: {from: query, column: addresses.primary.line_1}
       complemento: {from: query, column: addresses.primary.line_2}
       codigoUf: {from: query, column: codigo_uf}
+      ufForaDaTabela: {from: query, column: uf_fora_da_tabela}
       pais: {from: query, column: addresses.primary.country}
       nomePais: {from: query, column: nome_pais}
       cep: {from: query, column: addresses.primary.zip_code}

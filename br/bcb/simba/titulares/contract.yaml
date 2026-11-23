@@ -34,7 +34,7 @@ metadata:
     Titulares, cotitulares, representantes e procuradores das contas investigadas e das
     contas com que elas transacionaram, uma linha por vinculo da pessoa com a conta, com
     cadastro, renda e datas do vinculo.
-  version: 1.0.1
+  version: 1.0.2
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -131,7 +131,7 @@ datasets:
       key: [contaId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
-                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
+                nome: first, logradouro: first, complemento: first, codigoUf: first, ufForaDaTabela: first, pais: first, nomePais: first, cep: first,
                 celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
                 dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
                 emailSecundario: first}
@@ -188,7 +188,16 @@ datasets:
         description: >-
           Codigo IBGE da UF do endereco principal (campo 14, IN :150); "00" quando a sigla falta ou esta fora da tabela.
           Para quem mora no exterior o template escreve "00" mesmo que a sigla coincida com a de uma UF (a provincia
-          SC de outro pais vem 42 aqui e sai 00 no arquivo); para quem mora no Brasil, a regra uf-do-brasil recusa o 00.
+          SC de outro pais vem 42 aqui e sai 00 no arquivo). Para quem mora no Brasil, a sigla fora da tabela e
+          recusada (uf-do-brasil), e o 00 que sobra e a sigla ausente: o campo 14 sai em branco, a informacao nao
+          existe no cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
+      - name: ufForaDaTabela
+        type: string
+        required: false
+        description: >-
+          A sigla da UF do endereco principal quando ela nao esta na tabela de UFs; "-" quando esta; ausente quando o
+          cadastro nao tem sigla. So a regra uf-do-brasil a le: separa a sigla invalida (recusa) da ausente (campo 14
+          em branco).
       - name: pais
         type: string
         required: false
@@ -348,7 +357,7 @@ datasets:
       key: [contaId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, tipoPessoa: first, documento: first,
-                nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
+                nome: first, logradouro: first, complemento: first, codigoUf: first, ufForaDaTabela: first, pais: first, nomePais: first, cep: first,
                 celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
                 dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
                 emailSecundario: first}
@@ -405,7 +414,16 @@ datasets:
         description: >-
           Codigo IBGE da UF do endereco principal (campo 14, IN :150); "00" quando a sigla falta ou esta fora da tabela.
           Para quem mora no exterior o template escreve "00" mesmo que a sigla coincida com a de uma UF (a provincia
-          SC de outro pais vem 42 aqui e sai 00 no arquivo); para quem mora no Brasil, a regra uf-do-brasil recusa o 00.
+          SC de outro pais vem 42 aqui e sai 00 no arquivo). Para quem mora no Brasil, a sigla fora da tabela e
+          recusada (uf-do-brasil), e o 00 que sobra e a sigla ausente: o campo 14 sai em branco, a informacao nao
+          existe no cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
+      - name: ufForaDaTabela
+        type: string
+        required: false
+        description: >-
+          A sigla da UF do endereco principal quando ela nao esta na tabela de UFs; "-" quando esta; ausente quando o
+          cadastro nao tem sigla. So a regra uf-do-brasil a le: separa a sigla invalida (recusa) da ausente (campo 14
+          em branco).
       - name: pais
         type: string
         required: false
@@ -560,10 +578,11 @@ rules:
     appliesTo: titulares
     where: {field: nomePais, in: ["Brasil", "-"]}
     check:
-      notStartsWith: {field: codigoUf, values: ["0"]}
+      notStartsWith: {field: ufForaDaTabela, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
     message: >-
-      Quem mora no Brasil (pais BR ou ausente) precisa de uma sigla de UF da tabela no endereco principal: a IN so da
-      o codigo 00 para quem mora no exterior (IN :150). Corrija o cadastro antes de gerar.
+      Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que a tabela de UFs nao tem:
+      a IN so da o codigo 00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem
+      sigla nenhuma, o campo 14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
 
   - id: pais-na-tabela
     severity: error
@@ -583,10 +602,11 @@ rules:
     appliesTo: titulares_contraparte
     where: {field: nomePais, in: ["Brasil", "-"]}
     check:
-      notStartsWith: {field: codigoUf, values: ["0"]}
+      notStartsWith: {field: ufForaDaTabela, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
     message: >-
-      Quem mora no Brasil (pais BR ou ausente) precisa de uma sigla de UF da tabela no endereco principal: a IN so da
-      o codigo 00 para quem mora no exterior (IN :150). Corrija o cadastro antes de gerar.
+      Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que a tabela de UFs nao tem:
+      a IN so da o codigo 00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem
+      sigla nenhuma, o campo 14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
 
   - id: pais-na-tabela-contraparte
     severity: error
