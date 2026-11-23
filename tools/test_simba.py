@@ -225,6 +225,40 @@ def domicile_rules_missing(found: dict[str, dict]) -> list[str]:
     return problems
 
 
+def _normalized(field: dict, text: str) -> str:
+    """O texto como o motor o lê numa regra: normalizado como o campo declara
+    (reporter pkg/reporter/contract/populate.go:751-771, `normalize`; rules.go:778-799, textOfField)."""
+    if field.get("normalize") == "digits":
+        return "".join(c for c in text if "0" <= c <= "9")
+    if field.get("normalize") == "alphanumeric":
+        return "".join(c.upper() for c in text if c.isascii() and c.isalnum())
+    return text
+
+
+# Siglas que quem mora no Brasil não pode ter (a regra recusa) e as que deixam o campo 14
+# em branco ou com o código (a regra deixa passar). O valor é o que uf_fora_da_tabela
+# entrega: a sigla crua fora da tabela, "-" na tabela, nada quando falta.
+UF_REFUSED = ["XX", "sp", " SP", "(SP)", "-SP", "S P", "1X"]
+UF_PASSES = ["-", ""]
+
+
+def uf_rule_lets_through(found: dict[str, dict]) -> list[str]:
+    """Roda a regra uf-do-brasil de cada conjunto de titular contra valores reais."""
+    contract = found.get("titulares", {})
+    problems = []
+    for target in HOLDER_SETS:
+        rule = next((r for r in contract.get("rules") or [] if isinstance(r, dict) and r.get("appliesTo") == target
+                     and (r.get("where") or {}).get("in")), None)
+        check = ((rule or {}).get("check") or {}).get("notStartsWith") or {}
+        ds = next((d for d in contract.get("datasets") or [] if isinstance(d, dict) and d.get("name") == target), {})
+        field = next((f for f in ds.get("fields") or [] if isinstance(f, dict) and f.get("name") == check.get("field")), {})
+        refuses = lambda raw: any(_normalized(field, raw).startswith(v) for v in check.get("values") or [])
+        problems += [f"titulares: '{target}' deixa passar a sigla {raw!r}" for raw in UF_REFUSED if not refuses(raw)]
+        problems += [f"titulares: '{target}' recusa {raw!r}, que não é sigla fora da tabela" for raw in UF_PASSES
+                     if refuses(raw)]
+    return problems
+
+
 # O conjunto das contas do caso de cada arquivo que não sai sem conta nenhuma.
 CASE_SETS = {"agencias": "agencias_do_caso", "contas": "contas_investigadas", "titulares": "titulares"}
 MOVEMENT_DOCUMENTS = ("extrato", "origem-destino")
@@ -695,6 +729,9 @@ class SimbaBindings(unittest.TestCase):
     def test_o_contrato_recusa_uf_e_pais_sem_traducao(self) -> None:
         self.assertEqual([], domicile_rules_missing(contracts(ROOT)))
 
+    def test_a_regra_da_uf_recusa_sigla_com_lixo_e_deixa_passar_a_ausente(self) -> None:
+        self.assertEqual([], uf_rule_lets_through(contracts(ROOT)))
+
     def test_sem_conta_nenhuma_o_cadastro_nao_sai(self) -> None:
         self.assertEqual([], empty_case_rules_off(contracts(ROOT)))
 
@@ -996,6 +1033,16 @@ class Mutations(unittest.TestCase):
                 r["check"]["notStartsWith"]["values"].remove("9")
         self.assertEqual(["titulares: 'titulares' não recusa quem mora no Brasil com a sigla de UF fora da tabela"],
                          domicile_rules_missing(found))
+
+    def test_uf_fora_da_tabela_sem_normalizar_e_pega(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for d in found["titulares"]["datasets"]:
+            for f in d.get("fields") or []:
+                if f.get("name") == "ufForaDaTabela":
+                    f.pop("normalize", None)
+        problems = uf_rule_lets_through(found)
+        for target in HOLDER_SETS:
+            self.assertIn(f"titulares: '{target}' deixa passar a sigla ' SP'", problems)
 
     def test_uf_fora_da_tabela_que_esquece_uma_sigla_e_pega(self) -> None:
         found = copy.deepcopy(self.found)

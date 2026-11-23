@@ -194,10 +194,13 @@ datasets:
       - name: ufForaDaTabela
         type: string
         required: false
+        normalize: alphanumeric
         description: >-
           A sigla da UF do endereco principal quando ela nao esta na tabela de UFs; "-" quando esta; ausente quando o
           cadastro nao tem sigla. So a regra uf-do-brasil a le: separa a sigla invalida (recusa) da ausente (campo 14
-          em branco).
+          em branco). Normalizada (so letras e digitos, em maiuscula): uma sigla com espaco ou pontuacao, como " SP"
+          ou "(SP)", nao casa a tabela e chega a regra como SP, que a recusa; o "-" da sigla da tabela vira vazio e
+          passa.
       - name: pais
         type: string
         required: false
@@ -420,10 +423,13 @@ datasets:
       - name: ufForaDaTabela
         type: string
         required: false
+        normalize: alphanumeric
         description: >-
           A sigla da UF do endereco principal quando ela nao esta na tabela de UFs; "-" quando esta; ausente quando o
           cadastro nao tem sigla. So a regra uf-do-brasil a le: separa a sigla invalida (recusa) da ausente (campo 14
-          em branco).
+          em branco). Normalizada (so letras e digitos, em maiuscula): uma sigla com espaco ou pontuacao, como " SP"
+          ou "(SP)", nao casa a tabela e chega a regra como SP, que a recusa; o "-" da sigla da tabela vira vazio e
+          passa.
       - name: pais
         type: string
         required: false
@@ -580,9 +586,10 @@ rules:
     check:
       notStartsWith: {field: ufForaDaTabela, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
     message: >-
-      Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que a tabela de UFs nao tem:
-      a IN so da o codigo 00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem
-      sigla nenhuma, o campo 14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
+      Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que nao casa a tabela de UFs,
+      que tem as 27 siglas em maiuscula e sem espaco nem pontuacao ("sp" ou " SP" nao casam SP): a IN so da o codigo
+      00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem sigla nenhuma, o campo
+      14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
 
   - id: pais-na-tabela
     severity: error
@@ -604,9 +611,10 @@ rules:
     check:
       notStartsWith: {field: ufForaDaTabela, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]}
     message: >-
-      Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que a tabela de UFs nao tem:
-      a IN so da o codigo 00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem
-      sigla nenhuma, o campo 14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
+      Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que nao casa a tabela de UFs,
+      que tem as 27 siglas em maiuscula e sem espaco nem pontuacao ("sp" ou " SP" nao casam SP): a IN so da o codigo
+      00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem sigla nenhuma, o campo
+      14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
 
   - id: pais-na-tabela-contraparte
     severity: error
