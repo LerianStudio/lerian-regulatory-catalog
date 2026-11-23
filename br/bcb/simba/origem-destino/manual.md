@@ -204,9 +204,10 @@ o contrato na carga.
   grava o documento cifrado: o campo 18 diz isso, mais o motivo do tipo de conta quando o
   campo 8 tambem sai em branco. O tipo do recebedor e obrigatorio: toda TED enviada que
   chega ao arquivo o tem (a devolucao de uma TED recebida, que o plugin grava sem ele, sai
-  pelo revert do Midaz, ver Devolucao e estorno). A instituicao declara a circunstancia pela
-  ressalva de inviabilidade tecnica da IN 636 (art. 2o, paragrafo 1o): o motivo vai no campo
-  18 de cada linha. O memorando de leiaute do MPF (MI 001 - ASSPA/PGR, item 3) exige o maior
+  pelo revert do Midaz, ver Devolucao e estorno). Os dados do remetente existem, cifrados no
+  plugin de TED da instituicao; esta versao do Reporter nao os le. A instituicao declara a
+  circunstancia pela ressalva de inviabilidade tecnica da IN 636 (art. 2o, paragrafo 1o): o
+  motivo vai no campo 18 de cada linha. O memorando de leiaute do MPF (MI 001 - ASSPA/PGR, item 3) exige o maior
   numero possivel de identificacoes de beneficiarios e ordenantes, sob pena de nao aceitacao
   da entrega: o MPF pode recusar uma entrega por causa destas linhas. Antes de transmitir um
   caso com TED recebida, confira se a instituicao consegue obter os dados do remetente por
