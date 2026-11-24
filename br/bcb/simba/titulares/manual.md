@@ -129,8 +129,8 @@ e titular no CRM tem esses campos preenchidos. As consultas `partes_documentos` 
 Reporter decifra o documento da parte e pergunta o cadastro pelo digest dele.
 
 A ligacao e pelo documento como esta gravado: a parte no instrumento e a pessoa no cadastro de
-titulares precisam ter o documento so com digitos, sem pontos, tracos ou barras, como no
-parametro `documentos`. Com mascara num cadastro e nao no outro (`529.982.247-25` na parte,
+titulares precisam ter o mesmo documento, sem pontos, tracos ou barras; o CNPJ alfanumerico
+mantem as letras. Com separador num cadastro e nao no outro (`529.982.247-25` na parte,
 `52998224725` no titular), a parte nao e achada e sai como parte sem cadastro, com os campos 12
 a 19 e 24 em branco, sem aviso. Confira o formato dos documentos no CRM na implantacao.
 
