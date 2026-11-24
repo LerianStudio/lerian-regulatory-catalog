@@ -27,6 +27,9 @@ em vez de sair um arquivo sem lançamento nenhum.
 Num tenant com mais de uma organização, o cadastro da instituição no Reporter restringe
 `organization.id` à organização dela; sem isso a leitura traz todas, e a geração é recusada
 (o CNPJ lido não é o da instituição, ou chegam duas linhas para uma) em vez de escolher uma.
+Se o escopo dela é declarado tabela a tabela, inclua nele a `transfer_initiations` do Pix lerian
+(de onde vem a chave Pix do campo 26): a tabela lida por junção entra no escopo como as outras, e a
+que ele não cobre também faz o Reporter recusar a geração.
 
 ## Ligação com o EXTRATO
 
@@ -125,8 +128,11 @@ Na tarifa e na contraparte interna, o CNPJ da própria instituição.
   no campo 18 (ver CNPJ da instituição da contraparte).
 - 12 e 13 (documento de identificação): não existe em nenhuma aplicação.
 - 14 a 16 e 20 a 24 (boleto e cheque): não existem como produto.
-- 25 e 26 (chave Pix da contraparte): a chave fica em outra tabela do Pix lerian, e o tipo
-  da chave no Pix JD é um código do plugin sem de-para definido.
+- 25 e 26 (chave Pix da contraparte): no Pix enviado, a chave do recebedor (Pix lerian: da
+  iniciação do Pix, `transfer_initiations`; Pix JD: `payee_key`); no Pix JD recebido, a chave
+  do pagador quando o plugin a grava (`payer_key`). O tipo vira o código da IN (1 CPF/CNPJ, 2
+  telefone, 3 e-mail, 4 aleatória) e o telefone sai só com dígitos, a partir do 55. Em branco
+  no Pix sem chave, no Pix lerian recebido (o pagador não usa chave) e na TED.
 - 28 (TxId do Pix, `TransactionIdentification <TxId>`; IN 636, Anexo I, ORIGEM-DESTINO,
   campo 28): o TxId que o plugin grava, o
   mesmo do campo 26 do EXTRATO; nunca o EndToEndId, que é outro identificador. Sem TxId, o
