@@ -78,8 +78,8 @@ O campo 3 é o valor do lançamento (plugin, tarifa, linha vazia) ou o da outra 
 Na contraparte de outra instituição, o plugin grava o ISPB; o template o converte no código
 Compe pela lista de participantes do STR publicada pelo Banco Central
 (`br/bcb/simba/tabelas/ParticipantesSTR.csv`); ISPB fora da lista ou sem código sai `999`.
-O trecho do template que faz a conversão é gerado da lista por `tools/ispb_compe.py`, e o
-validador do catálogo recusa o template se o trecho não for o gerado. ISPB vazio ou
+O trecho do template que faz a conversão é gerado a partir dessa tabela de participantes do
+catálogo, e o validador do catálogo recusa o template se o trecho não for o gerado. ISPB vazio ou
 ausente sai `999` (nunca o Banco do Brasil, cujo ISPB é `00000000`); uma TED recebida
 registrada antes de o plugin gravar o ISPB do remetente cai nesse caso. O `999` marca tanto a
 instituição sem código Compe quanto o ISPB desconhecido (vazio ou fora da lista): o arquivo
@@ -95,8 +95,8 @@ Na contraparte de outra instituição, o template converte o ISPB gravado pelo p
 que a lista de participantes do Pix publicada pelo Banco Central dá
 (`br/bcb/simba/tabelas/ParticipantesPix.csv`, só a seção dos participantes ativos); é a
 única lista do Banco Central que liga ISPB a CNPJ. O trecho do template que faz a conversão
-é gerado da lista por `tools/ispb_cnpj.py`, e o validador do catálogo recusa o template se
-o trecho não for o gerado. ISPB vazio ou ausente, ou fora da lista (uma TED com banco que só
+é gerado a partir dessa tabela de participantes do catálogo, e o validador do catálogo recusa
+o template se o trecho não for o gerado. ISPB vazio ou ausente, ou fora da lista (uma TED com banco que só
 participa do STR, por exemplo), deixa o campo em branco e acrescenta ao campo 18, depois de
 `; ` quando ele já tem texto, o motivo `CNPJ da instituicao da contraparte nao informado:
 ISPB ausente ou fora da lista de participantes ativos do Pix`.
