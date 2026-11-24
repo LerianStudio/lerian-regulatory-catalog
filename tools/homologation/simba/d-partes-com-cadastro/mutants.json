@@ -8,7 +8,7 @@
     "count": 4,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 6,
+      "line": 7,
       "field": 12
     }
   },
@@ -21,7 +21,7 @@
     "count": 2,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 3,
+      "line": 4,
       "field": 13
     }
   },
@@ -34,7 +34,7 @@
     "count": 4,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 4,
+      "line": 5,
       "field": 25
     }
   },
@@ -52,16 +52,42 @@
     }
   },
   {
-    "name": "parte pessoa juridica com a renda e nao o faturamento",
+    "name": "cotitular pessoa juridica com a renda e nao o faturamento",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
     "old": "{% if k.tipoPessoa == \"2\" %}{% if k.faturamento %}{{ k.faturamento|replace:\".:\" }}{% endif %}",
     "new": "{% if k.tipoPessoa == \"9\" %}{% if k.faturamento %}{{ k.faturamento|replace:\".:\" }}{% endif %}",
-    "count": 2,
+    "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
       "line": 3,
       "field": 18
+    }
+  },
+  {
+    "name": "procuradora cadastrada sai com o faturamento (campo 18 so do correntista)",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{# 18 e 19 so do correntista #}",
+    "new": "{% if k.faturamento %}{{ k.faturamento|replace:\".:\" }}{% endif %}",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 4,
+      "field": 18
+    }
+  },
+  {
+    "name": "procuradora cadastrada sai com o e-mail do cadastro (campo 25 so do titular)",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "e-mail nao declarado{% empty %}",
+    "new": "{{ k.emailPrincipal }}{% empty %}",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 4,
+      "field": 25
     }
   }
 ]

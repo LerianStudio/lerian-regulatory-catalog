@@ -12,6 +12,17 @@
   },
   {
     "contaId": "c1",
+    "parteId": "p4",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333331",
+    "tipoConta": "1",
+    "vinculo": "C",
+    "documento": "33445566000186",
+    "nome": "Holding Cotitular S.A.",
+    "dataInicio": "2024-08-20"
+  },
+  {
+    "contaId": "c1",
     "parteId": "p2",
     "numeroAgencia": "00001",
     "numeroConta": "3333331",
