@@ -9,5 +9,16 @@
     "documento": "11144477735",
     "nome": "Jose Contraparte",
     "dataInicio": "2023-04-05"
+  },
+  {
+    "contaId": "c9",
+    "parteId": "p10",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333340",
+    "tipoConta": "1",
+    "vinculo": "P",
+    "documento": "22233344405",
+    "nome": "Paulo Procurador",
+    "dataInicio": "2025-09-10"
   }
 ]

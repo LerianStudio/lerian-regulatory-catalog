@@ -70,7 +70,7 @@
     "file": "template.tpl",
     "old": "{# 18 e 19 so do correntista #}",
     "new": "{% if k.faturamento %}{{ k.faturamento|replace:\".:\" }}{% endif %}",
-    "count": 2,
+    "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
       "line": 4,
@@ -88,6 +88,19 @@
       "document": "br/bcb/simba/titulares",
       "line": 4,
       "field": 25
+    }
+  },
+  {
+    "name": "procurador cadastrado de contraparte sai com a renda (campo 18 so do correntista)",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{# 18 e 19 so do correntista, contraparte #}",
+    "new": "{% if w.renda %}{{ w.renda|replace:\".:\" }}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 8,
+      "field": 18
     }
   }
 ]

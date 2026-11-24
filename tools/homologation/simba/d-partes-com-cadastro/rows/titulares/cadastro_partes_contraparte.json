@@ -8,5 +8,18 @@
     "cep": "20040002",
     "celular": "21988887777",
     "nomeSocial": "Zé Contraparte"
+  },
+  {
+    "documento": "22233344405",
+    "tipoPessoa": "1",
+    "logradouro": "Rua Seis 600",
+    "codigoUf": "33",
+    "pais": "BR",
+    "nomePais": "Brasil",
+    "cep": "22041001",
+    "celular": "21977776666",
+    "renda": "15000.00",
+    "dataRenda": "2026-03-31",
+    "emailPrincipal": "paulo@example.com"
   }
 ]
