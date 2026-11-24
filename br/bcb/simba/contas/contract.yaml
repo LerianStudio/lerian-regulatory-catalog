@@ -164,7 +164,7 @@ datasets:
       - name: volumePeriodo
         type: decimal
         required: false
-        description: Soma dos valores dos lançamentos da conta no período. Só diz se houve lançamento (código 1 ou 2 do campo 7; IN 636, Anexo I, CONTAS, campo 7); não vai ao arquivo.
+        description: Soma dos valores dos lançamentos da conta no período. Só diz se houve lançamento, o código 1 ou 2 do campo 7 (IN 636, Anexo I, CONTAS); não vai ao arquivo.
   - name: contas_contraparte
     description: As contas da mesma instituição com que uma conta do caso transacionou no período. Campo 7 = 3.
     grain: [contaId]

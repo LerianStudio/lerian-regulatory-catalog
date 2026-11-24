@@ -74,7 +74,7 @@ Na ordem, a primeira regra que vale:
 
 Só sai código do lado da natureza (débito `1xx`, crédito `2xx`). O código `116` nunca sai.
 
-**Atenção, códigos genéricos:** `125` e `218` são descontinuados em 01/06/2028 (IN art. 2º,
+**Atenção, códigos genéricos:** `125` e `218` são descontinuados em 01/06/2028 (IN 636, art. 2º,
 § 4º) sem substituto indicado. Saem com eles: lançamento sem metadata de plugin, tarifa
 avulsa sem `feeLeg`, transferência interna sem metadata, MED, Pix Automático e bloqueio
 cautelar. Revise as linhas com `125`/`218` antes de aprovar.
@@ -105,7 +105,7 @@ Num tenant com mais de uma organização, o cadastro da instituição no Reporte
 ## Data, hora, valores e saldo
 
 - **Data (campo 6)**: o dia civil de Brasília do instante do lançamento (`created_at` da
-  operação). **Hora (campo 23)**: o mesmo instante em UTC, `hhmmss` (IN art. 3º, VI). Um Pix às
+  operação). **Hora (campo 23)**: o mesmo instante em UTC, `hhmmss` (IN 636, art. 3º, VI). Um Pix às
   23:30 de 09/12 em Brasília sai `09122026` e `023000`. O instante tem de chegar ao Reporter
   em UTC; se chegar em outro fuso, a geração é recusada (não sai a hora errada).
 - **Valor (campo 10)**: centavos, sem separador e sem sinal (`10000` para R$ 100,00).
@@ -160,7 +160,7 @@ requisição.
 
 Uma conta do caso sem lançamento no período sai no CONTAS com o campo 7 = 2 (IN 636, Anexo I,
 CONTAS, campo 7) e não tem linha aqui. Quando nenhuma conta do caso tem lançamento, este
-arquivo sai vazio (0 byte, sem cabeçalho, IN art. 3º, I) e é aprovado e entregue assim, com
+arquivo sai vazio (0 byte, sem cabeçalho, IN 636, art. 3º, I) e é aprovado e entregue assim, com
 os outros quatro. O contrato declara isso (`filing.allowEmpty`); um Reporter anterior a esse
 recurso recusa o contrato na carga.
 
@@ -202,7 +202,7 @@ recurso recusa o contrato na carga.
   template, e TAB, CR e LF viram espaço: uma quebra de linha não parte o registro. O número
   da conta não passa pela conversão: com TAB, CR ou LF ele recusa a geração. No nome da
   instituição, um caractere fora do ASCII que a conversão não cobre (por exemplo `°`, `’`,
-  `–`, `ø`) recusa a geração, porque o arquivo é ASCII (IN art. 3º). A descrição é texto
+  `–`, `ø`) recusa a geração, porque o arquivo é ASCII (IN 636, art. 3º). A descrição é texto
   livre: até o filtro de transliteração do Reporter, ela pode levar ao arquivo um caractere
   fora do ASCII que a conversão não cobre.
 - **Preview do template**: a pré-visualização de template do manager recusa este template,

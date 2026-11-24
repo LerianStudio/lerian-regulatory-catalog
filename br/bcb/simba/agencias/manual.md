@@ -56,7 +56,7 @@ anterior, mesmo com documentos ou período corrigidos.
    Os valores do exemplo são **sintéticos** e precisam ser trocados. O cadastro é
    **fechado**: uma agência que ele não lista recusa a geração, e uma conta **sem**
    `banking_details.branch` no CRM também. Toda agência listada tem **todos** os
-   atributos: o motor não aceita valor vazio num `case`. A agência sem agência física
+   atributos: o Reporter não aceita valor vazio num `case`. A agência sem agência física
    (instituição digital: o número que o cadastro mapeia para `00001`) é cadastrada com as
    sentinelas do Anexo I (ver abaixo). O mesmo `numero_agencia` vai no binding do CONTAS.
 2. **Código Compe** da instituição (`compe`): 3 dígitos, ou `999` se ela não tem.
@@ -98,7 +98,7 @@ nem sentinela, o campo sai **em branco**:
   preenche para toda agência; um binding que não mapeia `data_abertura_agencia` a deixa em
   branco em todas.
 - Os demais campos do cadastro não saem em branco: toda agência listada tem todos os
-  atributos (o motor recusa valor vazio num `case`). Na implantação, a agência física
+  atributos (o Reporter recusa valor vazio num `case`). Na implantação, a agência física
   entra com o cadastro completo, telefone inclusive; sem isso ela não pode ser listada.
 
 ## Nome dos arquivos na entrega

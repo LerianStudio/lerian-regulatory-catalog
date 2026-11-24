@@ -284,7 +284,7 @@ knownGaps:
     description: >-
       Agência não é entidade em nenhuma aplicação Lerian. O cadastro (número, nome, endereço, cidade, UF, país, CEP,
       telefone, datas) é do tenant e vive no binding, num case pelo número da agência gravado no CRM. Uma agência
-      que o cadastro não lista recusa a geração, e toda agência listada tem todos os atributos: o motor não aceita
+      que o cadastro não lista recusa a geração, e toda agência listada tem todos os atributos: o Reporter não aceita
       valor vazio num case. A agência sem agência física é cadastrada com as sentinelas do Anexo I.
   - id: uf-pelo-cadastro
     description: >-
