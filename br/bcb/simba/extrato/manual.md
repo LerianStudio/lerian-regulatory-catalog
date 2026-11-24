@@ -149,7 +149,7 @@ muda: o conteúdo do arquivo não é alterado.
 Quando nenhum documento da ordem tem conta na instituição, não há arquivo a gerar: os
 arquivos do SIMBA são das contas (IN 636, art. 1º) e não têm cabeçalho (IN 636, art. 3º, I).
 O AGÊNCIAS, o CONTAS e o TITULARES do caso recusam a geração antes de montar o arquivo
-(erro RPT-0195); não gere este. Responda a requisição sem arquivo, pelo atendimento:
+(erro RPT-0195); não gere este. Responda à requisição sem arquivo, pelo atendimento:
 CCS0012 com a situação 03, relacionamento inexistente (Catálogo de Serviços do SFN,
 Volume III, evento CCS0012; Dicionário de Domínios do Banco Central, domínio
 SitAtedmntReq).

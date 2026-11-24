@@ -222,7 +222,7 @@ documents:
     document: EXTRATO
     family: simba
     title: SIMBA — Extrato
-    version: 1.0.3
+    version: 1.0.4
     status: draft
     periodicity: eventual
     appliesTo:
