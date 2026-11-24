@@ -27,6 +27,9 @@ em vez de sair um arquivo sem lançamento nenhum.
 Num tenant com mais de uma organização, o cadastro da instituição no Reporter restringe
 `organization.id` à organização dela; sem isso a leitura traz todas, e a geração é recusada
 (o CNPJ lido não é o da instituição, ou chegam duas linhas para uma) em vez de escolher uma.
+Se o escopo dela é declarado tabela a tabela, inclua nele a `transfer_initiations` do Pix lerian
+(de onde vem a chave Pix do campo 26): a tabela lida por junção entra no escopo como as outras, e a
+que ele não cobre também faz o Reporter recusar a geração.
 
 ## Ligação com o EXTRATO
 
