@@ -335,23 +335,31 @@ def pix_account_type_off(found: dict[str, dict]) -> list[str]:
 # 4 aleatória). Fora do domínio, "-".
 PIX_LERIAN_KEY_TYPES = {"CPF": "1", "CNPJ": "1", "PHONE": "2", "EMAIL": "3", "EVP": "4"}
 PIX_JD_KEY_TYPES = {"0": "1", "1": "1", "2": "3", "3": "2", "4": "4"}
+# Por consulta: a coluna do tipo, a tradução e a coluna da chave que o trilho escreve.
 PIX_KEY_QUERIES = {
-    "extrato": {"pix_lerian_envios_txid": ("chave_tipo_informado", PIX_LERIAN_KEY_TYPES),
-                "pix_jd_envios_txid": ("payee_key_type", PIX_JD_KEY_TYPES),
-                "pix_jd_recebimentos_txid": ("payee_key_type", PIX_JD_KEY_TYPES)},
-    "origem-destino": {"pix_lerian_envios": ("chave_tipo_informado", PIX_LERIAN_KEY_TYPES),
-                       "pix_jd_envios": ("payee_key_type", PIX_JD_KEY_TYPES),
-                       "pix_jd_recebimentos": ("payer_key_type", PIX_JD_KEY_TYPES)},
+    "extrato": {"pix_lerian_envios_txid": ("chave_tipo_informado", PIX_LERIAN_KEY_TYPES, "chave"),
+                "pix_jd_envios_txid": ("payee_key_type", PIX_JD_KEY_TYPES, "payee_key"),
+                "pix_jd_recebimentos_txid": ("payee_key_type", PIX_JD_KEY_TYPES, "payee_key")},
+    "origem-destino": {"pix_lerian_envios": ("chave_tipo_informado", PIX_LERIAN_KEY_TYPES, "chave"),
+                       "pix_jd_envios": ("payee_key_type", PIX_JD_KEY_TYPES, "payee_key"),
+                       "pix_jd_recebimentos": ("payer_key_type", PIX_JD_KEY_TYPES, "payer_key")},
 }
 
 
 def pix_key_type_off(found: dict[str, dict]) -> list[str]:
-    """Onde a tradução do tipo da chave Pix deixa de ser a decidida, ou a chave do Pix lerian não vem da iniciação."""
+    """Onde a tradução do tipo da chave Pix deixa de ser a decidida, a chave sai de outra coluna, ou a chave do
+    Pix lerian não vem da iniciação."""
     problems = []
     for document, wanted in sorted(PIX_KEY_QUERIES.items()):
         queries = queries_of(found.get(document, {}))
-        for name, (column, expected) in sorted(wanted.items()):
+        datasets = (found.get(document, {}).get("datasets") or {}).values()
+        for name, (column, expected, key) in sorted(wanted.items()):
             query = queries.get(name) or {}
+            trails = [d.get("fields") or {} for d in datasets if ((d or {}).get("from") or {}).get("query") == name]
+            if not trails or key not in (query.get("select") or []) or any(
+                    (f.get("chave") or {}).get("column") != key or (f.get("tipoChave") or {}).get("column") != "tipo_chave"
+                    for f in trails):
+                problems.append(f"{document}: a chave de '{name}' não sai de {key}")
             case = _compute(query, "tipo_chave").get("case") or {}
             when = {str(k): (v or {}).get("constant") for k, v in (case.get("when") or {}).items()}
             if case.get("column") != column or when != expected or case.get("otherwise") != {"constant": "-"}:
@@ -883,6 +891,12 @@ class Mutations(unittest.TestCase):
         when = _compute(queries_of(found["origem-destino"])["pix_jd_envios"], "tipo_chave")["case"]["when"]
         when["2"], when["3"] = when["3"], when["2"]
         self.assertEqual(1, len(pix_key_type_off(found)))
+
+    def test_chave_do_pix_jd_lida_da_outra_parte_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        queries_of(found["origem-destino"])["pix_jd_envios"]["select"].append("payer_key")
+        found["origem-destino"]["datasets"]["trilho_pix_jd_envios"]["fields"]["chave"]["column"] = "payer_key"
+        self.assertEqual(["origem-destino: a chave de 'pix_jd_envios' não sai de payee_key"], pix_key_type_off(found))
 
     def test_chave_do_pix_lerian_sem_a_iniciacao_e_pega(self) -> None:
         found = copy.deepcopy(self.found)
