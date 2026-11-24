@@ -172,15 +172,15 @@ documents:
     regulator: BCB
     document: AGENCIAS
     family: simba
-    title: SIMBA — Agencias
-    version: 1.0.1
+    title: SIMBA — Agências
+    version: 1.0.2
     status: draft
     periodicity: eventual
     appliesTo:
       institutionTypes: [IP, SCD, SCFI]
     summary: >-
-      Agencias das contas investigadas e das contas da mesma instituicao com as quais
-      elas transacionaram no periodo do afastamento do sigilo, uma linha por agencia.
+      Agências das contas investigadas e das contas da mesma instituição com as quais elas
+      transacionaram no período do afastamento do sigilo, uma linha por agência.
 
   - id: br.bcb.simba.contas
     path: br/bcb/simba/contas
