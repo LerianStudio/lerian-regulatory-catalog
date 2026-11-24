@@ -29,12 +29,12 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.origem-destino
-contractVersion: 1.0.3
+contractVersion: 1.0.4
 
 queries:
 
   - name: declarante
-    description: A organizacao do Midaz, que e a instituicao que responde ao caso. O CNPJ dela e o do arquivo.
+    description: A organização do Midaz, que é a instituição que responde ao caso. O CNPJ dela é o do arquivo.
     dataSource: midaz_onboarding
     table: organization
     filters:
@@ -53,7 +53,7 @@ queries:
     select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
 
   - name: lancamentos
-    description: Lancamentos das contas do caso no periodo, so a transacao de cada um.
+    description: Lançamentos das contas do caso no período, só a transação de cada um.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -67,7 +67,7 @@ queries:
     select: [transaction_id, account_id]
 
   - name: lancamentos_dados
-    description: Os lancamentos das contas do caso no periodo, com a conta, a metadata da transacao e a descricao.
+    description: Os lançamentos das contas do caso no período, com a conta, a metadata da transação e a descrição.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -116,7 +116,7 @@ queries:
 
   # A descricao da operacao e a da transacao (a operacao pode vir com descricao vazia).
   - name: lancamentos_descricao
-    description: A descricao de cada lancamento do caso no periodo e a da transacao dele.
+    description: A descrição de cada lançamento do caso no período e a da transação dele.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -137,7 +137,7 @@ queries:
     select: [id, description, descricao_transacao, on_hold_balance_after, snapshot.overdraftUsedAfter]
 
   - name: contas_lancamento
-    description: Agencia, numero e tipo de cada conta do caso.
+    description: Agência, número e tipo de cada conta do caso.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -168,7 +168,7 @@ queries:
   # `transaction`): rail, flow, direction e aggregateId do contrato de
   # correlacao (TED e Pix JD); payment_type, initiation_type e os E2E do Pix lerian.
   - name: metadados_transacao
-    description: A metadata de cada transacao dos lancamentos do caso.
+    description: A metadata de cada transação dos lançamentos do caso.
     dataSource: midaz_metadata
     table: transaction
     filters:
@@ -179,7 +179,7 @@ queries:
   # A perna de tarifa: o motor de tarifas do Midaz grava feeLeg = "true" na metadata
   # da operacao que ele criou (colecao `operation`).
   - name: taxas_lancamento
-    description: As operacoes dos lancamentos do caso que sao perna de tarifa.
+    description: As operações dos lançamentos do caso que são perna de tarifa.
     dataSource: midaz_metadata
     table: operation
     filters:
@@ -191,7 +191,7 @@ queries:
   # As pernas das transacoes dos lancamentos que sao conta de cliente no CRM (o junte
   # e `inner`): a outra perna interna e a contraparte quando nenhum plugin a da.
   - name: pernas_lancamento
-    description: As pernas das transacoes dos lancamentos do caso em conta do CRM, com agencia, conta, tipo, valor e natureza.
+    description: As pernas das transações dos lançamentos do caso em conta do CRM, com agência, conta, tipo, valor e natureza.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -215,7 +215,7 @@ queries:
     select: [id, transaction_id, account_id, amount, natureza]
 
   - name: outras_pernas
-    description: As pernas das transacoes dos lancamentos do caso.
+    description: As pernas das transações dos lançamentos do caso.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -227,7 +227,7 @@ queries:
     select: [account_id]
 
   - name: contas_contraparte
-    description: Os ids das contas das outras pernas que tem instrumento no CRM.
+    description: Os ids das contas das outras pernas que têm instrumento no CRM.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -246,7 +246,7 @@ queries:
 
   # As contas das outras pernas que sao conta de cliente no CRM.
   - name: contas_od_dados
-    description: Agencia, numero, tipo e titular (holder_id) das contas das outras pernas.
+    description: Agência, número, tipo e titular (holder_id) das contas das outras pernas.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -296,7 +296,7 @@ queries:
   # inbound_end_to_end_id no recebimento). Devolucoes ficam fora: saem com a outra
   # perna interna ou com a linha vazia (manual).
   - name: pix_lerian_envios
-    description: Pix enviados pelo Pix lerian; a contraparte e o destino.
+    description: Pix enviados pelo Pix lerian; a contraparte é o destino.
     dataSource: pix_lerian
     table: transfers
     filters:
@@ -320,7 +320,7 @@ queries:
     select: [end_to_end_id, destination_ispb, destination_branch, destination_account_number, destination_account_type, tipo_conta_od, destination_tax_id, destination_name, description, tx_id]
 
   - name: pix_lerian_recebimentos
-    description: Pix recebidos pelo Pix lerian; a contraparte e a origem.
+    description: Pix recebidos pelo Pix lerian; a contraparte é a origem.
     dataSource: pix_lerian
     table: transfers
     filters:
@@ -346,7 +346,7 @@ queries:
   # Pix JD: flow 2 e o envio (CASH_OUT), flow 1 o recebimento (CASH_IN); a linha de
   # devolucao (is_refund) fica fora.
   - name: pix_jd_envios
-    description: Pix enviados pelo Pix JD; a contraparte e o recebedor (payee).
+    description: Pix enviados pelo Pix JD; a contraparte é o recebedor (payee).
     dataSource: pix_jd
     table: transaction
     filters:
@@ -373,7 +373,7 @@ queries:
     select: [id, end_to_end_id, payee_bank_id, payee_branch, payee_account_number, payee_account_digit, tipo_conta_od, payee_document, payee_name, description, conciliation_id]
 
   - name: pix_jd_recebimentos
-    description: Pix recebidos pelo Pix JD; a contraparte e o pagador (payer).
+    description: Pix recebidos pelo Pix JD; a contraparte é o pagador (payer).
     dataSource: pix_jd
     table: transaction
     filters:
@@ -402,7 +402,7 @@ queries:
   # TED: o recebedor da TED enviada esta em claro em recipient_details; o documento
   # dele e o pagador da TED recebida (exceto o ISPB) ficam fora (cifrados no plugin).
   - name: ted_enviadas
-    description: TEDs enviadas pelo plugin de TED; a contraparte e o recebedor.
+    description: TEDs enviadas pelo plugin de TED; a contraparte é o recebedor.
     dataSource: bank_transfer
     table: transfers
     filters:
@@ -416,7 +416,7 @@ queries:
     select: [id, recipient_details.ispb, recipient_details.branch, recipient_details.account, recipient_details.accountType, recipient_details.holderName]
 
   - name: ted_recebidas
-    description: TEDs recebidas pelo plugin de TED; da contraparte, so o ISPB do pagador.
+    description: TEDs recebidas pelo plugin de TED; da contraparte, só o ISPB do pagador.
     dataSource: bank_transfer
     table: transfers
     filters:
@@ -460,10 +460,10 @@ datasets:
         column: legal_document
       compe:
         from: manual
-        pendingReason: "o codigo Compe da instituicao, 3 digitos; 999 se ela nao tem codigo Compe"
+        pendingReason: "o código Compe da instituição, com 3 dígitos; 999 se ela não tem código Compe"
       nomeUnicad:
         from: manual
-        pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
+        pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
 
   lancamentos:
     from:

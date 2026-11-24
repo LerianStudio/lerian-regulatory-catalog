@@ -172,15 +172,15 @@ documents:
     regulator: BCB
     document: AGENCIAS
     family: simba
-    title: SIMBA — Agencias
-    version: 1.0.1
+    title: SIMBA — Agências
+    version: 1.0.2
     status: draft
     periodicity: eventual
     appliesTo:
       institutionTypes: [IP, SCD, SCFI]
     summary: >-
-      Agencias das contas investigadas e das contas da mesma instituicao com as quais
-      elas transacionaram no periodo do afastamento do sigilo, uma linha por agencia.
+      Agências das contas investigadas e das contas da mesma instituição com as quais elas
+      transacionaram no período do afastamento do sigilo, uma linha por agência.
 
   - id: br.bcb.simba.contas
     path: br/bcb/simba/contas
@@ -189,14 +189,14 @@ documents:
     document: CONTAS
     family: simba
     title: SIMBA — Contas
-    version: 1.0.1
+    version: 1.0.2
     status: draft
     periodicity: eventual
     appliesTo:
       institutionTypes: [IP, SCD, SCFI]
     summary: >-
-      Contas investigadas e contas da mesma instituicao com as quais elas transacionaram
-      no periodo do afastamento do sigilo, com abertura, encerramento e saldos.
+      Contas investigadas e contas da mesma instituição com as quais elas transacionaram
+      no período do afastamento do sigilo, com abertura, encerramento e saldos.
 
   - id: br.bcb.simba.titulares
     path: br/bcb/simba/titulares
@@ -205,14 +205,15 @@ documents:
     document: TITULARES
     family: simba
     title: SIMBA — Titulares
-    version: 1.2.0
+    version: 1.2.1
     status: draft
     periodicity: eventual
     appliesTo:
       institutionTypes: [IP, SCD, SCFI]
     summary: >-
-      Titulares, cotitulares, representantes e procuradores das contas investigadas, uma
-      linha por vinculo da pessoa com a conta, com cadastro, renda e datas do vinculo.
+      Titulares, cotitulares, representantes e procuradores das contas investigadas e das
+      contas com que elas transacionaram, uma linha por vínculo da pessoa com a conta, com
+      cadastro, renda e datas do vínculo.
 
   - id: br.bcb.simba.extrato
     path: br/bcb/simba/extrato
@@ -221,14 +222,14 @@ documents:
     document: EXTRATO
     family: simba
     title: SIMBA — Extrato
-    version: 1.0.2
+    version: 1.0.3
     status: draft
     periodicity: eventual
     appliesTo:
       institutionTypes: [IP, SCD, SCFI]
     summary: >-
-      Lancamentos das contas investigadas no periodo do afastamento do sigilo, com valor,
-      natureza, saldo apos o lancamento e o codigo do tipo de lancamento do Anexo II.
+      Lançamentos das contas investigadas no período do afastamento do sigilo, com valor,
+      natureza, saldo após o lançamento e o código do tipo de lançamento do Anexo II.
 
   - id: br.bcb.simba.origem-destino
     path: br/bcb/simba/origem-destino
@@ -237,11 +238,12 @@ documents:
     document: ORIGEM-DESTINO
     family: simba
     title: SIMBA — Origem-Destino
-    version: 1.0.3
+    version: 1.0.4
     status: draft
     periodicity: eventual
     appliesTo:
       institutionTypes: [IP, SCD, SCFI]
     summary: >-
-      Origem e destino dos recursos de cada lancamento do EXTRATO: a contraparte pelo plugin
-      Pix ou TED da transacao, pela outra perna interna, ou a propria instituicao na tarifa.
+      Origem e destino dos recursos de cada lançamento do EXTRATO: a contraparte pelo
+      plugin Pix ou TED da transação, pela outra perna interna, ou a própria instituição
+      na tarifa.

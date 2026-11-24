@@ -27,11 +27,11 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.agencias
-contractVersion: 1.0.1
+contractVersion: 1.0.2
 
 queries:
   - name: declarante
-    description: A organizacao do Midaz, que e a instituicao que responde ao caso. O CNPJ dela e o do arquivo.
+    description: A organização do Midaz, que é a instituição que responde ao caso. O CNPJ dela é o do arquivo.
     dataSource: midaz_onboarding
     table: organization
     filters:
@@ -51,7 +51,7 @@ queries:
 
   # A agencia de cada conta do caso, com o cadastro do tenant.
   - name: agencias_caso
-    description: As contas do caso, lidas de novo para levar o cadastro da agencia de cada uma.
+    description: As contas do caso, lidas de novo para levar o cadastro da agência de cada uma.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -132,7 +132,7 @@ queries:
   # Os lancamentos das contas do caso no periodo do afastamento, para achar as
   # outras pernas (contas com que elas transacionaram, IN art. 2o, I, :27).
   - name: lancamentos
-    description: Lancamentos das contas do caso no periodo, so a transacao de cada um.
+    description: Lançamentos das contas do caso no período, só a transação de cada um.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -148,7 +148,7 @@ queries:
   # Toda perna das mesmas transacoes. Inclui a propria conta do caso (o motor nao
   # tem `nin` com valores de consulta): o template nao repete agencia ja escrita.
   - name: outras_pernas
-    description: As pernas das transacoes dos lancamentos do caso.
+    description: As pernas das transações dos lançamentos do caso.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -162,7 +162,7 @@ queries:
   # A agencia de cada conta das outras pernas que esta no CRM. Conta de sistema
   # ou de liquidacao (sem instrumento no CRM) nao e conta de cliente e nao entra.
   - name: agencias_contraparte
-    description: As contas das outras pernas que tem instrumento no CRM, com o cadastro da agencia.
+    description: As contas das outras pernas que têm instrumento no CRM, com o cadastro da agência.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -250,13 +250,13 @@ datasets:
         column: legal_document
       compe:
         from: manual
-        pendingReason: "o codigo Compe da instituicao, 3 digitos; 999 se ela nao tem codigo Compe"
+        pendingReason: "o código Compe da instituição, com 3 dígitos; 999 se ela não tem código Compe"
       nomeUnicad:
         from: manual
-        pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
+        pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
       possuiAgenciaFisica:
         from: manual
-        pendingReason: "1 se a instituicao possui agencia fisica, 2 se nao possui (campo 14)"
+        pendingReason: "1 se a instituição tem agência física, 2 se não tem (campo 14)"
 
   agencias_do_caso:
     from:
