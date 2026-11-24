@@ -28,10 +28,12 @@ em vez de sair um arquivo sem lançamento nenhum.
 ## Quais contas entram
 
 - **Investigadas** (campo 7 = `1` com lançamento no período, `2` sem): as contas em que um
-  documento da ordem é o **titular**. Encerradas entram, com a data de encerramento.
+  documento da ordem é o **titular** ou **cotitular**. Encerradas entram, com a data de
+  encerramento.
   Apagadas do CRM não entram.
-- **Só titular**: a conta em que o documento investigado é só cotitular, representante
-  ou procurador não entra; o índice das partes no CRM não separa o papel.
+- **Cotitular entra**: a conta em que o documento investigado é cotitular (parte
+  `PRIMARY_HOLDER` do instrumento no CRM) também é conta do caso. A conta em que ele é só
+  representante legal ou `RESPONSIBLE_PARTY` não entra.
 - **Contas com que as investigadas transacionaram** (campo 7 = `3`): as outras pernas dos
   lançamentos das contas investigadas no período, quando são conta de cliente no CRM. Uma
   conta que também é investigada sai uma vez só, como investigada.

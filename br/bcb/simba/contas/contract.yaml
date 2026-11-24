@@ -31,7 +31,7 @@ metadata:
   summary: >-
     Contas investigadas e contas da mesma instituição com as quais elas transacionaram
     no período do afastamento do sigilo, com abertura, encerramento e saldos.
-  version: 1.0.2
+  version: 1.1.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -236,8 +236,9 @@ knownGaps:
       instituição não é conta da mesma instituição com cliente, e não entra.
   - id: so-titular
     description: >-
-      As contas do caso são as que o documento investigado TITULA. A conta em que ele é só cotitular, representante
-      ou procurador não entra: o índice das partes no CRM não separa o papel.
+      As contas do caso são as que o documento investigado titula e as em que ele é cotitular (parte PRIMARY_HOLDER
+      do instrumento, contas_cotitular). A conta em que ele é só representante legal ou RESPONSIBLE_PARTY não entra:
+      a IN fala das contas investigadas e não diz se a conta de quem só representa o titular é uma delas.
   - id: excluida-do-crm
     description: >-
       Uma conta apagada do CRM (deleted_at) não entra. Uma conta encerrada (closing_date) entra, com a data.

@@ -34,7 +34,7 @@ metadata:
   summary: >-
     Titulares, cotitulares, representantes e procuradores das contas investigadas e das contas com que elas
     transacionaram, uma linha por vínculo da pessoa com a conta, com cadastro, renda e datas do vínculo.
-  version: 1.2.1
+  version: 1.3.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -1164,8 +1164,9 @@ rules:
 knownGaps:
   - id: so-titular
     description: >-
-      As contas do caso são as que o documento investigado TITULA. A conta em que ele é só cotitular, representante ou
-      procurador não entra: o índice das partes no CRM não separa o papel.
+      As contas do caso são as que o documento investigado titula e as em que ele é cotitular (parte PRIMARY_HOLDER
+      do instrumento, contas_cotitular). A conta em que ele é só representante legal ou RESPONSIBLE_PARTY não entra:
+      a IN fala das contas investigadas e não diz se a conta de quem só representa o titular é uma delas.
   - id: contas-de-contraparte
     description: >-
       As pessoas das contas de contraparte (CONTAS, campo 7 = 3) entram com o campo 6 pela pessoa (IN 636, Anexo I,

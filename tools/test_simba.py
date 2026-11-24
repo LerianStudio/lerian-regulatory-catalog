@@ -73,6 +73,8 @@ ROOT = Path(__file__).resolve().parent.parent
 FAMILY = Path("br") / "bcb" / "simba"
 # A consulta que fixa as contas de um caso: todo documento a declara.
 CASE_ACCOUNTS = "contas_do_caso"
+# As contas em que o investigado é cotitular: toda consulta que lê as contas do caso lê as duas.
+COHOLDER_ACCOUNTS = "contas_cotitular"
 # O parâmetro que nomeia os investigados: toda consulta de cliente chega nele.
 INVESTIGATED = "documentos"
 # Quem lê a própria instituição não lê cliente: fica fora da conferência acima.
@@ -710,6 +712,19 @@ def _reads(query: dict) -> tuple[set[str], set[str]]:
     return parameters, sources
 
 
+def coholder_accounts_missing(found: dict[str, dict]) -> list[str]:
+    """As consultas que leem as contas do caso e deixam de fora as contas em que o investigado é cotitular."""
+    problems = []
+    for document, binding in sorted(found.items()):
+        for name, query in sorted(queries_of(binding).items()):
+            for condition in query.get("filters") or []:
+                read = {(v.get("query"), v.get("column")) for v in condition.get("values") or [] if isinstance(v, dict)}
+                if (CASE_ACCOUNTS, "account_id") in read and (COHOLDER_ACCOUNTS, "account_id") not in read:
+                    problems.append(f"{document}: '{name}' lê as contas do caso ({CASE_ACCOUNTS}.account_id) sem as de "
+                                    f"cotitular ({COHOLDER_ACCOUNTS}.account_id)")
+    return problems
+
+
 def unscoped_queries(found: dict[str, dict]) -> list[str]:
     """As consultas de cliente que não chegam ao parâmetro dos investigados."""
     problems = []
@@ -740,6 +755,9 @@ class SimbaBindings(unittest.TestCase):
 
     def test_todo_documento_declara_as_contas_do_caso(self) -> None:
         self.assertEqual([], missing_case_accounts(bindings(ROOT)))
+
+    def test_quem_le_as_contas_do_caso_le_as_de_cotitular(self) -> None:
+        self.assertEqual([], coholder_accounts_missing(bindings(ROOT)))
 
     def test_toda_consulta_de_cliente_chega_aos_investigados(self) -> None:
         self.assertEqual([], unscoped_queries(bindings(ROOT)))
@@ -856,9 +874,17 @@ class Mutations(unittest.TestCase):
         query = queries_of(found["contas"])["lancamentos"]
         for condition in query["filters"]:
             for value in condition.get("values") or []:
-                if isinstance(value, dict) and value.get("query") == CASE_ACCOUNTS:
+                if isinstance(value, dict) and value.get("query") in (CASE_ACCOUNTS, COHOLDER_ACCOUNTS):
                     value["query"] = "declarante"
         self.assertTrue(any("'lancamentos'" in p for p in unscoped_queries(found)))
+
+    def test_consulta_que_esquece_as_contas_de_cotitular_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        for condition in queries_of(found["extrato"])["lancamentos_dados"]["filters"]:
+            values = condition.get("values") or []
+            condition["values"] = [v for v in values if not (isinstance(v, dict) and v.get("query") == COHOLDER_ACCOUNTS)]
+        self.assertEqual(["extrato: 'lancamentos_dados' lê as contas do caso (contas_do_caso.account_id) sem as de "
+                          "cotitular (contas_cotitular.account_id)"], coholder_accounts_missing(found))
 
     def test_consulta_que_volta_a_ler_reservas_e_pega(self) -> None:
         found = copy.deepcopy(self.found)

@@ -34,11 +34,13 @@ anterior, mesmo com documentos ou período corrigidos.
 
 ## Quais contas entram
 
-- Contas em que um documento da ordem é o **titular** (o documento do instrumento no CRM).
+- Contas em que um documento da ordem é o **titular** (o documento do instrumento no CRM)
+  ou **cotitular** (parte `PRIMARY_HOLDER` do instrumento).
 - Contas encerradas **entram** (o encerramento não filtra).
 - Contas apagadas do CRM **não entram**.
-- **Só titular**: a conta em que o documento investigado é só cotitular, representante
-  ou procurador não entra; o índice das partes no CRM não separa o papel.
+- **Cotitular entra**: a conta em que o documento investigado é cotitular (parte
+  `PRIMARY_HOLDER` do instrumento no CRM) também é conta do caso. A conta em que ele é só
+  representante legal ou `RESPONSIBLE_PARTY` não entra.
 - Contas com que as do caso transacionaram: as outras pernas dos lançamentos das contas do
   caso no período que têm instrumento no CRM. Conta de sistema ou de liquidação, sem
   instrumento, não entra.
