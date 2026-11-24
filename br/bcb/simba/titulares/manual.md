@@ -172,6 +172,10 @@ sai em branco:
   para esse caso (IN 636, Anexo I, TITULARES, campo 13); ele não é usado no lugar do código faltante.
 - `DATA_FIM_RELACIONAMENTO_CONTA` (campo 21): em branco enquanto o vínculo está ativo (conta
   aberta, ou parte sem data de fim). A IN não dá código para vínculo ativo.
+- `DATA_INICIO_RELACIONAMENTO_CONTA` (campo 20) da parte relacionada: em branco quando o registro
+  da parte no CRM não gravou a data de início (registro antigo). A IN não dá código para isso. A
+  conta entra no caso mesmo assim (knownGap `cotitular-no-periodo`), e a conferência avisa o
+  cotitular sem a data.
 - `DISPOSITIVO_MOVEL_CADASTRADO` e `COMPUTADOR_CADASTRADO` (campos 26 e 27): sempre em
   branco. Nenhuma aplicação Lerian registra os dispositivos cadastrados do cliente.
 - Do titular, quando o cadastro não tem o dado: endereço (12), UF (14) de quem mora no Brasil,
