@@ -353,8 +353,10 @@ datasets:
           Nome da parte como está no CRM (IN 636, Anexo I, TITULARES, campo 9). O template o corta em 80 posições.
       - name: dataInicio
         type: date
-        required: true
-        description: Início do vínculo da parte com a conta (IN 636, Anexo I, TITULARES, campo 20).
+        required: false
+        description: >-
+          Início do vínculo da parte com a conta (IN 636, Anexo I, TITULARES, campo 20); ausente (registro antigo),
+          o campo sai em branco e a conferência avisa (knownGap cotitular-no-periodo).
       - name: dataFim
         type: date
         required: false
@@ -592,8 +594,10 @@ datasets:
           Nome da parte como está no CRM (IN 636, Anexo I, TITULARES, campo 9). O template o corta em 80 posições.
       - name: dataInicio
         type: date
-        required: true
-        description: Início do vínculo da parte com a conta (IN 636, Anexo I, TITULARES, campo 20).
+        required: false
+        description: >-
+          Início do vínculo da parte com a conta (IN 636, Anexo I, TITULARES, campo 20); ausente (registro antigo),
+          o campo sai em branco e a conferência avisa (knownGap cotitular-no-periodo).
       - name: dataFim
         type: date
         required: false

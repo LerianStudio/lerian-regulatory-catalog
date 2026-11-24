@@ -746,6 +746,22 @@ def coholder_period_off(found: dict[str, dict]) -> list[str]:
     return problems
 
 
+# A parte sem start_date (registro antigo) entra pela regra do período; o início do vínculo dela não pode ser
+# obrigatório, ou a geração inteira do TITULARES é recusada por causa dessa parte.
+PART_START = {("titulares", "partes", "dataInicio"), ("titulares", "partes_contraparte", "dataInicio")}
+
+
+def part_start_required(found: dict[str, dict]) -> list[str]:
+    """Os inícios de vínculo de parte que o contrato exige, e que recusariam a geração com a parte sem start_date."""
+    problems = []
+    for document, dataset, field in sorted(PART_START):
+        fields = {f.get("name"): f for d in found.get(document, {}).get("datasets") or []
+                  if isinstance(d, dict) and d.get("name") == dataset for f in d.get("fields") or []}
+        if field not in fields or fields[field].get("required") is not False:
+            problems.append(f"{document}: '{dataset}.{field}' não é opcional; a parte sem start_date recusa o arquivo")
+    return problems
+
+
 def coholder_accounts_missing(found: dict[str, dict]) -> list[str]:
     """As consultas que leem as contas do caso e deixam de fora as contas em que o investigado é cotitular."""
     problems = []
@@ -792,6 +808,9 @@ class SimbaBindings(unittest.TestCase):
 
     def test_so_entra_a_cotitularidade_que_cruza_o_periodo(self) -> None:
         self.assertEqual([], coholder_period_off(bindings(ROOT)))
+
+    def test_parte_sem_inicio_do_vinculo_nao_recusa_o_titulares(self) -> None:
+        self.assertEqual([], part_start_required(contracts(ROOT)))
 
     def test_quem_le_as_contas_do_caso_le_as_de_cotitular(self) -> None:
         self.assertEqual([], coholder_accounts_missing(bindings(ROOT)))
@@ -914,6 +933,16 @@ class Mutations(unittest.TestCase):
                 if isinstance(value, dict) and value.get("query") in (CASE_ACCOUNTS, COHOLDER_ACCOUNTS):
                     value["query"] = "declarante"
         self.assertTrue(any("'lancamentos'" in p for p in unscoped_queries(found)))
+
+    def test_inicio_do_vinculo_obrigatorio_e_pego(self) -> None:
+        found = contracts(ROOT)
+        for d in found["titulares"]["datasets"]:
+            if d.get("name") == "partes":
+                for f in d["fields"]:
+                    if f.get("name") == "dataInicio":
+                        f["required"] = True
+        self.assertEqual(["titulares: 'partes.dataInicio' não é opcional; a parte sem start_date recusa o arquivo"],
+                         part_start_required(found))
 
     def test_ex_cotitular_de_antes_do_periodo_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
