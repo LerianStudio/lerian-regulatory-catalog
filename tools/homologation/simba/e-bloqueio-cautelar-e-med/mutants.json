@@ -3,8 +3,8 @@
     "name": "bloqueio cautelar tirado com as outras reservas",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "l.sistemaOrigem == \"antifraud-cautelar\" and l.saldoAntes|float",
-    "new": "l.sistemaOrigem == \"nunca\" and l.saldoAntes|float",
+    "old": "l.sistemaOrigem == \"antifraud-cautelar\" and (l.saldoAntes|float",
+    "new": "l.sistemaOrigem == \"nunca\" and (l.saldoAntes|float",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
@@ -13,11 +13,24 @@
     }
   },
   {
-    "name": "reserva do bloqueio cautelar que nao mexe no disponivel vira linha",
+    "name": "desbloqueio cautelar tirado do EXTRATO",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": " and l.saldoAntes|float != l.saldoApos|float)",
-    "new": ")",
+    "old": "l.saldoAntes|float != l.saldoApos|float or (",
+    "new": "(",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 3,
+      "field": 6
+    }
+  },
+  {
+    "name": "commit do bloqueio cautelar do periodo vira linha",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": " and lancamentos|where:tx|where:\"natureza:D\"|length == 1",
+    "new": "",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
@@ -29,8 +42,8 @@
     "name": "ORIGEM-DESTINO sem o mesmo filtro das reservas do EXTRATO",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": " and l.saldoAntes|float != l.saldoApos|float)",
-    "new": ")",
+    "old": " and lancamentos|where:tx|where:\"natureza:D\"|length == 1",
+    "new": "",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -42,8 +55,8 @@
     "name": "desbloqueio cautelar sem o 276",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "{%- elif cautelar -%}{%- if natureza == \"D\" -%}167{%- else -%}276{%- endif -%}",
-    "new": "{%- elif cautelar and natureza == \"D\" -%}167",
+    "old": "{%- if natureza == \"C\" -%}276{%- elif disponivel -%}167",
+    "new": "{%- if natureza == \"C\" -%}218{%- elif disponivel -%}167",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
@@ -55,8 +68,8 @@
     "name": "bloqueio cautelar sem o 167",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "l.devolucao, (l.origem == \"balance-lock\" and l.sistemaOrigem == \"antifraud-cautelar\"), m) }}",
-    "new": "l.devolucao, \"\", m) }}",
+    "old": "l.devolucao, (l.origem == \"balance-lock\" and l.sistemaOrigem == \"antifraud-cautelar\"), m, ",
+    "new": "l.devolucao, \"\", m, ",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
@@ -65,11 +78,37 @@
     }
   },
   {
+    "name": "commit de bloqueio cautelar de antes do periodo sem o 166",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- elif disponivel -%}167{%- else -%}166{%- endif -%}",
+    "new": "{%- else -%}167{%- endif -%}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 11,
+      "field": 9
+    }
+  },
+  {
+    "name": "commit da reserva do MED sem o 166",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- elif reserva and natureza == \"D\" and not disponivel -%}166",
+    "new": "{%- elif reserva and natureza == \"X\" -%}166",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 15,
+      "field": 9
+    }
+  },
+  {
     "name": "devolucao do MED no Pix lerian sai 140",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "l.devolucao, (l.origem == \"balance-lock\" and l.sistemaOrigem == \"antifraud-cautelar\"), m) }}",
-    "new": "l.devolucao, (l.origem == \"balance-lock\" and l.sistemaOrigem == \"antifraud-cautelar\"), \"\") }}",
+    "old": ", m, l.origem == \"balance-lock\"",
+    "new": ", \"\", l.origem == \"balance-lock\"",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
@@ -120,8 +159,8 @@
     "name": "desbloqueio cautelar dito bloqueio no ORIGEM-DESTINO",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{% else %}desbloqueio cautelar de Pix recebido; valor devolvido pela propria instituicao{% endif %}",
-    "new": "{% else %}bloqueio cautelar de Pix recebido; valor retido pela propria instituicao{% endif %}",
+    "old": "{% if l.natureza == \"C\" %}desbloqueio cautelar",
+    "new": "{% if l.natureza == \"X\" %}desbloqueio cautelar",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -133,12 +172,38 @@
     "name": "bloqueio cautelar sem a instituicao como contraparte",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{% if (l.origem == \"balance-lock\" and l.sistemaOrigem == \"antifraud-cautelar\") %}{% with ag=",
-    "new": "{% if l.origem == \"nunca\" %}{% with ag=",
+    "old": "{% if l.origem == \"balance-lock\" and (l.sistemaOrigem == \"antifraud-cautelar\" or",
+    "new": "{% if l.origem == \"nunca\" and (l.sistemaOrigem == \"antifraud-cautelar\" or",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
       "line": 2,
+      "field": 5
+    }
+  },
+  {
+    "name": "commit da reserva dito bloqueio no ORIGEM-DESTINO",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "instituicao{% else %}devolucao pelo MED",
+    "new": "instituicao{% else %}bloqueio pelo MED",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 11,
+      "field": 18
+    }
+  },
+  {
+    "name": "reserva do MED num ledger que valida rotas com a instituicao como contraparte",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": " or (l.natureza == \"D\" and l.saldoAntes|float == l.saldoApos|float)) %}",
+    "new": " or l.natureza == \"D\") %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 16,
       "field": 5
     }
   }

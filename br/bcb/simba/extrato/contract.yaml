@@ -337,8 +337,10 @@ datasets:
     fields:
       - name: referencia
         type: string
-        required: true
-        description: O id da devolução no Pix lerian (refund_id da metadata). Não vai ao arquivo.
+        required: false
+        description: >-
+          O id da devolução no Pix lerian (refund_id da metadata). Não vai ao arquivo. Opcional: o mapeamento de uma
+          versão anterior, sem o conjunto, continua gerando, e a devolução do MED do Pix lerian sai 140/264.
 
   # O TxId do Pix (campo 26) pela linha do plugin que liquidou o Pix, a mesma que o
   # ORIGEM-DESTINO le (campo 28): um conjunto por plugin e sentido. A referencia e o E2E
@@ -442,7 +444,14 @@ knownGaps:
       rotas, a linha 167 e a 276 saem com o mesmo saldo da linha anterior: a reserva só passa o valor do disponível
       para o bloqueado. Num ledger que valida rotas, a linha 167 sai com o saldo já sem o valor, porque o Midaz grava
       o débito antes da reserva, e a linha seguinte o soma de novo. O commit de um bloqueio cautelar (a liquidação do
-      MED que o adotou, por Pix manual) não sai: o 167 já tirou o valor.
+      MED que o adotou, por Pix manual) não sai quando o bloqueio está no arquivo: o 167 já tirou o valor. Com o
+      bloqueio antes do período, o commit sai 166.
+  - id: conta-so-com-bloqueio-cautelar
+    description: >-
+      O campo 7 do CONTAS (movimentação) não conta reserva nem liberação do Midaz. Num ledger que não valida rotas, a
+      conta cuja única operação no período é um bloqueio cautelar ou a liberação dele tem linha 167 ou 276 no EXTRATO
+      e sai 2 (sem movimentação) no CONTAS, e a conferência acusa. O bloqueio entra no mesmo lote do crédito do Pix:
+      só a liberação, até 72 horas depois, cai sozinha num período.
   - id: cautelar-do-pix-jd
     description: >-
       O Pix JD grava a reserva do bloqueio cautelar como uma devolução (flow REFUND, direction OUT), sem marca de
@@ -455,8 +464,7 @@ knownGaps:
   - id: codigo-generico
     description: >-
       O campo 9 sai 125 (débito) ou 218 (crédito) quando nenhuma regra se aplica: lançamento sem metadata de plugin,
-      tarifa avulsa sem feeLeg, transferência interna sem metadata, Pix Automático, a liquidação do MED por Pix manual
-      no Pix lerian (o commit da reserva na conta de bloqueio). Os dois códigos são descontinuados em 01/06/2028 (IN 636, art. 2º, § 4º) sem substituto indicado.
+      tarifa avulsa sem feeLeg, transferência interna sem metadata, Pix Automático. Os dois códigos são descontinuados em 01/06/2028 (IN 636, art. 2º, § 4º) sem substituto indicado.
   - id: codigos-especificos
     description: >-
       Pix Saque e Pix Troco, mesma titularidade e pagamentos de boleto não têm marca nos plugins: saem com o código

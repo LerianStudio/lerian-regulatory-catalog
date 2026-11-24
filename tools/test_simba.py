@@ -99,9 +99,11 @@ HOLD_TYPES = {"ON_HOLD", "RELEASE"}
 TEMPLATE_HOLD_QUERIES = {"lancamentos_com_reservas", "lancamentos_dados"}
 TEMPLATE_HOLD_DOCUMENTS = ("extrato", "origem-destino")
 CAUTELAR_HOLD = '(l.origem == "balance-lock" and l.sistemaOrigem == "antifraud-cautelar")'
-HOLD_GUARD = ('{%- for l in lancamentos %}{% if (' + CAUTELAR_HOLD[1:-1] + ' and l.saldoAntes|float != '
-              'l.saldoApos|float) or (not ' + CAUTELAR_HOLD + ' and l.tipoOperacao != "ON_HOLD" and '
-              'l.tipoOperacao != "RELEASE") %}{% counter "lanc" %}')
+# O commit da reserva sai só quando o bloqueio não está no conjunto (é o único débito da transação).
+HOLD_GUARD = ('{%- for l in lancamentos %}{% with tx=l.transacaoId|stringformat:"transacaoId:%s" %}{% if ('
+              + CAUTELAR_HOLD[1:-1] + ' and (l.saldoAntes|float != l.saldoApos|float or (l.natureza == "D" and '
+              'l.tipoOperacao != "RELEASE" and lancamentos|where:tx|where:"natureza:D"|length == 1))) or (not '
+              + CAUTELAR_HOLD + ' and l.tipoOperacao != "ON_HOLD" and l.tipoOperacao != "RELEASE") %}{% counter "lanc" %}')
 # Lida pelo id de uma entrada que já passou pelo filtro: não lista nem soma nada.
 LOOKUP_QUERIES = {"lancamentos_descricao"}
 # As consultas que viram linha do EXTRATO e do ORIGEM-DESTINO: a operação de 0,00 que o

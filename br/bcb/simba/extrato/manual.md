@@ -38,7 +38,9 @@ A exceção é o **bloqueio cautelar do Pix lerian** (a reserva com `origin` `ba
 `origin_system` `antifraud-cautelar` na metadata da transação): a IN dá código ao bloqueio e ao
 desbloqueio (`167` e `276`), e eles saem como lançamento. Sai a operação que mexe no saldo
 disponível: o bloqueio (débito) e a liberação (crédito), nos dois modos do ledger. A reserva que
-só mexe no bloqueado e o commit ficam fora. O campo 12 continua com o bloqueado (veja a lacuna
+só mexe no bloqueado e o commit ficam fora. A exceção é o commit cujo bloqueio é de antes do
+período (o MED que adotou o bloqueio e o liquidou por Pix manual): ele sai `166`, porque é
+a única linha da saída do dinheiro no arquivo. O campo 12 continua com o bloqueado (veja a lacuna
 `bloqueio-cautelar-no-saldo` do contrato). O ORIGEM-DESTINO aplica o mesmo filtro, e a
 numeração continua a mesma. As contas
 do caso são as mesmas do CONTAS: as que um documento da ordem titula (cotitular,
@@ -65,7 +67,8 @@ Na ordem, a primeira regra que vale:
 1. **Pelo tipo da operação no Midaz**: a cobrança de dívida de tarifa (`FEE_SETTLEMENT`, no
    débito) `105`, mesmo dentro de um revert (a cobrança é tarifa, não estorno); o bloqueio
    judicial (`BLOCK`, no débito) `150`; o desbloqueio (`UNBLOCK`, no crédito) `272` (IN 636,
-   Anexo II). O bloqueio cautelar do Pix lerian `167` no débito e o desbloqueio `276` no crédito.
+   Anexo II). O bloqueio cautelar do Pix lerian `167` no débito e o desbloqueio `276` no crédito;
+   o commit de uma reserva do Block Balancer do Pix lerian (o MED liquidado por Pix manual) `166`.
 2. **Estorno** (revert do Midaz, transação com `parent_transaction_id`): o de uma transferência
    (lançamento com trilho ou com dado de Pix na metadata) sai `140` no débito e `264` no crédito;
    os demais, como o de uma tarifa, `142` e `266` (estornos diversos, IN 636, Anexo II).
@@ -85,8 +88,7 @@ Só sai código do lado da natureza (débito `1xx`, crédito `2xx`). O código `
 
 **Atenção, códigos genéricos:** `125` e `218` são descontinuados em 01/06/2028 (IN 636, art. 2º,
 § 4º) sem substituto indicado. Saem com eles: lançamento sem metadata de plugin, tarifa
-avulsa sem `feeLeg`, transferência interna sem metadata, Pix Automático e a liquidação do MED
-por Pix manual no Pix lerian. Revise as linhas com `125`/`218` antes de aprovar.
+avulsa sem `feeLeg`, transferência interna sem metadata e Pix Automático. Revise as linhas com `125`/`218` antes de aprovar.
 
 ## O que o tenant preenche no mapeamento (binding)
 
@@ -99,7 +101,8 @@ por Pix manual no Pix lerian. Revise as linhas com `125`/`218` antes de aprovar.
 5. **Fonte `midaz_metadata`**: o Mongo da metadata do Midaz (coleções `transaction` e
    `operation`), que a configuração padrão do Reporter não traz; cadastre-a antes.
 6. **Fontes dos plugins de Pix** (`pix_lerian`, `pix_jd`), as mesmas do ORIGEM-DESTINO: o
-   TxId do campo 26 está só no plugin. Quem não usa um plugin apaga as consultas dele e
+   TxId do campo 26 está só no plugin. O conjunto `devolucoes_med` (a devolução do MED no Pix
+lerian) é opcional: sem ele, a devolução do MED sai `140`/`264`. Quem não usa um plugin apaga as consultas dele e
    declara vazio cada conjunto `trilho_*` dele, com o motivo:
    `trilho_pix_jd_envios: {emptyReason: "a instituicao nao usa o Pix JD"}`. Não apague o
    conjunto: sem origem, o campo obrigatório dele fica pendente e o rascunho não pode ser

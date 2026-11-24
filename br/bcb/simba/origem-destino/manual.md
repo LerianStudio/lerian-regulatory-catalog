@@ -51,7 +51,9 @@ Na ordem, a primeira que existe:
    O bloqueio cautelar do Pix lerian (`167`) e o desbloqueio (`276`) saem da mesma forma, antes
    da tarifa: o valor fica retido na conta de bloqueio da instituição, e o campo 18 diz
    `bloqueio cautelar de Pix recebido; valor retido pela propria instituicao` ou
-   `desbloqueio cautelar de Pix recebido; valor devolvido pela propria instituicao`.
+   `desbloqueio cautelar de Pix recebido; valor devolvido pela propria instituicao`. O commit de
+   uma reserva do Block Balancer (`166`, o MED liquidado por Pix manual) também, com
+   `devolucao pelo MED; valor transferido para a conta de bloqueio da propria instituicao`.
 2. **O plugin que liquidou a transação**, lido no banco dele:
    - Pix lerian: a origem do Pix recebido e o destino do Pix enviado (banco, agência, conta,
      CPF/CNPJ, nome, mensagem e TxId);

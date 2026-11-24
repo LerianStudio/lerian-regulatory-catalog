@@ -8,3 +8,9 @@
 8	8	2500	8													0	contraparte nao identificada pelo trilho										
 9	9	1000	9													0	contraparte nao identificada pelo trilho										
 10	10	1000	10													0	contraparte nao identificada pelo trilho										
+11	11	3000	11	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	devolucao pelo MED; valor transferido para a conta de bloqueio da propria instituicao	11222333000181									
+12	12	3000	12	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	bloqueio cautelar de Pix recebido; valor retido pela propria instituicao	11222333000181									
+13	13	4000	13	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	bloqueio cautelar de Pix recebido; valor retido pela propria instituicao	11222333000181									
+14	14	4000	14	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	desbloqueio cautelar de Pix recebido; valor devolvido pela propria instituicao	11222333000181									
+15	15	2000	15	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	devolucao pelo MED; valor transferido para a conta de bloqueio da propria instituicao	11222333000181									
+16	16	2500	16													0	contraparte nao identificada pelo trilho										
