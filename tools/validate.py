@@ -1811,7 +1811,7 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
         if any(not (isinstance(v, dict) and is_query_value(v)) for v in values):
             fail(f"{where}: lê os valores de uma consulta e outros valores; a condição lê uma coisa só")
         same = [v for v in values if v == value]
-        if len(same) > 1 and same[0] is value:  # a repetição é dita uma vez, na primeira
+        if len(same) > 1:  # fail() diz a repetição uma vez só
             fail(f"{where}: lê a coluna '{column}' de '{source}' duas vezes; cada origem entra uma vez")
         if source == qname:
             fail(f"{where}: lê os valores da própria consulta; um filtro lê de outra")
