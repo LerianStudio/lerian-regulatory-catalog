@@ -199,6 +199,19 @@ Quando a ordem tem mais de um investigado e so parte deles tem conta, os arquivo
 as contas de quem tem; quem nao tem e declarado sem relacionamento no atendimento da
 requisicao.
 
+## Quem vem da versao 1.1.0
+
+A 1.2.0 le o cadastro das partes relacionadas por quatro consultas novas do mapeamento:
+`partes_documentos` e `cadastro_partes`, e as `_contraparte` delas (`partes_documentos_contraparte`
+e `cadastro_partes_contraparte`), que preenchem os conjuntos `cadastro_partes` e
+`cadastro_partes_contraparte`. Um mapeamento escrito para a 1.1.0, sem elas, ainda gera o
+rascunho, mas a aprovacao e recusada: os campos obrigatorios dos dois conjuntos novos ficam sem
+mapeamento. Para aprovar, faca uma das duas coisas:
+
+1. copie as quatro consultas e os dois conjuntos do `binding.example.yaml` desta versao; ou
+2. declare os dois conjuntos vazios (`emptyReason`), o que volta ao arquivo da 1.1.0: os campos
+   12 a 19 e 24 das partes em branco e o campo 25 `e-mail nao declarado`.
+
 ## Limitacoes desta versao
 
 - **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada
