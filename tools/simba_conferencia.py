@@ -422,14 +422,15 @@ def check_case_documents(path: Path | None, titulares: list[list[str]], report: 
     if not documents:
         report.error(f"--documentos: {path.name} não traz documento nenhum")
         return
-    # O TITULARES já escreve o documento só com dígitos (e letras, no CNPJ alfanumérico). Só o
-    # titular conta: a conta em que o documento é cotitular, representante ou procurador não é
-    # selecionada por ele.
-    holders = {field(r, 8) for r in titulares if field(r, 5) == HOLDER}
+    # O TITULARES já escreve o documento só com dígitos (e letras, no CNPJ alfanumérico). O
+    # titular e o cotitular (campo 5 = T ou 1, 2, ...) contam: as contas em que o documento é
+    # titular ou cotitular são do caso. Representante, procurador e outros (L, P, R, O) não:
+    # a conta em que o documento só representa o titular não é selecionada por ele.
+    holders = {field(r, 8) for r in titulares if field(r, 5) == HOLDER or field(r, 5).isdigit()}
     missing = [str(i) for i, document in enumerate(documents, 1) if _digits(document) not in holders]
     if missing:
         report.warn(f"TITULARES: o(s) documento(s) nº {', '.join(missing)} da ordem (posição em --documentos) não "
-                    "titula(m) conta nenhuma nos arquivos; confira se foi digitado certo antes de declará-lo(s) sem "
+                    "titula(m) nem cotitula(m) conta nenhuma nos arquivos; confira se foi digitado certo antes de declará-lo(s) sem "
                     "relacionamento no atendimento da requisição")
 
 

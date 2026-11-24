@@ -1,9 +1,10 @@
 # Binding do SIMBA AGENCIAS — QUEM PREENCHE E O CLIENTE.
 #
 # Exemplo preenchido contra o Midaz e o CRM do Midaz (`plugin_crm`). As contas do
-# caso saem de `contas_do_caso`, a mesma consulta (mesmo texto) nos bindings de
+# caso saem de `contas_do_caso` (as que o investigado titula) e de `contas_cotitular`
+# (as em que ele e cotitular), as mesmas consultas (mesmo texto) nos bindings de
 # CONTAS, TITULARES, EXTRATO e ORIGEM-DESTINO: trocar de onde vem o conjunto de
-# contas do caso e trocar SO essa consulta. As demais leem os ids dela.
+# contas do caso e trocar SO essas duas consultas. As demais leem os ids das duas.
 #
 # O CADASTRO DE AGENCIAS E DO TENANT. Agencia nao e entidade no Midaz nem no CRM:
 # o CRM guarda so o numero (`banking_details.branch`, texto livre). Cada atributo

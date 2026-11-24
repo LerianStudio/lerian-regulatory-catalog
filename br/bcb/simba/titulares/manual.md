@@ -28,11 +28,12 @@ em vez de sair um arquivo sem lançamento nenhum.
 
 ## Quais linhas entram
 
-Para cada conta do caso (as contas em que um documento da ordem é o **titular**; encerradas
-entram, apagadas do CRM não):
+Para cada conta do caso (as contas em que um documento da ordem é o **titular** ou
+**cotitular**; encerradas entram, apagadas do CRM não):
 
-1. **Titular** (campo 5 = `T`): uma linha, com o cadastro do titular no CRM. O titular é
-   sempre uma pessoa da ordem, então o campo 6 sai `1`.
+1. **Titular** (campo 5 = `T`): uma linha, com o cadastro do titular no CRM. O campo 6 sai
+   `1` quando o documento do titular está na ordem e `0` quando não está: na conta em que o
+   investigado é só cotitular, o titular pode ser outra pessoa.
 2. **Cotitulares** (campo 5 = `1`, `2`, ...): uma linha por parte relacionada da conta com o
    papel `PRIMARY_HOLDER`, numeradas a partir de `1` em cada conta, na ordem em que o CRM
    guarda as partes (a ordem de inclusão).

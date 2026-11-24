@@ -43,5 +43,16 @@
     "documento": "98765432100",
     "nome": "Rita Sem Cadastro",
     "dataInicio": "2025-03-01"
+  },
+  {
+    "contaId": "c2",
+    "parteId": "p4",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333332",
+    "tipoConta": "1",
+    "vinculo": "C",
+    "documento": "12345678909",
+    "nome": "Maria Exemplo",
+    "dataInicio": "2024-06-07"
   }
 ]

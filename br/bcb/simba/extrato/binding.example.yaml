@@ -3,8 +3,8 @@
 # Exemplo preenchido contra o Midaz (`midaz_onboarding`, `midaz_transaction`), a
 # metadata do Midaz (`midaz_metadata`, o Mongo das colecoes `transaction` e
 # `operation`) e o CRM do Midaz (`plugin_crm`). As contas do caso saem de
-# `contas_do_caso`, a mesma consulta (mesmo texto) nos bindings de AGENCIAS, CONTAS,
-# TITULARES e ORIGEM-DESTINO.
+# `contas_do_caso` e de `contas_cotitular`, as mesmas consultas (mesmo texto) nos
+# bindings de AGENCIAS, CONTAS, TITULARES e ORIGEM-DESTINO.
 #
 # MESMA NUMERACAO DO ORIGEM-DESTINO: `lancamentos_dados` e as consultas que ela junta
 # (`lancamentos_descricao`, `contas_lancamento`, `metadados_transacao`) e `taxas_lancamento` tem o MESMO texto

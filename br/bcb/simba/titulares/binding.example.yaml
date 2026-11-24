@@ -1,10 +1,11 @@
 # Binding do SIMBA TITULARES — QUEM PREENCHE E O CLIENTE.
 #
 # Exemplo preenchido contra o Midaz (`midaz_onboarding`) e o CRM do Midaz
-# (`plugin_crm`). As contas do caso saem de `contas_do_caso`, a mesma consulta
+# (`plugin_crm`). As contas do caso saem de `contas_do_caso` (as que o investigado
+# titula) e de `contas_cotitular` (as em que ele e cotitular), as mesmas consultas
 # (mesmo texto) nos bindings de AGENCIAS, CONTAS, EXTRATO e ORIGEM-DESTINO: trocar
-# de onde vem o conjunto de contas do caso e trocar SO essa consulta. As demais
-# leem os ids dela.
+# de onde vem o conjunto de contas do caso e trocar SO essas duas consultas. As
+# demais leem os ids das duas.
 #
 # O NUMERO DA AGENCIA (5 digitos; 00001 sem agencia fisica) sai do cadastro de
 # agencias do tenant, o MESMO `case` do binding do AGENCIAS (valores SINTETICOS
