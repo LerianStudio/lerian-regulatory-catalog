@@ -7,6 +7,8 @@
     "digito": "3",
     "documento": "98765432100",
     "nome": "Cliente Da Casa",
-    "tipoConta": "1"
+    "tipoConta": "1",
+    "tipoChave": "-",
+    "chave": "chave.fora@example.com"
   }
 ]

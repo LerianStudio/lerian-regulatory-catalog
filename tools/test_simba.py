@@ -329,6 +329,43 @@ def pix_account_type_off(found: dict[str, dict]) -> list[str]:
     return problems
 
 
+# Tipo da chave Pix -> código dos campos 24 do EXTRATO e 25 do ORIGEM-DESTINO (IN :193, :226):
+# 1 CPF/CNPJ, 2 telefone, 3 e-mail, 4 aleatória. O Pix lerian grava o tipo do DICT; o Pix JD, o
+# código do plugin (internal/transactions/domain/enums.go: 0 CPF, 1 CNPJ, 2 e-mail, 3 telefone,
+# 4 aleatória). Fora do domínio, "-".
+PIX_LERIAN_KEY_TYPES = {"CPF": "1", "CNPJ": "1", "PHONE": "2", "EMAIL": "3", "EVP": "4"}
+PIX_JD_KEY_TYPES = {"0": "1", "1": "1", "2": "3", "3": "2", "4": "4"}
+PIX_KEY_QUERIES = {
+    "extrato": {"pix_lerian_envios_txid": ("chave_tipo_informado", PIX_LERIAN_KEY_TYPES),
+                "pix_jd_envios_txid": ("payee_key_type", PIX_JD_KEY_TYPES),
+                "pix_jd_recebimentos_txid": ("payee_key_type", PIX_JD_KEY_TYPES)},
+    "origem-destino": {"pix_lerian_envios": ("chave_tipo_informado", PIX_LERIAN_KEY_TYPES),
+                       "pix_jd_envios": ("payee_key_type", PIX_JD_KEY_TYPES),
+                       "pix_jd_recebimentos": ("payer_key_type", PIX_JD_KEY_TYPES)},
+}
+
+
+def pix_key_type_off(found: dict[str, dict]) -> list[str]:
+    """Onde a tradução do tipo da chave Pix deixa de ser a decidida, ou a chave do Pix lerian não vem da iniciação."""
+    problems = []
+    for document, wanted in sorted(PIX_KEY_QUERIES.items()):
+        queries = queries_of(found.get(document, {}))
+        for name, (column, expected) in sorted(wanted.items()):
+            query = queries.get(name) or {}
+            case = _compute(query, "tipo_chave").get("case") or {}
+            when = {str(k): (v or {}).get("constant") for k, v in (case.get("when") or {}).items()}
+            if case.get("column") != column or when != expected or case.get("otherwise") != {"constant": "-"}:
+                problems.append(f"{document}: '{name}' traduz {column} como {when}, e a decisão é {expected} (resto '-')")
+            if name.startswith("pix_lerian"):
+                joins = [j for j in query.get("join") or [] if j.get("table") == "transfer_initiations"]
+                if not joins or joins[0].get("match") != {"initiation_id": "id"} or joins[0].get("type") != "left" or \
+                        (joins[0].get("columns") or {}).get("chave_tipo_informado") != "destination_key_type" or \
+                        (joins[0].get("columns") or {}).get("chave") != "destination_key_value":
+                    problems.append(f"{document}: '{name}' não traz a chave da iniciação do Pix "
+                                    "(transfer_initiations por initiation_id, left)")
+    return problems
+
+
 def plain_computes_off(found: dict[str, dict]) -> list[str]:
     """Os `case` de fonte Postgres que leem um subcaminho JSON, que o motor recusa."""
     problems = []
@@ -781,6 +818,9 @@ class SimbaBindings(unittest.TestCase):
     def test_tipo_de_conta_do_pix_so_onde_a_in_casa(self) -> None:
         self.assertEqual([], pix_account_type_off(bindings(ROOT)))
 
+    def test_tipo_da_chave_pix_no_codigo_da_in(self) -> None:
+        self.assertEqual([], pix_key_type_off(bindings(ROOT)))
+
     def test_os_lancamentos_do_od_sao_os_do_extrato(self) -> None:
         self.assertEqual([], entries_mismatch(contracts(ROOT)))
 
@@ -837,6 +877,18 @@ class Mutations(unittest.TestCase):
     def setUp(self) -> None:
         self.found = bindings(ROOT)
         self.assertIn("contas", self.found)
+
+    def test_telefone_e_email_trocados_na_chave_do_pix_jd_sao_pegos(self) -> None:
+        found = copy.deepcopy(self.found)
+        when = _compute(queries_of(found["origem-destino"])["pix_jd_envios"], "tipo_chave")["case"]["when"]
+        when["2"], when["3"] = when["3"], when["2"]
+        self.assertEqual(1, len(pix_key_type_off(found)))
+
+    def test_chave_do_pix_lerian_sem_a_iniciacao_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        queries_of(found["extrato"])["pix_lerian_envios_txid"]["join"] = []
+        self.assertEqual(["extrato: 'pix_lerian_envios_txid' não traz a chave da iniciação do Pix "
+                          "(transfer_initiations por initiation_id, left)"], pix_key_type_off(found))
 
     def test_um_filtro_a_menos_numa_copia_da_consulta_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
