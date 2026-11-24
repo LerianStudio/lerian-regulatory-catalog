@@ -15,10 +15,13 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import sys
 import tempfile
+import threading
 import types
 import unittest
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from unittest import mock
 
@@ -436,6 +439,121 @@ class Superseded(unittest.TestCase):
         run = {"reports": {(EXCLUSIONS[1], "a"): "rep-1"}}
         problems = homologate.superseded_problems(self.rep({}), run, EXCLUSIONS[0], "a", "rep-2")
         self.assertIn("não foi gerada antes", problems[0])
+
+
+TOKEN = "s3cr3t-t0k3n"
+
+
+class Server:
+    """A local HTTP server that records the Authorization header of each request."""
+
+    def __init__(self, redirect_to=None):
+        seen = self.seen = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen.append(self.headers.get("Authorization"))
+                if redirect_to:
+                    self.send_response(302)
+                    self.send_header("Location", redirect_to + self.path)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                body = b'{"ok": true}'
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        self.httpd = HTTPServer(("127.0.0.1", 0), Handler)
+        self.url = "http://127.0.0.1:%d" % self.httpd.server_port
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+
+    def close(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+
+
+class TokenFile(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+
+    def header_for(self, content=None, path=None):
+        """The header midaz_header() reads from a file holding content, with the stderr it wrote."""
+        if path is None:
+            path = os.path.join(self.dir.name, "token")
+            Path(path).write_bytes(content)
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, {"MIDAZ_TOKEN_FILE": path}), contextlib.redirect_stderr(err):
+            try:
+                return homologate.midaz_header(), err.getvalue()
+            except SystemExit as stop:
+                self.assertEqual(stop.code, 1)
+                return "stopped", err.getvalue()
+
+    def test_the_header_arrives_when_the_variable_is_set(self):
+        server = Server()
+        self.addCleanup(server.close)
+        header, _ = self.header_for(("Authorization: Bearer %s\n" % TOKEN).encode())
+        homologate.Midaz(server.url, header).get("/v1/organizations")
+        self.assertEqual(server.seen, ["Bearer " + TOKEN])
+
+    def test_no_header_when_the_variable_is_unset(self):
+        server = Server()
+        self.addCleanup(server.close)
+        with mock.patch.dict(os.environ):
+            os.environ.pop("MIDAZ_TOKEN_FILE", None)
+            header = homologate.midaz_header()
+        homologate.Midaz(server.url, header).get("/v1/organizations")
+        self.assertEqual(server.seen, [None])
+
+    def test_a_bad_file_stops_with_a_message_that_names_the_variable_and_not_the_token(self):
+        bad = {
+            "empty": b"",
+            "blank": b" \n",
+            "no scheme": TOKEN.encode(),
+            "basic scheme": ("Authorization: Basic %s" % TOKEN).encode(),
+            "two lines": ("Authorization: Bearer %s\nX-Other: 1" % TOKEN).encode(),
+            "token with a space": ("Authorization: Bearer %s extra" % TOKEN).encode(),
+            "not utf-8": b"\xff\xfe" + TOKEN.encode(),
+        }
+        for name, content in bad.items():
+            with self.subTest(name):
+                header, err = self.header_for(content)
+                self.assertEqual(header, "stopped")
+                self.assertIn("MIDAZ_TOKEN_FILE", err)
+                self.assertNotIn(TOKEN, err)
+
+    def test_a_missing_or_unreadable_file_stops_with_a_message(self):
+        header, err = self.header_for(path=os.path.join(self.dir.name, "nothing"))
+        self.assertEqual(header, "stopped")
+        self.assertIn("MIDAZ_TOKEN_FILE", err)
+        header, err = self.header_for(path=self.dir.name)
+        self.assertEqual(header, "stopped")
+        self.assertIn("MIDAZ_TOKEN_FILE", err)
+
+    def test_a_redirect_does_not_carry_the_header_to_the_other_host(self):
+        other = Server()
+        first = Server(redirect_to=other.url)
+        self.addCleanup(other.close)
+        self.addCleanup(first.close)
+        header = ("Authorization", "Bearer " + TOKEN)
+        homologate.Midaz(first.url, header).get("/v1/organizations")
+        self.assertEqual(first.seen, ["Bearer " + TOKEN])
+        self.assertEqual(other.seen, [None])
+
+    def test_the_reporter_never_carries_the_header(self):
+        server = Server()
+        self.addCleanup(server.close)
+        path = os.path.join(self.dir.name, "token")
+        Path(path).write_text("Authorization: Bearer %s\n" % TOKEN)
+        with mock.patch.dict(os.environ, {"MIDAZ_TOKEN_FILE": path}):
+            homologate.Reporter(server.url).get("/v1/reports")
+        self.assertEqual(server.seen, [None])
 
 
 if __name__ == "__main__":
