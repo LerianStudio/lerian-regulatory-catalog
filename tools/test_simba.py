@@ -717,6 +717,12 @@ def _reads(query: dict) -> tuple[set[str], set[str]]:
 # motor não executa anyOf, então cada combinação é uma consulta e as contas de cotitular são a união delas.
 COHOLDER_START = {"no período": ("lt", [{"parameter": "fim", "at": "end"}]), "ausente": ("isNull", None)}
 COHOLDER_END = {"vigente": ("isNull", None), "no período": ("gte", [{"parameter": "inicio", "at": "start"}])}
+# O resto de cada ramo: a parte é o documento da ordem como PRIMARY_HOLDER (sem o papel, um representante entraria), na
+# conta da ordem, não apagada.
+COHOLDER_SCOPE = [{"field": "related_parties.document", "operator": "in", "values": [{"parameter": "documentos"}]},
+                  {"field": "related_parties.role", "operator": "eq", "values": ["PRIMARY_HOLDER"]},
+                  {"field": "banking_details.account", "operator": "in", "values": [{"parameter": "contas"}]},
+                  {"field": "deleted_at", "operator": "isNull"}]
 COHOLDER_BRANCHES = {"cotitular_aberto": ("no período", "vigente"),
                      "cotitular_encerrado": ("no período", "no período"),
                      "cotitular_sem_inicio_aberto": ("ausente", "vigente"),
@@ -737,6 +743,13 @@ def coholder_period_off(found: dict[str, dict]) -> list[str]:
             if dates != {"related_parties.start_date": [COHOLDER_START[start]],
                          "related_parties.end_date": [COHOLDER_END[end]]}:
                 problems.append(f"{document}: '{name}' não lê o início {start} e o fim {end} da cotitularidade")
+            rest = [c for c in (queries.get(name) or {}).get("filters") or []
+                    if not (isinstance(c, dict) and c.get("field") in ("related_parties.start_date",
+                                                                        "related_parties.end_date"))]
+            if sorted(map(str, rest)) != sorted(map(str, COHOLDER_SCOPE)) or \
+                    (queries.get(name) or {}).get("expand") != "related_parties":
+                problems.append(f"{document}: '{name}' não é a parte PRIMARY_HOLDER com o documento da ordem, na conta "
+                                "da ordem, não apagada")
         union = [(v.get("query"), v.get("column")) for c in (queries.get(COHOLDER_ACCOUNTS) or {}).get("filters") or []
                  if isinstance(c, dict) and c.get("field") == "account_id"
                  for v in c.get("values") or [] if isinstance(v, dict)]
@@ -971,6 +984,15 @@ class Mutations(unittest.TestCase):
                     condition["values"] = [value]
             self.assertEqual(["titulares: 'cotitular_encerrado' não lê o início no período e o fim no período da "
                               "cotitularidade"], coholder_period_off(found))
+
+    def test_ramo_sem_o_papel_a_conta_ou_o_apagado_e_pego(self) -> None:
+        # Sem o papel, um representante entraria; sem as contas da ordem, outra conta; sem deleted_at, a apagada.
+        for field in ("related_parties.role", "banking_details.account", "deleted_at"):
+            found = copy.deepcopy(self.found)
+            query = queries_of(found["contas"])["cotitular_aberto"]
+            query["filters"] = [c for c in query["filters"] if c.get("field") != field]
+            self.assertEqual(["contas: 'cotitular_aberto' não é a parte PRIMARY_HOLDER com o documento da ordem, na "
+                              "conta da ordem, não apagada"], coholder_period_off(found))
 
     def test_registro_sem_inicio_fora_da_uniao_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
