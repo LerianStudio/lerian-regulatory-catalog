@@ -134,6 +134,12 @@ parametro `documentos`. Com mascara num cadastro e nao no outro (`529.982.247-25
 `52998224725` no titular), a parte nao e achada e sai como parte sem cadastro, com os campos 12
 a 19 e 24 em branco, sem aviso. Confira o formato dos documentos no CRM na implantacao.
 
+Renda e data da renda (campos 18 e 19): a IN pede a renda declarada "pelo correntista" (IN
+:154-155). Cada linha leva a da pessoa da linha, com as regras do titular: na linha do titular,
+a do cadastro dele; na linha da parte (cotitular, representante, procurador), a do cadastro de
+titulares da propria parte (`cadastro_partes`), e nao a do titular da conta. A parte sem
+cadastro sai com os dois campos em branco.
+
 ## Periodo
 
 As datas saem no dia civil de Brasilia (`America/Sao_Paulo`), no formato `ddmmaaaa`. O periodo
