@@ -809,8 +809,8 @@
     "name": "EXTRATO 25 com o telefone da chave Pix com o +",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "{% if kc.tipoChave == \"2\" %}{{ kc.chave|cut:\"+\"|slice:\":250\" }}",
-    "new": "{% if kc.tipoChave == \"2\" %}{{ kc.chave|slice:\":250\" }}",
+    "old": "{% if kc.tipoChave == \"2\" %}{{ kc.chave|cut:\"+\" }}",
+    "new": "{% if kc.tipoChave == \"2\" %}{{ kc.chave }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
@@ -848,8 +848,8 @@
     "name": "ORIGEM-DESTINO 26 com o telefone da chave Pix com o +",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{{ chavevalor|cut:\"+\"|slice:\":250\" }}",
-    "new": "{{ chavevalor|slice:\":250\" }}",
+    "old": "{{ chavevalor|cut:\"+\" }}",
+    "new": "{{ chavevalor }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
