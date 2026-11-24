@@ -33,11 +33,11 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.contas
-contractVersion: 1.0.1
+contractVersion: 1.0.2
 
 queries:
   - name: declarante
-    description: A organizacao do Midaz, que e a instituicao que responde ao caso. O CNPJ dela e o do arquivo.
+    description: A organização do Midaz, que é a instituição que responde ao caso. O CNPJ dela é o do arquivo.
     dataSource: midaz_onboarding
     table: organization
     filters:
@@ -56,7 +56,7 @@ queries:
     select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
 
   - name: contas_investigadas_dados
-    description: As contas do caso, com agencia, tipo, saldos e o volume do periodo.
+    description: As contas do caso, com agência, tipo, saldos e o volume do período.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -122,7 +122,7 @@ queries:
           of: valor_no_razao
 
   - name: saldo_final_caso
-    description: Saldo de cada conta do caso no fim do ultimo dia do afastamento.
+    description: Saldo de cada conta do caso no fim do último dia do afastamento.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -157,7 +157,7 @@ queries:
   # Campo 7: houve lancamento da conta no periodo? A soma dos valores (sempre
   # positiva) so existe se houve; sem lancamento a conta nao tem linha aqui.
   - name: movimento_caso
-    description: Volume dos lancamentos de cada conta do caso no periodo.
+    description: Volume dos lançamentos de cada conta do caso no período.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -193,7 +193,7 @@ queries:
   # Contas com que as do caso transacionaram no periodo (IN art. 2o, II, :29;
   # campo 7 = 3): as outras pernas das transacoes dos lancamentos do caso.
   - name: lancamentos
-    description: Lancamentos das contas do caso no periodo, so a transacao de cada um.
+    description: Lançamentos das contas do caso no período, só a transação de cada um.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -209,7 +209,7 @@ queries:
   # Toda perna das mesmas transacoes, inclusive a propria conta do caso (o motor
   # nao tem `nin` com valores de consulta): o template nao a repete.
   - name: outras_pernas
-    description: As pernas das transacoes dos lancamentos do caso.
+    description: As pernas das transações dos lançamentos do caso.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -223,7 +223,7 @@ queries:
   # So as outras pernas que sao conta de cliente no CRM. Conta de sistema ou de
   # liquidacao, sem instrumento, nao entra.
   - name: contas_contraparte
-    description: Os ids das contas das outras pernas que tem instrumento no CRM.
+    description: Os ids das contas das outras pernas que têm instrumento no CRM.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -232,7 +232,7 @@ queries:
     select: [account_id]
 
   - name: contas_contraparte_dados
-    description: As contas das outras pernas, com agencia, tipo e saldos.
+    description: As contas das outras pernas, com agência, tipo e saldos.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -294,7 +294,7 @@ queries:
           of: valor_no_razao
 
   - name: saldo_final_contraparte
-    description: Saldo de cada conta das outras pernas no fim do ultimo dia do afastamento.
+    description: Saldo de cada conta das outras pernas no fim do último dia do afastamento.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -336,10 +336,10 @@ datasets:
         column: legal_document
       compe:
         from: manual
-        pendingReason: "o codigo Compe da instituicao, 3 digitos; 999 se ela nao tem codigo Compe"
+        pendingReason: "o código Compe da instituição, com 3 dígitos; 999 se ela não tem código Compe"
       nomeUnicad:
         from: manual
-        pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
+        pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
 
   contas_investigadas:
     from:

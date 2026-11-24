@@ -189,14 +189,14 @@ documents:
     document: CONTAS
     family: simba
     title: SIMBA — Contas
-    version: 1.0.1
+    version: 1.0.2
     status: draft
     periodicity: eventual
     appliesTo:
       institutionTypes: [IP, SCD, SCFI]
     summary: >-
-      Contas investigadas e contas da mesma instituicao com as quais elas transacionaram
-      no periodo do afastamento do sigilo, com abertura, encerramento e saldos.
+      Contas investigadas e contas da mesma instituição com as quais elas transacionaram
+      no período do afastamento do sigilo, com abertura, encerramento e saldos.
 
   - id: br.bcb.simba.titulares
     path: br/bcb/simba/titulares
