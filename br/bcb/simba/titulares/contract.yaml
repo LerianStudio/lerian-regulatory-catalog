@@ -571,8 +571,8 @@ datasets:
       key: [documento]
       whenKeyRepeats: refuse
       columns: {tipoPessoa: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first,
-                cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first,
-                faturamento: first, dataFaturamento: first, moedaFaturamento: first, nomeSocial: first,
+                cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first,
+                faturamento: first, dataFaturamento: first, nomeSocial: first,
                 emailPrincipal: first, emailSecundario: first}
     fields:
       - name: documento
@@ -656,20 +656,6 @@ datasets:
         type: date
         required: false
         description: Data de referencia do faturamento declarado pela pessoa juridica (campo 19, IN :155).
-      - name: moedaRenda
-        type: string
-        required: false
-        pattern: '^([A-Z]{3})?$'
-        description: >-
-          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
-          (regra moeda-da-renda).
-      - name: moedaFaturamento
-        type: string
-        required: false
-        pattern: '^([A-Z]{3})?$'
-        description: >-
-          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
-          em BRL sai (regra moeda-do-faturamento).
       - name: nomeSocial
         type: string
         required: false
@@ -698,8 +684,8 @@ datasets:
       key: [documento]
       whenKeyRepeats: refuse
       columns: {tipoPessoa: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first,
-                cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first,
-                faturamento: first, dataFaturamento: first, moedaFaturamento: first, nomeSocial: first,
+                cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first,
+                faturamento: first, dataFaturamento: first, nomeSocial: first,
                 emailPrincipal: first, emailSecundario: first}
     fields:
       - name: documento
@@ -783,20 +769,6 @@ datasets:
         type: date
         required: false
         description: Data de referencia do faturamento declarado pela pessoa juridica (campo 19, IN :155).
-      - name: moedaRenda
-        type: string
-        required: false
-        pattern: '^([A-Z]{3})?$'
-        description: >-
-          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
-          (regra moeda-da-renda).
-      - name: moedaFaturamento
-        type: string
-        required: false
-        pattern: '^([A-Z]{3})?$'
-        description: >-
-          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
-          em BRL sai (regra moeda-do-faturamento).
       - name: nomeSocial
         type: string
         required: false
@@ -812,6 +784,86 @@ datasets:
         required: false
         pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: E-mail secundario, unido ao principal por ";" (campo 25, IN :161).
+
+  # A moeda da renda de quem a imprime numa linha de parte: o cotitular (campo 5 = 1, 2...), o
+  # unico que leva os campos 18 e 19 (renda-e-email-so-do-correntista). Nao gera linha: so as
+  # regras de moeda das partes o leem. O representante, o procurador e as outras partes ficam
+  # fora, e a moeda do cadastro deles nao recusa a geracao.
+  - name: renda_cotitulares
+    description: >-
+      A moeda da renda e do faturamento no cadastro de titulares do CRM dos cotitulares das contas do caso, pelo
+      documento.
+    grain: [documento]
+    consolidation:
+      key: [documento]
+      whenKeyRepeats: refuse
+      columns: {tipoPessoa: first, moedaRenda: first, moedaFaturamento: first}
+    fields:
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da pessoa, sem separadores.
+      - name: tipoPessoa
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: 1 pessoa natural, 2 pessoa juridica, do cadastro. Escolhe a moeda conferida, a da renda ou a do faturamento.
+      - name: moedaRenda
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
+          (regra moeda-da-renda-partes).
+      - name: moedaFaturamento
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
+          em BRL sai (regra moeda-do-faturamento-partes).
+
+  # A moeda da renda de quem a imprime numa linha de parte: o cotitular (campo 5 = 1, 2...), o
+  # unico que leva os campos 18 e 19 (renda-e-email-so-do-correntista). Nao gera linha: so as
+  # regras de moeda das partes o leem. O representante, o procurador e as outras partes ficam
+  # fora, e a moeda do cadastro deles nao recusa a geracao.
+  - name: renda_cotitulares_contraparte
+    description: >-
+      A moeda da renda e do faturamento no cadastro de titulares do CRM dos cotitulares das contas de contraparte, pelo
+      documento.
+    grain: [documento]
+    consolidation:
+      key: [documento]
+      whenKeyRepeats: refuse
+      columns: {tipoPessoa: first, moedaRenda: first, moedaFaturamento: first}
+    fields:
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da pessoa, sem separadores.
+      - name: tipoPessoa
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: 1 pessoa natural, 2 pessoa juridica, do cadastro. Escolhe a moeda conferida, a da renda ou a do faturamento.
+      - name: moedaRenda
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
+          (regra moeda-da-renda-partes-contraparte).
+      - name: moedaFaturamento
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
+          em BRL sai (regra moeda-do-faturamento-partes-contraparte).
 
 tables:
   - name: codigos-uf
@@ -985,7 +1037,7 @@ rules:
 
   - id: moeda-da-renda-partes
     severity: error
-    appliesTo: cadastro_partes
+    appliesTo: renda_cotitulares
     where: {field: tipoPessoa, notIn: ["2"]}
     check:
       notStartsWith: {field: moedaRenda, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
@@ -1001,7 +1053,7 @@ rules:
 
   - id: moeda-da-renda-partes-contraparte
     severity: error
-    appliesTo: cadastro_partes_contraparte
+    appliesTo: renda_cotitulares_contraparte
     where: {field: tipoPessoa, notIn: ["2"]}
     check:
       notStartsWith: {field: moedaRenda, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
@@ -1017,7 +1069,7 @@ rules:
 
   - id: moeda-do-faturamento-partes
     severity: error
-    appliesTo: cadastro_partes
+    appliesTo: renda_cotitulares
     where: {field: tipoPessoa, equals: "2"}
     check:
       notStartsWith: {field: moedaFaturamento, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
@@ -1033,7 +1085,7 @@ rules:
 
   - id: moeda-do-faturamento-partes-contraparte
     severity: error
-    appliesTo: cadastro_partes_contraparte
+    appliesTo: renda_cotitulares_contraparte
     where: {field: tipoPessoa, equals: "2"}
     check:
       notStartsWith: {field: moedaFaturamento, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",

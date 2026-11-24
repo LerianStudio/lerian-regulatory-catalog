@@ -448,8 +448,13 @@ def account_patterns_off(found: dict[str, dict]) -> list[str]:
 
 # A renda e o faturamento do TITULARES só saem em BRL: o catálogo não converte moeda. O campo 18
 # leva o faturamento da pessoa jurídica (tipoPessoa 2) e a renda dos demais; só a figura que vai
-# ao arquivo é conferida. Fora do formato ISO (três maiúsculas), a moeda recusa sempre.
-HOLDER_CURRENCIES = ("titulares", "titulares_contraparte", "cadastro_partes", "cadastro_partes_contraparte")
+# ao arquivo é conferida. Fora do formato ISO (três maiúsculas), a moeda recusa sempre. Nas
+# partes, só o cotitular leva a renda (renda_cotitulares); o cadastro das demais partes
+# (cadastro_partes) não tem moeda conferida, e um procurador em USD não recusa o arquivo.
+HOLDER_CURRENCIES = ("titulares", "titulares_contraparte", "renda_cotitulares", "renda_cotitulares_contraparte")
+PARTY_REGISTRIES = ("cadastro_partes", "cadastro_partes_contraparte")
+COHOLDER_CURRENCY_QUERIES = {"renda_cotitulares": "cotitulares_documentos",
+                             "renda_cotitulares_contraparte": "cotitulares_documentos_contraparte"}
 FILED = {"moedaRenda": ("1", "2"), "moedaFaturamento": ("2", "1")}  # campo -> (tipo que imprime, tipo que não)
 
 
@@ -502,6 +507,27 @@ def currency_rules_off(found: dict[str, dict]) -> list[str]:
                 if not refused(other, value):
                     problems.append(f"titulares: '{dataset}.{field}' = {value!r} passaria fora do formato ISO")
     return problems
+
+def party_currency_scope_off(found: dict[str, dict], binding: dict) -> list[str]:
+    """Onde a moeda de uma parte que não imprime a renda (L, R, P, O) ainda recusaria o arquivo."""
+    doc = found.get("titulares", {})
+    problems = []
+    for dataset in PARTY_REGISTRIES:
+        for field, (filed, _) in sorted(FILED.items()):
+            if _row_refused(doc, dataset, {"tipoPessoa": filed, field: "USD"}):
+                problems.append(f"titulares: '{dataset}.{field}' = 'USD' recusaria um procurador, que não imprime a renda")
+    queries = queries_of(binding)
+    for name, documents in sorted(COHOLDER_CURRENCY_QUERIES.items()):
+        read = queries.get(name) or {}
+        if not any(c.get("field") == "document" and any(isinstance(v, dict) and v.get("query") == documents
+                                                         for v in c.get("values") or [])
+                   for c in _filters(read)):
+            problems.append(f"titulares: '{name}' não lê o cadastro pelos documentos de '{documents}'")
+        if not any(c.get("field") == "related_parties.role" and c.get("operator") == "eq"
+                   and c.get("values") == ["PRIMARY_HOLDER"] for c in _filters(queries.get(documents) or {})):
+            problems.append(f"titulares: '{documents}' não se restringe aos cotitulares (PRIMARY_HOLDER)")
+    return problems
+
 
 def exchange_refusal_off(root: Path) -> list[str]:
     """O TITULARES recusa a geração só com operaCambio "sim": o pendente (vazio) deixa o rascunho sair."""
@@ -766,6 +792,25 @@ class SimbaBindings(unittest.TestCase):
 
     def test_renda_e_faturamento_so_saem_em_brl(self) -> None:
         self.assertEqual([], currency_rules_off(contracts(ROOT)))
+
+    def test_moeda_so_de_quem_imprime_a_renda(self) -> None:
+        self.assertEqual([], party_currency_scope_off(contracts(ROOT), bindings(ROOT)["titulares"]))
+
+    def test_moeda_do_procurador_que_recusa_e_pega(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for r in found["titulares"]["rules"]:
+            if r.get("id") == "moeda-do-faturamento-partes":
+                r["appliesTo"] = "cadastro_partes"
+        self.assertIn("titulares: 'cadastro_partes.moedaFaturamento' = 'USD' recusaria um procurador, que não imprime a renda",
+                      party_currency_scope_off(found, bindings(ROOT)["titulares"]))
+
+    def test_moeda_lida_de_todas_as_partes_e_pega(self) -> None:
+        binding = copy.deepcopy(bindings(ROOT)["titulares"])
+        for q in binding["queries"]:
+            if q.get("name") == "cotitulares_documentos":
+                q["filters"] = [c for c in q["filters"] if c.get("field") != "related_parties.role"]
+        self.assertIn("titulares: 'cotitulares_documentos' não se restringe aos cotitulares (PRIMARY_HOLDER)",
+                      party_currency_scope_off(contracts(ROOT), binding))
 
     def test_texto_que_passa_pelo_ascii_tem_o_pattern_do_macro(self) -> None:
         self.assertEqual([], ascii_fields_off(ROOT, contracts(ROOT)))

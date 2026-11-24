@@ -11,7 +11,6 @@
     "outroTelefone": "1133334444",
     "renda": "7500.00",
     "dataRenda": "2026-05-31",
-    "moedaRenda": "BRL",
     "emailPrincipal": "carlos@example.com",
     "emailSecundario": "carlos.alt@example.com"
   },
@@ -26,7 +25,6 @@
     "outroTelefone": "1130305050",
     "faturamento": "980000.50",
     "dataFaturamento": "2025-12-31",
-    "moedaFaturamento": "BRL",
     "emailPrincipal": "ri@holding.example"
   },
   {
@@ -39,7 +37,6 @@
     "celular": "+5491155550000",
     "faturamento": "1200000.00",
     "dataFaturamento": "2025-12-31",
-    "moedaFaturamento": "BRL",
     "emailPrincipal": "juridico@empresa.example"
   }
 ]
