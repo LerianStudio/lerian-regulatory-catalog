@@ -332,7 +332,7 @@ datasets:
         pattern: '^([1-4]|-)$'
         description: >-
           Tipo da chave Pix usada no envio no código da IN (IN 636, Anexo I, EXTRATO, campo 24): 1 CPF/CNPJ, 2 telefone,
-          3 e-mail, 4 aleatória; "-" para tipo fora do domínio. Sem chave, o campo sai em branco.
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
       - name: chave
         type: string
         required: false
@@ -383,7 +383,7 @@ datasets:
         pattern: '^([1-4]|-)$'
         description: >-
           Tipo da chave Pix usada no envio no código da IN (IN 636, Anexo I, EXTRATO, campo 24): 1 CPF/CNPJ, 2 telefone,
-          3 e-mail, 4 aleatória; "-" para tipo fora do domínio. Sem chave, o campo sai em branco.
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
       - name: chave
         type: string
         required: false
@@ -416,7 +416,7 @@ datasets:
         pattern: '^([1-4]|-)$'
         description: >-
           Tipo da chave Pix pela qual o Pix chegou no código da IN (IN 636, Anexo I, EXTRATO, campo 24): 1 CPF/CNPJ, 2 telefone,
-          3 e-mail, 4 aleatória; "-" para tipo fora do domínio. Sem chave, o campo sai em branco.
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
       - name: chave
         type: string
         required: false
