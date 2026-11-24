@@ -809,8 +809,8 @@
     "name": "EXTRATO 25 com o telefone da chave Pix com o +",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "{% if kc.tipoChave == \"2\" %}{{ kc.chave|cut:\"+\" }}",
-    "new": "{% if kc.tipoChave == \"2\" %}{{ kc.chave }}",
+    "old": "{%- if tipo == \"2\" -%}{{ chave|cut:\"+\" }}",
+    "new": "{%- if tipo == \"2\" -%}{{ chave }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
@@ -822,7 +822,7 @@
     "name": "EXTRATO 24 sem o tipo da chave do Pix lerian enviado",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "{% if ka.tipoChave and ka.tipoChave != \"-\" %}{{ ka.tipoChave }}{% endif %}",
+    "old": "{{ chavetipo(ka.tipoChave) }}",
     "new": "",
     "count": 1,
     "expect": {
@@ -835,12 +835,64 @@
     "name": "EXTRATO 25 sem a chave do Pix JD recebido",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "{% for kd in trilho_pix_jd_recebimentos|where:chaveR %}{% if kd.chave %}",
-    "new": "{% for kd in trilho_pix_jd_recebimentos|where:chaveR %}{% if not kd.chave %}",
+    "old": "{{ chavevalor(kd.tipoChave, kd.chave) }}",
+    "new": "",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
       "line": 18,
+      "field": 25
+    }
+  },
+  {
+    "name": "EXTRATO 24 sem o tipo da chave do Pix JD enviado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavetipo(kc.tipoChave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 28,
+      "field": 24
+    }
+  },
+  {
+    "name": "EXTRATO 24 sem o tipo da chave do Pix JD recebido",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavetipo(kd.tipoChave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 18,
+      "field": 24
+    }
+  },
+  {
+    "name": "EXTRATO 25 sem a chave do Pix lerian enviado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavevalor(ka.tipoChave, ka.chave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 31,
+      "field": 25
+    }
+  },
+  {
+    "name": "EXTRATO 25 sem a chave do Pix JD enviado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavevalor(kc.tipoChave, kc.chave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 28,
       "field": 25
     }
   },
