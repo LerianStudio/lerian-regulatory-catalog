@@ -1088,6 +1088,9 @@ knownGaps:
       o nome social e o e-mail dela (campos 12 a 19, 24 e 25) saem do cadastro de titulares do CRM, pelo documento da
       parte (cadastro_partes e cadastro_partes_contraparte). A parte que nao tem cadastro de titular sai com os campos 12 a 19 e 24 em branco e o
       campo 25 com "e-mail nao declarado". O tipo de pessoa da parte (campo 7) continua pelo tamanho do documento.
+      A parte e achada pelo documento como esta gravado: o instrumento e o cadastro de titulares do CRM precisam ter o
+      documento so com digitos, sem pontos, tracos ou barras, como o parametro documentos. Com mascara num cadastro e nao
+      no outro (529.982.247-25 na parte, 52998224725 no titular), a parte nao e achada e sai como sem cadastro, sem aviso.
   - id: renda-pessoa-juridica
     description: >-
       Campo 18 (IN :154): a pessoa natural declara no CRM a renda mensal, e a pessoa juridica o faturamento anual. A IN
