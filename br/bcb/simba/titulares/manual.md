@@ -206,11 +206,15 @@ A 1.2.0 le o cadastro das partes relacionadas por quatro consultas novas do mape
 e `cadastro_partes_contraparte`), que preenchem os conjuntos `cadastro_partes` e
 `cadastro_partes_contraparte`. Um mapeamento escrito para a 1.1.0, sem elas, ainda gera o
 rascunho, mas a aprovacao e recusada: os campos obrigatorios dos dois conjuntos novos ficam sem
-mapeamento. Para aprovar, faca uma das duas coisas:
+mapeamento. Para aprovar:
 
-1. copie as quatro consultas e os dois conjuntos do `binding.example.yaml` desta versao; ou
-2. declare os dois conjuntos vazios (`emptyReason`), o que volta ao arquivo da 1.1.0: os campos
-   12 a 19 e 24 das partes em branco e o campo 25 `e-mail nao declarado`.
+1. A instituicao que tem o cadastro de titulares das partes no CRM copia as quatro consultas e
+   os dois conjuntos do `binding.example.yaml` desta versao. Quem tem o dado preenche o campo
+   com ele: a IN so deixa o campo sem a informacao quando ela nao existe ou e tecnicamente
+   inviavel (art. 2o, paragrafo 1o, IN :49).
+2. So a instituicao que nao tem esse cadastro declara os dois conjuntos vazios (`emptyReason`,
+   com o motivo), o que volta ao arquivo da 1.1.0: os campos 12 a 19 e 24 das partes em branco
+   e o campo 25 `e-mail nao declarado`.
 
 ## Limitacoes desta versao
 
