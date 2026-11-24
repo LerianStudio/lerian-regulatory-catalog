@@ -1,0 +1,13 @@
+[
+  {
+    "contaId": "c9",
+    "parteId": "p9",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333340",
+    "tipoConta": "1",
+    "vinculo": "C",
+    "documento": "11144477735",
+    "nome": "Jose Contraparte",
+    "dataInicio": "2023-04-05"
+  }
+]

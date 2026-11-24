@@ -1,0 +1,31 @@
+[
+  {
+    "documento": "52998224725",
+    "tipoPessoa": "1",
+    "logradouro": "Rua Quatro 400",
+    "complemento": "Apto 12",
+    "codigoUf": "35",
+    "pais": "BR",
+    "nomePais": "Brasil",
+    "cep": "04538132",
+    "outroTelefone": "1133334444",
+    "renda": "7500.00",
+    "dataRenda": "2026-05-31",
+    "moedaRenda": "BRL",
+    "emailPrincipal": "carlos@example.com",
+    "emailSecundario": "carlos.alt@example.com"
+  },
+  {
+    "documento": "11444777000161",
+    "tipoPessoa": "2",
+    "logradouro": "Av. Corrientes 1000",
+    "codigoUf": "42",
+    "pais": "AR",
+    "nomePais": "Argentina",
+    "celular": "+5491155550000",
+    "faturamento": "1200000.00",
+    "dataFaturamento": "2025-12-31",
+    "moedaFaturamento": "BRL",
+    "emailPrincipal": "juridico@empresa.example"
+  }
+]
