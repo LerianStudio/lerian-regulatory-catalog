@@ -8,7 +8,8 @@
 # O QUE E: uma linha por vinculo pessoa-conta. Para cada conta do arquivo CONTAS
 # (as do caso e as de contraparte, IN :31): uma linha do titular (campo 5 = T) e
 # uma linha por parte relacionada da conta no CRM (cotitular numerado 1, 2... por
-# conta; representante legal, procurador e outros pelo codigo do campo 5).
+# conta; representante legal, procurador e outros pelo codigo do campo 5). O cadastro
+# da parte (endereco, telefone, renda, e-mail) e o de titular no CRM, pelo documento.
 #
 # FORMA DO ARQUIVO (IN art. 3o): texto ASCII, sem cabecalho, colunas separadas
 # por TAB, linha terminada em CR LF, datas ddmmaaaa, valores em centavos sem
@@ -34,7 +35,7 @@ metadata:
     Titulares, cotitulares, representantes e procuradores das contas investigadas e das
     contas com que elas transacionaram, uma linha por vinculo da pessoa com a conta, com
     cadastro, renda e datas do vinculo.
-  version: 1.1.0
+  version: 1.2.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -188,7 +189,7 @@ datasets:
           Codigo IBGE da UF do endereco principal (campo 14, IN :150) quando a sigla esta na tabela; a sigla crua quando
           nao esta; ausente quando o cadastro nao tem sigla. Para quem mora no exterior o template escreve "00" em
           qualquer caso (IN :150). Para quem mora no Brasil, a regra uf-do-brasil confere o valor na tabela de codigos:
-          o que nao for um codigo de UF recusa (sigla fora da tabela, com espaco, pontuacao ou minuscula, e tambem o
+          o que nao for um codigo de UF recusa (sigla fora da tabela, com espaco ou pontuacao, e tambem o
           "00" de um binding anterior), e o ausente deixa o campo 14 em branco, porque a informacao nao existe no
           cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
       - name: pais
@@ -407,7 +408,7 @@ datasets:
           Codigo IBGE da UF do endereco principal (campo 14, IN :150) quando a sigla esta na tabela; a sigla crua quando
           nao esta; ausente quando o cadastro nao tem sigla. Para quem mora no exterior o template escreve "00" em
           qualquer caso (IN :150). Para quem mora no Brasil, a regra uf-do-brasil confere o valor na tabela de codigos:
-          o que nao for um codigo de UF recusa (sigla fora da tabela, com espaco, pontuacao ou minuscula, e tambem o
+          o que nao for um codigo de UF recusa (sigla fora da tabela, com espaco ou pontuacao, e tambem o
           "00" de um binding anterior), e o ausente deixa o campo 14 em branco, porque a informacao nao existe no
           cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
       - name: pais
@@ -558,6 +559,260 @@ datasets:
         required: false
         description: Fim do vinculo da parte; ausente, o vinculo esta ativo e o campo sai em branco (campo 21, IN :157).
 
+  # O cadastro das partes relacionadas das contas do caso que tambem sao titulares no CRM, um por documento.
+  # Nao gera linha: o template o liga a cada parte pelo documento e escreve os campos 12 a
+  # 19, 24 e 25 da parte com ele. Parte sem cadastro sai com esses campos em branco.
+  - name: cadastro_partes
+    description: >-
+      O cadastro de titulares do CRM das partes relacionadas (cotitular, representante, procurador) das contas do caso, pelo
+      documento da parte.
+    grain: [documento]
+    consolidation:
+      key: [documento]
+      whenKeyRepeats: refuse
+      columns: {tipoPessoa: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first,
+                cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first,
+                faturamento: first, dataFaturamento: first, moedaFaturamento: first, nomeSocial: first,
+                emailPrincipal: first, emailSecundario: first}
+    fields:
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da pessoa, sem separadores. Liga o cadastro a parte de mesmo documento.
+      - name: tipoPessoa
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: 1 pessoa natural, 2 pessoa juridica, do cadastro. Escolhe a renda ou o faturamento no campo 18.
+      - name: logradouro
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Linha 1 do endereco principal (campo 12, IN :148). Ausente, o campo sai em branco.
+      - name: complemento
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Linha 2 do endereco principal; o template a junta ao logradouro e corta em 80 (campo 12, IN :148).
+      - name: codigoUf
+        type: string
+        required: false
+        description: >-
+          Codigo IBGE da UF do endereco principal (campo 14, IN :150) quando a sigla esta na tabela; a sigla crua quando
+          nao esta; ausente quando o cadastro nao tem sigla. Para quem mora no exterior o template escreve "00" em
+          qualquer caso (IN :150). Para quem mora no Brasil, a regra uf-do-brasil confere o valor na tabela de codigos:
+          o que nao for um codigo de UF recusa (sigla fora da tabela, com espaco ou pontuacao, e tambem o
+          "00" de um binding anterior), e o ausente deixa o campo 14 em branco, porque a informacao nao existe no
+          cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
+      - name: pais
+        type: string
+        required: false
+        description: >-
+          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda, em maiuscula ou minuscula. Com nome na
+          tabela que nao e Brasil, a pessoa mora no exterior: o template escreve "0000000" no campo 13 e "00" no campo 14
+          (IN :149-150). Ausente, e tratada como no Brasil.
+      - name: nomePais
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do pais do endereco principal, da tabela de paises da Receita (campo 15, IN :151); "-" quando o codigo
+          falta ou esta fora da tabela. O template escreve o nome, e nada para "-"; a regra pais-na-tabela recusa o
+          codigo informado que nao tem nome.
+      - name: cep
+        type: string
+        required: false
+        normalize: digits
+        description: CEP do endereco principal, so digitos (campo 16, IN :152).
+      - name: celular
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Telefone celular do cadastro (campo 17, IN :153). Preferido ao outro telefone.
+      - name: outroTelefone
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Outro telefone do cadastro, usado sem celular (campo 17, IN :153).
+      - name: renda
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Renda mensal bruta declarada pela pessoa natural (campo 18, IN :154), na moeda de moedaRenda (so BRL sai).
+      - name: dataRenda
+        type: date
+        required: false
+        description: Data de referencia da renda declarada pela pessoa natural (campo 19, IN :155).
+      - name: faturamento
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: >-
+          Faturamento anual bruto declarado pela pessoa juridica, na moeda de moedaFaturamento (so BRL sai), como esta no cadastro (campo 18, IN :154). A
+          IN pede a renda declarada e nao fixa o periodo: o valor anual vai sem conversao.
+      - name: dataFaturamento
+        type: date
+        required: false
+        description: Data de referencia do faturamento declarado pela pessoa juridica (campo 19, IN :155).
+      - name: moedaRenda
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
+          (regra moeda-da-renda).
+      - name: moedaFaturamento
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
+          em BRL sai (regra moeda-do-faturamento).
+      - name: nomeSocial
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome social da pessoa natural (campo 24, IN :160). O template o corta em 50 posicoes.
+      - name: emailPrincipal
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: E-mail principal (campo 25, IN :161).
+      - name: emailSecundario
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: E-mail secundario, unido ao principal por ";" (campo 25, IN :161).
+
+  # O cadastro das partes relacionadas das contas de contraparte que tambem sao titulares no CRM, um por documento.
+  # Nao gera linha: o template o liga a cada parte pelo documento e escreve os campos 12 a
+  # 19, 24 e 25 da parte com ele. Parte sem cadastro sai com esses campos em branco.
+  - name: cadastro_partes_contraparte
+    description: >-
+      O cadastro de titulares do CRM das partes relacionadas (cotitular, representante, procurador) das contas de contraparte, pelo
+      documento da parte.
+    grain: [documento]
+    consolidation:
+      key: [documento]
+      whenKeyRepeats: refuse
+      columns: {tipoPessoa: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first,
+                cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first,
+                faturamento: first, dataFaturamento: first, moedaFaturamento: first, nomeSocial: first,
+                emailPrincipal: first, emailSecundario: first}
+    fields:
+      - name: documento
+        type: string
+        required: true
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da pessoa, sem separadores. Liga o cadastro a parte de mesmo documento.
+      - name: tipoPessoa
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: 1 pessoa natural, 2 pessoa juridica, do cadastro. Escolhe a renda ou o faturamento no campo 18.
+      - name: logradouro
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Linha 1 do endereco principal (campo 12, IN :148). Ausente, o campo sai em branco.
+      - name: complemento
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Linha 2 do endereco principal; o template a junta ao logradouro e corta em 80 (campo 12, IN :148).
+      - name: codigoUf
+        type: string
+        required: false
+        description: >-
+          Codigo IBGE da UF do endereco principal (campo 14, IN :150) quando a sigla esta na tabela; a sigla crua quando
+          nao esta; ausente quando o cadastro nao tem sigla. Para quem mora no exterior o template escreve "00" em
+          qualquer caso (IN :150). Para quem mora no Brasil, a regra uf-do-brasil confere o valor na tabela de codigos:
+          o que nao for um codigo de UF recusa (sigla fora da tabela, com espaco ou pontuacao, e tambem o
+          "00" de um binding anterior), e o ausente deixa o campo 14 em branco, porque a informacao nao existe no
+          cadastro (IN art. 2o, paragrafo 1o, :49; o campo nao da sentinela para o Brasil, :150).
+      - name: pais
+        type: string
+        required: false
+        description: >-
+          Pais do endereco principal em ISO 3166-1 alfa-2 como o CRM guarda, em maiuscula ou minuscula. Com nome na
+          tabela que nao e Brasil, a pessoa mora no exterior: o template escreve "0000000" no campo 13 e "00" no campo 14
+          (IN :149-150). Ausente, e tratada como no Brasil.
+      - name: nomePais
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do pais do endereco principal, da tabela de paises da Receita (campo 15, IN :151); "-" quando o codigo
+          falta ou esta fora da tabela. O template escreve o nome, e nada para "-"; a regra pais-na-tabela recusa o
+          codigo informado que nao tem nome.
+      - name: cep
+        type: string
+        required: false
+        normalize: digits
+        description: CEP do endereco principal, so digitos (campo 16, IN :152).
+      - name: celular
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Telefone celular do cadastro (campo 17, IN :153). Preferido ao outro telefone.
+      - name: outroTelefone
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Outro telefone do cadastro, usado sem celular (campo 17, IN :153).
+      - name: renda
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Renda mensal bruta declarada pela pessoa natural (campo 18, IN :154), na moeda de moedaRenda (so BRL sai).
+      - name: dataRenda
+        type: date
+        required: false
+        description: Data de referencia da renda declarada pela pessoa natural (campo 19, IN :155).
+      - name: faturamento
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: >-
+          Faturamento anual bruto declarado pela pessoa juridica, na moeda de moedaFaturamento (so BRL sai), como esta no cadastro (campo 18, IN :154). A
+          IN pede a renda declarada e nao fixa o periodo: o valor anual vai sem conversao.
+      - name: dataFaturamento
+        type: date
+        required: false
+        description: Data de referencia do faturamento declarado pela pessoa juridica (campo 19, IN :155).
+      - name: moedaRenda
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda da renda declarada (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so a renda em BRL sai
+          (regra moeda-da-renda).
+      - name: moedaFaturamento
+        type: string
+        required: false
+        pattern: '^([A-Z]{3})?$'
+        description: >-
+          A moeda do faturamento declarado (ISO 4217, como o cadastro a guarda). Nao vai ao arquivo: so o faturamento
+          em BRL sai (regra moeda-do-faturamento).
+      - name: nomeSocial
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome social da pessoa natural (campo 24, IN :160). O template o corta em 50 posicoes.
+      - name: emailPrincipal
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: E-mail principal (campo 25, IN :161).
+      - name: emailSecundario
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: E-mail secundario, unido ao principal por ";" (campo 25, IN :161).
+
 tables:
   - name: codigos-uf
     from: codigos-uf.yaml      # codigo IBGE da UF -> ele mesmo, das 27 UFs
@@ -572,7 +827,7 @@ rules:
       equalsLookup: {field: codigoUf, table: codigos-uf, key: codigoUf}
     message: >-
       Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que nao casa a tabela de UFs,
-      que tem as 27 siglas em maiuscula e sem espaco nem pontuacao ("sp" ou " SP" nao casam SP): a IN so da o codigo
+      que tem as 27 siglas, em maiuscula ou minuscula, sem espaco nem pontuacao (" SP" nao casa SP): a IN so da o codigo
       00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem sigla nenhuma, o campo
       14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
 
@@ -597,7 +852,7 @@ rules:
       equalsLookup: {field: codigoUf, table: codigos-uf, key: codigoUf}
     message: >-
       Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que nao casa a tabela de UFs,
-      que tem as 27 siglas em maiuscula e sem espaco nem pontuacao ("sp" ou " SP" nao casam SP): a IN so da o codigo
+      que tem as 27 siglas, em maiuscula ou minuscula, sem espaco nem pontuacao (" SP" nao casa SP): a IN so da o codigo
       00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem sigla nenhuma, o campo
       14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
 
@@ -678,6 +933,120 @@ rules:
       moeda: o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII,
       IN :73). Declare o faturamento em BRL no cadastro antes de gerar.
 
+  - id: uf-do-brasil-partes
+    severity: error
+    appliesTo: cadastro_partes
+    where: {field: nomePais, in: ["Brasil", "-"]}
+    check:
+      equalsLookup: {field: codigoUf, table: codigos-uf, key: codigoUf}
+    message: >-
+      Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que nao casa a tabela de UFs,
+      que tem as 27 siglas, em maiuscula ou minuscula, sem espaco nem pontuacao (" SP" nao casa SP): a IN so da o codigo
+      00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem sigla nenhuma, o campo
+      14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
+
+  - id: uf-do-brasil-partes-contraparte
+    severity: error
+    appliesTo: cadastro_partes_contraparte
+    where: {field: nomePais, in: ["Brasil", "-"]}
+    check:
+      equalsLookup: {field: codigoUf, table: codigos-uf, key: codigoUf}
+    message: >-
+      Quem mora no Brasil (pais BR ou ausente) tem no endereco principal uma sigla de UF que nao casa a tabela de UFs,
+      que tem as 27 siglas, em maiuscula ou minuscula, sem espaco nem pontuacao (" SP" nao casa SP): a IN so da o codigo
+      00 para quem mora no exterior (IN :150). Corrija a sigla no cadastro antes de gerar. Sem sigla nenhuma, o campo
+      14 sai em branco (a informacao nao existe, IN art. 2o, paragrafo 1o, :49).
+
+  - id: pais-na-tabela-partes
+    severity: error
+    appliesTo: cadastro_partes
+    where: {field: nomePais, equals: "-"}
+    check:
+      notStartsWith: {field: pais, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                            "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                            "z"]}
+    message: >-
+      O pais do endereco principal e um codigo que a tabela de paises da Receita nao tem, e o campo 15 pede o nome do
+      pais (IN :151). Corrija o cadastro antes de gerar.
+
+  - id: pais-na-tabela-partes-contraparte
+    severity: error
+    appliesTo: cadastro_partes_contraparte
+    where: {field: nomePais, equals: "-"}
+    check:
+      notStartsWith: {field: pais, values: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+                                            "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h",
+                                            "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+                                            "z"]}
+    message: >-
+      O pais do endereco principal e um codigo que a tabela de paises da Receita nao tem, e o campo 15 pede o nome do
+      pais (IN :151). Corrija o cadastro antes de gerar.
+
+  - id: moeda-da-renda-partes
+    severity: error
+    appliesTo: cadastro_partes
+    where: {field: tipoPessoa, notIn: ["2"]}
+    check:
+      notStartsWith: {field: moedaRenda, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
+    message: >-
+      A renda declarada no cadastro da pessoa natural esta numa moeda que nao e BRL, e o catalogo nao converte moeda:
+      o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN
+      :73). Declare a renda em BRL no cadastro antes de gerar.
+
+  - id: moeda-da-renda-partes-contraparte
+    severity: error
+    appliesTo: cadastro_partes_contraparte
+    where: {field: tipoPessoa, notIn: ["2"]}
+    check:
+      notStartsWith: {field: moedaRenda, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
+    message: >-
+      A renda declarada no cadastro da pessoa natural esta numa moeda que nao e BRL, e o catalogo nao converte moeda:
+      o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII, IN
+      :73). Declare a renda em BRL no cadastro antes de gerar.
+
+  - id: moeda-do-faturamento-partes
+    severity: error
+    appliesTo: cadastro_partes
+    where: {field: tipoPessoa, equals: "2"}
+    check:
+      notStartsWith: {field: moedaFaturamento, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
+    message: >-
+      O faturamento declarado no cadastro da pessoa juridica esta numa moeda que nao e BRL, e o catalogo nao converte
+      moeda: o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII,
+      IN :73). Declare o faturamento em BRL no cadastro antes de gerar.
+
+  - id: moeda-do-faturamento-partes-contraparte
+    severity: error
+    appliesTo: cadastro_partes_contraparte
+    where: {field: tipoPessoa, equals: "2"}
+    check:
+      notStartsWith: {field: moedaFaturamento, values: ["A", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+                                        "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "BA", "BB", "BC",
+                                        "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BM", "BN", "BO", "BP", "BQ",
+                                        "BS", "BT", "BU", "BV", "BW", "BX", "BY", "BZ", "BRA", "BRB", "BRC", "BRD", "BRE", "BRF",
+                                        "BRG", "BRH", "BRI", "BRJ", "BRK", "BRM", "BRN", "BRO", "BRP", "BRQ", "BRR", "BRS", "BRT", "BRU",
+                                        "BRV", "BRW", "BRX", "BRY", "BRZ"]}
+    message: >-
+      O faturamento declarado no cadastro da pessoa juridica esta numa moeda que nao e BRL, e o catalogo nao converte
+      moeda: o campo 18 (IN :154) leva o valor como declarado, e o leiaute so da exemplos em R$ (IN 636 art. 3o, VIII,
+      IN :73). Declare o faturamento em BRL no cadastro antes de gerar.
+
 knownGaps:
   - id: so-titular
     description: >-
@@ -709,15 +1078,16 @@ knownGaps:
   - id: uf-fora-da-tabela
     description: >-
       O campo 14 converte a sigla da UF do endereco principal do titular para o codigo IBGE. Quem mora no Brasil (pais
-      BR ou ausente) com sigla fora da tabela (inclusive com espaco, pontuacao ou minuscula) recusa a geracao (regra
+      BR ou ausente) com sigla fora da tabela (inclusive com espaco ou pontuacao; a minuscula casa) recusa a geracao (regra
       uf-do-brasil); corrija o cadastro antes de gerar. Sem sigla nenhuma, o campo 14 sai em branco: a informacao nao
       existe no cadastro (IN art. 2o, paragrafo 1o, :49). Quem mora no exterior sai com 00, e um pais informado fora da
       tabela da Receita recusa a geracao (regra pais-na-tabela).
   - id: parte-sem-cadastro
     description: >-
-      A parte relacionada no CRM tem so documento, nome, papel e datas. Para cotitular, representante e procurador
-      saem em branco os campos 12 a 19 e 24, e o campo 25 sai "e-mail nao declarado". O cadastro completo da parte
-      exigiria ligar a parte ao titular pelo documento, que o CRM guarda cifrado.
+      A parte relacionada no instrumento do CRM tem so documento, nome, papel e datas. O endereco, o telefone, a renda,
+      o nome social e o e-mail dela (campos 12 a 19, 24 e 25) saem do cadastro de titulares do CRM, pelo documento da
+      parte (cadastro_partes e cadastro_partes_contraparte). A parte que nao tem cadastro de titular sai com os campos 12 a 19 e 24 em branco e o
+      campo 25 com "e-mail nao declarado". O tipo de pessoa da parte (campo 7) continua pelo tamanho do documento.
   - id: renda-pessoa-juridica
     description: >-
       Campo 18 (IN :154): a pessoa natural declara no CRM a renda mensal, e a pessoa juridica o faturamento anual. A IN

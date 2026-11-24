@@ -138,8 +138,8 @@ def overdraft_left_out(found: dict[str, dict]) -> list[str]:
     return problems
 
 
-HOLDER_QUERIES = ("cadastro_titulares", "cadastro_contraparte")
-HOLDER_SETS = ("titulares", "titulares_contraparte")
+HOLDER_QUERIES = ("cadastro_titulares", "cadastro_contraparte", "cadastro_partes", "cadastro_partes_contraparte")
+HOLDER_SETS = ("titulares", "titulares_contraparte", "cadastro_partes", "cadastro_partes_contraparte")
 # A data em que o binding leu as linhas vigentes da tabela de países (o comentário dele diz).
 COUNTRIES_READ_ON = datetime.date(2026, 11, 19)
 NO_UF, NO_COUNTRY = "00", "-"
@@ -160,7 +160,9 @@ def country_names_mismatch(found: dict[str, dict]) -> list[str]:
     # O motor compara o texto como está: o código vem nas duas grafias (BR e br).
     expected = {spelled: {"constant": name} for code, name in
                 tabelas_receita.load("paises.txt", COUNTRIES_READ_ON).items() for spelled in (code, code.lower())}
-    ufs = {sigla: {"constant": code} for sigla, code in yaml.safe_load(UF_TABLE.read_text(encoding="utf-8")).items()}
+    # A sigla vem nas duas grafias (SP e sp), como o país: o motor compara o texto como está.
+    ufs = {spelled: {"constant": code} for sigla, code in yaml.safe_load(UF_TABLE.read_text(encoding="utf-8")).items()
+           for spelled in (sigla, sigla.lower())}
     queries = queries_of(found.get("titulares", {}))
     problems = []
     for name in HOLDER_QUERIES:
@@ -447,7 +449,7 @@ def account_patterns_off(found: dict[str, dict]) -> list[str]:
 # A renda e o faturamento do TITULARES só saem em BRL: o catálogo não converte moeda. O campo 18
 # leva o faturamento da pessoa jurídica (tipoPessoa 2) e a renda dos demais; só a figura que vai
 # ao arquivo é conferida. Fora do formato ISO (três maiúsculas), a moeda recusa sempre.
-HOLDER_CURRENCIES = ("titulares", "titulares_contraparte")
+HOLDER_CURRENCIES = ("titulares", "titulares_contraparte", "cadastro_partes", "cadastro_partes_contraparte")
 FILED = {"moedaRenda": ("1", "2"), "moedaFaturamento": ("2", "1")}  # campo -> (tipo que imprime, tipo que não)
 
 
@@ -520,9 +522,10 @@ ASCII_FIELDS = {
     "agencias": {(ds, f) for ds in ("agencias_do_caso", "agencias_contraparte")
                  for f in ("endereco", "nomeAgencia", "pais", "telefone")} | {("instituicao", "nomeUnicad")},
     "contas": {("instituicao", "nomeUnicad")},
-    "titulares": {(ds, f) for ds in ("titulares", "titulares_contraparte")
+    "titulares": {(ds, f) for ds in ("titulares", "titulares_contraparte", "cadastro_partes", "cadastro_partes_contraparte")
                   for f in ("nome", "nomeSocial", "logradouro", "complemento", "nomePais", "celular",
-                            "outroTelefone", "emailPrincipal", "emailSecundario")}
+                            "outroTelefone", "emailPrincipal", "emailSecundario")
+                  if not (ds.startswith("cadastro_partes") and f == "nome")}
                  | {("partes", "nome"), ("partes_contraparte", "nome"), ("instituicao", "nomeUnicad")},
     "extrato": {("instituicao", "nomeUnicad")},
     "origem-destino": {(ds, "nome") for ds in ("trilho_pix_lerian_envios", "trilho_pix_lerian_recebimentos",
@@ -1020,6 +1023,12 @@ class Mutations(unittest.TestCase):
         found = copy.deepcopy(self.found)
         del _compute(queries_of(found["titulares"])["cadastro_titulares"], "codigo_uf")["case"]["when"]["DF"]
         self.assertEqual(["titulares: 'cadastro_titulares' traduz a UF 'DF', que a tabela do IBGE tem e a consulta não"],
+                         country_names_mismatch(found))
+
+    def test_uf_em_minuscula_que_falta_numa_consulta_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        del _compute(queries_of(found["titulares"])["cadastro_partes"], "codigo_uf")["case"]["when"]["sp"]
+        self.assertEqual(["titulares: 'cadastro_partes' traduz a UF 'sp', que a tabela do IBGE tem e a consulta não"],
                          country_names_mismatch(found))
 
     def test_uf_sem_traducao_que_recusa_e_pega(self) -> None:
