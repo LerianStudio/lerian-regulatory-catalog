@@ -712,6 +712,40 @@ def _reads(query: dict) -> tuple[set[str], set[str]]:
     return parameters, sources
 
 
+# A cotitularidade entra se cruza o período pedido em um dia ao menos: start_date antes do primeiro instante depois
+# do fim (ou ausente, registro antigo) e end_date ausente (vigente) ou a partir do primeiro instante do início. O
+# motor não executa anyOf, então cada combinação é uma consulta e as contas de cotitular são a união delas.
+COHOLDER_START = {"no período": ("lt", [{"parameter": "fim", "at": "end"}]), "ausente": ("isNull", None)}
+COHOLDER_END = {"vigente": ("isNull", None), "no período": ("gte", [{"parameter": "inicio", "at": "start"}])}
+COHOLDER_BRANCHES = {"cotitular_aberto": ("no período", "vigente"),
+                     "cotitular_encerrado": ("no período", "no período"),
+                     "cotitular_sem_inicio_aberto": ("ausente", "vigente"),
+                     "cotitular_sem_inicio_encerrado": ("ausente", "no período")}
+
+
+def coholder_period_off(found: dict[str, dict]) -> list[str]:
+    """Onde as contas de cotitular deixam de ser as da cotitularidade que cruza o período pedido."""
+    problems = []
+    for document, binding in sorted(found.items()):
+        queries = queries_of(binding)
+        for name, (start, end) in sorted(COHOLDER_BRANCHES.items()):
+            dates = {}
+            for condition in (queries.get(name) or {}).get("filters") or []:
+                if isinstance(condition, dict) and condition.get("field") in ("related_parties.start_date",
+                                                                              "related_parties.end_date"):
+                    dates.setdefault(condition["field"], []).append((condition.get("operator"), condition.get("values")))
+            if dates != {"related_parties.start_date": [COHOLDER_START[start]],
+                         "related_parties.end_date": [COHOLDER_END[end]]}:
+                problems.append(f"{document}: '{name}' não lê o início {start} e o fim {end} da cotitularidade")
+        union = [(v.get("query"), v.get("column")) for c in (queries.get(COHOLDER_ACCOUNTS) or {}).get("filters") or []
+                 if isinstance(c, dict) and c.get("field") == "account_id"
+                 for v in c.get("values") or [] if isinstance(v, dict)]
+        if sorted(union) != sorted((name, "account_id") for name in COHOLDER_BRANCHES):
+            problems.append(f"{document}: '{COHOLDER_ACCOUNTS}' não é a união das contas de "
+                            f"{', '.join(sorted(COHOLDER_BRANCHES))}")
+    return problems
+
+
 def coholder_accounts_missing(found: dict[str, dict]) -> list[str]:
     """As consultas que leem as contas do caso e deixam de fora as contas em que o investigado é cotitular."""
     problems = []
@@ -755,6 +789,9 @@ class SimbaBindings(unittest.TestCase):
 
     def test_todo_documento_declara_as_contas_do_caso(self) -> None:
         self.assertEqual([], missing_case_accounts(bindings(ROOT)))
+
+    def test_so_entra_a_cotitularidade_que_cruza_o_periodo(self) -> None:
+        self.assertEqual([], coholder_period_off(bindings(ROOT)))
 
     def test_quem_le_as_contas_do_caso_le_as_de_cotitular(self) -> None:
         self.assertEqual([], coholder_accounts_missing(bindings(ROOT)))
@@ -877,6 +914,41 @@ class Mutations(unittest.TestCase):
                 if isinstance(value, dict) and value.get("query") in (CASE_ACCOUNTS, COHOLDER_ACCOUNTS):
                     value["query"] = "declarante"
         self.assertTrue(any("'lancamentos'" in p for p in unscoped_queries(found)))
+
+    def test_ex_cotitular_de_antes_do_periodo_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        query = queries_of(found["contas"])["cotitular_encerrado"]
+        query["filters"] = [c for c in query["filters"] if c.get("field") != "related_parties.end_date"]
+        self.assertEqual(["contas: 'cotitular_encerrado' não lê o início no período e o fim no período da "
+                          "cotitularidade"], coholder_period_off(found))
+
+    def test_cotitularidade_vigente_fora_da_uniao_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        for condition in queries_of(found["extrato"])[COHOLDER_ACCOUNTS]["filters"]:
+            if condition.get("field") == "account_id":
+                condition["values"] = [v for v in condition["values"] if v.get("query") != "cotitular_aberto"]
+        self.assertEqual(["extrato: 'contas_cotitular' não é a união das contas de cotitular_aberto, "
+                          "cotitular_encerrado, cotitular_sem_inicio_aberto, cotitular_sem_inicio_encerrado"],
+                         coholder_period_off(found))
+
+    def test_borda_do_periodo_fora_do_dia_e_pega(self) -> None:
+        # Quem começou no último dia e quem saiu no primeiro dia do período entram: o fim é o primeiro instante
+        # depois do último dia, e o início é o primeiro instante do primeiro dia.
+        for field, value in (("related_parties.start_date", {"parameter": "fim", "at": "start"}),
+                             ("related_parties.end_date", {"parameter": "inicio", "at": "end"})):
+            found = copy.deepcopy(self.found)
+            for condition in queries_of(found["titulares"])["cotitular_encerrado"]["filters"]:
+                if condition.get("field") == field:
+                    condition["values"] = [value]
+            self.assertEqual(["titulares: 'cotitular_encerrado' não lê o início no período e o fim no período da "
+                              "cotitularidade"], coholder_period_off(found))
+
+    def test_registro_sem_inicio_fora_da_uniao_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        found["agencias"]["queries"] = [q for q in found["agencias"]["queries"]
+                                        if q.get("name") != "cotitular_sem_inicio_aberto"]
+        self.assertIn("agencias: 'cotitular_sem_inicio_aberto' não lê o início ausente e o fim vigente da "
+                      "cotitularidade", coholder_period_off(found))
 
     def test_consulta_que_esquece_as_contas_de_cotitular_e_pega(self) -> None:
         found = copy.deepcopy(self.found)
