@@ -1488,7 +1488,7 @@ queries:
   # no instrumento tem so documento, nome, papel e datas, e o cadastro completo dela, quando
   # a pessoa tambem e titular no CRM, sai pelo documento. O documento da parte e lido em
   # claro (o Reporter decifra `related_parties.document`) e o filtro do cadastro o pergunta
-  # pelo digest, como faz `cadastro_titulares` com os documentos da ordem. Consulta propria
+  # pelo digest, como faz `cadastro_titulares` com os documentos dos titulares das contas. Consulta propria
   # porque a origem de um filtro encadeado declara `select`.
   - name: partes_documentos
     description: O documento de cada parte relacionada das contas do caso.
@@ -2119,7 +2119,7 @@ queries:
   # no instrumento tem so documento, nome, papel e datas, e o cadastro completo dela, quando
   # a pessoa tambem e titular no CRM, sai pelo documento. O documento da parte e lido em
   # claro (o Reporter decifra `related_parties.document`) e o filtro do cadastro o pergunta
-  # pelo digest, como faz `cadastro_titulares` com os documentos da ordem. Consulta propria
+  # pelo digest, como faz `cadastro_titulares` com os documentos dos titulares das contas. Consulta propria
   # porque a origem de um filtro encadeado declara `select`.
   - name: partes_documentos_contraparte
     description: O documento de cada parte relacionada das contas de contraparte.

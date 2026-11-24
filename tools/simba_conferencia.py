@@ -410,7 +410,7 @@ def _account_balance(row: dict) -> Decimal | None:
 
 
 def check_case_documents(path: Path | None, titulares: list[list[str]], report: Report) -> None:
-    """Cada documento da ordem aparece como titular de alguma conta no TITULARES."""
+    """Cada documento da ordem aparece como titular ou cotitular de alguma conta no TITULARES."""
     if path is None:
         report.warn("TITULARES: sem --documentos, o documento da ordem sem nenhuma conta NÃO foi conferido")
         return
