@@ -238,11 +238,12 @@ documents:
     document: ORIGEM-DESTINO
     family: simba
     title: SIMBA — Origem-Destino
-    version: 1.0.3
+    version: 1.0.4
     status: draft
     periodicity: eventual
     appliesTo:
       institutionTypes: [IP, SCD, SCFI]
     summary: >-
-      Origem e destino dos recursos de cada lancamento do EXTRATO: a contraparte pelo plugin
-      Pix ou TED da transacao, pela outra perna interna, ou a propria instituicao na tarifa.
+      Origem e destino dos recursos de cada lançamento do EXTRATO: a contraparte pelo
+      plugin Pix ou TED da transação, pela outra perna interna, ou a própria instituição
+      na tarifa.

@@ -666,8 +666,8 @@
     "name": "conta da perna interna com hifen",
     "document": "br/bcb/simba/origem-destino",
     "file": "contract.yaml",
-    "old": "        normalize: digits\n        pattern: '^[0-9]{1,20}$'\n        description: >-\n          Numero da conta com o digito verificador, so digitos",
-    "new": "        pattern: '^[^\\t\\r\\n]{1,20}$'\n        description: >-\n          Numero da conta com o digito verificador, so digitos",
+    "old": "        normalize: digits\n        pattern: '^[0-9]{1,20}$'\n        description: >-\n          Número da conta com o dígito verificador, só dígitos",
+    "new": "        pattern: '^[^\\t\\r\\n]{1,20}$'\n        description: >-\n          Número da conta com o dígito verificador, só dígitos",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
