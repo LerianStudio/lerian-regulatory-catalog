@@ -9,7 +9,7 @@
 # (as do caso e as de contraparte, IN :31): uma linha do titular (campo 5 = T) e
 # uma linha por parte relacionada da conta no CRM (cotitular numerado 1, 2... por
 # conta; representante legal, procurador e outros pelo codigo do campo 5). O cadastro
-# da parte (endereco, telefone, renda, e-mail) e o de titular no CRM, pelo documento.
+# da parte (endereco, telefone; renda e e-mail so do cotitular) e o de titular no CRM, pelo documento.
 #
 # FORMA DO ARQUIVO (IN art. 3o): texto ASCII, sem cabecalho, colunas separadas
 # por TAB, linha terminada em CR LF, datas ddmmaaaa, valores em centavos sem
@@ -561,7 +561,7 @@ datasets:
 
   # O cadastro das partes relacionadas das contas do caso que tambem sao titulares no CRM, um por documento.
   # Nao gera linha: o template o liga a cada parte pelo documento e escreve os campos 12 a
-  # 19, 24 e 25 da parte com ele. Parte sem cadastro sai com esses campos em branco.
+  # 17 e 24 da parte com ele, e 18, 19 e 25 so do cotitular. Parte sem cadastro sai com esses campos em branco.
   - name: cadastro_partes
     description: >-
       O cadastro de titulares do CRM das partes relacionadas (cotitular, representante, procurador) das contas do caso, pelo
@@ -688,7 +688,7 @@ datasets:
 
   # O cadastro das partes relacionadas das contas de contraparte que tambem sao titulares no CRM, um por documento.
   # Nao gera linha: o template o liga a cada parte pelo documento e escreve os campos 12 a
-  # 19, 24 e 25 da parte com ele. Parte sem cadastro sai com esses campos em branco.
+  # 17 e 24 da parte com ele, e 18, 19 e 25 so do cotitular. Parte sem cadastro sai com esses campos em branco.
   - name: cadastro_partes_contraparte
     description: >-
       O cadastro de titulares do CRM das partes relacionadas (cotitular, representante, procurador) das contas de contraparte, pelo
@@ -1084,14 +1084,27 @@ knownGaps:
       tabela da Receita recusa a geracao (regra pais-na-tabela).
   - id: parte-sem-cadastro
     description: >-
-      A parte relacionada no instrumento do CRM tem so documento, nome, papel e datas. O endereco, o telefone, a renda,
-      o nome social e o e-mail dela (campos 12 a 19, 24 e 25) saem do cadastro de titulares do CRM, pelo documento da
-      parte (cadastro_partes e cadastro_partes_contraparte). A parte que nao tem cadastro de titular sai com os campos 12 a 19 e 24 em branco e o
-      campo 25 com "e-mail nao declarado". O tipo de pessoa da parte (campo 7) continua pelo tamanho do documento.
+      A parte relacionada no instrumento do CRM tem so documento, nome, papel e datas. O endereco, o telefone e o nome
+      social dela (campos 12 a 17 e 24) saem do cadastro de titulares do CRM, pelo documento da parte (cadastro_partes e
+      cadastro_partes_contraparte); a renda e o e-mail (18, 19 e 25), so na linha do cotitular
+      (renda-e-email-so-do-correntista). A parte que nao tem cadastro de titular sai com os campos 12 a 19 e 24 em
+      branco e o campo 25 com
+      "e-mail nao declarado". O tipo de pessoa da parte (campo 7) continua pelo tamanho do documento.
       A parte e achada pelo documento como esta gravado: o instrumento e o cadastro de titulares do CRM precisam ter o
       mesmo documento, sem pontos, tracos ou barras; o CNPJ alfanumerico mantem as letras. Com separador num cadastro e
       nao no outro (529.982.247-25 na parte, 52998224725 no titular), a parte nao e achada e sai como sem cadastro, sem
       aviso.
+  - id: renda-e-email-so-do-correntista
+    description: >-
+      Os campos 18 e 19 pedem a renda "declarada pelo correntista" (IN :154-155; Memorando de Instrucao MI 001 -
+      ASSPA/PGR, leiaute do TITULARES, campo 18: "informada pelo correntista") e o 25 o e-mail "declarado pelo titular"
+      (IN :161). O titular e o cotitular sao correntistas e
+      titulares da conta: saem com a renda e o e-mail do proprio cadastro. O representante legal, o representante, o
+      procurador e as outras partes (campo 5 = L, R, P ou O) nao sao: saem com 18 e 19 em branco e o 25 com "e-mail nao
+      declarado", mesmo que tenham cadastro de titular no CRM, porque a informacao que a IN pede nao existe para eles
+      (art. 2o, paragrafo 1o, IN :49). Os campos 12 a 17 e 24 sao da pessoa e saem do cadastro dela em toda linha. As
+      regras de moeda das partes valem para qualquer parte com cadastro, mesmo a que nao imprime a renda: o cadastro e
+      um por documento, sem o papel.
   - id: renda-pessoa-juridica
     description: >-
       Campo 18 (IN :154): a pessoa natural declara no CRM a renda mensal, e a pessoa juridica o faturamento anual. A IN

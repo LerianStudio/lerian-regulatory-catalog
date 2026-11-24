@@ -121,10 +121,11 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
 
 Nas partes relacionadas, o instrumento do CRM guarda so documento, nome, papel e as datas de
 inicio e fim do vinculo. O tipo de pessoa da parte (campo 7) sai do tamanho do documento: 11
-posicoes CPF (`1`), 14 posicoes CNPJ (`2`). O endereco, a UF, o pais, o CEP, o telefone, a
-renda, o nome social e o e-mail da parte (campos 12 a 19, 24 e 25) saem do cadastro de
-titulares do CRM, pelo documento da parte, com as mesmas regras do titular: a parte que tambem
-e titular no CRM tem esses campos preenchidos. As consultas `partes_documentos` e
+posicoes CPF (`1`), 14 posicoes CNPJ (`2`). O endereco, a UF, o pais, o CEP, o telefone e o
+nome social da parte (campos 12 a 17 e 24) saem do cadastro de titulares do CRM, pelo documento
+da parte, com as mesmas regras do titular: a parte que tambem e titular no CRM tem esses campos
+preenchidos. A renda e o e-mail (18, 19 e 25) dependem do papel, como diz o paragrafo abaixo.
+As consultas `partes_documentos` e
 `cadastro_partes` (e as `_contraparte`, para as contas de contraparte) fazem essa leitura: o
 Reporter decifra o documento da parte e pergunta o cadastro pelo digest dele.
 
@@ -134,11 +135,21 @@ mantem as letras. Com separador num cadastro e nao no outro (`529.982.247-25` na
 `52998224725` no titular), a parte nao e achada e sai como parte sem cadastro, com os campos 12
 a 19 e 24 em branco, sem aviso. Confira o formato dos documentos no CRM na implantacao.
 
-Renda e data da renda (campos 18 e 19): a IN pede a renda declarada "pelo correntista" (IN
-:154-155). Cada linha leva a da pessoa da linha, com as regras do titular: na linha do titular,
-a do cadastro dele; na linha da parte (cotitular, representante, procurador), a do cadastro de
-titulares da propria parte (`cadastro_partes`), e nao a do titular da conta. A parte sem
-cadastro sai com os dois campos em branco.
+Renda, data da renda e e-mail (campos 18, 19 e 25): a IN pede a renda declarada "pelo
+correntista" (IN :154-155; no Memorando de Instrucao MI 001 - ASSPA/PGR, campo 18, "informada
+pelo correntista") e o e-mail "declarado pelo titular" (IN :161). Por isso dependem do papel:
+
+- **Titular e cotitular** (campo 5 = `T`, `1`, `2`, ...): sao correntistas e titulares da
+  conta, e saem com a renda e o e-mail do proprio cadastro, nunca os do titular da conta.
+- **Representante legal, representante, procurador e outros** (`L`, `R`, `P`, `O`): nao sao.
+  Os campos 18 e 19 saem em branco e o 25 `e-mail nao declarado`, mesmo que a pessoa tenha
+  cadastro de titular no CRM com renda e e-mail: a informacao que a IN pede nao existe para
+  ela (art. 2o, paragrafo 1o, IN :49).
+
+A parte sem cadastro sai com 18 e 19 em branco e o 25 `e-mail nao declarado`, qualquer que
+seja o papel. As regras de moeda da renda valem para toda parte com cadastro, mesmo a que nao
+imprime a renda: o cadastro e um por documento, sem o papel, e uma renda em outra moeda
+recusa a geracao.
 
 ## Periodo
 
@@ -166,9 +177,12 @@ sai em branco:
   conta (20).
 - Das partes relacionadas: os mesmos campos do titular, quando o cadastro dela nao tem o
   dado. A parte sem cadastro de titular no CRM sai com os campos 12 a 19 e 24 em branco.
+- Do representante legal, representante, procurador e outros (`L`, `R`, `P`, `O`): renda e
+  data da renda (18 e 19) sempre em branco, mesmo com cadastro (IN :154-155, "pelo
+  correntista").
 
-Sem e-mail no cadastro, e na parte sem cadastro de titular, o campo 25 sai
-`e-mail nao declarado`, o codigo da IN, sem acento.
+Sem e-mail no cadastro, na parte sem cadastro de titular e nas linhas `L`, `R`, `P` e `O`, o
+campo 25 sai `e-mail nao declarado`, o codigo da IN (IN :161), sem acento.
 
 ## Nome dos arquivos na entrega
 
