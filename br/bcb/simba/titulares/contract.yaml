@@ -996,7 +996,7 @@ rules:
                                         "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
       A renda declarada no cadastro da pessoa natural está em moeda diferente de BRL, e o catálogo não converte moeda:
-      o campo 18 leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare a renda
+      o campo 18 do TITULARES leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare a renda
       em BRL no cadastro antes de gerar.
 
   - id: moeda-do-faturamento
@@ -1012,7 +1012,7 @@ rules:
                                         "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
       O faturamento declarado no cadastro da pessoa jurídica está em moeda diferente de BRL, e o catálogo não converte
-      moeda: o campo 18 leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare o
+      moeda: o campo 18 do TITULARES leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare o
       faturamento em BRL no cadastro antes de gerar.
 
   - id: moeda-da-renda-contraparte
@@ -1028,7 +1028,7 @@ rules:
                                         "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
       A renda declarada no cadastro da pessoa natural está em moeda diferente de BRL, e o catálogo não converte moeda:
-      o campo 18 leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare a renda
+      o campo 18 do TITULARES leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare a renda
       em BRL no cadastro antes de gerar.
 
   - id: moeda-do-faturamento-contraparte
@@ -1044,7 +1044,7 @@ rules:
                                         "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
       O faturamento declarado no cadastro da pessoa jurídica está em moeda diferente de BRL, e o catálogo não converte
-      moeda: o campo 18 leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare o
+      moeda: o campo 18 do TITULARES leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare o
       faturamento em BRL no cadastro antes de gerar.
 
   - id: uf-do-brasil-partes
@@ -1110,7 +1110,7 @@ rules:
                                         "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
       A renda declarada no cadastro da pessoa natural está em moeda diferente de BRL, e o catálogo não converte moeda:
-      o campo 18 leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare a renda
+      o campo 18 do TITULARES leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare a renda
       em BRL no cadastro antes de gerar.
 
   - id: moeda-da-renda-partes-contraparte
@@ -1126,7 +1126,7 @@ rules:
                                         "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
       A renda declarada no cadastro da pessoa natural está em moeda diferente de BRL, e o catálogo não converte moeda:
-      o campo 18 leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare a renda
+      o campo 18 do TITULARES leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare a renda
       em BRL no cadastro antes de gerar.
 
   - id: moeda-do-faturamento-partes
@@ -1142,7 +1142,7 @@ rules:
                                         "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
       O faturamento declarado no cadastro da pessoa jurídica está em moeda diferente de BRL, e o catálogo não converte
-      moeda: o campo 18 leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare o
+      moeda: o campo 18 do TITULARES leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare o
       faturamento em BRL no cadastro antes de gerar.
 
   - id: moeda-do-faturamento-partes-contraparte
@@ -1158,7 +1158,7 @@ rules:
                                         "BRV", "BRW", "BRX", "BRY", "BRZ"]}
     message: >-
       O faturamento declarado no cadastro da pessoa jurídica está em moeda diferente de BRL, e o catálogo não converte
-      moeda: o campo 18 leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare o
+      moeda: o campo 18 do TITULARES leva o valor como foi declarado, e a IN 636 só dá exemplos em reais (art. 3º, VIII). Declare o
       faturamento em BRL no cadastro antes de gerar.
 
 knownGaps:

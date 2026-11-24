@@ -106,8 +106,8 @@ Num tenant com mais de uma organização, o cadastro da instituição no Reporte
   BRL: a figura que o campo 18 imprime (a renda da pessoa natural, o faturamento da jurídica) em
   outra moeda recusa a geração (regras moeda-da-renda e moeda-do-faturamento); a outra figura do
   cadastro não é conferida, porque não vai ao arquivo. Moeda fora do formato ISO (três letras
-  maiúsculas) também recusa. O catálogo não converte moeda; a IN não fala de moeda no campo 18 e o leiaute só dá exemplos
-  em R$ (art. 3º, VIII). A API do CRM exige a moeda junto do valor: sem moeda não há renda, e o
+  maiúsculas) também recusa. O catálogo não converte moeda; a IN não fala de moeda no campo 18 e só dá exemplos
+  em reais (art. 3º, VIII). A API do CRM exige a moeda junto do valor: sem moeda não há renda, e o
   campo 18 sai em branco. Resíduo: um valor gravado sem moeda direto no banco, fora da API, sai
   como declarado, sem conferência de moeda.
 - E-mail (campo 25): o principal e o secundário, separados por `;`.
