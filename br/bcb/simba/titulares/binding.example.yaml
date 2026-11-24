@@ -78,11 +78,11 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.titulares
-contractVersion: 1.2.0
+contractVersion: 1.2.1
 
 queries:
   - name: declarante
-    description: A organizacao do Midaz, que e a instituicao que responde ao caso. O CNPJ dela e o do arquivo.
+    description: A organização do Midaz, que é a instituição que responde ao caso. O CNPJ dela é o do arquivo.
     dataSource: midaz_onboarding
     table: organization
     filters:
@@ -101,7 +101,7 @@ queries:
     select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
 
   - name: titulares_dados
-    description: As contas do caso, com agencia, tipo, datas e o cadastro do titular.
+    description: As contas do caso, com agência, tipo, datas e o cadastro do titular.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -758,7 +758,7 @@ queries:
   # Contas com que as do caso transacionaram no periodo (IN art. 2o, II, :29;
   # campo 7 = 3): as outras pernas das transacoes dos lancamentos do caso.
   - name: lancamentos
-    description: Lancamentos das contas do caso no periodo, so a transacao de cada um.
+    description: Lançamentos das contas do caso no período, só a transação de cada um.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -774,7 +774,7 @@ queries:
   # Toda perna das mesmas transacoes, inclusive a propria conta do caso (o motor
   # nao tem `nin` com valores de consulta): o template nao a repete.
   - name: outras_pernas
-    description: As pernas das transacoes dos lancamentos do caso.
+    description: As pernas das transações dos lançamentos do caso.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -788,7 +788,7 @@ queries:
   # So as outras pernas que sao conta de cliente no CRM. Conta de sistema ou de
   # liquidacao, sem instrumento, nao entra.
   - name: contas_contraparte
-    description: Os ids das contas das outras pernas que tem instrumento no CRM.
+    description: Os ids das contas das outras pernas que têm instrumento no CRM.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -798,7 +798,7 @@ queries:
 
   # As contas de contraparte, com o titular e as partes, como as do caso.
   - name: titulares_contraparte_dados
-    description: As contas de contraparte, com agencia, tipo, datas e o cadastro do titular.
+    description: As contas de contraparte, com agência, tipo, datas e o cadastro do titular.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -2736,15 +2736,15 @@ datasets:
         column: legal_document
       compe:
         from: manual
-        pendingReason: "o codigo Compe da instituicao, 3 digitos; 999 se ela nao tem codigo Compe"
+        pendingReason: "o código Compe da instituição, com 3 dígitos; 999 se ela não tem código Compe"
       nomeUnicad:
         from: manual
-        pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
+        pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
       # Declaracao da implantacao: "nao" se a instituicao nao firma contrato de
       # cambio (campo 28 = 0); "sim" se firma, e a geracao e recusada.
       operaCambio:
         from: manual
-        pendingReason: "nao se a instituicao nao firma contrato de cambio (campo 28 = 0); sim se firma (a geracao e recusada)"
+        pendingReason: '"nao" se a instituição não firma contrato de câmbio (campo 28 = 0); "sim" se firma (nesse caso a geração é recusada)'
 
   titulares:
     from:
