@@ -1,0 +1,47 @@
+[
+  {
+    "contaId": "c1",
+    "parteId": "p1",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333331",
+    "tipoConta": "1",
+    "vinculo": "C",
+    "documento": "52998224725",
+    "nome": "Carlos Cotitular",
+    "dataInicio": "2024-02-03"
+  },
+  {
+    "contaId": "c1",
+    "parteId": "p4",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333331",
+    "tipoConta": "1",
+    "vinculo": "C",
+    "documento": "33445566000186",
+    "nome": "Holding Cotitular S.A.",
+    "dataInicio": "2024-08-20"
+  },
+  {
+    "contaId": "c1",
+    "parteId": "p2",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333331",
+    "tipoConta": "1",
+    "vinculo": "O",
+    "documento": "11444777000161",
+    "nome": "Empresa Procuradora Ltda",
+    "dataInicio": "2025-01-15",
+    "dataFim": "2026-06-30"
+  },
+  {
+    "contaId": "c1",
+    "parteId": "p3",
+    "numeroAgencia": "00001",
+    "numeroConta": "3333331",
+    "tipoConta": "1",
+    "vinculo": "L",
+    "documento": "98765432100",
+    "nome": "Rita Sem Cadastro",
+    "dataInicio": "2025-03-01"
+  }
+]

@@ -90,7 +90,8 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   Brasil, em maiuscula ou minuscula (`br` e o Brasil). Sem pais no cadastro, a pessoa e
   tratada como no Brasil.
 - UF (campo 14): para quem mora no Brasil, a sigla do endereco principal convertida no
-  codigo IBGE pela tabela de `br/bcb/simba/tabelas/uf-ibge.compute.yaml`; para quem mora no
+  codigo IBGE pela tabela de `br/bcb/simba/tabelas/uf-ibge.compute.yaml`, em maiuscula ou
+  minuscula (`sp` e SP); sigla com espaco ou pontuacao recusa a geracao; para quem mora no
   exterior, `00` (IN :150), mesmo que o cadastro traga uma sigla igual a de uma UF. Quem mora
   no Brasil sem sigla no cadastro sai com o campo em branco: a IN so da o `00` para o
   exterior, e a informacao que nao existe fica sem preencher (art. 2o, paragrafo 1o, IN :49).
@@ -118,9 +119,38 @@ Num tenant com mais de uma organizacao, o cadastro da instituicao no Reporter re
   geracao (RPT-0143). Partes gravadas nas versoes beta da v3.5.0 do Midaz anteriores ao tipo
   de data podem ter essa hora e recusar a geracao; regrave a data pela API.
 
-Nas partes relacionadas, o CRM guarda so documento, nome, papel e as datas de inicio e fim do
-vinculo. O tipo de pessoa da parte (campo 7) sai do tamanho do documento: 11 posicoes CPF
-(`1`), 14 posicoes CNPJ (`2`).
+Nas partes relacionadas, o instrumento do CRM guarda so documento, nome, papel e as datas de
+inicio e fim do vinculo. O tipo de pessoa da parte (campo 7) sai do tamanho do documento: 11
+posicoes CPF (`1`), 14 posicoes CNPJ (`2`). O endereco, a UF, o pais, o CEP, o telefone e o
+nome social da parte (campos 12 a 17 e 24) saem do cadastro de titulares do CRM, pelo documento
+da parte, com as mesmas regras do titular: a parte que tambem e titular no CRM tem esses campos
+preenchidos. A renda e o e-mail (18, 19 e 25) dependem do papel, como diz o paragrafo abaixo.
+As consultas `partes_documentos` e
+`cadastro_partes` (e as `_contraparte`, para as contas de contraparte) fazem essa leitura: o
+Reporter decifra o documento da parte e pergunta o cadastro pelo digest dele.
+
+A ligacao e pelo documento como esta gravado: a parte no instrumento e a pessoa no cadastro de
+titulares precisam ter o mesmo documento, sem pontos, tracos ou barras; o CNPJ alfanumerico
+mantem as letras. Com separador num cadastro e nao no outro (`529.982.247-25` na parte,
+`52998224725` no titular), a parte nao e achada e sai como parte sem cadastro, com os campos 12
+a 19 e 24 em branco, sem aviso. Confira o formato dos documentos no CRM na implantacao.
+
+Renda, data da renda e e-mail (campos 18, 19 e 25): a IN pede a renda declarada "pelo
+correntista" (IN :154-155; no Memorando de Instrucao MI 001 - ASSPA/PGR, campo 18, "informada
+pelo correntista") e o e-mail "declarado pelo titular" (IN :161). Por isso dependem do papel:
+
+- **Titular e cotitular** (campo 5 = `T`, `1`, `2`, ...): sao correntistas e titulares da
+  conta, e saem com a renda e o e-mail do proprio cadastro, nunca os do titular da conta.
+- **Representante legal, representante, procurador e outros** (`L`, `R`, `P`, `O`): nao sao.
+  Os campos 18 e 19 saem em branco e o 25 `e-mail nao declarado`, mesmo que a pessoa tenha
+  cadastro de titular no CRM com renda e e-mail: a informacao que a IN pede nao existe para
+  ela (art. 2o, paragrafo 1o, IN :49).
+
+A parte sem cadastro sai com 18 e 19 em branco e o 25 `e-mail nao declarado`, qualquer que
+seja o papel. A moeda da renda so e conferida de quem a imprime: a renda do cotitular em outra
+moeda que nao BRL recusa a geracao, a do representante ou do procurador nao. As consultas
+`cotitulares_documentos` e `renda_cotitulares` (e as `_contraparte`) leem a moeda so das partes
+com o papel `PRIMARY_HOLDER`.
 
 ## Periodo
 
@@ -146,11 +176,14 @@ sai em branco:
 - Do titular, quando o cadastro nao tem o dado: endereco (12), UF (14) de quem mora no Brasil,
   CEP (16), telefone (17), renda e data da renda (18 e 19), nome social (24) e abertura da
   conta (20).
-- Das partes relacionadas: campos 12 a 19 e 24 em branco, porque a parte no CRM nao tem
-  endereco, telefone, renda nem nome social.
+- Das partes relacionadas: os mesmos campos do titular, quando o cadastro dela nao tem o
+  dado. A parte sem cadastro de titular no CRM sai com os campos 12 a 19 e 24 em branco.
+- Do representante legal, representante, procurador e outros (`L`, `R`, `P`, `O`): renda e
+  data da renda (18 e 19) sempre em branco, mesmo com cadastro (IN :154-155, "pelo
+  correntista").
 
-Sem e-mail no cadastro, e sempre nas partes relacionadas, o campo 25 sai
-`e-mail nao declarado`, o codigo da IN, sem acento.
+Sem e-mail no cadastro, na parte sem cadastro de titular e nas linhas `L`, `R`, `P` e `O`, o
+campo 25 sai `e-mail nao declarado`, o codigo da IN (IN :161), sem acento.
 
 ## Nome dos arquivos na entrega
 
@@ -180,6 +213,27 @@ SitAtedmntReq).
 Quando a ordem tem mais de um investigado e so parte deles tem conta, os arquivos saem com
 as contas de quem tem; quem nao tem e declarado sem relacionamento no atendimento da
 requisicao.
+
+## Quem vem da versao 1.1.0
+
+A 1.2.0 le o cadastro das partes relacionadas por oito consultas novas do mapeamento:
+`partes_documentos`, `cadastro_partes`, `cotitulares_documentos` e `renda_cotitulares`, e as
+`_contraparte` delas. Elas preenchem quatro conjuntos novos: `cadastro_partes` e
+`renda_cotitulares`, e os `_contraparte`. Um mapeamento escrito para a 1.1.0, sem elas, ainda
+gera o rascunho, mas a aprovacao e recusada: os campos obrigatorios dos conjuntos novos ficam
+sem mapeamento. Para aprovar:
+
+1. A instituicao que tem o cadastro de titulares das partes no CRM copia as oito consultas e
+   os quatro conjuntos do `binding.example.yaml` desta versao. Quem tem o dado preenche o campo
+   com ele: a IN so deixa o campo sem a informacao quando ela nao existe ou e tecnicamente
+   inviavel (art. 2o, paragrafo 1o, IN :49).
+2. So a instituicao que nao tem esse cadastro declara os quatro conjuntos vazios (`emptyReason`,
+   com o motivo), o que volta ao arquivo da 1.1.0: os campos 12 a 19 e 24 das partes em branco
+   e o campo 25 `e-mail nao declarado`.
+
+O rascunho guarda o mapeamento com que foi gerado, e a aprovacao confere esse mapeamento, nao
+o atual. Depois de mudar o mapeamento, salve-o e gere um rascunho novo do mesmo `caso`: o
+rascunho gerado antes continua sem poder ser aprovado.
 
 ## Limitacoes desta versao
 
