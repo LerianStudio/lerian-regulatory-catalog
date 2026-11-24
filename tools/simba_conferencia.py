@@ -438,6 +438,18 @@ def _digits(text: str) -> str:
     return "".join(c for c in text if c.isalnum()).upper()
 
 
+def check_coholder_start(titulares: list[list[str]], report: Report) -> None:
+    """O cotitular sem o início do vínculo (campo 20 em branco, ou do ano 0001, o instante zero do registro antigo).
+
+    A conta de que o documento é cotitular entra quando a cotitularidade cruza o período; sem a data de início ela
+    entra sempre, sem essa conferência, e quem aprova confere se o vínculo cruza o período.
+    """
+    loose = sum(1 for r in titulares if field(r, 5).isdigit() and (not field(r, 20) or field(r, 20).endswith("0001")))
+    if loose:
+        report.warn(f"TITULARES: {loose} cotitular(es) sem a data de início do vínculo (campo 20 em branco ou do ano "
+                    "0001): a conta entrou sem conferir se a cotitularidade cruza o período")
+
+
 def check_identity(titulares: list[list[str]], report: Report) -> None:
     """Identificação e dispositivos que o TITULARES deixa em branco, contados por arquivo."""
     without_id = sum(1 for r in titulares if not field(r, 10) and not field(r, 11))
@@ -650,6 +662,7 @@ def conferir(folder: Path, caso: str, drafts_folder: Path | None = None, previou
     check_generic_entries(files["EXTRATO"], files["ORIGEM_DESTINO"], report)
     check_identity(files["TITULARES"], report)
     check_case_documents(documents, files["TITULARES"], report)
+    check_coholder_start(files["TITULARES"], report)
     check_entry_balances(drafts, report)
     check_overdraft_rows(drafts, report)
     if previous_folder is None:

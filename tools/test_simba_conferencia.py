@@ -469,6 +469,19 @@ class Conferencia(unittest.TestCase):
             row[4] = "1"
         self.assertFalse(any("da ordem" in w for w in self.run_case(files).warnings))
 
+    def test_cotitular_sem_inicio_do_vinculo_e_aviso(self) -> None:
+        for inicio in ("", "01010001"):
+            files = case()
+            files["TITULARES"][0][4] = "1"
+            files["TITULARES"][0][19] = inicio
+            self.assert_says(self.run_case(files).warnings, "1 cotitular(es) sem a data de início do vínculo")
+
+    def test_cotitular_com_inicio_e_titular_sem_inicio_nao_sao_aviso(self) -> None:
+        files = case()
+        files["TITULARES"][0][4] = "1"
+        files["TITULARES"][0][19] = "01032026"
+        self.assertFalse(any("início do vínculo" in w for w in self.run_case(files).warnings))
+
     def test_documento_da_ordem_so_como_procurador_e_aviso(self) -> None:
         files = case()
         for row in files["TITULARES"]:
