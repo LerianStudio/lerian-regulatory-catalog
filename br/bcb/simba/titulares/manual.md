@@ -216,6 +216,10 @@ mapeamento. Para aprovar:
    com o motivo), o que volta ao arquivo da 1.1.0: os campos 12 a 19 e 24 das partes em branco
    e o campo 25 `e-mail nao declarado`.
 
+O rascunho guarda o mapeamento com que foi gerado, e a aprovacao confere esse mapeamento, nao
+o atual. Depois de mudar o mapeamento, salve-o e gere um rascunho novo do mesmo `caso`: o
+rascunho gerado antes continua sem poder ser aprovado.
+
 ## Limitacoes desta versao
 
 - **Periodo por investigado**: a ordem pode dar um periodo de afastamento para cada
