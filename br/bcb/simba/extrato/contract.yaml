@@ -451,7 +451,10 @@ knownGaps:
       O campo 7 do CONTAS (movimentação) não conta reserva nem liberação do Midaz. Num ledger que não valida rotas, a
       conta cuja única operação no período é um bloqueio cautelar ou a liberação dele tem linha 167 ou 276 no EXTRATO
       e sai 2 (sem movimentação) no CONTAS, e a conferência acusa. O bloqueio entra no mesmo lote do crédito do Pix:
-      só a liberação, até 72 horas depois, cai sozinha num período.
+      só a liberação, até 72 horas depois, cai sozinha num período. Num ledger que valida rotas, o commit de um
+      bloqueio cautelar de antes do período (o MED liquidado por Pix manual) é uma operação ON_HOLD: a conta cuja
+      única operação no período é esse commit tem a linha 166 no EXTRATO e também sai 2 no CONTAS. Gerar de novo
+      não corrige: confira a linha no EXTRATO antes de aprovar.
   - id: cautelar-do-pix-jd
     description: >-
       O Pix JD grava a reserva do bloqueio cautelar como uma devolução (flow REFUND, direction OUT), sem marca de

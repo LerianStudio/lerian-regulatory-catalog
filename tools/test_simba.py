@@ -804,6 +804,13 @@ class SimbaBindings(unittest.TestCase):
     def test_case_em_fonte_postgres_le_coluna_simples(self) -> None:
         self.assertEqual([], plain_computes_off(bindings(ROOT)))
 
+    def test_devolucoes_med_e_opcional(self) -> None:
+        # Um mapeamento de versão anterior, sem o conjunto, continua gerando: a devolução do MED
+        # do Pix lerian sai 140/264. Obrigatório, o conjunto viraria pendência que trava a aprovação.
+        contract = yaml.safe_load((ROOT / "br" / "bcb" / "simba" / "extrato" / "contract.yaml").read_text(encoding="utf-8"))
+        sets = {d["name"]: d for d in contract["datasets"]}
+        self.assertEqual([False], [f.get("required") for f in sets["devolucoes_med"]["fields"]])
+
     def test_tipo_de_conta_do_pix_so_onde_a_in_casa(self) -> None:
         self.assertEqual([], pix_account_type_off(bindings(ROOT)))
 
