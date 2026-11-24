@@ -35,7 +35,7 @@ metadata:
   summary: >-
     Lançamentos das contas investigadas no período do afastamento do sigilo, com valor,
     natureza, saldo após o lançamento e o código do tipo de lançamento do Anexo II.
-  version: 1.0.3
+  version: 1.0.4
   status: draft
   output: txt
   timezone: America/Sao_Paulo
