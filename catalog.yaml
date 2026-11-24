@@ -222,14 +222,14 @@ documents:
     document: EXTRATO
     family: simba
     title: SIMBA — Extrato
-    version: 1.0.2
+    version: 1.0.3
     status: draft
     periodicity: eventual
     appliesTo:
       institutionTypes: [IP, SCD, SCFI]
     summary: >-
-      Lancamentos das contas investigadas no periodo do afastamento do sigilo, com valor,
-      natureza, saldo apos o lancamento e o codigo do tipo de lancamento do Anexo II.
+      Lançamentos das contas investigadas no período do afastamento do sigilo, com valor,
+      natureza, saldo após o lançamento e o código do tipo de lançamento do Anexo II.
 
   - id: br.bcb.simba.origem-destino
     path: br/bcb/simba/origem-destino
