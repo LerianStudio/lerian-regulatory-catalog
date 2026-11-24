@@ -71,14 +71,34 @@ def cosif_check(code):
     return digit == int(code[9])
 
 
+def midaz_header():
+    """The (name, value) header of MIDAZ_TOKEN_FILE, or None when it is unset."""
+    path = os.environ.get("MIDAZ_TOKEN_FILE")
+    if path is None:
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            line = fh.read().strip()
+    except (OSError, UnicodeError):
+        fail("MIDAZ_TOKEN_FILE: the file cannot be read")
+    if not re.fullmatch(r"Authorization: Bearer \S+", line):
+        fail("MIDAZ_TOKEN_FILE: the file must hold one line 'Authorization: Bearer <token>'")
+
+    return tuple(line.split(": ", 1))
+
+
 class Midaz:
-    def __init__(self, base):
+    def __init__(self, base, header=None):
         self.base = base.rstrip("/")
+        self.header = header
 
     def call(self, method, path, body=None, idempotency=None, ok=(200, 201), headers=None):
         data = None if body is None else json.dumps(body).encode()
         request = urllib.request.Request(self.base + path, data=data, method=method)
         request.add_header("Content-Type", "application/json")
+        if self.header:
+            # Unredirected: urllib drops it on a redirect, so it never reaches another host.
+            request.add_unredirected_header(*self.header)
         for k, v in (headers or {}).items():
             request.add_header(k, v)
 
@@ -514,6 +534,7 @@ STALE_SCHEMA = set()  # the 4111 XSD the catalog keeps is the one in force since
 
 
 class Reporter(Midaz):
+    # Inherits get/items from Midaz: it never carries the Midaz header (header=None).
     def raw(self, method, path, body=None, headers=None, ok=(200, 201)):
         request = urllib.request.Request(self.base + path, data=body, method=method)
         for k, v in (headers or {}).items():
@@ -2012,7 +2033,7 @@ def main():
         run_organization(args, scenario)
         return
 
-    lg = Ledger(Midaz(args.midaz), scenario, state)
+    lg = Ledger(Midaz(args.midaz, midaz_header()), scenario, state)
     # Only setup builds. reports and ledger read what setup built, and finding
     # nothing is a refusal: creating an empty organization there judged a file
     # generated from no data at all.
@@ -2073,7 +2094,7 @@ def run_organization(args, scenario):
     the organization with its address, or puts the scenario's address on the one
     found by name; reports and ledger only read it. There is no state to keep.
     """
-    lg = Ledger(Midaz(args.midaz), scenario, {})
+    lg = Ledger(Midaz(args.midaz, midaz_header()), scenario, {})
     lg.ensure_organization(create=args.command == "setup")
     found = read_organization(lg.midaz, lg.org)
     wanted = scenario["organization"].get("address") or {}
@@ -2099,7 +2120,7 @@ def run_organization(args, scenario):
 def run_books(args, scenario, state):
     global ROOT_STATE
     ROOT_STATE = state
-    books = Books(Midaz(args.midaz), scenario, state, create=args.command == "setup")
+    books = Books(Midaz(args.midaz, midaz_header()), scenario, state, create=args.command == "setup")
     if args.command == "setup":
         books.setup()
     else:

@@ -84,6 +84,10 @@ assinatura já tem. Com `--bindings <raiz de um catálogo>`, aplica o
 `binding.example.yaml` daquele checkout antes de gerar — é como se homologa uma
 branch do catálogo **antes** de cortar a release.
 
+Com a autenticação do Midaz ligada, `MIDAZ_TOKEN_FILE` aponta um arquivo com uma linha
+`Authorization: Bearer <token>` (a forma do `curl -H @arquivo`); toda chamada ao Midaz a
+leva, e arquivo ausente ou fora dessa forma para antes da primeira. Sem a variável, nada muda.
+
 O comando `reports` sai com código 1 se algum arquivo divergir. Cada arquivo de
 CADOC é julgado por: XML bem formado com a declaração no primeiro byte; o XSD oficial que
 o catálogo guarda (o do 4111 é o vigente desde 02/01/2025); toda rubrica com dez
@@ -279,7 +283,7 @@ ficam em semestres diferentes: o de 2026-06 (com movimento) é o aprovado, e os 
 de domínio e a do indicador de movimento ausente são de 2026-12, onde não há
 original aprovado.
 
-**Autenticação.** O script não manda token. Com a autenticação do Reporter ligada,
+**Autenticação.** O script não manda token ao Reporter. Com a autenticação do Reporter ligada,
 a aprovação exige o token de uma **pessoa** (`RPT-0201` para um token de aplicação);
 a homologação roda contra um Reporter sem autenticação.
 
