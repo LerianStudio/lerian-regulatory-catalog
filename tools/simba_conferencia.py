@@ -439,15 +439,19 @@ def _digits(text: str) -> str:
 
 
 def check_coholder_start(titulares: list[list[str]], report: Report) -> None:
-    """O cotitular sem o início do vínculo (campo 20 em branco, ou do ano 0001, o instante zero do registro antigo).
+    """O cotitular da ordem sem o início do vínculo (campo 20 em branco, ou do ano 0001, o instante zero do registro
+    antigo).
 
-    A conta de que o documento é cotitular entra quando a cotitularidade cruza o período; sem a data de início ela
-    entra sempre, sem essa conferência, e quem aprova confere se o vínculo cruza o período.
+    A conta de que o documento da ordem é cotitular entra quando a cotitularidade cruza o período; sem a data de
+    início ela entra sempre, sem essa conferência, e quem aprova confere se o vínculo cruza o período. Só a pessoa da
+    ordem (campo 6 = 1) escolhe a conta pelas datas: o outro cotitular de uma conta do caso não a escolheu.
     """
-    loose = sum(1 for r in titulares if field(r, 5).isdigit() and (not field(r, 20) or field(r, 20).endswith("0001")))
+    loose = sum(1 for r in titulares if field(r, 5).isdigit() and field(r, 6) == "1"
+                and (not field(r, 20) or field(r, 20).endswith("0001")))
     if loose:
-        report.warn(f"TITULARES: {loose} cotitular(es) sem a data de início do vínculo (campo 20 em branco ou do ano "
-                    "0001): a conta entrou sem conferir se a cotitularidade cruza o período")
+        report.warn(f"TITULARES: {loose} cotitular(es) com sigilo afastado (campo 6 = 1) sem a data de início do "
+                    "vínculo (campo 20 em branco ou do ano 0001): a conta entrou sem conferir se a cotitularidade "
+                    "cruza o período")
 
 
 def check_identity(titulares: list[list[str]], report: Report) -> None:

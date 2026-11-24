@@ -474,7 +474,14 @@ class Conferencia(unittest.TestCase):
             files = case()
             files["TITULARES"][0][4] = "1"
             files["TITULARES"][0][19] = inicio
-            self.assert_says(self.run_case(files).warnings, "1 cotitular(es) sem a data de início do vínculo")
+            self.assert_says(self.run_case(files).warnings, "1 cotitular(es) com sigilo afastado (campo 6 = 1) sem a data de início")
+
+    def test_outro_cotitular_sem_inicio_nao_e_aviso(self) -> None:
+        # O cotitular que não está na ordem (campo 6 = 0) não escolheu a conta: ela é do caso por outra pessoa.
+        files = case()
+        files["TITULARES"][0][4] = "1"
+        files["TITULARES"][0][5] = "0"
+        self.assertFalse(any("início do vínculo" in w for w in self.run_case(files).warnings))
 
     def test_cotitular_com_inicio_e_titular_sem_inicio_nao_sao_aviso(self) -> None:
         files = case()
