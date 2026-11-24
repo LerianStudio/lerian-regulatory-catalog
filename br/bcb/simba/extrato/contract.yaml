@@ -35,7 +35,7 @@ metadata:
   summary: >-
     Lançamentos das contas investigadas no período do afastamento do sigilo, com valor,
     natureza, saldo após o lançamento e o código do tipo de lançamento do Anexo II.
-  version: 1.0.4
+  version: 1.1.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -136,7 +136,8 @@ datasets:
                 valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, chaveSaldo: first, bloqueadoApos: first,
                 chequeEspecialApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
-                iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
+                iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first,
+                saldoAntes: first, origem: first, sistemaOrigem: first}
     fields:
       - name: operacaoId
         type: string
@@ -275,6 +276,24 @@ datasets:
         type: string
         required: false
         description: original_end_to_end_id da devolução do Pix lerian.
+      - name: saldoAntes
+        type: decimal
+        required: false
+        description: >-
+          Saldo disponível da conta antes da operação, como o Midaz o gravou. Só separa a operação do bloqueio cautelar
+          que mexe no disponível (o bloqueio e a liberação) das que mexem só no bloqueado. Não vai ao arquivo.
+      - name: origem
+        type: string
+        required: false
+        description: >-
+          origin da metadata da transação. balance-lock é a reserva do Block Balancer do Pix lerian (MED e bloqueio
+          cautelar). Não vai ao arquivo.
+      - name: sistemaOrigem
+        type: string
+        required: false
+        description: >-
+          origin_system da metadata da transação. Com origin balance-lock, antifraud-cautelar é o bloqueio cautelar do
+          Pix recebido (IN 636, Anexo II, 167 e 276). Não vai ao arquivo.
 
   # Transacoes que sao revert de outra no Midaz (parent_transaction_id): o campo 9
   # sai 140 no debito e 264 no credito, antes de qualquer outra regra.
@@ -305,6 +324,21 @@ datasets:
         type: string
         required: true
         description: A operação de tarifa. Não vai ao arquivo.
+
+  # A devolucao do Pix lerian pelo MED (motivo FR01 ou BE08): o campo 9 sai 166 no
+  # debito e 275 no credito (IN 636, Anexo II), em vez de 140 e 264.
+  - name: devolucoes_med
+    description: As devoluções do Pix lerian que são do MED.
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O id da devolução no Pix lerian (refund_id da metadata). Não vai ao arquivo.
 
   # O TxId do Pix (campo 26) pela linha do plugin que liquidou o Pix, a mesma que o
   # ORIGEM-DESTINO le (campo 28): um conjunto por plugin e sentido. A referencia e o E2E
@@ -399,7 +433,21 @@ knownGaps:
   - id: reserva-com-validacao-de-rota
     description: >-
       Num ledger que valida rotas, a reserva cancelada sai como um débito e um crédito de mesmo valor, e uma reserva
-      ainda aberta na data de corte sai como débito, sem a operação que a concluiria.
+      ainda aberta na data de corte sai como débito, sem a operação que a concluiria. A do MED do Pix lerian também:
+      o débito da reserva sai 125 e o crédito da liberação 218.
+  - id: bloqueio-cautelar-no-saldo
+    description: >-
+      O bloqueio cautelar do Pix lerian sai 167 e o desbloqueio 276 (IN 636, Anexo II), mas o campo 12 continua o
+      saldo da conta com o bloqueado (disponível + bloqueado - cheque especial usado). Num ledger que não valida
+      rotas, a linha 167 e a 276 saem com o mesmo saldo da linha anterior: a reserva só passa o valor do disponível
+      para o bloqueado. Num ledger que valida rotas, a linha 167 sai com o saldo já sem o valor, porque o Midaz grava
+      o débito antes da reserva, e a linha seguinte o soma de novo. O commit de um bloqueio cautelar (a liquidação do
+      MED que o adotou, por Pix manual) não sai: o 167 já tirou o valor.
+  - id: cautelar-do-pix-jd
+    description: >-
+      O Pix JD grava a reserva do bloqueio cautelar como uma devolução (flow REFUND, direction OUT), sem marca de
+      bloqueio cautelar na metadata. A reserva e a liberação ficam fora do EXTRATO, e a efetivação, quando há, sai
+      140 (devolução), e não 167.
   - id: cheque-especial-antes-do-snapshot
     description: >-
       Operação gravada antes de o Midaz guardar o cheque especial usado no snapshot não o tem: o saldo dela sai sem
@@ -407,8 +455,8 @@ knownGaps:
   - id: codigo-generico
     description: >-
       O campo 9 sai 125 (débito) ou 218 (crédito) quando nenhuma regra se aplica: lançamento sem metadata de plugin,
-      tarifa avulsa sem feeLeg, transferência interna sem metadata, MED, Pix Automático, bloqueio cautelar. Os dois
-      códigos são descontinuados em 01/06/2028 (IN 636, art. 2º, § 4º) sem substituto indicado.
+      tarifa avulsa sem feeLeg, transferência interna sem metadata, Pix Automático, a liquidação do MED por Pix manual
+      no Pix lerian (o commit da reserva na conta de bloqueio). Os dois códigos são descontinuados em 01/06/2028 (IN 636, art. 2º, § 4º) sem substituto indicado.
   - id: codigos-especificos
     description: >-
       Pix Saque e Pix Troco, mesma titularidade e pagamentos de boleto não têm marca nos plugins: saem com o código

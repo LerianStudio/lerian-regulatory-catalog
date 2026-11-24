@@ -48,6 +48,10 @@ Na ordem, a primeira que existe:
    grava sem `feeLeg`): a própria instituição (Compe, CNPJ, nome no Unicad, pessoa jurídica). Conta
    e tipo de conta (campos 7 e 8) ficam em branco, porque a contraparte não é uma conta de
    cliente, e o campo 18 diz isso: `tarifa da propria instituicao; sem conta de contraparte` (IN 636, art. 2º, § 1º).
+   O bloqueio cautelar do Pix lerian (`167`) e o desbloqueio (`276`) saem da mesma forma, antes
+   da tarifa: o valor fica retido na conta de bloqueio da instituição, e o campo 18 diz
+   `bloqueio cautelar de Pix recebido; valor retido pela propria instituicao` ou
+   `desbloqueio cautelar de Pix recebido; valor devolvido pela propria instituicao`.
 2. **O plugin que liquidou a transação**, lido no banco dele:
    - Pix lerian: a origem do Pix recebido e o destino do Pix enviado (banco, agência, conta,
      CPF/CNPJ, nome, mensagem e TxId);

@@ -32,7 +32,15 @@ apagadas, do início do dia `inicio` ao fim do dia `fim` no calendário do Repor
 liberações do Midaz (operações `ON_HOLD` e `RELEASE`) ficam fora: a transferência que passou
 por reserva sai uma vez só, com a operação que a concluiu. Num ledger que valida rotas, a reserva
 cancelada sai como um débito e um crédito de mesmo valor (a reserva e a devolução), e uma reserva
-ainda aberta na data de corte sai como débito, sem a operação que a concluiria. As contas
+ainda aberta na data de corte sai como débito, sem a operação que a concluiria.
+
+A exceção é o **bloqueio cautelar do Pix lerian** (a reserva com `origin` `balance-lock` e
+`origin_system` `antifraud-cautelar` na metadata da transação): a IN dá código ao bloqueio e ao
+desbloqueio (`167` e `276`), e eles saem como lançamento. Sai a operação que mexe no saldo
+disponível: o bloqueio (débito) e a liberação (crédito), nos dois modos do ledger. A reserva que
+só mexe no bloqueado e o commit ficam fora. O campo 12 continua com o bloqueado (veja a lacuna
+`bloqueio-cautelar-no-saldo` do contrato). O ORIGEM-DESTINO aplica o mesmo filtro, e a
+numeração continua a mesma. As contas
 do caso são as mesmas do CONTAS: as que um documento da ordem titula (cotitular,
 representante e procurador não entram).
 
@@ -57,27 +65,28 @@ Na ordem, a primeira regra que vale:
 1. **Pelo tipo da operação no Midaz**: a cobrança de dívida de tarifa (`FEE_SETTLEMENT`, no
    débito) `105`, mesmo dentro de um revert (a cobrança é tarifa, não estorno); o bloqueio
    judicial (`BLOCK`, no débito) `150`; o desbloqueio (`UNBLOCK`, no crédito) `272` (IN 636,
-   Anexo II).
+   Anexo II). O bloqueio cautelar do Pix lerian `167` no débito e o desbloqueio `276` no crédito.
 2. **Estorno** (revert do Midaz, transação com `parent_transaction_id`): o de uma transferência
    (lançamento com trilho ou com dado de Pix na metadata) sai `140` no débito e `264` no crédito;
    os demais, como o de uma tarifa, `142` e `266` (estornos diversos, IN 636, Anexo II).
 3. **Tarifa** (operação que o motor de tarifas do Midaz marcou com `feeLeg`): `105`; o
    reembolso de dívida de tarifa (`FEE_REFUND`, num revert) é um estorno: `266`.
 4. **Plugin com contrato de correlação** (TED, Pix JD), pela metadata da transação
-   (`rail`, `flow`, `direction`; direção vazia vale a natureza): devolução (`REFUND`) `140`/
-   `264`; Pix enviado ou entre contas da instituição `135`, recebido `261`; TED enviada `134`,
+   (`rail`, `flow`, `direction`; direção vazia vale a natureza): devolução do MED (`MED`, a
+   devolução por fraude ou falha operacional) `166`/`275`; devolução (`REFUND`) `140`/`264`; Pix enviado ou entre contas da instituição `135`, recebido `261`; TED enviada `134`,
    recebida `259`; transferência TED ou interna entre contas da instituição (`P2P`) `133`/`258`.
 5. **Pix lerian**: recebido (`payment_type` `PIX_IN`) `261`, ou `223` quando a iniciação foi
-   por QR Code; devolução (`original_end_to_end_id`) `140`/`264`; enviado (`end_to_end_id` com
-   `initiation_id`) `135`.
+   por QR Code; devolução (`original_end_to_end_id`) `140`/`264`, ou `166`/`275` quando o motivo
+   do pacs.004 é `FR01` (fraude) ou `BE08` (falha operacional), os dois do MED (lidos na tabela
+   `refunds` do plugin); enviado (`end_to_end_id` com `initiation_id`) `135`.
 6. **Nada acima**: `125` no débito, `218` no crédito.
 
 Só sai código do lado da natureza (débito `1xx`, crédito `2xx`). O código `116` nunca sai.
 
 **Atenção, códigos genéricos:** `125` e `218` são descontinuados em 01/06/2028 (IN 636, art. 2º,
 § 4º) sem substituto indicado. Saem com eles: lançamento sem metadata de plugin, tarifa
-avulsa sem `feeLeg`, transferência interna sem metadata, MED, Pix Automático e bloqueio
-cautelar. Revise as linhas com `125`/`218` antes de aprovar.
+avulsa sem `feeLeg`, transferência interna sem metadata, Pix Automático e a liquidação do MED
+por Pix manual no Pix lerian. Revise as linhas com `125`/`218` antes de aprovar.
 
 ## O que o tenant preenche no mapeamento (binding)
 

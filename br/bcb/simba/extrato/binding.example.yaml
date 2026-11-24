@@ -31,7 +31,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.extrato
-contractVersion: 1.0.4
+contractVersion: 1.1.0
 
 queries:
 
@@ -54,14 +54,19 @@ queries:
       - {field: deleted_at, operator: isNull}
     select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
 
-  - name: lancamentos
-    description: Lançamentos das contas do caso no período, só a transação de cada um.
+  # As reservas e liberacoes do Midaz (ON_HOLD, RELEASE) entram nesta consulta e na
+  # lancamentos_dados (o nome nao e o do AGENCIAS, que as tira, porque o texto e outro): o
+  # template as tira, menos as do bloqueio cautelar do Pix lerian (metadata origin =
+  # balance-lock e origin_system = antifraud-cautelar), que viram 167 e 276 (IN 636,
+  # Anexo II). A operacao do bloqueio cautelar que nao mexe no disponivel (a reserva
+  # num ledger que valida rotas, o commit) fica fora: o bloqueio ja tirou o valor.
+  - name: lancamentos_com_reservas
+    description: Lançamentos das contas do caso no período, reservas incluídas, só a transação de cada um.
     dataSource: midaz_transaction
     table: operation
     filters:
       - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
-      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
       - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
@@ -75,7 +80,6 @@ queries:
     filters:
       - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
-      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
       - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
@@ -110,7 +114,7 @@ queries:
     # vazias: chave vazia recusa a leitura inteira, por isso as descricoes vem de
     # `lancamentos_descricao`.
     aggregate:
-      groupBy: [transaction_id, id, account_id, created_at, natureza, natureza_oposta, type, available_balance_after, balance_key]
+      groupBy: [transaction_id, id, account_id, created_at, natureza, natureza_oposta, type, available_balance, available_balance_after, balance_key]
       measures:
         - as: valor
           fn: sum
@@ -168,15 +172,16 @@ queries:
 
   # A metadata que os plugins gravam na transacao do Midaz (Mongo do Midaz, colecao
   # `transaction`): rail, flow, direction e aggregateId do contrato de
-  # correlacao (TED e Pix JD); payment_type, initiation_type e os E2E do Pix lerian.
+  # correlacao (TED e Pix JD); payment_type, initiation_type e os E2E do Pix lerian;
+  # origin e origin_system da reserva do Block Balancer do Pix lerian (bloqueio cautelar).
   - name: metadados_transacao
     description: A metadata de cada transação dos lançamentos do caso.
     dataSource: midaz_metadata
     table: transaction
     filters:
-      - {field: entity_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: entity_id, operator: in, values: [{query: lancamentos_com_reservas, column: transaction_id}]}
       - {field: deleted_at, operator: isNull}
-    select: [entity_id, metadata.rail, metadata.flow, metadata.direction, metadata.aggregateId, metadata.payment_type, metadata.initiation_type, metadata.end_to_end_id, metadata.initiation_id, metadata.inbound_end_to_end_id, metadata.refund_id, metadata.original_end_to_end_id]
+    select: [entity_id, metadata.rail, metadata.flow, metadata.direction, metadata.aggregateId, metadata.payment_type, metadata.initiation_type, metadata.end_to_end_id, metadata.initiation_id, metadata.inbound_end_to_end_id, metadata.refund_id, metadata.original_end_to_end_id, metadata.origin, metadata.origin_system]
 
   # A perna de tarifa: o motor de tarifas do Midaz grava feeLeg = "true" na metadata
   # da operacao que ele criou (colecao `operation`).
@@ -196,7 +201,7 @@ queries:
     dataSource: midaz_transaction
     table: transaction
     filters:
-      - {field: id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: id, operator: in, values: [{query: lancamentos_com_reservas, column: transaction_id}]}
       - {field: parent_transaction_id, operator: notNull}
       - {field: deleted_at, operator: isNull}
     select: [id]
@@ -223,6 +228,20 @@ queries:
       - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.inbound_end_to_end_id}]}
       - {field: direction, operator: eq, values: ["INBOUND"]}
     select: [end_to_end_id, tx_id]
+
+  # A devolucao do Pix lerian que e do MED (IN 636, Anexo II, 166 e 275): o motivo do
+  # pacs.004 FR01 (fraude) ou BE08 (falha operacional), os dois do MED (o settle do MED
+  # so envia esses; o Pix JD separa a devolucao do MED pelos mesmos dois). A devolucao
+  # enviada sai 166 e a recebida 275; com outro motivo, 140 e 264.
+  - name: pix_lerian_devolucoes_med
+    description: Devoluções do Pix lerian pelo MED (motivo FR01 ou BE08).
+    dataSource: pix_lerian
+    table: refunds
+    filters:
+      - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.refund_id}]}
+      - {field: reason_code, operator: in, values: ["FR01", "BE08"]}
+      - {field: deleted_at, operator: isNull}
+    select: [id]
 
   # Pix JD: flow 2 e o envio (CASH_OUT), flow 1 o recebimento (CASH_IN); a linha de
   # devolucao (is_refund) fica fora. O plugin so grava o TxId no recebimento.
@@ -302,6 +321,9 @@ datasets:
       e2eRecebimento: {from: query, column: metadata.inbound_end_to_end_id}
       devolucao: {from: query, column: metadata.refund_id}
       e2eOriginal: {from: query, column: metadata.original_end_to_end_id}
+      saldoAntes: {from: query, column: available_balance}
+      origem: {from: query, column: metadata.origin}
+      sistemaOrigem: {from: query, column: metadata.origin_system}
 
   estornos:
     from:
@@ -314,6 +336,12 @@ datasets:
       query: taxas_lancamento
     fields:
       operacaoId: {from: query, column: entity_id}
+
+  devolucoes_med:
+    from:
+      query: pix_lerian_devolucoes_med
+    fields:
+      referencia: {from: query, column: id}
 
   trilho_pix_lerian_envios:
     from:

@@ -19,7 +19,9 @@ conferências que o validador, documento a documento, não faz:
     arquivo falta, e o gabarito passaria sem provar que pega alguma coisa;
   * toda consulta de lançamentos ou de saldo do razão deixa de fora as reservas e
     liberações do Midaz (ON_HOLD, RELEASE): a transferência que passou por reserva sai uma
-    vez só, e o saldo não conta a reserva como débito;
+    vez só, e o saldo não conta a reserva como débito. As consultas de linha do EXTRATO e do
+    ORIGEM-DESTINO as leem, e os dois templates as tiram pelo mesmo filtro, menos as do
+    bloqueio cautelar do Pix lerian (167 e 276);
   * as consultas que viram linha mantêm a operação de valor zero (o Midaz grava 0,00 na
     parte do disponível de um saque inteiro no cheque especial, e é ela que traz o saldo
     real da conta);
@@ -91,6 +93,15 @@ ENTRIES = "lancamentos"
 GOLDEN = Path("tools") / "homologation" / "simba"
 LEDGER = ("midaz_transaction", "operation")
 HOLD_TYPES = {"ON_HOLD", "RELEASE"}
+# As consultas de linha do EXTRATO e do ORIGEM-DESTINO leem as reservas: o template tira as que
+# não são do bloqueio cautelar do Pix lerian (IN 636, Anexo II, 167 e 276) pelo filtro HOLD_GUARD,
+# o mesmo texto nos dois, logo no começo do laço (antes do contador do lançamento).
+TEMPLATE_HOLD_QUERIES = {"lancamentos_com_reservas", "lancamentos_dados"}
+TEMPLATE_HOLD_DOCUMENTS = ("extrato", "origem-destino")
+CAUTELAR_HOLD = '(l.origem == "balance-lock" and l.sistemaOrigem == "antifraud-cautelar")'
+HOLD_GUARD = ('{%- for l in lancamentos %}{% if (' + CAUTELAR_HOLD[1:-1] + ' and l.saldoAntes|float != '
+              'l.saldoApos|float) or (not ' + CAUTELAR_HOLD + ' and l.tipoOperacao != "ON_HOLD" and '
+              'l.tipoOperacao != "RELEASE") %}{% counter "lanc" %}')
 # Lida pelo id de uma entrada que já passou pelo filtro: não lista nem soma nada.
 LOOKUP_QUERIES = {"lancamentos_descricao"}
 # As consultas que viram linha do EXTRATO e do ORIGEM-DESTINO: a operação de 0,00 que o
@@ -112,9 +123,21 @@ def holds_not_excluded(found: dict[str, dict]) -> list[str]:
         for name, query in queries_of(binding).items():
             if (query.get("dataSource"), query.get("table")) != LEDGER or name in LOOKUP_QUERIES:
                 continue
+            if document in TEMPLATE_HOLD_DOCUMENTS and name in TEMPLATE_HOLD_QUERIES:
+                continue  # o template tira (hold_guard_missing)
             if not any(c.get("field") == "type" and c.get("operator") == "nin" and HOLD_TYPES <= set(c.get("values") or [])
                        for c in _filters(query)):
                 problems.append(f"{document}: a consulta '{name}' não tira ON_HOLD e RELEASE")
+    return problems
+
+
+def hold_guard_missing(root: Path) -> list[str]:
+    """Os templates de linha que não tiram as reservas fora do bloqueio cautelar, logo no começo do laço."""
+    problems = []
+    for document in TEMPLATE_HOLD_DOCUMENTS:
+        text = (root / "br" / "bcb" / "simba" / document / "template.tpl").read_text(encoding="utf-8")
+        if text.count(HOLD_GUARD) != 1:
+            problems.append(f"{document}: o laço dos lançamentos não começa pelo filtro das reservas (HOLD_GUARD)")
     return problems
 
 
@@ -746,6 +769,7 @@ class SimbaBindings(unittest.TestCase):
 
     def test_reservas_e_liberacoes_ficam_fora(self) -> None:
         self.assertEqual([], holds_not_excluded(bindings(ROOT)))
+        self.assertEqual([], hold_guard_missing(ROOT))
 
     def test_operacao_de_valor_zero_vira_linha(self) -> None:
         self.assertEqual([], zero_entries_dropped(bindings(ROOT)))
@@ -862,9 +886,19 @@ class Mutations(unittest.TestCase):
 
     def test_consulta_que_volta_a_ler_reservas_e_pega(self) -> None:
         found = copy.deepcopy(self.found)
-        query = queries_of(found["extrato"])["lancamentos_dados"]
+        query = queries_of(found["origem-destino"])["pernas_lancamento"]
         query["filters"] = [c for c in query["filters"] if c.get("field") != "type"]
-        self.assertTrue(any("'lancamentos_dados'" in p for p in holds_not_excluded(found)))
+        self.assertTrue(any("'pernas_lancamento'" in p for p in holds_not_excluded(found)))
+
+    def test_template_que_deixa_passar_as_reservas_e_pego(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(ROOT / "br" / "bcb" / "simba", root / "br" / "bcb" / "simba")
+            path = root / "br" / "bcb" / "simba" / "origem-destino" / "template.tpl"
+            text = path.read_text(encoding="utf-8")
+            path.write_text(text.replace(' and l.tipoOperacao != "RELEASE")', ")", 1), encoding="utf-8")
+            self.assertEqual(["origem-destino: o laço dos lançamentos não começa pelo filtro das reservas (HOLD_GUARD)"],
+                             hold_guard_missing(root))
 
     def test_filtro_que_perde_a_linha_de_valor_zero_e_pego(self) -> None:
         found = copy.deepcopy(self.found)

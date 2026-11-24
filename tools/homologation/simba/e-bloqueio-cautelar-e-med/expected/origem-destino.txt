@@ -1,0 +1,10 @@
+1	1	10000	1													0	contraparte nao identificada pelo trilho										
+2	2	10000	2	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	bloqueio cautelar de Pix recebido; valor retido pela propria instituicao	11222333000181									
+3	3	10000	3	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	desbloqueio cautelar de Pix recebido; valor devolvido pela propria instituicao	11222333000181									
+4	4	3000	4													0	contraparte nao identificada pelo trilho										
+5	5	5000	5	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	bloqueio cautelar de Pix recebido; valor retido pela propria instituicao	11222333000181									
+6	6	1500	6													0	contraparte nao identificada pelo trilho										
+7	7	500	7													0	contraparte nao identificada pelo trilho										
+8	8	2500	8													0	contraparte nao identificada pelo trilho										
+9	9	1000	9													0	contraparte nao identificada pelo trilho										
+10	10	1000	10													0	contraparte nao identificada pelo trilho										

@@ -1,0 +1,19 @@
+{
+  "description": "Sintetico. Bloqueio cautelar do Pix lerian (167 e 276) nos dois modos do ledger: sem validacao de rota, a reserva (ON_HOLD) e a liberacao (RELEASE) viram linha; com validacao, o debito e o credito que mexem no disponivel; a reserva, o commit e a liberacao que mexem so no bloqueado ficam fora. A reserva e a liberacao de outra origem (Pix enviado, MED) ficam fora como antes. MED pela devolucao (166 e 275): a do Pix lerian pelo motivo FR01/BE08, a do Pix JD pelo flow MED; a devolucao com outro motivo segue 140. O ORIGEM-DESTINO numera igual e da a propria instituicao como contraparte do bloqueio e do desbloqueio.",
+  "documents": [
+    "br/bcb/simba/extrato",
+    "br/bcb/simba/origem-destino"
+  ],
+  "system": {
+    "caso": "001-XYZ-000002-01",
+    "inicio": "2026-12-01",
+    "fim": "2026-12-31",
+    "documentos": [
+      "12345678909"
+    ]
+  },
+  "institution": {
+    "name": "Instituicao Exemplo",
+    "identifier": "11222333000181"
+  }
+}

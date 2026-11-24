@@ -32,7 +32,7 @@ metadata:
   summary: >-
     Origem e destino dos recursos de cada lançamento do EXTRATO: a contraparte pelo plugin
     Pix ou TED da transação, pela outra perna interna, ou a própria instituição na tarifa.
-  version: 1.0.4
+  version: 1.1.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -127,7 +127,8 @@ datasets:
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
                 valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
-                iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
+                iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first,
+                saldoAntes: first, origem: first, sistemaOrigem: first}
     fields:
       - name: operacaoId
         type: string
@@ -200,8 +201,10 @@ datasets:
       - name: saldoApos
         type: decimal
         required: true
-        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Saldo disponível da conta após o lançamento, como o Midaz o gravou (IN 636, Anexo I, EXTRATO, campos 12 e 13).
+        description: >-
+          Saldo disponível da conta após o lançamento, como o Midaz o gravou. Não vai ao arquivo: com saldoAntes, separa a
+          operação do bloqueio cautelar que mexe no disponível. Sem `format`: o template compara o valor, e o valor
+          formatado chega cercado para impressão, não para conta.
       - name: rail
         type: string
         required: false
@@ -246,6 +249,24 @@ datasets:
         type: string
         required: false
         description: original_end_to_end_id da devolução do Pix lerian.
+      - name: saldoAntes
+        type: decimal
+        required: false
+        description: >-
+          Saldo disponível da conta antes da operação, como o Midaz o gravou. Só separa a operação do bloqueio cautelar
+          que mexe no disponível (o bloqueio e a liberação) das que mexem só no bloqueado. Não vai ao arquivo.
+      - name: origem
+        type: string
+        required: false
+        description: >-
+          origin da metadata da transação. balance-lock é a reserva do Block Balancer do Pix lerian (MED e bloqueio
+          cautelar). Não vai ao arquivo.
+      - name: sistemaOrigem
+        type: string
+        required: false
+        description: >-
+          origin_system da metadata da transação. Com origin balance-lock, antifraud-cautelar é o bloqueio cautelar do
+          Pix recebido (IN 636, Anexo II, 167 e 276). Não vai ao arquivo.
 
   # Operacoes que o motor de tarifas do Midaz marcou com feeLeg = "true": o campo 9
   # sai 105 (tarifas), depois da regra do estorno.
@@ -693,6 +714,11 @@ datasets:
         description: O tipo de conta como o plugin o grava. Só distingue o tipo ausente do fora do domínio; não vai ao arquivo.
 
 knownGaps:
+  - id: contraparte-do-bloqueio-cautelar
+    description: >-
+      O bloqueio cautelar do Pix lerian (167) e o desbloqueio (276) saem com a própria instituição como contraparte,
+      na forma da tarifa: o valor vai para a conta de bloqueio dela, que não é conta de cliente. O pagador do Pix
+      bloqueado está na linha do Pix recebido, e não na do bloqueio.
   - id: numeracao-entre-geracoes
     description: >-
       O EXTRATO e o ORIGEM-DESTINO são gerados um a um. Um lançamento gravado entre as duas gerações desloca os
