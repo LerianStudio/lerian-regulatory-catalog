@@ -35,7 +35,7 @@ metadata:
   summary: >-
     Lançamentos das contas investigadas no período do afastamento do sigilo, com valor,
     natureza, saldo após o lançamento e o código do tipo de lançamento do Anexo II.
-  version: 1.0.4
+  version: 1.1.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -315,7 +315,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {txid: first}
+      columns: {txid: first, tipoChave: first, chave: first}
     fields:
       - name: referencia
         type: string
@@ -326,6 +326,21 @@ datasets:
         required: false
         pattern: '^[^\t\r\n]{1,35}$'
         description: TxId do Pix (TransactionIdentification; IN 636, Anexo I, EXTRATO, campo 26). Sem ele, o campo sai em branco.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix usada no envio no código da IN (IN 636, Anexo I, EXTRATO, campo 24): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix usada no envio como o DICT a registra (IN 636, Anexo I, EXTRATO, campo 25); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
 
   - name: trilho_pix_lerian_recebimentos
     description: Os Pix recebidos pelo Pix lerian.
@@ -351,7 +366,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {txid: first}
+      columns: {txid: first, tipoChave: first, chave: first}
     fields:
       - name: referencia
         type: string
@@ -362,6 +377,21 @@ datasets:
         required: false
         pattern: '^[^\t\r\n]{1,35}$'
         description: TxId do Pix (TransactionIdentification; IN 636, Anexo I, EXTRATO, campo 26). Sem ele, o campo sai em branco.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix usada no envio no código da IN (IN 636, Anexo I, EXTRATO, campo 24): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix usada no envio como o DICT a registra (IN 636, Anexo I, EXTRATO, campo 25); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
 
   - name: trilho_pix_jd_recebimentos
     description: Os Pix recebidos pelo Pix JD.
@@ -369,7 +399,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {txid: first}
+      columns: {txid: first, tipoChave: first, chave: first}
     fields:
       - name: referencia
         type: string
@@ -380,6 +410,21 @@ datasets:
         required: false
         pattern: '^[^\t\r\n]{1,35}$'
         description: TxId do Pix (TransactionIdentification; IN 636, Anexo I, EXTRATO, campo 26). Sem ele, o campo sai em branco.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix pela qual o Pix chegou no código da IN (IN 636, Anexo I, EXTRATO, campo 24): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix pela qual o Pix chegou como o DICT a registra (IN 636, Anexo I, EXTRATO, campo 25); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
 
 knownGaps:
   - id: saldo-do-midaz
@@ -420,7 +465,10 @@ knownGaps:
       declarado pelo cliente; 14, 20, 21 e 22 saem em branco; 18 e 19 com as sentinelas da IN (0000000 e 00).
   - id: chave-e-txid-pix
     description: >-
-      Os campos 24 e 25 (chave Pix) saem em branco: a chave não está na metadata da transação. O campo 26 sai com o
+      Os campos 24 e 25 (chave Pix) saem do plugin: no Pix lerian enviado, da iniciação do Pix
+      (transfer_initiations); no Pix JD, da chave do recebedor gravada na transação. No Pix lerian recebido saem em
+      branco: o plugin não grava a chave pela qual o Pix chegou. No Pix sem chave (manual ou QR sem chave) também.
+      O campo 26 sai com o
       TxId que o plugin grava, o mesmo do ORIGEM-DESTINO 28, e em branco no Pix sem TxId (chave ou manual) e no Pix
       enviado pelo Pix JD, que repassa o TxId ao SPI sem guardá-lo; o ORIGEM-DESTINO diz o motivo no campo 18.
   - id: instante-em-utc

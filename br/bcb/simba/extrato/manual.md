@@ -101,6 +101,9 @@ O CNPJ vem da organização do Midaz; tipo da conta do CRM (`regulatory_fields.a
 Num tenant com mais de uma organização, o cadastro da instituição no Reporter restringe
 `organization.id` à organização dela; sem isso a leitura traz todas, e a geração é recusada
 (o CNPJ lido não é o da instituição, ou chegam duas linhas para uma) em vez de escolher uma.
+Se o escopo dela é declarado tabela a tabela, inclua nele a `transfer_initiations` do Pix lerian
+(de onde vem a chave Pix do campo 25): a tabela lida por junção entra no escopo como as outras, e a
+que ele não cobre também faz o Reporter recusar a geração.
 
 ## Data, hora, valores e saldo
 
@@ -118,8 +121,15 @@ Num tenant com mais de uma organização, o cadastro da instituição no Reporte
 
 ## Campos que saem em branco ou com sentinela, e por quê
 
-- 14 (`INFO_ADICIONAIS_LOCAL_TRANSACAO`), 20 a 22 (IP, porta, MAC), 24 e 25 (chave Pix): em
-  branco; nenhuma aplicação Lerian registra o dado, ou a chave não está na metadata.
+- 14 (`INFO_ADICIONAIS_LOCAL_TRANSACAO`), 20 a 22 (IP, porta, MAC): em branco; nenhuma
+  aplicação Lerian registra o dado.
+- 24 e 25 (chave Pix): a chave usada no Pix, pela linha do plugin. No envio, a chave do
+  recebedor: no Pix lerian, da iniciação do Pix (`transfer_initiations`, pelo
+  `initiation_id` da transferência); no Pix JD, da transação (`payee_key`). No recebimento
+  pelo Pix JD, a chave do recebedor (`payee_key`). O tipo do plugin vira o código da IN (1
+  CPF/CNPJ, 2 telefone, 3 e-mail, 4 aleatória), e o telefone sai só com dígitos, a partir do
+  55. Em branco no Pix sem chave (manual ou QR sem chave), no Pix recebido pelo Pix lerian
+  (o plugin não grava a chave do recebimento) e fora do Pix.
 - 18 e 19: `0000000` e `00`, as sentinelas da IN para localização indisponível.
 - 26 (`ID_TRANSACAO_PIX`, `TransactionIdentification <TxId>`; IN 636, Anexo I, EXTRATO,
   campo 26): o TxId que o plugin que liquidou o Pix grava, o mesmo do campo 28 do

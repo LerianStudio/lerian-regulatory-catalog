@@ -31,7 +31,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.extrato
-contractVersion: 1.0.4
+contractVersion: 1.1.0
 
 queries:
 
@@ -213,7 +213,27 @@ queries:
     filters:
       - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.end_to_end_id}]}
       - {field: direction, operator: eq, values: ["OUTBOUND"]}
-    select: [end_to_end_id, tx_id]
+    # A chave Pix do envio (campos 24 e 25) esta na iniciacao do Pix, outra tabela do mesmo
+    # banco do SPI: transfers.initiation_id aponta transfer_initiations.id. O tipo do DICT
+    # (CPF, CNPJ, PHONE, EMAIL, EVP) vira o codigo da IN (1 CPF/CNPJ, 2 telefone, 3 e-mail,
+    # 4 aleatoria); Pix sem chave (manual, QR estatico sem DICT) fica sem tipo nem chave.
+    join:
+      - table: transfer_initiations
+        match: {initiation_id: id}
+        type: left
+        columns: {chave_tipo_informado: destination_key_type, chave: destination_key_value}
+    compute:
+      - as: tipo_chave
+        case:
+          column: chave_tipo_informado
+          when:
+            CPF: {constant: "1"}
+            CNPJ: {constant: "1"}
+            PHONE: {constant: "2"}
+            EMAIL: {constant: "3"}
+            EVP: {constant: "4"}
+          otherwise: {constant: "-"}
+    select: [end_to_end_id, tx_id, chave, tipo_chave]
 
   - name: pix_lerian_recebimentos_txid
     description: Pix recebidos pelo Pix lerian, com o TxId.
@@ -235,7 +255,21 @@ queries:
       - {field: flow, operator: eq, values: ["2"]}
       - {field: is_refund, operator: eq, values: ["false"]}
       - {field: deleted_at, operator: isNull}
-    select: [id, conciliation_id]
+    # A chave Pix (a do recebedor, usada no envio, campos 24 e 25) e o tipo dela, no codigo do plugin (0 CPF, 1 CNPJ,
+    # 2 e-mail, 3 telefone, 4 aleatoria, internal/transactions/domain/enums.go), que vira o
+    # codigo da IN (1 CPF/CNPJ, 2 telefone, 3 e-mail, 4 aleatoria).
+    compute:
+      - as: tipo_chave
+        case:
+          column: payee_key_type
+          when:
+            "0": {constant: "1"}
+            "1": {constant: "1"}
+            "2": {constant: "3"}
+            "3": {constant: "2"}
+            "4": {constant: "4"}
+          otherwise: {constant: "-"}
+    select: [id, conciliation_id, payee_key, tipo_chave]
 
   - name: pix_jd_recebimentos_txid
     description: Pix recebidos pelo Pix JD, com o TxId.
@@ -246,7 +280,21 @@ queries:
       - {field: flow, operator: eq, values: ["1"]}
       - {field: is_refund, operator: eq, values: ["false"]}
       - {field: deleted_at, operator: isNull}
-    select: [id, conciliation_id]
+    # A chave Pix (a do recebedor, a conta do caso, pela qual o Pix chegou, campos 24 e 25) e o tipo dela, no codigo do plugin (0 CPF, 1 CNPJ,
+    # 2 e-mail, 3 telefone, 4 aleatoria, internal/transactions/domain/enums.go), que vira o
+    # codigo da IN (1 CPF/CNPJ, 2 telefone, 3 e-mail, 4 aleatoria).
+    compute:
+      - as: tipo_chave
+        case:
+          column: payee_key_type
+          when:
+            "0": {constant: "1"}
+            "1": {constant: "1"}
+            "2": {constant: "3"}
+            "3": {constant: "2"}
+            "4": {constant: "4"}
+          otherwise: {constant: "-"}
+    select: [id, conciliation_id, payee_key, tipo_chave]
 
 datasets:
 
@@ -321,6 +369,8 @@ datasets:
     fields:
       referencia: {from: query, column: end_to_end_id}
       txid: {from: query, column: tx_id}
+      tipoChave: {from: query, column: tipo_chave}
+      chave: {from: query, column: chave}
 
   trilho_pix_lerian_recebimentos:
     from:
@@ -335,6 +385,8 @@ datasets:
     fields:
       referencia: {from: query, column: id}
       txid: {from: query, column: conciliation_id}
+      tipoChave: {from: query, column: tipo_chave}
+      chave: {from: query, column: payee_key}
 
   trilho_pix_jd_recebimentos:
     from:
@@ -342,5 +394,7 @@ datasets:
     fields:
       referencia: {from: query, column: id}
       txid: {from: query, column: conciliation_id}
+      tipoChave: {from: query, column: tipo_chave}
+      chave: {from: query, column: payee_key}
 
 manualOverrides: []

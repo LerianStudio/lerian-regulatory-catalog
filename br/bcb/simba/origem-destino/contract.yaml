@@ -32,7 +32,7 @@ metadata:
   summary: >-
     Origem e destino dos recursos de cada lançamento do EXTRATO: a contraparte pelo plugin
     Pix ou TED da transação, pela outra perna interna, ou a própria instituição na tarifa.
-  version: 1.0.4
+  version: 1.1.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -359,7 +359,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first, tipoContaInformado: first}
+      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, tipoChave: first, chave: first, tipoConta: first, tipoContaInformado: first}
     fields:
       - name: referencia
         type: string
@@ -416,6 +416,21 @@ datasets:
         type: string
         required: false
         description: O tipo de conta como o plugin o grava. Só distingue o tipo ausente do fora do domínio; não vai ao arquivo.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix do recebedor no código da IN (IN 636, Anexo I, ORIGEM-DESTINO, campo 25): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix do recebedor como o DICT a registra (IN 636, Anexo I, ORIGEM-DESTINO, campo 26); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
 
   - name: trilho_pix_lerian_recebimentos
     description: Os Pix recebidos pelo Pix lerian; a contraparte é a origem.
@@ -487,7 +502,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first}
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoChave: first, chave: first, tipoConta: first}
     fields:
       - name: referencia
         type: string
@@ -547,6 +562,21 @@ datasets:
           e 2 da JDPI (conta corrente de cliente, conta poupança); TRAN, SLRY e OTHR para 3, 1 e 4; "-" quando o plugin
           não gravou o tipo (fora do Pix entre contas da própria instituição). Sem código, o campo 8 sai em branco e o
           campo 18 diz por quê.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix do recebedor no código da IN (IN 636, Anexo I, ORIGEM-DESTINO, campo 25): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix do recebedor como o DICT a registra (IN 636, Anexo I, ORIGEM-DESTINO, campo 26); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
 
   - name: trilho_pix_jd_recebimentos
     description: Os Pix recebidos pelo Pix JD; a contraparte é o pagador (payer).
@@ -554,7 +584,7 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first}
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoChave: first, chave: first, tipoConta: first}
     fields:
       - name: referencia
         type: string
@@ -614,6 +644,21 @@ datasets:
           e 2 da JDPI (conta corrente de cliente, conta poupança); TRAN, SLRY e OTHR para 3, 1 e 4; "-" quando o plugin
           não gravou o tipo (fora do Pix entre contas da própria instituição). Sem código, o campo 8 sai em branco e o
           campo 18 diz por quê.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix do pagador no código da IN (IN 636, Anexo I, ORIGEM-DESTINO, campo 25): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix do pagador como o DICT a registra (IN 636, Anexo I, ORIGEM-DESTINO, campo 26); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
 
   - name: trilho_ted_enviadas
     description: O recebedor das TEDs enviadas (o documento, cifrado no plugin, fica fora).
@@ -732,8 +777,9 @@ knownGaps:
       com banco que só participa do STR, por exemplo): nenhuma tabela pública do Banco Central dá esse CNPJ.
   - id: chave-pix-da-contraparte
     description: >-
-      Os campos 25 e 26 (chave Pix da contraparte) saem em branco: a chave fica em outra tabela do Pix lerian e o
-      tipo no Pix JD é um código do plugin sem de-para definido.
+      Os campos 25 e 26 (chave Pix da contraparte) saem do plugin no Pix enviado (a chave do recebedor: no Pix
+      lerian, da iniciação do Pix, transfer_initiations; no Pix JD, da transação) e no Pix JD recebido, quando o plugin
+      grava a chave do pagador. No Pix lerian recebido saem em branco: o pagador não usa chave, e o plugin não a grava.
   - id: contraparte-interna-pelo-valor
     description: >-
       A outra perna interna só é contraparte quando tem a natureza oposta e o mesmo valor do lançamento. Assim a perna

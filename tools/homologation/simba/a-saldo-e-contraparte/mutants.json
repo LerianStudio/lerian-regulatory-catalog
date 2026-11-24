@@ -159,8 +159,8 @@
     "name": "TED recebida sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\", pg.tipoConta, \"\") }}",
-    "new": "\", \"\", \"\") }}",
+    "old": "\", pg.tipoConta, \"\", \"\", \"\") }}",
+    "new": "\", \"\", \"\", \"\", \"\") }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -211,8 +211,8 @@
     "name": "Pix de conta corrente sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"\", pb.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
-    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
+    "old": "\"\", pb.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\", \"\", \"\") }}",
+    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", \"\", \"\") }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -276,8 +276,8 @@
     "name": "Pix JD de conta corrente sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"\", pd.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
-    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
+    "old": "\"\", pd.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\", pd.tipoChave, pd.chave) }}",
+    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", pd.tipoChave, pd.chave) }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -328,8 +328,8 @@
     "name": "TED enviada sem a base do motivo",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\", \"1\", \"\")",
-    "new": "\"\", \"1\", \"\")",
+    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\", \"1\", \"\", \"\", \"\")",
+    "new": "\"\", \"1\", \"\", \"\", \"\")",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -380,8 +380,8 @@
     "name": "Pix lerian enviado de conta corrente sem o codigo",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"\", pa.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
-    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\") }}",
+    "old": "\"\", pa.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\", pa.tipoChave, pa.chave) }}",
+    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", pa.tipoChave, pa.chave) }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -705,8 +705,8 @@
     "name": "Pix JD enviado dito sem identificador de conciliacao",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: o plugin de Pix nao grava o TxId do Pix enviado\")",
-    "new": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\")",
+    "old": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: o plugin de Pix nao grava o TxId do Pix enviado\", pc.tipoChave, pc.chave)",
+    "new": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", pc.tipoChave, pc.chave)",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -796,13 +796,143 @@
     "name": "EXTRATO 26 com o TxId na linha da tarifa",
     "document": "br/bcb/simba/extrato",
     "file": "template.tpl",
-    "old": "{% if t or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}{% elif l.natureza == \"D\" %}",
-    "new": "{% if l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}{% elif l.natureza == \"D\" %}",
+    "old": "{% if t or l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}{% elif l.natureza == \"D\" %}{% for pa in trilho_pix_lerian_envios|where:chaveR %}{% with x=pa.txid",
+    "new": "{% if l.tipoOperacao == \"FEE_SETTLEMENT\" or l.tipoOperacao == \"FEE_REFUND\" %}{% elif l.natureza == \"D\" %}{% for pa in trilho_pix_lerian_envios|where:chaveR %}{% with x=pa.txid",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/extrato",
       "line": 32,
       "field": 26
+    }
+  },
+  {
+    "name": "EXTRATO 25 com o telefone da chave Pix com o +",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{%- if tipo == \"2\" -%}{{ chave|cut:\"+\" }}",
+    "new": "{%- if tipo == \"2\" -%}{{ chave }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 28,
+      "field": 25
+    }
+  },
+  {
+    "name": "EXTRATO 24 sem o tipo da chave do Pix lerian enviado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavetipo(ka.tipoChave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 31,
+      "field": 24
+    }
+  },
+  {
+    "name": "EXTRATO 25 sem a chave do Pix JD recebido",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavevalor(kd.tipoChave, kd.chave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 18,
+      "field": 25
+    }
+  },
+  {
+    "name": "EXTRATO 24 sem o tipo da chave do Pix JD enviado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavetipo(kc.tipoChave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 28,
+      "field": 24
+    }
+  },
+  {
+    "name": "EXTRATO 24 sem o tipo da chave do Pix JD recebido",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavetipo(kd.tipoChave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 18,
+      "field": 24
+    }
+  },
+  {
+    "name": "EXTRATO 25 sem a chave do Pix lerian enviado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavevalor(ka.tipoChave, ka.chave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 31,
+      "field": 25
+    }
+  },
+  {
+    "name": "EXTRATO 25 sem a chave do Pix JD enviado",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ chavevalor(kc.tipoChave, kc.chave) }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 28,
+      "field": 25
+    }
+  },
+  {
+    "name": "ORIGEM-DESTINO 26 com o telefone da chave Pix com o +",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ chavevalor|cut:\"+\" }}",
+    "new": "{{ chavevalor }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 28,
+      "field": 26
+    }
+  },
+  {
+    "name": "ORIGEM-DESTINO 25 com o marcador de tipo fora do dominio",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% if chavetipo and chavetipo != \"-\" %}{{ chavetipo }}{% endif %}",
+    "new": "{{ chavetipo }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 18,
+      "field": 25
+    }
+  },
+  {
+    "name": "ORIGEM-DESTINO 25 e 26 sem a chave do Pix lerian enviado",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "pa.tipoChave, pa.chave) }}",
+    "new": "\"\", \"\") }}",
+    "count": 5,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 31,
+      "field": 25
     }
   }
 ]

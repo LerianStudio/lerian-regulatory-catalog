@@ -9,6 +9,8 @@
     "comentario": "",
     "txid": "QRLERIANENVIO20261206A32",
     "tipoConta": "1",
-    "tipoContaInformado": "CACC"
+    "tipoContaInformado": "CACC",
+    "tipoChave": "1",
+    "chave": "12345678000190"
   }
 ]
