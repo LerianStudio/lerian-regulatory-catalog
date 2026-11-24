@@ -147,9 +147,10 @@ pelo correntista") e o e-mail "declarado pelo titular" (IN :161). Por isso depen
   ela (art. 2o, paragrafo 1o, IN :49).
 
 A parte sem cadastro sai com 18 e 19 em branco e o 25 `e-mail nao declarado`, qualquer que
-seja o papel. As regras de moeda da renda valem para toda parte com cadastro, mesmo a que nao
-imprime a renda: o cadastro e um por documento, sem o papel, e uma renda em outra moeda
-recusa a geracao.
+seja o papel. A moeda da renda so e conferida de quem a imprime: a renda do cotitular em outra
+moeda que nao BRL recusa a geracao, a do representante ou do procurador nao. As consultas
+`cotitulares_documentos` e `renda_cotitulares` (e as `_contraparte`) leem a moeda so das partes
+com o papel `PRIMARY_HOLDER`.
 
 ## Periodo
 
@@ -215,18 +216,18 @@ requisicao.
 
 ## Quem vem da versao 1.1.0
 
-A 1.2.0 le o cadastro das partes relacionadas por quatro consultas novas do mapeamento:
-`partes_documentos` e `cadastro_partes`, e as `_contraparte` delas (`partes_documentos_contraparte`
-e `cadastro_partes_contraparte`), que preenchem os conjuntos `cadastro_partes` e
-`cadastro_partes_contraparte`. Um mapeamento escrito para a 1.1.0, sem elas, ainda gera o
-rascunho, mas a aprovacao e recusada: os campos obrigatorios dos dois conjuntos novos ficam sem
-mapeamento. Para aprovar:
+A 1.2.0 le o cadastro das partes relacionadas por oito consultas novas do mapeamento:
+`partes_documentos`, `cadastro_partes`, `cotitulares_documentos` e `renda_cotitulares`, e as
+`_contraparte` delas. Elas preenchem quatro conjuntos novos: `cadastro_partes` e
+`renda_cotitulares`, e os `_contraparte`. Um mapeamento escrito para a 1.1.0, sem elas, ainda
+gera o rascunho, mas a aprovacao e recusada: os campos obrigatorios dos conjuntos novos ficam
+sem mapeamento. Para aprovar:
 
-1. A instituicao que tem o cadastro de titulares das partes no CRM copia as quatro consultas e
-   os dois conjuntos do `binding.example.yaml` desta versao. Quem tem o dado preenche o campo
+1. A instituicao que tem o cadastro de titulares das partes no CRM copia as oito consultas e
+   os quatro conjuntos do `binding.example.yaml` desta versao. Quem tem o dado preenche o campo
    com ele: a IN so deixa o campo sem a informacao quando ela nao existe ou e tecnicamente
    inviavel (art. 2o, paragrafo 1o, IN :49).
-2. So a instituicao que nao tem esse cadastro declara os dois conjuntos vazios (`emptyReason`,
+2. So a instituicao que nao tem esse cadastro declara os quatro conjuntos vazios (`emptyReason`,
    com o motivo), o que volta ao arquivo da 1.1.0: os campos 12 a 19 e 24 das partes em branco
    e o campo 25 `e-mail nao declarado`.
 

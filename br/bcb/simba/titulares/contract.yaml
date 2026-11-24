@@ -1154,9 +1154,9 @@ knownGaps:
       titulares da conta: saem com a renda e o e-mail do proprio cadastro. O representante legal, o representante, o
       procurador e as outras partes (campo 5 = L, R, P ou O) nao sao: saem com 18 e 19 em branco e o 25 com "e-mail nao
       declarado", mesmo que tenham cadastro de titular no CRM, porque a informacao que a IN pede nao existe para eles
-      (art. 2o, paragrafo 1o, IN :49). Os campos 12 a 17 e 24 sao da pessoa e saem do cadastro dela em toda linha. As
-      regras de moeda das partes valem para qualquer parte com cadastro, mesmo a que nao imprime a renda: o cadastro e
-      um por documento, sem o papel.
+      (art. 2o, paragrafo 1o, IN :49). Os campos 12 a 17 e 24 sao da pessoa e saem do cadastro dela em toda linha. A
+      moeda da renda so e conferida de quem a imprime: o cotitular (renda_cotitulares, pelo documento das partes com o
+      papel PRIMARY_HOLDER). A renda em outra moeda de um representante ou procurador nao recusa a geracao.
   - id: renda-pessoa-juridica
     description: >-
       Campo 18 (IN :154): a pessoa natural declara no CRM a renda mensal, e a pessoa juridica o faturamento anual. A IN
