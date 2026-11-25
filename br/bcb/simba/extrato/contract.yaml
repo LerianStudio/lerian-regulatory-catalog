@@ -35,7 +35,7 @@ metadata:
   summary: >-
     Lançamentos das contas investigadas no período do afastamento do sigilo, com valor,
     natureza, saldo após o lançamento e o código do tipo de lançamento do Anexo II.
-  version: 1.2.0
+  version: 1.3.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -120,7 +120,10 @@ datasets:
         type: string
         required: true
         domain: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-        description: Canal das transações no código da IN (IN 636, Anexo I, EXTRATO, campo 17). Nenhuma aplicação Lerian registra o canal por lançamento; o cliente declara um só.
+        description: >-
+          Canal das transações no código da IN, para todo lançamento que não traz o próprio (IN 636, Anexo I, EXTRATO,
+          campo 17). O Midaz não registra o canal: a instituição declara este, e o de cada lançamento (interface)
+          quando o tiver.
 
   # O CONJUNTO QUE O ORIGEM-DESTINO TAMBEM LE, igual nos dois contratos: o numero do
   # lancamento e a posicao dele aqui. A consulta que o entrega agrupa por
@@ -136,7 +139,7 @@ datasets:
                 valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, chaveSaldo: first, bloqueadoApos: first,
                 chequeEspecialApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
-                iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
+                iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first, infoLocal: first, interface: first, codigoCidade: first, codigoUf: first, ip: first, portaIp: first, macAddress: first}
     fields:
       - name: operacaoId
         type: string
@@ -153,8 +156,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
-        description: Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, EXTRATO, campo 3).
+        pattern: '^[0-9]{1,5}$'
+        description: >-
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, EXTRATO, campo 3).
       - name: numeroConta
         type: string
         required: true
@@ -275,6 +280,54 @@ datasets:
         type: string
         required: false
         description: original_end_to_end_id da devolução do Pix lerian.
+      - name: infoLocal
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Informação adicional do local da transação, em complemento à cidade e à UF (IN 636, Anexo I, EXTRATO, campo
+          14). O Midaz não possui. O template o corta em 100 posições.
+      - name: interface
+        type: string
+        required: false
+        domain: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+        description: >-
+          Canal deste lançamento no código da IN (IN 636, Anexo I, EXTRATO, campo 17). O Midaz não possui; vazio, sai
+          o canal da instituição (interfaceTransacao).
+      - name: codigoCidade
+        type: string
+        required: false
+        pattern: '^[0-9]{7}$'
+        description: >-
+          Código IBGE do município em que a transação ocorreu ou em que estava o aparelho (IN 636, Anexo I, EXTRATO,
+          campo 18). O Midaz não possui; vazio, sai a sentinela 0000000.
+      - name: codigoUf
+        type: string
+        required: false
+        pattern: '^[0-9]{2}$'
+        description: >-
+          Código IBGE da UF em que a transação ocorreu ou em que estava o aparelho (IN 636, Anexo I, EXTRATO, campo
+          19). O Midaz não possui; vazio, sai a sentinela 00.
+      - name: ip
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Endereço IP do aparelho usado na transação por internet ou mobile banking (IN 636, Anexo I, EXTRATO, campo
+          20). O Midaz não possui. O template o corta em 39 posições.
+      - name: portaIp
+        type: string
+        required: false
+        pattern: '^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-6])$'
+        description: >-
+          Porta do endereço IP, de 1 a 65536 (IN 636, Anexo I, EXTRATO, campo 21). O Midaz não possui.
+      - name: macAddress
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Endereço MAC do aparelho usado na transação (IN 636, Anexo I, EXTRATO, campo 22). O Midaz não possui. O
+          template o corta em 30 posições.
 
   # Transacoes que sao revert de outra no Midaz (parent_transaction_id): o campo 9
   # sai 140 no debito e 264 no credito, antes de qualquer outra regra.
@@ -461,8 +514,12 @@ knownGaps:
       grava a forma de iniciação na metadata.
   - id: canal-local-dispositivo
     description: >-
-      Nenhuma aplicação Lerian registra canal, local, IP, porta ou MAC do lançamento. O campo 17 é um canal só,
-      declarado pelo cliente; 14, 20, 21 e 22 saem em branco; 18 e 19 com as sentinelas da IN (0000000 e 00).
+      O Midaz não possui canal, local, IP, porta nem MAC do lançamento (IN 636, Anexo I, EXTRATO, campos 14 e 17 a
+      22). Cada um é um campo opcional do lançamento, mapeado como manual com o motivo: a instituição o traz de uma
+      base dela (consulta juntada à de lancamentos_dados pelo id da operação) ou o corrige linha a
+      linha no rascunho. Vazio, o 17 sai com o canal declarado da instituição (interfaceTransacao), o 18 e o 19 com
+      as sentinelas da IN (0000000 e 00) e o 14 e o 20 a 22 em branco. Nunca dê a um desses campos um valor fixo no
+      mapeamento: ele se repetiria em todo lançamento.
   - id: chave-e-txid-pix
     description: >-
       Os campos 24 e 25 (chave Pix) saem do plugin: no Pix lerian enviado, da iniciação do Pix

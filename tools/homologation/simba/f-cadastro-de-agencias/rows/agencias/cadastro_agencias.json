@@ -1,0 +1,37 @@
+[
+  {
+    "agencia": "00001",
+    "nomeAgencia": "AGENCIA DIGITAL",
+    "endereco": "AV PAULISTA, 1000, 10 ANDAR",
+    "codigoCidade": "3550308",
+    "codigoUf": "35",
+    "pais": "Brasil",
+    "cep": "01310100",
+    "telefone": "1130000000",
+    "dataAbertura": "2020-01-15",
+    "dataFechamento": "9999-12-31"
+  },
+  {
+    "agencia": "00002",
+    "nomeAgencia": "AGÊNCIA CENTRO",
+    "endereco": "RUA DIREITA, 50",
+    "codigoCidade": "3304557",
+    "codigoUf": "33",
+    "pais": "Brasil",
+    "cep": "20010000",
+    "telefone": "2130000000",
+    "dataAbertura": "2021-03-01",
+    "dataFechamento": "2026-06-30"
+  },
+  {
+    "agencia": "00003",
+    "nomeAgencia": "AGENCIA NORTE",
+    "endereco": "AV CENTRAL, 3",
+    "codigoCidade": "1302603",
+    "codigoUf": "13",
+    "pais": "Brasil",
+    "cep": "69005000",
+    "telefone": "9230000000",
+    "dataAbertura": "2022-05-02"
+  }
+]
