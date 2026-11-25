@@ -173,7 +173,7 @@ documents:
     document: AGENCIAS
     family: simba
     title: SIMBA — Agências
-    version: 2.0.0
+    version: 1.2.0
     status: draft
     periodicity: eventual
     appliesTo:
