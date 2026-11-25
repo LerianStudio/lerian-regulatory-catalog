@@ -1,0 +1,883 @@
+Lista de participantes ativos do Pix
+ ;Nome Reduzido;ISPB;CNPJ;Tipo de Instituição;Autorizada pelo BCB;Tipo de Participação no SPI;Tipo de Participação no Pix;Modalidade de Participação no Pix;Iniciação de Transação de Pagamento;Facilitador de serviço de Saque e Troco (FSS)
+1;99PAY IP S.A.;24313102;24.313.102/0001-25;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+2;A27 IP S/A;35534511;35.534.511/0001-78;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+3;A55 SCD S.A.;48756121;48.756.121/0001-94;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+4;ACCESSTAGE IP LTDA.;;46.410.407/0001-98;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+5;ACCREDITO SCD S.A.;37715993;37.715.993/0001-98;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+6;ACESSO SOLUÇÕES DE PAGAMENTO S.A. - INSTITUIÇÃO DE PAGAMENTO;13140088;13.140.088/0001-99;Instituição de Pagamento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+7;ACG IP S.A.;10868663;10.868.663/0001-86;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+8;ADOPAY INSTITUICAO DE PAGAMENT;31841474;31.841.474/0001-90;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+9;ADYEN DO BRASIL IP LTDA.;14796606;14.796.606/0001-90;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+10;AIBR IP LTDA.;32246162;32.246.162/0001-09;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+11;AL5 S.A. SCFI;27214112;27.214.112/0001-00;Sociedade de Crédito, Financiamento e Investimento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+12;ALL IN CRED SCD S.A.;51414521;51.414.521/0001-26;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+13;APE POUPEX;00655522;00.655.522/0001-21;Associação de Poupança e Empréstimo;Sim;Indireta;Obrigatória;Provedor de Conta Transacional;Não;Não
+14;APROMS NET IP LTDA.;37168145;37.168.145/0001-06;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+15;APTARE IP;16876258;16.876.258/0001-96;Instituição de Pagamento;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+16;ARQ IP LTDA;27126513;27.126.513/0001-08;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+17;ARTTA SCD;42259084;42.259.084/0001-22;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+18;ASA SCFI S.A.;48703388;48.703.388/0001-13;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Sim
+19;ASAAS IP S.A.;19540550;19.540.550/0001-21;Instituição de Pagamento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+20;ASTROPAY;34006497;34.006.497/0001-77;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+21;ATF SCD S.A.;44728700;44.728.700/0001-72;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+22;ATICCA SCD S.A.;44478623;44.478.623/0001-40;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+23;ATTRUS IP S/A;10789035;10.789.035/0001-05;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+24;AUTHPAY INSTITUICAO DE PAGAMENTO LTDA;07398335;07.398.335/0001-59;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+25;AVANCARD PROVER IP LTDA;20308187;20.308.187/0001-00;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+26;AVIV INSTITUICAO DE PAGAMENTO;04838403;04.838.403/0001-65;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+27;AZIMUT BRASIL DTVM LTDA;18684408;18.684.408/0001-95;Sociedade Distribuidora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+28;B3 IP LTDA;;47.825.528/0001-63;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+29;B91;33735811;33.735.811/0001-90;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+30;BANCO BARI S.A.;00556603;00.556.603/0001-74;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+31;BANCO BTG PACTUAL S.A.;30306294;30.306.294/0001-45;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+32;BANCO COOPERATIVO SICREDI;01181521;01.181.521/0001-55;Banco Múltiplo Cooperativo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+33;BANCO DIGIO;27098060;27.098.060/0001-45;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+34;BANCO GENIAL;45246410;45.246.410/0001-55;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+35;BANCO INTER;00416968;00.416.968/0001-01;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+36;BANCO ORIGINAL;92894922;92.894.922/0001-08;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+37;BANCO PAN;59285411;59.285.411/0001-13;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+38;BANCO SEMEAR;00795423;00.795.423/0001-45;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Sim
+39;BANCO SICOOB S.A.;02038232;02.038.232/0001-64;Banco Múltiplo Cooperativo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+40;BANCO TOPÁZIO S.A.;07679404;07.679.404/0001-00;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Sim
+41;BANCO TRAVELEX S.A.;11703662;11.703.662/0001-44;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+42;BANRISUL PAGAMENTOS IP;92934215;92.934.215/0001-06;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+43;BASS PAGO;37293930;37.293.930/0001-90;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+44;BCO ABC BRASIL S.A.;28195667;28.195.667/0001-06;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+45;BCO AFINZ S.A. - BM;04814563;04.814.563/0001-74;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Sim
+46;BCO AGIBANK S.A.;10664513;10.664.513/0001-50;Banco Comercial;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+47;BCO ARBI S.A.;54403563;54.403.563/0001-50;Banco Comercial;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Sim
+48;BCO B3 S.A.;00997185;00.997.185/0001-50;Banco Comercial;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+49;BCO BANESTES S.A.;28127603;28.127.603/0001-78;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Sim
+50;BCO BMG S.A.;61186680;61.186.680/0001-74;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+51;BCO BNP PARIBAS BRASIL S A;01522368;01.522.368/0001-82;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+52;BCO BRADESCO S.A.;60746948;60.746.948/0001-12;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+53;BCO BRASILEIRO DE CRÉDITO S.A.;01852137;01.852.137/0001-37;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+54;BCO BS2 S.A.;71027866;71.027.866/0001-34;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+55;BCO BV S.A.;01858774;01.858.774/0001-10;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+56;BCO C6 S.A.;31872495;31.872.495/0001-72;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+57;BCO CITIBANK S.A.;33479023;33.479.023/0001-80;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+58;BCO CREFISA S.A.;61033106;61.033.106/0001-86;Banco Comercial;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+59;BCO CSF S.A.;08357240;08.357.240/0001-50;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+60;BCO DA AMAZONIA S.A.;04902979;04.902.979/0001-44;Banco Comercial;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+61;BCO DAYCOVAL S.A;62232889;62.232.889/0001-90;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+62;BCO DO BRASIL S.A.;00000000;00.000.000/0001-91;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+63;BCO DO EST. DE SE S.A.;13009717;13.009.717/0001-46;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Sim
+64;BCO DO EST. DO PA S.A.;04913711;04.913.711/0001-08;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+65;BCO DO ESTADO DO RS S.A.;92702067;92.702.067/0001-96;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+66;BCO DO NORDESTE DO BRASIL S.A.;07237373;07.237.373/0001-20;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+67;BCO FIBRA S.A.;58616418;58.616.418/0001-08;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+68;BCO GUANABARA S.A.;31880826;31.880.826/0001-16;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+69;BCO HSBC S.A.;53518684;53.518.684/0001-84;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+70;BCO INDUSTRIAL DO BRASIL S.A.;31895683;31.895.683/0001-16;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+71;BCO J.P. MORGAN S.A.;33172537;33.172.537/0001-98;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+72;BCO KEB HANA DO BRASIL S.A.;02318507;02.318.507/0001-13;Banco Comercial;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+73;BCO LUSO BRASILEIRO S.A.;59118133;59.118.133/0001-00;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+74;BCO MERCANTIL DO BRASIL S.A.;17184037;17.184.037/0001-10;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+75;BCO PAULISTA S.A.;61820817;61.820.817/0001-09;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+76;BCO PINE S.A.;62144175;62.144.175/0001-20;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+77;BCO RENDIMENTO S.A.;68900810;68.900.810/0001-38;Banco Comercial;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+78;BCO RIBEIRAO PRETO S.A.;00517645;00.517.645/0001-04;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+79;BCO SAFRA S.A.;58160789;58.160.789/0001-28;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+80;BCO SANTANDER (BRASIL) S.A.;90400888;90.400.888/0001-42;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+81;BCO SENFF S.A.;11970623;11.970.623/0001-03;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+82;BCO SOFISA S.A.;60889128;60.889.128/0001-80;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+83;BCO TRIANGULO S.A.;17351180;17.351.180/0001-59;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Sim
+84;BCO VOTORANTIM S.A.;59588111;59.588.111/0001-03;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+85;BCO VR S.A.;78626983;78.626.983/0001-63;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+86;BCO WESTERN UNION;13720915;13.720.915/0001-13;Banco Comercial;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+87;BCO XP S.A.;33264668;33.264.668/0001-03;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+88;BEES IP LTDA.;35523352;35.523.352/0001-06;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+89;BEETELLER IP LTDA.;32074986;32.074.986/0001-30;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+90;BELLUNO IP LTDA.;25238191;25.238.191/0001-55;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+91;BELVO IP;;43.215.815/0001-09;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+92;BFC SCD S.A.;59396084;59.396.084/0001-77;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+93;BINANCE BRASIL;68757681;68.757.681/0001-70;Sociedade Corretora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+94;BIPA IP;40910463;40.910.463/0001-05;Instituição de Pagamento;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+95;BITSO IP LTDA;35136120;35.136.120/0001-03;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+96;BIZ IP LTDA.;12481100;12.481.100/0001-66;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+97;BLU IP LTDA.;10506341;10.506.341/0001-97;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+98;BMP SCD S.A.;34337707;34.337.707/0001-00;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+99;BMP SCMEPP LTDA;11581339;11.581.339/0001-45;Sociedade de Crédito ao Microempreendedor;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+100;BMS SCD S.A.;17826860;17.826.860/0001-81;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+101;BNK DIGITAL SCD S.A.;45331622;45.331.622/0001-30;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+102;BNS CAPITAL PAGAMENTOS LTDA;40557732;40.557.732/0001-00;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+103;BOFA MERRILL LYNCH BM S.A.;62073200;62.073.200/0001-21;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+104;BOKU NETWORK BRASIL IP;07115294;07.115.294/0001-46;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+105;BONUSPAGO SCD S.A.;36586946;36.586.946/0001-29;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+106;BPY CCTVM S.A.;27842177;27.842.177/0001-91;Sociedade Corretora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+107;BRASIL CARD IP LTDA;03130170;03.130.170/0001-89;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+108;BRASIL CASH IP S.A.;30507541;30.507.541/0001-71;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+109;BRB - BCO DE BRASILIA S.A.;00000208;00.000.208/0001-00;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+110;BRINKS PAY IP LTDA.;09437293;09.437.293/0001-43;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+111;BS2 PAYMENTS IP S.A.;20520298;20.520.298/0001-78;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+112;BSN;11491029;11.491.029/0001-30;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+113;BULLLA IP S.A.;08422119;08.422.119/0001-64;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+114;C.C CREDIVERDE;25528753;25.528.753/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+115;C6 CTVM LTDA.;32345784;32.345.784/0001-86;Sociedade Corretora de TVM;Sim;Indireta;Obrigatória;Provedor de Conta Transacional;Não;Não
+116;CACTVS IP S.A.;39696395;39.696.395/0001-44;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;N/A
+117;CAIXA ECONOMICA FEDERAL;00360305;00.360.305/0001-04;Caixa Econômica Federal;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+118;CAPITAL CONSIG SCD S.A.;40083667;40.083.667/0001-10;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+119;CAPPTA IP S.A.;13966572;13.966.572/0001-71;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+120;CARTOS SCD S.A.;21332862;21.332.862/0001-91;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+121;CARTWAVE IP;33207641;33.207.641/0001-70;Instituição de Pagamento;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+122;CARUANA SCFI;09313766;09.313.766/0001-09;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+123;CASAS BAHIA PAY IP LTDA.;30723871;30.723.871/0001-02;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+124;CC AGROCREDI LTDA;42873828;42.873.828/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+125;CC ALTO VALE DO ITAJAÍ;80959612;80.959.612/0001-45;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+126;CC ARACREDI LTDA.;00068987;00.068.987/0001-86;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+127;CC CAP UNICIDADES;03047549;03.047.549/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+128;CC CARLOS CHAGAS;41753500;41.753.500/0001-81;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+129;CC CENTRO LESTE NORTE MARANHENSE - SICOOB CENTROLESTE;09403026;09.403.026/0001-55;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+130;CC CENTRO SUL MINEIRO;71238232;71.238.232/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+131;CC COCRE;54401286;54.401.286/0001-46;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+132;CC CONTADORES, ADMINISTRADORES, ECONOMISTAS E CORRET SEGUROS;02217068;02.217.068/0001-52;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+133;CC COOPACREDI;65229254;65.229.254/0001-21;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+134;CC COOPCRED;53623781;53.623.781/0001-37;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+135;CC COOPLIVRE;49389307;49.389.307/0001-15;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+136;CC COPERSUL LTDA;18966739;18.966.739/0001-18;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+137;CC CREDCOOPER LTDA;19449602;19.449.602/0001-59;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+138;CC CREDIAGRO;00429890;00.429.890/0001-51;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+139;CC CREDIALP;25353939;25.353.939/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+140;CC CREDIARA LTDA.;66398496;66.398.496/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+141;CC CREDIBAM LTDA.;66259110;66.259.110/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+142;CC CREDIBELO LTDA. - SICOOB CREDIBELO;71237184;71.237.184/0001-56;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+143;CC CREDIBOM;21670187;21.670.187/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+144;CC CREDICAF LTDA;25395435;25.395.435/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+145;CC CREDICAMPINA;01609345;01.609.345/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+146;CC CREDICAMPO LTDA;21661202;21.661.202/0001-54;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+147;CC CREDICARPA;23949522;23.949.522/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+148;CC CREDICERIPA;00966246;00.966.246/0001-12;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+149;CC CREDICITRUS;54037916;54.037.916/0001-45;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+150;CC CREDICOCAPEC;67096909;67.096.909/0001-66;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+151;CC CREDICOPE;38588174;38.588.174/0001-90;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+152;CC CREDIESMERALDAS LTDA.;68512748;68.512.748/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+153;CC CREDIFIEMG;07469260;07.469.260/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+154;CC CREDIFOR LTDA;41931445;41.931.445/0001-72;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+155;CC CREDIGUAÇU;67960229;67.960.229/0001-49;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+156;CC CREDILIVRE LTDA. - SICOOB CREDILIVRE;41697103;41.697.103/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+157;CC CREDIMAC LTDA - SICOOB CREDIMAC;64480833;64.480.833/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+158;CC CREDIMATA;01152097;01.152.097/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+159;CC CREDINACIONAL LTDA - SICOOB CREDINACIONAL;25420696;25.420.696/0001-36;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+160;CC CREDINOR;21866694;21.866.694/0001-14;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+161;CC CREDINORTE - SICOOB CREDINORTE;64276058;64.276.058/0001-45;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+162;CC CREDINOSSO;06324872;06.324.872/0001-91;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+163;CC CREDINTER;24048910;24.048.910/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+164;CC CREDIRAMA;03412878;03.412.878/0001-22;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+165;CC CREDISETE LTDA;22753982;22.753.982/0001-25;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+166;CC CREDISG;03645752;03.645.752/0001-06;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+167;CC CREDISUCESSO LTDA. - SICOOB CREDISUCESSO;42887133;42.887.133/0001-71;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+168;CC CREDISUDESTE LTDA;22656789;22.656.789/0001-76;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+169;CC CREDIUNA LTDA;64237530;64.237.530/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+170;CC CREDIVAG;25404542;25.404.542/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+171;CC CREDIVALE LTDA. - SICOOB CREDIVALE;25387655;25.387.655/0001-95;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+172;CC CREDIVAR;25798596;25.798.596/0001-48;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+173;CC CREDIVAZ LTDA;00803287;00.803.287/0001-98;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+174;CC CREDIVERTENTES;22724710;22.724.710/0001-05;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+175;CC CREDLIDER;05463934;05.463.934/0001-83;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+176;CC CREDPLUS;25536764;25.536.764/0001-27;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+177;CC DA FOZ DO RIO ITAJAÍ AÇU;09512539;09.512.539/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+178;CC DE EMPRESÁRIOS;04247370;04.247.370/0001-89;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+179;CC DE ITAPETININGA - SICOOB CRED-ACI;08844074;08.844.074/0001-16;Cooperativa de Crédito;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+180;CC DISTRITO FEDERAL E ENTORNO;01187961;01.187.961/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+181;CC DO NORTE CATARINENSE E SUL PARANAENSE;81011686;81.011.686/0001-18;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+182;CC DO PLANALTO SUL;03033469;03.033.469/0001-15;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+183;CC DO VALE EUROPEU - SICOOB EURO VALE;82133182;82.133.182/0001-33;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+184;CC EMPRESÁRIOS DE MANAUS;10808037;10.808.037/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+185;CC GUARANICREDI;26014175;26.014.175/0001-41;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+186;CC INTEGRADO - SICOOB INTEGRADO;07122321;07.122.321/0001-08;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+187;CC INTEGRANTES MIN PUBL E PODER JUDIC AP E CE E CCLA PA;84156470;84.156.470/0001-39;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+188;CC INV DE RONDÔNIA - SICOOB CREDJURD;04751713;04.751.713/0001-48;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+189;CC INVESTIMENTO LIVRE ADMISSÃO DO OESTE DE RONDÔNIA;05597773;05.597.773/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+190;CC LAR CREDI;39343350;39.343.350/0001-96;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+191;CC LITORÂNEA;85291086;85.291.086/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+192;CC MERCADO IMOBILIÁRIO - SICOOB IMOB.VC;14913919;14.913.919/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+193;CC MONTECREDI LTDA.;71392047;71.392.047/0001-96;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+194;CC NO PIAUÍ - SICOOB PIAUÍ;05477038;05.477.038/0001-73;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+195;CC NOROESTE DE MINAS;86564051;86.564.051/0001-61;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+196;CC NOSSA SENHORA DO DESTERRO;03419786;03.419.786/0001-74;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+197;CC NOSSO - SICOOB NOSSO;59869560;59.869.560/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+198;CC NOSSOCREDITO;22760839;22.760.839/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+199;CC ORIGINAL - SICOOB ORIGINAL;81292278;81.292.278/0001-81;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+200;CC PODER JUD E MP MG;03519240;03.519.240/0001-95;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+201;CC REG. COLAR METROPOLITANO VALE DO AÇO LTDA;17361536;17.361.536/0001-35;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+202;CC REGIÃO CENTRAL MG;22749014;22.749.014/0001-45;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+203;CC SACRAMENTO;71154256;71.154.256/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+204;CC SÃO FRANCISCO DE SALES LTDA.;01374196;01.374.196/0001-47;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+205;CC SERV FIN CTBA E REG;05097757;05.097.757/0001-69;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+206;CC SERV MIL POL CIVIL SEC ED;03269540;03.269.540/0001-63;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+207;CC SERV. MUN SANTO ANDRÉ SP - CECRESA;00512839;00.512.839/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+208;CC SICOOB 3 COLINAS;04013172;04.013.172/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+209;CC SICOOB ALIANÇA;06174009;06.174.009/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+210;CC SICOOB CENTRAL BA;34148882;34.148.882/0001-59;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+211;CC SICOOB COOPEC LTDA.;32615247;32.615.247/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+212;CC SICOOB COOPEMAR;04174720;04.174.720/0001-24;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+213;CC SICOOB COOPMIL;62673470;62.673.470/0001-73;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+214;CC SICOOB CREDCOOP;02528151;02.528.151/0001-42;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+215;CC SICOOB CREDICONQUISTA;02282165;02.282.165/0001-29;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+216;CC SICOOB CREDITIROS;42880617;42.880.617/0001-99;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+217;CC SICOOB CREDMETAL;03535065;03.535.065/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+218;CC SICOOB CREDSEGURO LTDA.;02935307;02.935.307/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+219;CC SICOOB ENGECRED;04388688;04.388.688/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+220;CC SICOOB EXTREMO SUL LTDA.;02447120;02.447.120/0001-67;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+221;CC SICOOB HORIZONTE;07194313;07.194.313/0001-77;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+222;CC SICOOB INOVA;04321309;04.321.309/0001-34;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+223;CC SICOOB IPÊ;24610065;24.610.065/0001-17;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+224;CC SICOOB ITAPAGIPE;71506513;71.506.513/0001-17;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+225;CC SICOOB METROPOLITANO;03459850;03.459.850/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+226;CC SICOOB NORTE SUL;02876918;02.876.918/0001-24;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+227;CC SICOOB OURO VERDE;05582619;05.582.619/0001-75;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+228;CC SICOOB SERTÃO;02057584;02.057.584/0001-67;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+229;CC SICOOB VALE SUL;02466552;02.466.552/0001-15;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+230;CC UNIÃO CENTRO OESTE LTDA;26178111;26.178.111/0001-86;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+231;CC UNIÃO DO CENTRO OESTE DE MINAS;65239402;65.239.402/0001-99;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+232;CC UNICRED CENTRO-SUL LTDA - UNICRED CENTRO-SUL;00075847;00.075.847/0001-35;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+233;CC UNICRED COOMARCA;04355489;04.355.489/0001-75;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+234;CC UNICRED DESBRAVADORA LTDA - UNICRED DESBRAVADORA;01039011;01.039.011/0001-48;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+235;CC UNICRED EVOLUÇÃO LTDA.;01727929;01.727.929/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+236;CC UNICRED UNIÃO LTDA - UNICRED UNIÃO;74114042;74.114.042/0001-90;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+237;CC UNICRED VALOR CAPITAL LTDA - UNICRED VALOR CAPITAL;74064502;74.064.502/0001-12;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+238;CC VALE DO CANOAS;00707903;00.707.903/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+239;CC VALE ITAJAÍ E ITAPOCÚ;02883398;02.883.398/0001-87;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+240;CCC DO ESP.SANTO - SICOOB ES;32428294;32.428.294/0001-43;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+241;CCC DO ESTADO DE SÃO PAULO;63917579;63.917.579/0001-71;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+242;CCC DO NORTE DO BRASIL;03502131;03.502.131/0001-65;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+243;CCC DOS EST DE MT, MS E MUN DE CACOAL/RO;00106180;00.106.180/0001-90;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+244;CCC ESTADO MG - CECREMGE;00309024;00.309.024/0001-27;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+245;CCC ESTADO SP - CECRESP;62931522;62.931.522/0001-64;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+246;CCC MINAS GERAIS - CREDIMINAS;25683434;25.683.434/0001-64;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+247;CCC SICOOB CENTRAL SC/RS;80160260;80.160.260/0001-63;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+248;CCC UNICOOB-SICOOB CENTR UNIC;05036532;05.036.532/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+249;CCI UNINDÚSTRIA;53841911;53.841.911/0001-08;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+250;CCLA ALTO SÃO FRANCISCO;41805003;41.805.003/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+251;CCLA ANÁPOLIS E REGIÃO;33615055;33.615.055/0001-65;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+252;CCLA ARCOS;71230338;71.230.338/0001-88;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+253;CCLA BOA ESPERANÇA;00869687;00.869.687/0001-04;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+254;CCLA CAMPOS GERAIS E CAMPO DO;71146450;71.146.450/0001-35;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+255;CCLA CARMO DO RIO CLARO;25743311;25.743.311/0001-71;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+256;CCLA CENTRO BRASILEIRA LTDA.;37395399;37.395.399/0001-67;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+257;CCLA CENTRO NORDESTE - SICOOB CENTRO NORDESTE;03102185;03.102.185/0001-33;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+258;CCLA CENTRO NORDESTE MINEIRO;02173447;02.173.447/0001-98;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+259;CCLA CENTRO-SUL GOIANO;33579731;33.579.731/0001-92;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+260;CCLA CERES E RIALMA LTDA;09576849;09.576.849/0001-82;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+261;CCLA CIRCUITO CAMPOS VERTENTES;02232383;02.232.383/0001-59;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+262;CCLA CIRCUITO DAS ÁGUAS;03941182;03.941.182/0001-93;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+263;CCLA CREDIEMBRAPA;02338666;02.338.666/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+264;CCLA CREDINOVA LTDA. - SICOOB CREDINOVA;01667766;01.667.766/0001-97;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+265;CCLA CREDISIS JICRED;02309070;02.309.070/0001-51;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+266;CCLA CREDSAOPAULO;02197569;02.197.569/0001-14;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+267;CCLA DA GRANDE GOIÂNIA LTDA.;10209619;10.209.619/0001-64;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+268;CCLA DA PARAÍBA - SICOOB PARAÍBA;11907520;11.907.520/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+269;CCLA DA REGIÃO CENTRAL DE RONDÔNIA;02144899;02.144.899/0001-41;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+270;CCLA DA REGIÃO DE  PARÁ DE MINAS;25387713;25.387.713/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+271;CCLA DA REGIÃO DE FRUTAL;71419600;71.419.600/0001-37;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+272;CCLA DA REGIÃO METROPOLITANA DE GOIÂNIA LTDA.;07599206;07.599.206/0001-29;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+273;CCLA DE BH E CIDADES POLO DE MG;01760242;01.760.242/0001-46;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+274;CCLA DE ITAJUBÁ - SICOOB SUDESTE MAIS;04079285;04.079.285/0001-59;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+275;CCLA DE ITAÚNA E REGIÃO LTDA;66463407;66.463.407/0001-63;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+276;CCLA DE PALMEIRAS E REGIÃO;37631058;37.631.058/0001-43;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+277;CCLA DE PERNAMBUCO - SICOOB PERNAMBUCO;03732359;03.732.359/0001-41;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+278;CCLA DE PITANGUI E REGIAO LTDA;04181542;04.181.542/0001-69;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+279;CCLA DE POMPEU LTDA.;66262643;66.262.643/0001-11;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+280;CCLA DE RIO VERDE E REGIÃO;09033698;09.033.698/0001-16;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+281;CCLA DO CENTRO SUL DE MS;10319386;10.319.386/0001-52;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+282;CCLA DO ESTADO DE SÃO PAULO - SICOOB PAULISTA;10262276;10.262.276/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+283;CCLA DO ESTADO DO PARÁ - SICOOB COOESA;83836114;83.836.114/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+284;CCLA DO OESTE MARANHENSE - SICOOB OESTE MARANHENSE;09424988;09.424.988/0001-90;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+285;CCLA DO PLANALTO CATARINENSE;01389651;01.389.651/0001-88;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+286;CCLA DO PLANALTO SERRANO;01692448;01.692.448/0001-86;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+287;CCLA DO SUL CATARINENSE;03427097;03.427.097/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+288;CCLA DO TOCANTINS;26960328;26.960.328/0001-43;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+289;CCLA DO VALE;86829827;86.829.827/0001-28;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+290;CCLA DO VALE DO CANOINHAS;78834975;78.834.975/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+291;CCLA E DOS ADV;02480577;02.480.577/0001-73;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+292;CCLA EMPREG DOS CORREIOS - SICOOB COOPERCORREIOS;03862898;03.862.898/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+293;CCLA ITAPIRANGA;78483310;78.483.310/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+294;CCLA JATAÍ E REGIÃO;10143499;10.143.499/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+295;CCLA LAGOA DA PRATA;01739375;01.739.375/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+296;CCLA LESTE E NORDESTE MINEIRO;01559914;01.559.914/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+297;CCLA MARGEM ESQUERDA DO URUCUI;14046512;14.046.512/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+298;CCLA MEIO OESTE CATARINENSE;80959638;80.959.638/0001-93;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+299;CCLA MONTES CLAROS;02031139;02.031.139/0001-28;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+300;CCLA NORTE DE MATO GROSSO - SICOOB NORTE MT;23623636;23.623.636/0001-95;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+301;CCLA OESTE MINEIRO LTDA-SICOOB;71297899;71.297.899/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+302;CCLA PARA DE MINAS;01009908;01.009.908/0001-29;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+303;CCLA PEDRO LEOPOLDO;71441406;71.441.406/0001-58;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+304;CCLA PONTAL DO TRIANGULO;26178533;26.178.533/0001-51;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+305;CCLA PROD RURAIS TRIÂNGULO;41669227;41.669.227/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+306;CCLA PROF SAÚDE UNICRED ALIANÇA;70937271;70.937.271/0001-53;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+307;CCLA REG LESTE BACIA RIO DOCE;05158093;05.158.093/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+308;CCLA REG. CTR. E OESTE MINEIRO;01736516;01.736.516/0001-61;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+309;CCLA REGIÃO GUAXUPÉ;01699652;01.699.652/0001-29;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+310;CCLA RUBIATABA REGIAO;73422792;73.422.792/0001-66;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+311;CCLA SANTA CRUZ PALMEIRAS;06910457;06.910.457/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+312;CCLA SANTO ANTONIO DO MONTE;41707258;41.707.258/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+313;CCLA SERV POD LEG MG - SICOOB COFAL;21797311;21.797.311/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+314;CCLA SICOOB ARENITO PARANÁ / SÃO PAULO;07026923;07.026.923/0001-61;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+315;CCLA SICOOB COOCRELIVRE;53935029;53.935.029/0001-21;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+316;CCLA SICOOB COOPCREDI;02254376;02.254.376/0001-58;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+317;CCLA SICOOB COOPJUS;25363615;25.363.615/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+318;CCLA SICOOB COPESITA;19875244;19.875.244/0001-46;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+319;CCLA SICOOB CREDIACIL;08795285;08.795.285/0001-06;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+320;CCLA SICOOB CREDICARU SC/RS;00694389;00.694.389/0001-12;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+321;CCLA SICOOB CREDIMEPI;01644264;01.644.264/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+322;CCLA SICOOB CREDMISSÃO LTDA.;01667352;01.667.352/0001-68;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+323;CCLA SICOOB UNIÃO SUDESTE;07946216;07.946.216/0001-93;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+324;CCLA SICOOB UNIMAIS METROPOLITANA;00259231;00.259.231/0001-14;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+325;CCLA SICOOB VALCREDI SUL;02090126;02.090.126/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+326;CCLA SUDOESTE GOIANO;24795049;24.795.049/0001-46;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+327;CCLA SUL CATARINENSE;81367880;81.367.880/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+328;CCLA SUL MARANHENSE - SICOOB SUL MARANHENSE;26526166;26.526.166/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+329;CCLA SUL MINAS-SICOOB CREDIVAS;01604998;01.604.998/0001-04;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+330;CCLA TRANSPORT RODOV VEICULOS;07789195;07.789.195/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+331;CCLA UNIÃO DOS VALES DO PIRANGA E MATIPÓ LTDA.;01060307;01.060.307/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+332;CCLA UNIÃO E NEGÓCIOS  - SICOOB INTEGRAÇÃO;08742188;08.742.188/0001-55;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+333;CCLA URUBICI;02587492;02.587.492/0001-99;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+334;CCLA VALE DO AÇO;19869338;19.869.338/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+335;CCLA VALE DO ARAGUAIA;24830879;24.830.879/0001-67;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+336;CCLA VALE DO PARANAÍBA;24799033;24.799.033/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+337;CCLA VALE DO PARANAPANEMA;01637949;01.637.949/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+338;CCLA VALE DO RIO DO PEIXE;78865995;78.865.995/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+339;CCLA VALE DO RIO GRANDE;25683475;25.683.475/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+340;CCLA VALE DO VINHO;81016131;81.016.131/0001-69;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+341;CCLA ZONA DA MATA LTDA;02335109;02.335.109/0001-05;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+342;CCLAA AURIVERDE-SICOOB CREDIAL;78858107;78.858.107/0001-62;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+343;CCLAA ITAIPU SICOOB CREDITAIPU;81014060;81.014.060/0001-65;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+344;CCLAA NOVA TRENTO;02641969;02.641.969/0001-77;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+345;CCLAA OESTE CATARINENSE;78825023;78.825.023/0001-22;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+346;CCLAA SAO MIGUEL DO OESTE;81607046;81.607.046/0001-75;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+347;CCLAA SICOOB MAXICRÉDITO;78825270;78.825.270/0001-29;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+348;CCM CORRET SEG EST SAO PAULO;08030602;08.030.602/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+349;CCM DA ADVOCACIA;05861932;05.861.932/0001-42;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+350;CCM DESP TRÂNS SC E RS;04715685;04.715.685/0001-03;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+351;CCM DO ABC - COOPER 7;04414354;04.414.354/0001-33;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+352;CCM DO CEARÁ - SICOOB CEARÁ;03620772;03.620.772/0001-14;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+353;CCM PROF SAUDE E LIVRE ADMISSÃO TEOFILO OTONI LTDA;01709266;01.709.266/0001-70;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+354;CCM SERV FEDERAIS NA PARAÍBA - SICOOB COOPERCRET;02275781;02.275.781/0001-52;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+355;CCM SERV MIN EDUC SÃO PAULO;73092827;73.092.827/0001-46;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+356;CCM SERV MUN S JOAO BOA VISTA;74248949;74.248.949/0001-41;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+357;CCM SERV PUBLICOS - CREDI SP;03612679;03.612.679/0001-68;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+358;CCM SICOOB CREDIACISC;07669921;07.669.921/0001-90;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+359;CCPS E LA DO TRIANG MINEIRO E SUL DE MG LTDA;71432926;71.432.926/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+360;CCR COOPAVEL;76461557;76.461.557/0001-91;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+361;CCR DE ABELARDO LUZ;01073966;01.073.966/0001-11;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+362;CCR DE IBIAM;08240446;08.240.446/0001-03;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Sim
+363;CCR IRAI - SICOOB CREDIMIL;71207740;71.207.740/0001-41;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+364;CCR SEARA;00204963;00.204.963/0001-07;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+365;CDC SCD S.A.;18394228;18.394.228/0001-79;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Sim
+366;CECM APOS PENS E IDOSOS - SICOOB COOPERNAPI;16564240;16.564.240/0001-59;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+367;CECM COOPERSERV;05667301;05.667.301/0001-97;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+368;CECM DOS EMPR DAS EMP RANDON;89280960;89.280.960/0001-66;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+369;CECM DOS FUNCIONARIOS DA COMIGO;01062439;01.062.439/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+370;CECM DOS TRAB.PORT. DA G.VITOR;03844699;03.844.699/0001-64;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Sim;Não
+371;CECM EMP INST SF SÃO PAULO CAM;03674133;03.674.133/0001-31;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+372;CECM EMP USAGRO;68969625;68.969.625/0001-08;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+373;CECM EMPR CENT ELÉTRICAS/SC;08850613;08.850.613/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+374;CECM EMPR EST HOSP BH RM ZM;19402130;19.402.130/0001-89;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+375;CECM MAGISTRADOS DE SÃO PAULO;51489318;51.489.318/0001-19;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+376;CECM MÉD DE PORTO ALEGRE;94433109;94.433.109/0001-66;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+377;CECM MEDICOS E PROFISSIONAIS AREA SAUDE DO BRASIL;42898825;42.898.825/0001-15;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+378;CECM MILITARES ESTADUAIS DE SC;04572960;04.572.960/0001-87;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+379;CECM PROF ÁREA NOTARIAL REGISTRAL;07714057;07.714.057/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+380;CECM SERV E EMPREG PUBL MUN BH BETIM BRUMAD CONTAG IBI NL RN;01864151;01.864.151/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+381;CECM SERV MUN ITABIRA;16651002;16.651.002/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+382;CECM SERV MUN POÇOS DE CALDAS;41791005;41.791.005/0001-67;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+383;CECM SERV POD JUD TCE ORG PUBL MUN EST FED RJ;02000895;02.000.895/0001-90;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+384;CECM SICOOB COOPERAC;08071414;08.071.414/0001-13;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+385;CECM SICOOB CRED-ACILPA;09004796;09.004.796/0001-25;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+386;CECM SICOOB METALCRED;04833655;04.833.655/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+387;CECM UNICRED INTEGRAÇÃO;73750424;73.750.424/0001-47;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+388;CECMF SECRETARIA DA FAZENDA MG E LIVRE ADMISSÃO;16721078;16.721.078/0001-35;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+389;CELCOIN IP S.A.;13935893;13.935.893/0001-09;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Sim
+390;CENTRAL SICOOB UNI DE CC;04243780;04.243.780/0001-51;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+391;CIELO IP S.A.;01027058;01.027.058/0001-91;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+392;CIVIA COOP CRED;10218474;10.218.474/0001-68;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+393;CLARA IP;41538335;41.538.335/0001-45;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+394;CLOUDWALK IP LTDA;18189547;18.189.547/0001-42;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+395;COBUCCIO S.A. SCFI;36947229;36.947.229/0001-85;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Liquidante Especial;Não;N/A
+396;CONPAY IP S.A.;31531997;31.531.997/0001-30;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+397;CONTA PRONTA IP;12473687;12.473.687/0001-61;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+398;CONTA SIMPLES SCD S.A.;53720128;53.720.128/0001-96;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+399;CONTAAZUL IP LTDA.;47381104;47.381.104/0001-57;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+400;COOP  SICOOB MÉDIO OESTE;07318874;07.318.874/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+401;COOP ARACOOP LTDA. - SICOOB ARACOOP;03320525;03.320.525/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+402;COOP CENTRO NORTE BRASILEIRO;02282709;02.282.709/0001-52;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+403;COOP COOPERFORTE LTDA.;01658426;01.658.426/0001-08;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+404;COOP CREDI COOPERALFA;60849822;60.849.822/0001-73;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+405;COOP CREDI&GENTE;82096447;82.096.447/0001-70;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+406;COOP CREDICAPI LTDA - SICOOB CREDICAPI;00804046;00.804.046/0001-63;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+407;COOP CREDICENTRO;53776852;53.776.852/0001-31;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+408;COOP CREDICOMIN;09590601;09.590.601/0001-76;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+409;COOP CREDIPINHO LTDA - SICOOB CREDIPINHO;71154876;71.154.876/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+410;COOP CRESERV CREDISIS;04831810;04.831.810/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+411;COOP CRESOL ALIANÇA;07412987;07.412.987/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+412;COOP CRESOL ALTO VALE;07465539;07.465.539/0001-65;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+413;COOP CRESOL AMAZONIA;10520232;10.520.232/0001-24;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+414;COOP CRESOL ATIVA;07946451;07.946.451/0001-65;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+415;COOP CRESOL CAMINHOS;05241145;05.241.145/0001-06;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+416;COOP CRESOL CENTRO SERRA;01155801;01.155.801/0001-99;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+417;COOP CRESOL CENTRO SUL;02910987;02.910.987/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+418;COOP CRESOL CONEXÃO;11969853;11.969.853/0001-52;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+419;COOP CRESOL CONFIANÇA;07252614;07.252.614/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+420;COOP CRESOL COOPERACRED;09463721;09.463.721/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+421;COOP CRESOL COOPERAR;05983995;05.983.995/0001-71;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+422;COOP CRESOL DESENVOLVIMENTO;05425526;05.425.526/0001-37;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+423;COOP CRESOL ENCOSTAS DA SERRA GERAL;03485130;03.485.130/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+424;COOP CRESOL ESSENCIA;06031727;06.031.727/0001-12;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+425;COOP CRESOL EVOLUÇAO;02844024;02.844.024/0001-52;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+426;COOP CRESOL EXCELÊNCIA;02766672;02.766.672/0001-38;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+427;COOP CRESOL FRONTEIRAS PR/SC/SP/ES;05276770;05.276.770/0001-85;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+428;COOP CRESOL GOIAS;04490531;04.490.531/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+429;COOP CRESOL GRANDES LAGOS PR/SP;06126780;06.126.780/0001-05;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+430;COOP CRESOL HORIZONTE;05277312;05.277.312/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+431;COOP CRESOL INOVAÇAO;05070112;05.070.112/0001-32;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+432;COOP CRESOL INTEGRACAO;07268499;07.268.499/0001-61;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+433;COOP CRESOL INTERAÇÃO;08055016;08.055.016/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+434;COOP CRESOL JACUTINGA;02904125;02.904.125/0001-71;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+435;COOP CRESOL LIDERANCA;02934201;02.934.201/0001-91;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+436;COOP CRESOL LITORAL;05410056;05.410.056/0001-38;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+437;COOP CRESOL MAIS;05269976;05.269.976/0001-88;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+438;COOP CRESOL MATO GROSSO;50735161;50.735.161/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+439;COOP CRESOL MINAS GERAIS;08624548;08.624.548/0001-14;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+440;COOP CRESOL MISSÕES FRONTEIRA RS;08488377;08.488.377/0001-43;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+441;COOP CRESOL NASCENTE;05494591;05.494.591/0001-14;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+442;COOP CRESOL NOROESTE;02663426;02.663.426/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+443;COOP CRESOL NORTE PARANAENSE;07925729;07.925.729/0001-18;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+444;COOP CRESOL ORIGENS;05220243;05.220.243/0001-59;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+445;COOP CRESOL PIONEIRA;00971300;00.971.300/0001-18;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+446;COOP CRESOL PLANALTO SERRA SUL;05863726;05.863.726/0001-71;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+447;COOP CRESOL PRIMATO CREDI;53575491;53.575.491/0001-65;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Sim;Não
+448;COOP CRESOL PROGRESSO;02448310;02.448.310/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+449;COOP CRESOL PROSPERAR;03015152;03.015.152/0001-56;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+450;COOP CRESOL RAIZ;17343510;17.343.510/0001-64;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+451;COOP CRESOL RIO GRANDE DO SUL;06139650;06.139.650/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+452;COOP CRESOL SERRA MAR;07958405;07.958.405/0001-86;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+453;COOP CRESOL TRADICAO;04350225;04.350.225/0001-29;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+454;COOP CRESOL TRANSAMAZÔNICA;24431221;24.431.221/0001-82;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+455;COOP CRESOL TRANSFORMAÇÃO;04261151;04.261.151/0001-54;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+456;COOP CRESOL TRIUNFO;08560508;08.560.508/0001-56;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+457;COOP CRESOL UNIAO;02446089;02.446.089/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+458;COOP CRESOL UNIAO DOS VALES;05231945;05.231.945/0001-38;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+459;COOP CRESOL VALE;07320890;07.320.890/0001-68;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+460;COOP CRESOL VALE EUROPEU;07512780;07.512.780/0001-06;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+461;COOP CRESOL VANGUARDA;03965737;03.965.737/0001-37;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+462;COOP DA REGIÃO MERIDIONAL DO BRASIL - SICOOB MERIDIONAL;05392810;05.392.810/0001-54;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+463;COOP DE CRED E INVEST LIBERDADE - SICREDI LIBERDADE;88530142;88.530.142/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+464;COOP DE CRÉDITO SICOOB COSTA DO DESCOBRIMENTO LTDA.;01205736;01.205.736/0001-69;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+465;COOP DO ESTADO DO ACRE LTDA.;01608685;01.608.685/0001-16;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+466;COOP EMPRECRED LTDA.;07502031;07.502.031/0001-90;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+467;COOP EVOLUA;10311218;10.311.218/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+468;COOP FRONTEIRAS;03612764;03.612.764/0001-26;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+469;COOP INVEST INT SOL VALE DAS ÁGUAS PR/MG;04663561;04.663.561/0001-21;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+470;COOP NOVOS CAMPOS;78862083;78.862.083/0001-15;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+471;COOP POL FED - SICREDI POL;03000142;03.000.142/0001-47;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+472;COOP PROF DA JUST, SERV PÚBL E ENERGIA LTDA;09552111;09.552.111/0001-85;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+473;COOP SICOOB BRMIL LTDA.;04649337;04.649.337/0001-85;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+474;COOP SICOOB BURITIS;05247312;05.247.312/0001-18;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+475;COOP SICOOB CENTRO;08044854;08.044.854/0001-81;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+476;COOP SICOOB CERRADO;05222094;05.222.094/0001-67;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+477;COOP SICOOB CONFIANÇA MAIS;04876393;04.876.393/0001-52;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+478;COOP SICOOB COOPERCRED LTDA.;00968602;00.968.602/0001-37;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+479;COOP SICOOB COOPEREMB;46642294;46.642.294/0001-56;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+480;COOP SICOOB COOPERPLAN CREDSEF;03603683;03.603.683/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+481;COOP SICOOB CREDIAUC;78840071;78.840.071/0001-90;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+482;COOP SICOOB CREDICAPITAL;04529074;04.529.074/0001-70;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+483;COOP SICOOB CREDIJUSTRA;37079720;37.079.720/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+484;COOP SICOOB CREDIMOGIANA;69346856;69.346.856/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+485;COOP SICOOB CREDIP;02015588;02.015.588/0001-82;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+486;COOP SICOOB CREDUNI;03428338;03.428.338/0001-37;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+487;COOP SICOOB EXECUTIVO LTDA.;00694877;00.694.877/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+488;COOP SICOOB MANTIQUEIRA;71698674;71.698.674/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+489;COOP SICOOB PRIMAVERA;05241619;05.241.619/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+490;COOP SICOOB PRO;44469161;44.469.161/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+491;COOP SICOOB UNI SUDESTE;86389236;86.389.236/0001-87;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+492;COOP SICOOB UNI SUL MS;37554441;37.554.441/0001-45;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+493;COOP SICOOB UNIMAIS CLP;01259518;01.259.518/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+494;COOP SICREDI AGROEMPRESARIAL;79457883;79.457.883/0001-13;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+495;COOP SICREDI AJURIS;03750034;03.750.034/0001-91;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+496;COOP SICREDI ALIANÇA;79052122;79.052.122/0001-81;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+497;COOP SICREDI ALIANÇA;87795639;87.795.639/0001-99;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+498;COOP SICREDI ALT SERRA RS/SC;92555150;92.555.150/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+499;COOP SICREDI ALTA NOROESTE SP;04484490;04.484.490/0001-08;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+500;COOP SICREDI ALTSERTÃO PARAIBANO;09343038;09.343.038/0001-31;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+501;COOP SICREDI ARAXINGU;33021064;33.021.064/0001-28;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+502;COOP SICREDI BANDEIRANTES;04853988;04.853.988/0001-92;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+503;COOP SICREDI BOTUCARAÍ RS/MG;87900601;87.900.601/0001-39;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+504;COOP SICREDI CAMINHO DAS ÁGUAS RS;95213211;95.213.211/0001-19;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+505;COOP SICREDI CAMPO GRANDE MS/GO;03042597;03.042.597/0001-25;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+506;COOP SICREDI CAMPOS GERAIS E GRANDE CURITIBA PR/SP;81466286;81.466.286/0001-05;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+507;COOP SICREDI CELEIRO CENTRO NORTE;26555235;26.555.235/0001-33;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+508;COOP SICREDI CELEIRO OESTE;03566655;03.566.655/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+509;COOP SICREDI CEN OEST PAULISTA;04463602;04.463.602/0001-36;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+510;COOP SICREDI CENT SUL PR/SC/RJ;78907607;78.907.607/0001-47;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+511;COOP SICREDI CENTRO PERNAMBUCANA PE;41255225;41.255.225/0001-76;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+512;COOP SICREDI CENTRO SERRA;87067757;87.067.757/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+513;COOP SICREDI CENTRO-SUL MS/BA;26408161;26.408.161/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+514;COOP SICREDI CERRADO GO;06332931;06.332.931/0001-73;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+515;COOP SICREDI CONFIANÇA;89049738;89.049.738/0001-57;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+516;COOP SICREDI COOABCRED RS;19962468;19.962.468/0001-95;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+517;COOP SICREDI COOPERJURIS;08041950;08.041.950/0001-76;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+518;COOP SICREDI CREDENOREG;06078926;06.078.926/0001-86;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+519;COOP SICREDI CREDJURIS;04886317;04.886.317/0001-28;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+520;COOP SICREDI CULTURAS RS/MG;90729369;90.729.369/0001-22;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+521;COOP SICREDI DEXIS;79342069;79.342.069/0001-53;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+522;COOP SICREDI EDUCAÇÃO RS;04525997;04.525.997/0001-54;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+523;COOP SICREDI EMPREENDEDORES;07070495;07.070.495/0001-74;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+524;COOP SICREDI ESSÊNCIA;87733077;87.733.077/0001-59;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+525;COOP SICREDI EVOLUÇÃO;35571249;35.571.249/0001-31;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+526;COOP SICREDI EXPANSÃO;41180092;41.180.092/0001-16;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+527;COOP SICREDI FRONTEIR PR/SC/SP;82527557;82.527.557/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+528;COOP SICREDI GERAÇÕES RS/MG;88471024;88.471.024/0001-70;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+529;COOP SICREDI GRANDES LAGOS;81115149;81.115.149/0001-18;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+530;COOP SICREDI GRANDES RIOS E BIOMAS;37442605;37.442.605/0001-42;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+531;COOP SICREDI IBIRAIARAS RS/MG;89990501;89.990.501/0001-76;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+532;COOP SICREDI IGUAÇU PR/SC E REGIÃO METROP. DE CAMPINAS/SP;84974278;84.974.278/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+533;COOP SICREDI INTEGRAÇÃO BAHIA - BA;97489280;97.489.280/0001-85;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+534;COOP SICREDI INTEGRAÇÃO MT/AP/PA;26549311;26.549.311/0001-06;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+535;COOP SICREDI INTEGRAÇÃO PR/SC;81054686;81.054.686/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+536;COOP SICREDI INTEGRAÇÃO RS/MG;91159764;91.159.764/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+537;COOP SICREDI INTERESTADOS;90497256;90.497.256/0001-49;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+538;COOP SICREDI LENÇÓIS MA;05545390;05.545.390/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+539;COOP SICREDI MEDICRED;02924977;02.924.977/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+540;COOP SICREDI MORADA DO SOL SP;73113243;73.113.243/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+541;COOP SICREDI MP;03662047;03.662.047/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+542;COOP SICREDI NATIVA PE/BA;04237413;04.237.413/0001-45;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+543;COOP SICREDI NOROESTE SP;03065046;03.065.046/0001-87;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+544;COOP SICREDI NORTE SC;02843443;02.843.443/0001-70;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+545;COOP SICREDI NORTE SUL;79063574;79.063.574/0001-69;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+546;COOP SICREDI NOSSA TERRA PR/SP;81192106;81.192.106/0001-36;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+547;COOP SICREDI NOVOS HORIZONTES PR/SP/RJ;07206072;07.206.072/0001-39;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+548;COOP SICREDI ORIGENS RS;92796564;92.796.564/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+549;COOP SICREDI OURO BRANCO RS/MG;87853206;87.853.206/0001-42;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+550;COOP SICREDI OURO VERDE MT/PA;26529420;26.529.420/0001-53;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+551;COOP SICREDI PARANAPANEMA SERRANA PR/SP/RJ;79086997;79.086.997/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+552;COOP SICREDI PIONEIRA RS;91586982;91.586.982/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+553;COOP SICREDI PLAN CENTRAL;10736214;10.736.214/0001-84;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+554;COOP SICREDI PLANALT DAS ÁGUAS;77984870;77.984.870/0001-77;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+555;COOP SICREDI PLANALTO RS/MG;88038260;88.038.260/0001-05;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+556;COOP SICREDI PROGRESSO PR/SP;76059997;76.059.997/0001-17;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+557;COOP SICREDI RAIZES RS/SC/MG;88099247;88.099.247/0001-58;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+558;COOP SICREDI REG CENTRO RS/MG;95594941;95.594.941/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+559;COOP SICREDI REG PROD RS/SC/MG;89468565;89.468.565/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+560;COOP SICREDI REGIÃO DOS VALES;89126130;89.126.130/0001-89;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+561;COOP SICREDI RIO GRANDE DO NORTE;70038237;70.038.237/0001-47;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+562;COOP SICREDI RIO PARANÁ;81206039;81.206.039/0001-61;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+563;COOP SICREDI RIO RJ;72128440;72.128.440/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+564;COOP SICREDI ROTA DAS TERRAS;87510475;87.510.475/0001-06;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+565;COOP SICREDI SEMENTES DO SUL;87900411;87.900.411/0001-11;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+566;COOP SICREDI SERIGY SE/BA;02923389;02.923.389/0001-72;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+567;COOP SICREDI SERRANA;90608712;90.608.712/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+568;COOP SICREDI SOMA;82065285;82.065.285/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+569;COOP SICREDI SUDOESTE MT/PA;32995755;32.995.755/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+570;COOP SICREDI SUL DO MARANHÃO;26191078;26.191.078/0001-24;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+571;COOP SICREDI SUL MINAS RS/MG;87784088;87.784.088/0001-68;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+572;COOP SICREDI SUL SC;03793242;03.793.242/0001-78;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+573;COOP SICREDI TRADIÇÃO RS;03212823;03.212.823/0001-79;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+574;COOP SICREDI UNIÃO MS/TO E OESTE DA BA;24654881;24.654.881/0001-22;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+575;COOP SICREDI UNIÃO RS;88894548;88.894.548/0001-73;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+576;COOP SICREDI UNIESTADOS;87780268;87.780.268/0001-71;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+577;COOP SICREDI UNIVALES MT/RO;70431630;70.431.630/0001-04;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+578;COOP SICREDI VALE DO PIQUIRI;81099491;81.099.491/0001-71;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+579;COOP SICREDI VALE DO RIO PARDO;95424891;95.424.891/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+580;COOP SICREDI VALE LITORAL SC;10348181;10.348.181/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Sim
+581;COOP SICREDI VANGUARDA PR/SP/RJ;78414067;78.414.067/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+582;COOP SICREDI VEREDAS;72257793;72.257.793/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+583;COOP SICREDI VL JAGUA ZN MATA;87780284;87.780.284/0001-64;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+584;COOP SICREDI VLR SUSTENT PR/SP;81706616;81.706.616/0001-84;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+585;COOP SUL;05888589;05.888.589/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+586;COOP SULCREDI AMPLEA;08253539;08.253.539/0001-64;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+587;COOP TRANSPOCRED;08075352;08.075.352/0001-18;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+588;COOP UNICRED VALE LTDA.;73443863;73.443.863/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+589;COOP ÚNILOS;02405189;02.405.189/0001-28;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+590;COOP UNIPRIME CREDICANA;44373041;44.373.041/0001-07;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+591;COOP UNIPRIME PIF PAF;20062766;20.062.766/0001-08;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+592;COOP UNIPRIME SUL;01572667;01.572.667/0001-21;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+593;COOP UNIQUE BR LTDA.;73647935;73.647.935/0001-38;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+594;COOP V. ALTO VALE;16779741;16.779.741/0001-52;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+595;COOP VIACREDI;82639451;82.639.451/0001-38;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+596;COOP. CRED. POUP. INVEST. CONEXÃO;87733770;87.733.770/0001-21;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+597;COOPCENTRAL AILOS;05463212;05.463.212/0001-29;Cooperativa de Crédito;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+598;COOPCENTRAL DE ECON. E CRÉDITO SICOOB UNIMAIS RIO LTDA.;14568725;14.568.725/0001-95;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+599;COOPCENTRAL SICOOB NOVA CENTRAL LTDA.;33416108;33.416.108/0001-19;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+600;COOPER CARD IP;05938780;05.938.780/0003-09;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+601;COOPERATIVA DE CRÉDITO COOPERAÇÃO - SICREDI COOPERAÇÃO;87779625;87.779.625/0001-81;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+602;COOPERATIVA DE CRÉDITO CREDIJEQUITINHONHA LTDA.;71243034;71.243.034/0001-55;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+603;COOPERATIVA DE CRÉDITO LIVRE ADMISSÃO SICOOB OURICRED;02179673;02.179.673/0001-86;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+604;COOPERATIVA DE CRÉDITO POPULAR DO BRASIL;01330387;01.330.387/0001-07;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+605;COOPERATIVA DE CRÉDITO SAROM;66402207;66.402.207/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+606;CORA SCFI;37880206;37.880.206/0001-63;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+607;CPC VALE DO RIO DOCE;25606237;25.606.237/0001-41;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+608;CREDCREA;05979692;05.979.692/0001-85;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+609;CREDICOAMO;81723108;81.723.108/0001-04;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+610;CREDIFIT SCD S.A.;39676772;39.676.772/0001-83;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+611;CREDISAN CC;62109566;62.109.566/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+612;CREDISIS - CENTRAL DE COOPERATIVAS DE CRÉDITO;04632856;04.632.856/0001-30;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+613;CREDISIS CAPITALCREDI - CCLA DO ACRE LTDA.;05439425;05.439.425/0001-15;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+614;CREDISIS COOPESA;06975532;06.975.532/0001-20;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+615;CREDISIS CREDIARI COOP LTDA.;03222753;03.222.753/0001-30;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+616;CREDISIS CREDIPLAN - COOP DE CRÉD DE LIVRE ADMISSÃO DO PLANA;97259253;97.259.253/0001-16;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+617;CREDISIS OESTE - CCI DO OESTE;04985665;04.985.665/0001-52;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+618;CREDISIS PRIMACREDI CC;26563270;26.563.270/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+619;CREDISIS SUDOESTE/RO;03985375;03.985.375/0001-46;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+620;CREDISIS/CREDISUL COOPERATIVA DE CRÉDITO;07494300;07.494.300/0001-13;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+621;CREDJUST - CCM INTEGRANTES DA;04608925;04.608.925/0001-70;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+622;CREDSYSTEM IP;;04.670.195/0001-38;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+623;CREDSYSTEM SCD S.A.;39664698;39.664.698/0001-85;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+624;CREFISA S.A. CFI;60779196;60.779.196/0001-96;Sociedade de Crédito, Financiamento e Investimento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+625;CRESOL CONFEDERAÇÃO;10398952;10.398.952/0001-69;Cooperativa de Crédito;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+626;CREVISC;10143743;10.143.743/0001-74;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+627;CUMBUCA IP LTDA.;;44.353.942/0001-29;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+628;DELEND IP LTDA.;;51.982.600/0001-33;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+629;DELFINANCE SCD S.A.;38224857;38.224.857/0001-68;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+630;DELTA GLOBAL SCD S.A.;55823094;55.823.094/0001-90;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+631;DGBK CREDIT S.A. - SOCIEDADE DE CRÉDITO DIRETO.;48584954;48.584.954/0001-15;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+632;DLOCAL BRASIL IP S.A.;25021356;25.021.356/0001-32;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+633;DM SCFI;91669747;91.669.747/0001-92;Sociedade de Crédito, Financiamento e Investimento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+634;DOCK IP S.A.;13370835;13.370.835/0001-85;Instituição de Pagamento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+635;E2E PAY INSTITUICAO DE PAGAMEN;18639407;18.639.407/0001-29;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+636;EASY PAGO;22181404;22.181.404/0001-61;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+637;EBANX IP LTDA.;21018182;21.018.182/0001-06;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+638;EBURY BCO DE CÂMBIO S.A.;13059145;13.059.145/0001-00;Banco de Câmbio;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+639;EFÍ S.A. - IP;09089356;09.089.356/0001-18;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+640;EMPRESA DE BENEFÍCIOS IP LTDA.;33449007;33.449.007/0001-44;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+641;ENOQ PAY;35990763;35.990.763/0001-01;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+642;EWALLY IP S.A.;00714671;00.714.671/0001-14;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+643;EXPAG SOLUÇÕES EM PAGAMENTOS;32906701;32.906.701/0001-80;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+644;F D GOLD DTVM LTDA;08673569;08.673.569/0001-20;Sociedade Distribuidora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+645;FFCRED SCD S.A.;39738065;39.738.065/0001-74;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+646;FIDUCIA SCMEPP LTDA;04307598;04.307.598/0001-17;Sociedade de Crédito ao Microempreendedor;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+647;FINNET S/A IP;;05.607.266/0002-00;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+648;FINVEST DTVM;36266751;36.266.751/0001-00;Sociedade Distribuidora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+649;FISERV DO BRASIL IP;04962772;04.962.772/0001-65;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+650;FITS IP;13203354;13.203.354/0001-85;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+651;FLAGSHIP IP LTDA;23114447;23.114.447/0001-97;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+652;FURNAS;33370115;33.370.115/0001-27;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+653;G5 SCD SA;51212088;51.212.088/0001-46;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+654;GAZINCRED S.A. SCFI;11760553;11.760.553/0001-69;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+655;GERU SCD S.A.;37763847;37.763.847/0001-38;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+656;GLOBAL SCM LTDA;11165756;11.165.756/0001-07;Sociedade de Crédito ao Microempreendedor;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+657;GOOGLE PAY BRASIL IP LTDA.;43394419;43.394.419/0001-88;Instituição de Pagamento;Sim;Indireta;Facultativa;Iniciador;Sim;N/A
+658;GOWD IP LTDA.;33630661;33.630.661/0001-50;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+659;GREENCRED CC;02347114;02.347.114/0001-38;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+660;HBI SCD;04849745;04.849.745/0001-80;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+661;HEMERA DTVM LTDA.;39669186;39.669.186/0001-01;Sociedade Distribuidora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+662;HINOVA PAY IP S.A.;27970567;27.970.567/0001-47;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+663;HR DIGITAL SCD;44292580;44.292.580/0001-03;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+664;HYPER WALLET IP LTDA;07136847;07.136.847/0001-47;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+665;ID CTVM;16695922;16.695.922/0001-09;Sociedade Corretora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+666;IDEA MAKER IP LTDA;45860531;45.860.531/0001-92;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+667;IFOOD PAGO IP;19468242;19.468.242/0001-32;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+668;INCO SEP S.A.;35340796;35.340.796/0001-06;Sociedade de Empréstimo entre Pessoas;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+669;INDEPENDÊNCIA CC;04306351;04.306.351/0001-86;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Sim;Sim
+670;INFINIA BRASIL IP LTDA.;;51.982.465/0001-26;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+671;INFOPAGO;82842386;82.842.386/0001-43;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+672;INICIADOR IP LTDA;;44.471.172/0001-19;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+673;INOVANTI IP S.A.;37511258;37.511.258/0001-62;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+674;INTEGRAÇÃO DE CRÉDITO E COBRANÇA SCD;51118615;51.118.615/0001-58;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+675;IPAG PAGAMENTOS DIGITAIS;27810157;27.810.157/0001-39;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+676;ISSUER IP LTDA.;34747388;34.747.388/0001-00;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+677;ITAÚ UNIBANCO S.A.;60701190;60.701.190/0001-04;Banco Múltiplo;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+678;IUGU IP S.A.;15111975;15.111.975/0001-64;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+679;J17 - SCD S/A;40475846;40.475.846/0001-00;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+680;JRM2;40735713;40.735.713/0001-18;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+681;KANASTRA CFI;49288113;49.288.113/0001-23;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+682;KIKAI SCD S.A.;43978697;43.978.697/0001-82;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+683;KIWIFY IP;53908413;53.908.413/0001-35;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+684;KLAVI IP;;44.459.799/0001-54;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+685;KREDIT IP S/A;34678263;34.678.263/0001-76;Instituição de Pagamento;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+686;LB PAY IP LTDA;52833288;52.833.288/0001-89;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+687;LEND IP LTDA.;;44.154.779/0001-75;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+688;LINA INSTITUICAO DE PAGAMENTO S.A;;37.663.090/0001-00;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+689;LISTO SCD S.A.;34088029;34.088.029/0001-99;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+690;MAG IP LTDA.;21995256;21.995.256/0001-56;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+691;MAGALUPAY;13884775;13.884.775/0001-19;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+692;MAGEN IP LTDA.;17028875;17.028.875/0001-02;Instituição de Pagamento;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+693;MAGNUM SCD;44683140;44.683.140/0001-87;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+694;MAPS IP LTDA.;45548763;45.548.763/0001-00;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+695;MAREE IP LTDA.;38372267;38.372.267/0001-82;Instituição de Pagamento;Sim;Indireta;Obrigatória;Provedor de Conta Transacional;Não;Não
+696;MASTERBARTER;39715262;39.715.262/0001-78;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+697;MAX IP;54024532;54.024.532/0001-98;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+698;MÊNTORE IP S.A.;32343119;32.343.119/0001-53;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;N/A
+699;MERCADO BITCOIN IP LTDA;11351086;11.351.086/0001-13;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+700;MERCADO PAGO IP LTDA.;10573521;10.573.521/0001-91;Instituição de Pagamento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Sim
+701;MEUTUDO SCFI;03311443;03.311.443/0001-91;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+702;MIDWAY S.A. - SCFI;09464032;09.464.032/0001-12;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+703;MINHA KONTA;39929224;39.929.224/0001-18;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+704;MONERY IP S.A.;46505612;46.505.612/0001-37;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+705;MONETARIE SCD;46026562;46.026.562/0001-05;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;N/A
+706;MOUNT PAY IP LTDA;31166683;31.166.683/0001-85;Instituição de Pagamento;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+707;MT IP S.A.;50871921;50.871.921/0001-06;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+708;MUEVY IP S.A.;;46.297.307/0001-05;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+709;MULTIPLIKE FINANCEIRA S.A. SCFI;62448932;62.448.932/0001-59;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+710;NDD;06255692;06.255.692/0001-03;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+711;NDD PAY;57030391;57.030.391/0001-04;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+712;NEON PAGAMENTOS S.A. IP;20855875;20.855.875/0001-82;Instituição de Pagamento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+713;NG CASH IP;40710595;40.710.595/0001-93;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+714;NIXFIN SCD;44921281;44.921.281/0001-90;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+715;NOVO BCO CONTINENTAL S.A. - BM;74828799;74.828.799/0001-45;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+716;NSTECH IP S.A.;01648418;01.648.418/0001-72;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+717;NU PAGAMENTOS - IP;18236120;18.236.120/0001-58;Instituição de Pagamento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+718;NUMBRS SCD S.A.;38129006;38.129.006/0001-36;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+719;NUVENDE;38297374;38.297.374/0001-93;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+720;OKTO IP;30980539;30.980.539/0001-15;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;N/A
+721;OMIE INSTITUICAO DE PAGAMENTO LTDA.;;43.010.260/0001-50;Instituição de Pagamento;Não;;Facultativa;Iniciador;Sim;N/A
+722;OMNI BANCO S.A.;60850229;60.850.229/0001-47;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+723;ONEKEY PAYMENTS IP S.A.;35210410;35.210.410/0001-41;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+724;ONLY UP;29477089;29.477.089/0001-63;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+725;OPEA SCD;39519944;39.519.944/0001-05;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+726;OURIBANK S.A.;78632767;78.632.767/0001-20;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+727;OWEM PAY;37839059;37.839.059/0001-88;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+728;PAGARE IP S.A.;25104230;25.104.230/0001-21;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+729;PAGCERTO IP LTDA.;17819084;17.819.084/0001-92;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+730;PAGHIPER IP LTDA.;20110153;20.110.153/0001-07;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+731;PAGME IP LTDA;34471744;34.471.744/0001-06;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+732;PAGOL SCD;48176336;48.176.336/0001-36;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+733;PAGPRIME IP;30944783;30.944.783/0001-22;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Sim
+734;PAGSEGURO INTERNET IP S.A.;08561701;08.561.701/0001-01;Instituição de Pagamento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Sim;Não
+735;PAGSMILE IP LTDA.;37753531;37.753.531/0001-65;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;N/A
+736;PAGUEVELOZ IP LTDA.;03816413;03.816.413/0001-37;Instituição de Pagamento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+737;PAN FINAN;02682287;02.682.287/0001-02;Sociedade de Crédito, Financiamento e Investimento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Sim;Não
+738;PARANA BCO S.A.;14388334;14.388.334/0001-99;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+739;PAY BROKERS IP;40820176;40.820.176/0001-04;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+740;PAY IP S.A.;36690516;36.690.516/0001-52;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+741;PAY2ALL IP LTDA.;44815065;44.815.065/0001-60;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+742;PAY4FUN IP S.A.;20757199;20.757.199/0001-04;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+743;PAYMEE BRASIL IP S.A.;28683892;28.683.892/0001-91;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+744;PEFISA S.A. - C.F.I.;43180355;43.180.355/0001-12;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Obrigatória;Provedor de Conta Transacional;Não;Não
+745;PICPAY;22896431;22.896.431/0001-10;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+746;PICPAY BANK - BANCO MÚLTIPLO S.A;09516419;09.516.419/0001-75;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+747;PINBANK IP;17079937;17.079.937/0001-05;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+748;PINPAG IP S.A.;17768068;17.768.068/0001-18;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+749;PLANNER SOCIEDADE DE CRÉDITO DIRETO;05684234;05.684.234/0001-19;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+750;PLUGGY BRASIL IP LTDA.;;37.943.755/0001-30;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+751;PROTEGE CASH;40276692;40.276.692/0001-10;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+752;PROTOTYPE IP S.A.;35713491;35.713.491/0001-00;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;N/A
+753;QI CTVM S.A.;62285390;62.285.390/0001-40;Sociedade Corretora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+754;QI SCD S.A.;32402502;32.402.502/0001-35;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+755;QUERO-QUERO VERDECARD IP S.A.;01722480;01.722.480/0001-67;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Sim
+756;RECARGAPAY IP LTDA.;11275560;11.275.560/0001-75;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Sim;Não
+757;RENDIMENTOPAY IP S.A;13776742;13.776.742/0001-55;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+758;REPASSES FINANCEIROS E SOLUCOES TECNOLOGICAS IP S.A.;40473435;40.473.435/0001-78;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+759;REPOM;65697260;65.697.260/0001-03;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+760;REVOLUT SCD S.A.;51342763;51.342.763/0001-51;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+761;ROADCARD IP S.A.;12815827;12.815.827/0001-32;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+762;SANTS SCD S.A.;52440987;52.440.987/0001-69;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+763;SAQ IP LTDA.;35535240;35.535.240/0001-75;Instituição de Pagamento;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+764;SELECT CREDIT SCMEPP LTDA.;45756448;45.756.448/0001-78;Sociedade de Crédito ao Microempreendedor;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Sim
+765;SER FINANCE SCD S.A.;47873449;47.873.449/0001-28;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+766;SERVICOOP;03973814;03.973.814/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+767;SERVNET IP LTDA.;29759316;29.759.316/0001-43;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+768;SICOOB ALVORE;10175348;10.175.348/0001-73;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+769;SICOOB AMAZÔNIA;05203605;05.203.605/0001-01;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+770;SICOOB CENTRAL NE;70116611;70.116.611/0001-85;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+771;SICOOB COCRED CC;71328769;71.328.769/0001-81;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+772;SICOOB CONEXÃO;32430233;32.430.233/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+773;SICOOB COOPERMAIS;31804966;31.804.966/0001-05;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+774;SICOOB CRED COPERCANA;64739121;64.739.121/0001-32;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+775;SICOOB CREDFAZ;00952415;00.952.415/0001-65;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+776;SICOOB CREDICONSUMO CC;47074323;47.074.323/0001-93;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+777;SICOOB CREDICOOP;41931221;41.931.221/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+778;SICOOB CREDIGOIÁS CC;37255049;37.255.049/0001-03;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+779;SICOOB CREDILEITE;86585049;86.585.049/0001-79;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+780;SICOOB CREDIMED - CCLA DE UBERABA LTDA;71336432;71.336.432/0001-16;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+781;SICOOB CREDIPRODESP;67915868;67.915.868/0001-92;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+782;SICOOB CREDIROCHAS;03358914;03.358.914/0001-17;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+783;SICOOB CREDISUL;03632872;03.632.872/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+784;SICOOB CREDIUNIÃO;02448839;02.448.839/0001-12;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+785;SICOOB CRESSEM;54190525;54.190.525/0001-66;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+786;SICOOB EMPRESARIAL;05856736;05.856.736/0001-80;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+787;SICOOB EMPRESAS RJ;04120633;04.120.633/0001-94;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+788;SICOOB FLUMINENSE;02931668;02.931.668/0001-88;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+789;SICOOB JUDICIÁRIO;37076205;37.076.205/0001-60;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+790;SICOOB LESTE;02493000;02.493.000/0001-04;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+791;SICOOB POTIGUAR;02382755;02.382.755/0001-23;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+792;SICOOB SUL;32467086;32.467.086/0001-53;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+793;SICOOB SUL-LITORÂNEO;32474884;32.474.884/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+794;SICOOB SUL-SERRANO;00815319;00.815.319/0001-75;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+795;SICOOB UFVCREDI;02794761;02.794.761/0001-98;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+796;SICOOB VALE DOS PINHAIS;86791837;86.791.837/0001-11;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+797;SICREDI INTEGRAÇÃO DE ESTADOS RS/SC/MG;87781530;87.781.530/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+798;SICREDI RECIFE;70241658;70.241.658/0001-70;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+799;SISPRIME DO BRASIL - COOP;02398976;02.398.976/0001-90;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+800;SOC CC SICOOB COOPERE;73398646;73.398.646/0001-42;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+801;SOCIAL BANK S/A;15173776;15.173.776/0001-80;Banco Múltiplo;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+802;SOCINAL S.A. CFI;03881423;03.881.423/0001-56;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+803;SOCRED SA - SCMEPP;09210106;09.210.106/0001-94;Sociedade de Crédito ao Microempreendedor;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Sim
+804;SOMAPAY SCD S.A.;44705774;44.705.774/0001-93;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+805;SRM BANK;22575466;22.575.466/0001-58;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+806;STARK BANK S.A. - IP;20018183;20.018.183/0001-80;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+807;STARK SCD S.A.;39908427;39.908.427/0001-28;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Liquidante Especial;Não;N/A
+808;STN;00394460;00.394.460/0409-50;Governo;Não;Direta;Facultativa;Ente Governamental;Não;N/A
+809;STONE IP S.A.;16501555;16.501.555/0001-57;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+810;STRADA PAY IP LTDA.;10314753;10.314.753/0001-25;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+811;SUMUP SCFI S.A;37241230;37.241.230/0001-52;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+812;SUPERLÓGICA SCD S.A.;43599047;43.599.047/0001-26;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+813;SWAP IP S.A.;31680151;31.680.151/0001-61;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+814;TARGET BANK;14821124;14.821.124/0001-42;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+815;TBANKS IP S.A.;;46.004.634/0001-13;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+816;TERPAN IP LTDA;14615234;14.615.234/0001-58;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+817;TRANSFEERA IP S.A.;27084098;27.084.098/0001-69;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+818;TRANSFERO IP LTDA.;47133056;47.133.056/0001-88;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+819;TRINUS SCD S.A.;40654622;40.654.622/0001-58;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+820;TRIO IP LTDA.;49931906;49.931.906/0001-19;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+821;UNAVANTI SCD S/A;42047025;42.047.025/0001-90;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+822;UNICRED AMPLA;71163315;71.163.315/0001-06;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+823;UNICRED COALIZÃO;04445917;04.445.917/0001-50;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+824;UNICRED DO BRASIL;00315557;00.315.557/0001-11;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Sim;Não
+825;UNICRED DO ESTADO DE SÃO PAULO;71884498;71.884.498/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+826;UNICRED ELEVA;95163002;95.163.002/0001-08;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+827;UNICRED HORIZONTES;01526924;01.526.924/0001-99;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+828;UNICRED PIONEIRA;94243839;94.243.839/0001-02;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+829;UNICRED PREMIUM CAPITAL;01635462;01.635.462/0001-48;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+830;UNICRED PROSPERAR;01705236;01.705.236/0001-96;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+831;UNICRED RAÍZES;36900256;36.900.256/0001-00;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+832;UNICRED SUDOESTE DA BAHIA;02833202;02.833.202/0001-40;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+833;UNICRED SUL DE MINAS;71418784;71.418.784/0001-10;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+834;UNIDA DTVM LTDA;20155248;20.155.248/0001-39;Sociedade Distribuidora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+835;UNIPRIME COOPCENTRAL LTDA.;03046391;03.046.391/0001-73;Cooperativa de Crédito;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+836;UNIPRIME DO IGUAÇU - CC POUP INV;01848322;01.848.322/0001-58;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+837;UNIPRIME PIONEIRA CC;01286361;01.286.361/0001-09;Cooperativa de Crédito;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+838;UNLIMIT IP LTDA.;35542555;35.542.555/0001-40;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+839;UP.P SEP S.A.;35977097;35.977.097/0001-71;Sociedade de Empréstimo entre Pessoas;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+840;URBANO S.A. SCFI;53842122;53.842.122/0001-91;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+841;UY3 SCD S/A;39587424;39.587.424/0001-30;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Sim
+842;UZZIPAY IP S.A.;32192325;32.192.325/0001-00;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+843;V3 IP S.A.;38320462;38.320.462/0001-69;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+844;VALEPAY BRASIL IP;28220872;28.220.872/0001-84;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+845;VBS SCD S.A.;54264235;54.264.235/0001-10;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+846;VILLELA IP S.A.;33423888;33.423.888/0001-24;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+847;VISA CONECTA IP LTDA.;;57.164.291/0001-70;Instituição de Pagamento;Sim;;Facultativa;Iniciador;Sim;N/A
+848;VIVO PAY SCD S.A.;57487987;57.487.987/0001-38;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+849;VOLUS IP LTDA.;03817702;03.817.702/0001-50;Instituição de Pagamento;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+850;VORTX DTVM LTDA.;22610500;22.610.500/0001-88;Sociedade Distribuidora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+851;VUE IP S.A.;56106523;56.106.523/0001-71;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+852;WILL FINANCEIRA S.A.CFI - EM LIQUIDAÇÃO EXTRAJUDICIAL;23862762;23.862.762/0001-00;Sociedade de Crédito, Financiamento e Investimento;Não;Direta;Obrigatória;Provedor de Conta Transacional;Não;N/A
+853;WISE BRASIL IP LTDA.;40571694;40.571.694/0001-31;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+854;WOOVI IP LTDA.;54811417;54.811.417/0001-63;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+855;WORK 8 INSTITUIÇÃO DE PAGAMENT;29408213;29.408.213/0001-39;Instituição de Pagamento não sujeita à autorização pelo BCB;Não;Indireta;Facultativa;Provedor de Conta Transacional;Não;N/A
+856;WX IP LTDA.;57824223;57.824.223/0001-90;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+857;Z1 IP LTDA.;35810871;35.810.871/0001-55;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+858;ZEMA CFI S/A;05351887;05.351.887/0001-86;Sociedade de Crédito, Financiamento e Investimento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+859;ZERO IP;26264220;26.264.220/0001-16;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Não;Não
+860;ZIMPLER BRASIL IP LTDA.;44704839;44.704.839/0001-86;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+861;Z-ON SCD S.A.;52586293;52.586.293/0001-34;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+862;ZYDI;56198117;56.198.117/0001-86;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Não;Não
+
+Lista de instituições em processo de adesão ao Pix
+ ;Nome Reduzido;ISPB;CNPJ;Tipo de Instituição;Autorizada pelo BCB;Tipo de Participação no SPI;Tipo de Participação no Pix;Modalidade de Participação no Pix;Status da adesão
+1;AWX BRASIL IP LTDA.;52076716;52.076.716/0001-76;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+2;BRAZA BANK S.A. BCO DE CÂMBIO;19307785;19.307.785/0001-78;Banco de Câmbio;Sim;Direta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+3;CHECKOUT DO BRASIL IP LTDA;35379930;35.379.930/0001-82;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+4;CREDIMÓVEL SCD S.A.;45341994;45.341.994/0001-48;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Ativo em operação restrita
+5;EXTRATTA IP;36000836;36.000.836/0001-33;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+6;FLASH IP LTDA.;32223020;32.223.020/0001-18;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+7;GETNET IP;10440482;10.440.482/0001-54;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Ativo em operação restrita
+8;GO SCD S.A.;61637240;61.637.240/0001-96;Sociedade de Crédito Direto;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+9;LEND SCD S.A.;37526080;37.526.080/0001-23;Sociedade de Crédito Direto;Sim;Direta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+10;NAIP IP S.A.;;09.092.759/0001-16;Instituição de Pagamento;Sim;;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+11;QYON IP LTDA.;42547503;42.547.503/0001-21;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Ativo em operação restrita
+12;SAFETYPAY BRASIL IP LTDA;12102128;12.102.128/0001-45;Instituição de Pagamento;Sim;Indireta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+13;SEM PARAR IP;04088208;04.088.208/0001-65;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+14;SOLVER IP;47377613;47.377.613/0001-06;Instituição de Pagamento;Sim;Direta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória
+15;SWILE IP LTDA.;;37.374.538/0001-76;Instituição de Pagamento;Sim;;Obrigatória;Provedor de Conta Transacional;Etapa Homologatória
+16;WNT CAPITAL DTVM;45854066;45.854.066/0001-87;Sociedade Distribuidora de TVM;Sim;Direta;Facultativa;Provedor de Conta Transacional;Etapa Homologatória

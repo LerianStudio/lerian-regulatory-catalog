@@ -1,0 +1,26 @@
+[
+  {
+    "referencia": "A2",
+    "ispb": "00000000",
+    "agencia": "1",
+    "conta": "555",
+    "digito": "0",
+    "documento": "AB12CD34000155",
+    "nome": "Loja Exemplo",
+    "comentario": "compra",
+    "txid": "",
+    "tipoConta": "-"
+  },
+  {
+    "referencia": "A3",
+    "ispb": "60746948",
+    "agencia": "77",
+    "conta": "8888",
+    "digito": "2",
+    "documento": "12345678000190",
+    "nome": "Recebedor Exemplo Ltda",
+    "comentario": "",
+    "txid": "",
+    "tipoConta": "-"
+  }
+]

@@ -36,6 +36,17 @@ com o número de clientes.
 
 Exemplo: `br/bcb/cadoc-4010/`.
 
+Quando um regulador publica uma família de documentos que se entregam juntos, cada um
+fica numa pasta dentro da pasta da família, com os mesmos arquivos:
+
+```
+<país>/<regulador>/<família>/<documento>/
+```
+
+O id do documento é o caminho com pontos no lugar das barras: `br.bcb.cadoc-4010` está
+em `br/bcb/cadoc-4010/`, e um documento `agencias` da família `simba` estaria em
+`br/bcb/simba/agencias/`, com o id `br.bcb.simba.agencias`.
+
 ## Sobre os arquivos em `schema/`
 
 São os XSDs publicados pelo regulador. Estão aqui como **fonte para escrever e
@@ -63,6 +74,12 @@ BACEN diz quais são retificadoras, então ela é publicada ao lado de cada cont
 (`natureza.yaml`), gerada do PDF do elenco em `br/bcb/cosif/` por
 `tools/natureza.py` — nunca escrita à mão. O validador confere que cada cópia traz
 o sha256 do elenco publicado e que todas são iguais.
+
+A **lista de participantes do STR** é outra: o ORIGEM-DESTINO do SIMBA troca o
+ISPB da contraparte pelo código COMPE dela. A cópia do Banco Central fica em
+`br/bcb/simba/tabelas/`, e o trecho de template que faz a troca é gerado dela por
+`tools/ispb_compe.py`. O validador confere que o trecho do template é exatamente o
+gerado.
 
 **Garantia sobre razões que não sejam o Midaz.** Os bindings de exemplo são
 escritos contra o Midaz, e é contra o Midaz que a geração é homologada. Eles são

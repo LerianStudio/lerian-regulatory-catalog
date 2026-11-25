@@ -1,0 +1,8 @@
+versão=1 COD_TIPO, NOM_TIPO, DT_INI, DT_FIM
+OECD202|Individual|01012018|
+OECD203|Pseudônimo|01012018|
+OECD204|Apelido|01012018|
+OECD205|Outro nome pelo qual a pessoa seja “também conhecida por”|01012018|
+OECD206|Nome fantasia ou outro comercialmente usado|01012018|
+OECD207|Nome legalmente constituído|01012018|
+OECD208|Nome de nascimento|01012018|

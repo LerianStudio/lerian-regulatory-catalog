@@ -1,0 +1,51 @@
+# Isenções datadas da guarda de versão (tools/validate.py, check_released_versions).
+#
+# Cada entrada é um documento+versão que já saiu, ANTES da guarda existir, com conteúdos
+# diferentes em releases diferentes. A isenção cala a comparação só com as tags listadas e
+# só enquanto o conteúdo publicado do documento for o de contentSha256 (o de 2026-11-21).
+# Qualquer mudança nova sem subir a versão volta a reprovar. Quem adotou a versão numa das
+# tags listadas tem uma cópia diferente da atual, e o Reporter recusa a atual sob o mesmo
+# número (RPT-0154): é um risco conhecido, decidido pelos donos de cada documento.
+# Subir a versão do documento torna a isenção sem efeito; aí ela sai.
+
+exemptions:
+  - document: br.bcb.scr-3040
+    version: "1.0.0"
+    tags: [v1.1.0-beta.1, v1.1.0-beta.2]
+    contentSha256: 30ea2c4919d74b9a5f08e15fd00dbd08f83fd1766de77f107c73fceb248a06e7
+    reason: >-
+      Publicado com conteúdos diferentes sob a mesma versão antes da guarda; subir a versão
+      obrigaria os clientes deste documento a readotar, e isso é decisão dos donos dele.
+    date: "2026-11-21"
+  - document: br.rfb.efinanceira-abertura
+    version: "1.0.0"
+    tags: [v1.1.0-beta.4]
+    contentSha256: 36380c82f7e3cd38244ea0eb101bc91ecc38d3311bc4a931babe66f455370323
+    reason: >-
+      Publicado com conteúdos diferentes sob a mesma versão antes da guarda; subir a versão
+      obrigaria os clientes deste documento a readotar, e isso é decisão dos donos dele.
+    date: "2026-11-21"
+  - document: br.rfb.efinanceira-cad-declarante
+    version: "1.0.0"
+    tags: [v1.1.0-beta.2, v1.1.0-beta.3, v1.1.0-rc.1]
+    contentSha256: 84f004882508fa071eab8b33551f6c49641c91e938eff882988daa556c0bd7da
+    reason: >-
+      Publicado com conteúdos diferentes sob a mesma versão antes da guarda; subir a versão
+      obrigaria os clientes deste documento a readotar, e isso é decisão dos donos dele.
+    date: "2026-11-21"
+  - document: br.rfb.efinanceira-exclusao
+    version: "1.0.0"
+    tags: [v1.1.0-beta.4]
+    contentSha256: 75fe697d96236a1836a0ee6cee5d5734937b8724197cfb0116097c871f463a14
+    reason: >-
+      Publicado com conteúdos diferentes sob a mesma versão antes da guarda; subir a versão
+      obrigaria os clientes deste documento a readotar, e isso é decisão dos donos dele.
+    date: "2026-11-21"
+  - document: br.rfb.efinanceira-fechamento
+    version: "1.0.0"
+    tags: [v1.1.0-beta.4]
+    contentSha256: 340548347598f816074b4920c8dc6e65bb5d924647e358fe7503770d3e8532cc
+    reason: >-
+      Publicado com conteúdos diferentes sob a mesma versão antes da guarda; subir a versão
+      obrigaria os clientes deste documento a readotar, e isso é decisão dos donos dele.
+    date: "2026-11-21"

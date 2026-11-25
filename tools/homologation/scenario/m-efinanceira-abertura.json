@@ -1,0 +1,53 @@
+{
+  "_about": "Org M — a abertura da e-Financeira (evtAberturaeFinanceira), sobre a MESMA organização do cenário J (o mesmo nome, CNPJ alfanumérico EF9J2K7A000114 e endereço; o setup a acha pelo nome e não cria outra, e o J já lhe deu um cadastro do declarante). Da organização a abertura lê só o CNPJ; todo o resto é o que o cliente preenche no mapeamento. O responsável pela RMF é a própria declarante (o mesmo CNPJ), com CPF, DDD, telefone e CEP digitados com pontuação ('529.982.247-25', '(19)', '3232-1500', '13015-904'), que o contrato reduz aos algarismos; numero '1.500' e complemento 'sala 10.0' são texto livre e saem como escritos. Os responsáveis pela e-Financeira são TRÊS linhas escritas à mão (`rows`), numa ordem que não é a dos CPFs (390…, 111…, 280…): o arquivo as leva na ordem do mapeamento. A segunda não tem ramal nem complemento, e a terceira é de outra UF (RJ). O representante legal vem preenchido, sem ramal. CPFs sintéticos com dígitos verificadores válidos (módulo 11), embora o Reporter não confira os dígitos: ele confia na origem do dado, e quem os confere é a Receita (knownGap digitos-verificadores). Uma entrada do gabarito troca o CNPJ do responsável pela RMF e dois CPFs por valores com o dígito errado e confere que saem como digitados. tpAmb 2 (produção restrita).",
+  "organization": {
+    "legalName": "Declarante Completa e-Financeira S.A. (sintética, homologação)",
+    "doingBusinessAs": "Declarante Completa",
+    "legalDocument": "EF9J2K7A000114",
+    "address": {
+      "line1": "Av. Brasil, 1.500 sala 10.0",
+      "line2": "Torre Norte",
+      "zipCode": "13015-904",
+      "city": "Campinas",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "fills": {
+    "br.rfb.efinanceira-abertura": {
+      "declarante.tpAmb": "2",
+      "responsavelRMF.cnpj": "EF9J2K7A000114",
+      "responsavelRMF.cpf": "529.982.247-25",
+      "responsavelRMF.nome": "Marina Costa Ribeiro",
+      "responsavelRMF.setor": "Jurídico — Atendimento a Requisições",
+      "responsavelRMF.ddd": "(19)",
+      "responsavelRMF.telefone": "3232-1500",
+      "responsavelRMF.ramal": "210",
+      "responsavelRMF.logradouro": "Av. Brasil",
+      "responsavelRMF.numero": "1.500",
+      "responsavelRMF.complemento": "sala 10.0",
+      "responsavelRMF.bairro": "Jardim Guanabara",
+      "responsavelRMF.cep": "13015-904",
+      "responsavelRMF.municipio": "Campinas",
+      "responsavelRMF.uf": "SP",
+      "respeFin": [
+        {"cpf": "390.533.447-05", "nome": "Carla Mendes", "setor": "Compliance", "ddd": "19",
+         "telefone": "3232-1501", "ramal": "11", "logradouro": "Av. Brasil", "numero": "1500",
+         "complemento": "sala 10", "bairro": "Jardim Guanabara", "cep": "13015904",
+         "municipio": "Campinas", "uf": "SP", "email": "carla.mendes@declarante.example"},
+        {"cpf": "11144477735", "nome": "Diego Araújo", "setor": "Tecnologia da Informação", "ddd": "11",
+         "telefone": "98765-4321", "logradouro": "Rua Vergueiro", "numero": "S/N",
+         "bairro": "Liberdade", "cep": "01504-001", "municipio": "São Paulo", "uf": "SP",
+         "email": "diego@declarante.example"},
+        {"cpf": "28001238938", "nome": "Fernanda Lopes", "setor": "Contabilidade", "ddd": "21",
+         "telefone": "2555-0101", "ramal": "4", "logradouro": "Rua da Assembleia", "numero": "10",
+         "complemento": "andar 7", "bairro": "Centro", "cep": "20011-000",
+         "municipio": "Rio de Janeiro", "uf": "RJ", "email": "fernanda@declarante.example"}
+      ],
+      "represLegal.cpf": "168.995.350-09",
+      "represLegal.setor": "Diretoria",
+      "represLegal.ddd": "19",
+      "represLegal.telefone": "3232-1599"
+    }
+  }
+}

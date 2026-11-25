@@ -1,0 +1,471 @@
+# Binding do SIMBA EXTRATO — QUEM PREENCHE E O CLIENTE.
+#
+# Exemplo preenchido contra o Midaz (`midaz_onboarding`, `midaz_transaction`), a
+# metadata do Midaz (`midaz_metadata`, o Mongo das colecoes `transaction` e
+# `operation`) e o CRM do Midaz (`plugin_crm`). As contas do caso saem de
+# `contas_do_caso` e de `contas_cotitular`, as mesmas consultas (mesmo texto) nos
+# bindings de AGENCIAS, CONTAS, TITULARES e ORIGEM-DESTINO.
+#
+# MESMA NUMERACAO DO ORIGEM-DESTINO: `lancamentos_dados` e as consultas que ela junta
+# (`lancamentos_descricao`, `contas_lancamento`, `metadados_transacao`) e `taxas_lancamento` tem o MESMO texto
+# nos dois bindings, e o conjunto `lancamentos` tem o mesmo grao e os campos do
+# ORIGEM-DESTINO no EXTRATO (o EXTRATO le tambem os saldos; test_simba confere). Mudar
+# uma delas e mudar nos dois; senao o numero do lancamento (campo 1) aponta para
+# outra linha no ORIGEM-DESTINO.
+#
+# O NUMERO DA AGENCIA (5 digitos; 00001 sem agencia fisica) sai do cadastro de
+# agencias do tenant, o MESMO `case` do binding do AGENCIAS (valores SINTETICOS
+# aqui: "0001" digital, "0002" fisica ficticia). Agencia fora do cadastro recusa.
+#
+# O TIPO DA CONTA vem de `regulatory_fields.account_type` do CRM, cujos valores o
+# proprio Midaz documenta com os codigos da IN (midaz pkg/mmodel/instrument.go:19).
+#
+# NATUREZA (campo 11): credit C, debit D; outra direcao, ou nenhuma, recusa a geracao.
+#
+# O CANAL (campo 17) e um so por instituicao: declare em `interfaceTransacao`.
+#
+# Filtro encadeado `{query, column}`: grafia provisoria do motor; se
+# mudar, e `sed` nos bindings.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.simba.extrato
+contractVersion: 1.2.0
+
+queries:
+
+  - name: declarante
+    description: A organização do Midaz, que é a instituição que responde ao caso. O CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    filters:
+      - field: deleted_at
+        operator: isNull
+
+  # As contas do caso: as que o documento investigado TITULA (contas_do_caso) e as em que
+  # ele e cotitular (contas_cotitular). Representante e procurador nao entram. Excluida do
+  # CRM fica fora; encerrada entra. Toda consulta que le as contas do caso le as duas.
+  - name: contas_do_caso
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: document, operator: in, values: [{parameter: documentos}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
+
+  # As contas em que o documento investigado e cotitular no periodo: a parte do instrumento
+  # com o documento da ordem e o papel PRIMARY_HOLDER, cuja cotitularidade cruza o periodo
+  # pedido em pelo menos um dia (start_date ate o fim, e end_date ausente ou a partir do
+  # inicio). O filtro do documento pergunta pelo digest das partes
+  # (search.related_party_documents) e o Reporter confere, parte a parte, o documento
+  # decifrado; papel e datas sao conferidos na mesma parte, depois do expand. Representante
+  # (LEGAL_REPRESENTATIVE) e RESPONSIBLE_PARTY nao entram.
+  # O motor nao executa anyOf, entao cada combinacao e uma consulta e a contas_cotitular e a
+  # uniao delas: vinculo aberto (sem end_date) ou encerrado no periodo, com start_date ate o
+  # fim ou ausente (registro antigo: entra sempre; opening_date nao e consultada).
+  - name: cotitular_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: contas_cotitular
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: cotitular_aberto, column: account_id}, {query: cotitular_encerrado, column: account_id}, {query: cotitular_sem_inicio_aberto, column: account_id}, {query: cotitular_sem_inicio_encerrado, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document]
+
+  - name: lancamentos
+    description: Lançamentos das contas do caso no período, só a transação de cada um.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    select: [transaction_id, account_id]
+
+  - name: lancamentos_dados
+    description: Os lançamentos das contas do caso no período, com a conta, a metadata da transação e a descrição.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    compute:
+      - as: natureza
+        case:
+          column: direction
+          when:
+            credit: {constant: "C"}
+            debit: {constant: "D"}
+          otherwise: refuse
+      # A natureza da contraparte, para achar a outra perna no ORIGEM-DESTINO.
+      - as: natureza_oposta
+        case:
+          column: direction
+          when:
+            credit: {constant: "D"}
+            debit: {constant: "C"}
+          otherwise: refuse
+    join:
+      - query: lancamentos_descricao
+        match: {id: id}
+      - query: contas_lancamento
+        match: {account_id: account_id}
+      - query: metadados_transacao
+        match: {transaction_id: entity_id}
+    # Agrupar por (transacao, operacao, ...) da uma linha por operacao e fixa a ordem:
+    # o motor ordena uma leitura agrupada pela chave, e uma leitura sem agrupamento
+    # nao tem ordem. A transacao vem primeiro para as operacoes de uma transacao
+    # ficarem juntas (sessao, campo 27 do EXTRATO). So colunas que nunca sao nulas nem
+    # vazias: chave vazia recusa a leitura inteira, por isso as descricoes vem de
+    # `lancamentos_descricao`.
+    aggregate:
+      groupBy: [transaction_id, id, account_id, created_at, natureza, natureza_oposta, type, available_balance_after, balance_key]
+      measures:
+        - as: valor
+          fn: sum
+          of: amount
+
+  # A descricao da operacao e a da transacao (a operacao pode vir com descricao vazia).
+  - name: lancamentos_descricao
+    description: A descrição de cada lançamento do caso no período e a da transação dele.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    join:
+      - table: transaction
+        match: {transaction_id: id}
+        columns: {descricao_transacao: description}
+    # O saldo bloqueado e o cheque especial usado depois do lancamento entram no saldo
+    # da conta (EXTRATO 12 e 13): o disponivel do Midaz nao fica abaixo de zero nem conta
+    # o bloqueado. O cheque especial usado fica no snapshot da operacao, ausente em
+    # operacao gravada antes de o Midaz guardar o snapshot.
+    select: [id, description, descricao_transacao, on_hold_balance_after, snapshot.overdraftUsedAfter]
+
+  - name: contas_lancamento
+    description: Agência, número e tipo de cada conta do caso.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+    select: [account_id, banking_details.account, numero_agencia, tipo_conta]
+
+  # A metadata que os plugins gravam na transacao do Midaz (Mongo do Midaz, colecao
+  # `transaction`): rail, flow, direction e aggregateId do contrato de
+  # correlacao (TED e Pix JD); payment_type, initiation_type e os E2E do Pix lerian.
+  - name: metadados_transacao
+    description: A metadata de cada transação dos lançamentos do caso.
+    dataSource: midaz_metadata
+    table: transaction
+    filters:
+      - {field: entity_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [entity_id, metadata.rail, metadata.flow, metadata.direction, metadata.aggregateId, metadata.payment_type, metadata.initiation_type, metadata.end_to_end_id, metadata.initiation_id, metadata.inbound_end_to_end_id, metadata.refund_id, metadata.original_end_to_end_id]
+
+  # A perna de tarifa: o motor de tarifas do Midaz grava feeLeg = "true" na metadata
+  # da operacao que ele criou (colecao `operation`).
+  - name: taxas_lancamento
+    description: As operações dos lançamentos do caso que são perna de tarifa.
+    dataSource: midaz_metadata
+    table: operation
+    filters:
+      - {field: entity_id, operator: in, values: [{query: lancamentos_dados, column: id}]}
+      - {field: metadata.feeLeg, operator: eq, values: ["true"]}
+      - {field: deleted_at, operator: isNull}
+    select: [entity_id]
+
+  # O revert do Midaz: a transacao que estorna outra tem parent_transaction_id.
+  - name: estornos_lancamento
+    description: As transações dos lançamentos do caso que estornam outra.
+    dataSource: midaz_transaction
+    table: transaction
+    filters:
+      - {field: id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: parent_transaction_id, operator: notNull}
+      - {field: deleted_at, operator: isNull}
+    select: [id]
+
+  # O TxId do Pix (campo 26, IN :195) esta so no plugin que liquidou o Pix, na mesma linha
+  # que o ORIGEM-DESTINO le para a contraparte: tx_id no Pix lerian, conciliation_id no Pix
+  # JD. Mesmas consultas do ORIGEM-DESTINO, so com a referencia e o TxId. Quem nao usa um
+  # plugin apaga as consultas dele e declara vazio cada conjunto trilho_* dele com
+  # `emptyReason` (apagado, o conjunto fica pendente e o rascunho nao pode ser aprovado).
+  - name: pix_lerian_envios_txid
+    description: Pix enviados pelo Pix lerian, com o TxId.
+    dataSource: pix_lerian
+    table: transfers
+    filters:
+      - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.end_to_end_id}]}
+      - {field: direction, operator: eq, values: ["OUTBOUND"]}
+    # A chave Pix do envio (campos 24 e 25) esta na iniciacao do Pix, outra tabela do mesmo
+    # banco do SPI: transfers.initiation_id aponta transfer_initiations.id. O tipo do DICT
+    # (CPF, CNPJ, PHONE, EMAIL, EVP) vira o codigo da IN (1 CPF/CNPJ, 2 telefone, 3 e-mail,
+    # 4 aleatoria); Pix sem chave (manual, QR estatico sem DICT) fica sem tipo nem chave.
+    join:
+      - table: transfer_initiations
+        match: {initiation_id: id}
+        type: left
+        columns: {chave_tipo_informado: destination_key_type, chave: destination_key_value}
+    compute:
+      - as: tipo_chave
+        case:
+          column: chave_tipo_informado
+          when:
+            CPF: {constant: "1"}
+            CNPJ: {constant: "1"}
+            PHONE: {constant: "2"}
+            EMAIL: {constant: "3"}
+            EVP: {constant: "4"}
+          otherwise: {constant: "-"}
+    select: [end_to_end_id, tx_id, chave, tipo_chave]
+
+  - name: pix_lerian_recebimentos_txid
+    description: Pix recebidos pelo Pix lerian, com o TxId.
+    dataSource: pix_lerian
+    table: transfers
+    filters:
+      - {field: end_to_end_id, operator: in, values: [{query: metadados_transacao, column: metadata.inbound_end_to_end_id}]}
+      - {field: direction, operator: eq, values: ["INBOUND"]}
+    select: [end_to_end_id, tx_id]
+
+  # Pix JD: flow 2 e o envio (CASH_OUT), flow 1 o recebimento (CASH_IN); a linha de
+  # devolucao (is_refund) fica fora. O plugin so grava o TxId no recebimento.
+  - name: pix_jd_envios_txid
+    description: Pix enviados pelo Pix JD, com o TxId.
+    dataSource: pix_jd
+    table: transaction
+    filters:
+      - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
+      - {field: flow, operator: eq, values: ["2"]}
+      - {field: is_refund, operator: eq, values: ["false"]}
+      - {field: deleted_at, operator: isNull}
+    # A chave Pix (a do recebedor, usada no envio, campos 24 e 25) e o tipo dela, no codigo do plugin (0 CPF, 1 CNPJ,
+    # 2 e-mail, 3 telefone, 4 aleatoria, internal/transactions/domain/enums.go), que vira o
+    # codigo da IN (1 CPF/CNPJ, 2 telefone, 3 e-mail, 4 aleatoria).
+    compute:
+      - as: tipo_chave
+        case:
+          column: payee_key_type
+          when:
+            "0": {constant: "1"}
+            "1": {constant: "1"}
+            "2": {constant: "3"}
+            "3": {constant: "2"}
+            "4": {constant: "4"}
+          otherwise: {constant: "-"}
+    select: [id, conciliation_id, payee_key, tipo_chave]
+
+  - name: pix_jd_recebimentos_txid
+    description: Pix recebidos pelo Pix JD, com o TxId.
+    dataSource: pix_jd
+    table: transaction
+    filters:
+      - {field: id, operator: in, values: [{query: metadados_transacao, column: metadata.aggregateId}]}
+      - {field: flow, operator: eq, values: ["1"]}
+      - {field: is_refund, operator: eq, values: ["false"]}
+      - {field: deleted_at, operator: isNull}
+    # A chave Pix (a do recebedor, a conta do caso, pela qual o Pix chegou, campos 24 e 25) e o tipo dela, no codigo do plugin (0 CPF, 1 CNPJ,
+    # 2 e-mail, 3 telefone, 4 aleatoria, internal/transactions/domain/enums.go), que vira o
+    # codigo da IN (1 CPF/CNPJ, 2 telefone, 3 e-mail, 4 aleatoria).
+    compute:
+      - as: tipo_chave
+        case:
+          column: payee_key_type
+          when:
+            "0": {constant: "1"}
+            "1": {constant: "1"}
+            "2": {constant: "3"}
+            "3": {constant: "2"}
+            "4": {constant: "4"}
+          otherwise: {constant: "-"}
+    select: [id, conciliation_id, payee_key, tipo_chave]
+
+datasets:
+
+  instituicao:
+    from:
+      query: declarante
+    fields:
+      cnpj:
+        from: query
+        column: legal_document
+      compe:
+        from: manual
+        pendingReason: "o código Compe da instituição, com 3 dígitos; 999 se ela não tem código Compe"
+      nomeUnicad:
+        from: manual
+        pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
+      # Campo 17: o canal das transacoes (1 agencia ... 5 mobile, 9 outros). Nenhuma
+      # aplicacao registra o canal por lancamento; declare o do seu produto.
+      interfaceTransacao:
+        from: constant
+        value: "9"
+
+  lancamentos:
+    from:
+      query: lancamentos_dados
+    fields:
+      operacaoId: {from: query, column: id}
+      transacaoId: {from: query, column: transaction_id}
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      dataLancamento: {from: query, column: created_at}
+      horaLancamento: {from: query, column: created_at}
+      descricao: {from: query, column: description}
+      descricaoTransacao: {from: query, column: descricao_transacao}
+      valor: {from: query, column: valor}
+      natureza: {from: query, column: natureza}
+      tipoOperacao: {from: query, column: type}
+      naturezaOposta: {from: query, column: natureza_oposta}
+      saldoApos: {from: query, column: available_balance_after}
+      chaveSaldo: {from: query, column: balance_key}
+      bloqueadoApos: {from: query, column: on_hold_balance_after}
+      chequeEspecialApos: {from: query, column: snapshot.overdraftUsedAfter}
+      rail: {from: query, column: metadata.rail}
+      fluxo: {from: query, column: metadata.flow}
+      direcao: {from: query, column: metadata.direction}
+      agregado: {from: query, column: metadata.aggregateId}
+      tipoPagamento: {from: query, column: metadata.payment_type}
+      tipoIniciacao: {from: query, column: metadata.initiation_type}
+      e2eEnvio: {from: query, column: metadata.end_to_end_id}
+      iniciacao: {from: query, column: metadata.initiation_id}
+      e2eRecebimento: {from: query, column: metadata.inbound_end_to_end_id}
+      devolucao: {from: query, column: metadata.refund_id}
+      e2eOriginal: {from: query, column: metadata.original_end_to_end_id}
+
+  estornos:
+    from:
+      query: estornos_lancamento
+    fields:
+      transacaoId: {from: query, column: id}
+
+  taxas:
+    from:
+      query: taxas_lancamento
+    fields:
+      operacaoId: {from: query, column: entity_id}
+
+  trilho_pix_lerian_envios:
+    from:
+      query: pix_lerian_envios_txid
+    fields:
+      referencia: {from: query, column: end_to_end_id}
+      txid: {from: query, column: tx_id}
+      tipoChave: {from: query, column: tipo_chave}
+      chave: {from: query, column: chave}
+
+  trilho_pix_lerian_recebimentos:
+    from:
+      query: pix_lerian_recebimentos_txid
+    fields:
+      referencia: {from: query, column: end_to_end_id}
+      txid: {from: query, column: tx_id}
+
+  trilho_pix_jd_envios:
+    from:
+      query: pix_jd_envios_txid
+    fields:
+      referencia: {from: query, column: id}
+      txid: {from: query, column: conciliation_id}
+      tipoChave: {from: query, column: tipo_chave}
+      chave: {from: query, column: payee_key}
+
+  trilho_pix_jd_recebimentos:
+    from:
+      query: pix_jd_recebimentos_txid
+    fields:
+      referencia: {from: query, column: id}
+      txid: {from: query, column: conciliation_id}
+      tipoChave: {from: query, column: tipo_chave}
+      chave: {from: query, column: payee_key}
+
+manualOverrides: []

@@ -65,7 +65,7 @@ PLANO_CONTRACT = {
         {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S"],
          "description": "Remessa."},
     ],
-    "filing": {"period": ["dataBase"],
+    "filing": {"period": ["dataBase"], "approve": "newest", "allowEmpty": False,
                "remittance": {"parameter": "tipoRemessa", "original": "I", "replacement": "S"}},
     "datasets": [
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
@@ -73,7 +73,10 @@ PLANO_CONTRACT = {
                      "normalize": "alphanumeric", "checkDigit": "cnpj", "identifiesInstitution": True,
                      "description": "CNPJ."},
                     {"name": "cnpj8", "type": "string", "length": 8, "required": True, "prefixOf": "cnpj",
-                     "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."}]},
+                     "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."},
+                    {"name": "abertura", "type": "date", "required": False, "notAfter": "primeiraConta",
+                     "description": "Abertura."},
+                    {"name": "primeiraConta", "type": "date", "required": False, "description": "Primeira conta."}]},
         {"name": "saldos", "description": "Saldo por rubrica.", "grain": ["codigo"], "nonEmpty": True,
          "hierarchy": {"levels": [1, 1, 1, 2, 2, 2], "checkDigit": 1},
          "consolidation": {"key": ["codigo"], "whenKeyRepeats": "combine",
@@ -134,7 +137,9 @@ PLANO_BINDING = {
     ],
     "datasets": {
         "institution": {"from": {"query": "declarante"},
-                        "fields": {"cnpj": {"from": "query", "column": "documento"}}},
+                        "fields": {"cnpj": {"from": "query", "column": "documento"},
+                                   "abertura": {"from": "query", "column": "aberta_em"},
+                                   "primeiraConta": {"from": "query", "column": "primeira_conta_em"}}},
         "saldos": {"from": {"query": "saldos_por_rubrica"},
                    "fields": {"codigo": {"from": "query", "column": "rota"},
                               "valor": {"from": "query", "column": "valor"},
@@ -155,13 +160,34 @@ FECHADO_CONTRACT = {
                       sourceOfTruth={"accountSet": "contas.yaml"}),
     "parameters": [
         {"name": "dataBase", "type": "date", "required": True, "description": "Dia."},
-        {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S"],
+        {"name": "tipoRemessa", "type": "string", "required": True, "default": "I", "domain": ["I", "S", "R"],
          "description": "Remessa."},
+        # O recibo da entrega substituída: exigido na substituição, recusado na
+        # original, com o formato fixo que o regulador devolve.
+        {"name": "recibo", "type": "string", "required": False, "pattern": "[0-9]{3}-[0-9]{2}",
+         "description": "Recibo da entrega substituída."},
     ],
+    # Duas substituições e a referência do que a substituição substitui.
+    "filing": {"period": ["dataBase"],
+               "remittance": {"parameter": "tipoRemessa", "original": "I", "replacement": ["S", "R"],
+                              "reference": "recibo"}},
     "datasets": [
         {"name": "institution", "description": "Declarante.", "grain": "singleton",
          "fields": [{"name": "cnpj8", "type": "string", "length": 8, "required": True,
-                     "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."}]},
+                     "pattern": "^[A-Za-z0-9]{8}$", "description": "Raiz do CNPJ."},
+                    # Gerado pelo motor a cada geração: nenhum binding o mapeia.
+                    {"name": "eventoId", "type": "string", "length": 18, "required": True,
+                     "generate": "timeOrderedId", "description": "Número da entrega."}]},
+        # Uma lista pendurada no singleton: uma linha por valor que o cliente digita.
+        {"name": "tipos", "description": "Tipos da entidade.", "grain": ["tipo"], "nonEmpty": True,
+         "childOf": {"dataset": "institution"},
+         "fields": [{"name": "tipo", "type": "string", "required": True, "domain": ["1", "2", "3"],
+                     "description": "Tipo."}]},
+        # Um conjunto opcional que o binding declara vazio (emptyReason): o arquivo sai
+        # sem nenhuma linha dele, e nada fica pendente.
+        {"name": "nifs", "description": "Identificação no exterior.", "grain": ["numero"],
+         "childOf": {"dataset": "institution"},
+         "fields": [{"name": "numero", "type": "string", "required": True, "description": "Número."}]},
         {"name": "linhas", "description": "Uma linha por conta do conjunto fechado.",
          "rowSet": {"from": "contas.yaml", "key": "codigo"},
          "consolidation": {"key": ["codigo"], "columns": {"valor": "sum"}},
@@ -177,6 +203,10 @@ FECHADO_CONTRACT = {
         {"id": "conta-do-conjunto", "severity": "error", "appliesTo": "linhas",
          "check": {"existsIn": {"field": "codigo", "rowSet": "contas.yaml"}},
          "message": "Só contas do conjunto fechado."},
+        # Ao menos uma linha da lista traz um dos valores.
+        {"id": "tipo-principal", "severity": "error", "appliesTo": "tipos",
+         "check": {"contains": {"field": "tipo", "values": ["1"]}},
+         "message": "A entidade é ao menos do tipo 1."},
     ],
 }
 
@@ -194,7 +224,10 @@ FECHADO_CONTAS = {
 
 FECHADO_TEMPLATE = """{# Fixture FECHADO — conjunto fechado de linhas. #}
 <?xml version="1.0" encoding="UTF-8"?>
-<documento codigoDocumento="FECHADO" cnpj="{{ institution.cnpj8 }}" dataBase="{{ system.dataBase }}" tipoRemessa="{{ system.tipoRemessa }}">
+<documento codigoDocumento="FECHADO" id="ID{{ institution.eventoId }}" cnpj="{{ institution.cnpj8 }}" dataBase="{{ system.dataBase }}" tipoRemessa="{{ system.tipoRemessa }}">
+{%- for t in institution.tipos %}
+  <tipo>{{ t.tipo }}</tipo>
+{%- endfor %}
   <contas>
 {%- for c in linhas %}
     <conta codigoConta="{{ c.codigo }}" saldoDia="{{ c.valor }}" />
@@ -219,6 +252,9 @@ FECHADO_BINDING = {
     ],
     "datasets": {
         "institution": {"fields": {"cnpj8": {"from": "constant", "value": "12345678"}}},
+        "tipos": {"fields": {"tipo": {"from": "manual", "values": ["1", "3"],
+                                      "pendingReason": "todo tipo que a entidade é"}}},
+        "nifs": {"emptyReason": "a entidade não tem identificação no exterior"},
         "linhas": {
             "from": {"query": "estoque"},
             "rowKey": {"codigo": "rota"},
@@ -244,7 +280,18 @@ HIER_CONTRACT = {
     "apiVersion": APIV,
     "kind": "DocumentContract",
     "metadata": _meta("zz.fixture.hierarquia", "HIER"),
-    "parameters": [{"name": "dataBase", "type": "month", "required": True, "description": "Competência."}],
+    # Um semestre (span) e duas datas que caem nele, a final não antes da inicial.
+    "parameters": [{"name": "dataBase", "type": "month", "required": True, "span": 6,
+                    "description": "Semestre, pelo mês em que termina."},
+                   {"name": "dtIni", "type": "date", "required": False, "within": "dataBase",
+                    "description": "Início do período informado."},
+                   {"name": "dtFim", "type": "date", "required": False, "within": "dataBase",
+                    "notBefore": "dtIni", "description": "Fim do período informado."},
+                   # Uma lista de valores (`multiple`), lida por `in` num filtro do binding.
+                   {"name": "titularesPedidos", "type": "string", "required": False, "multiple": True,
+                    "maxItems": 50, "description": "Titulares pedidos; ausente, todos."}],
+    # O período é declarado: uma lista (`multiple`) nunca entra nele.
+    "filing": {"period": ["dataBase", "dtIni", "dtFim"]},
     "datasets": [
         {"name": "titulares", "description": "Titulares.", "grain": ["codigo"],
          "consolidation": {"key": ["codigo"], "whenKeyRepeats": "refuse",
@@ -289,7 +336,7 @@ HIER_CONTRACT = {
 
 HIER_TEMPLATE = """{# Fixture HIER — hierarquia de conjuntos. #}
 {# As filhas são alcançadas como lista aninhada na linha do pai. #}
-|H|{{ system.dataBase }}|
+|H|{{ system.dataBase }}|{{ system.periods.dataBase.start }}|{{ system.periods.dataBase.end }}|
 {%- for t in titulares %}
 |T|{{ t.codigo }}|{{ t.tipo }}|{{ t.cnpj }}|
 {%- endfor %}
@@ -308,6 +355,7 @@ HIER_BINDING = {
     "contractVersion": "1.0.0",
     "queries": [
         {"name": "base_titulares", "dataSource": "crm", "table": "holders",
+         "filters": [{"field": "_id", "operator": "in", "values": [{"parameter": "titularesPedidos"}]}],
          "join": [{"table": "aliases", "match": {"holder_id": "_id"}, "columns": {"apelido": "alias"}}]},
         {"name": "movimento", "dataSource": "fonte_x", "table": "lancamento",
          "join": [{"query": "base_titulares", "match": {"conta": "conta"}}],

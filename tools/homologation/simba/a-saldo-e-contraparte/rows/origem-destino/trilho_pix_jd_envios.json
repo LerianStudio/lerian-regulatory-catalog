@@ -1,0 +1,44 @@
+[
+  {
+    "referencia": "A29",
+    "ispb": "60746948",
+    "agencia": "77",
+    "conta": "8888",
+    "digito": "2",
+    "documento": "12345678000190",
+    "nome": "Recebedor Exemplo Ltda",
+    "comentario": "",
+    "txid": "",
+    "tipoConta": "TRAN",
+    "tipoChave": "2",
+    "chave": "+5511988887777"
+  },
+  {
+    "referencia": "A30",
+    "ispb": "60746948",
+    "agencia": "77",
+    "conta": "8888",
+    "digito": "2",
+    "documento": "12345678000190",
+    "nome": "Recebedor Exemplo Ltda",
+    "comentario": "",
+    "txid": "",
+    "tipoConta": "SLRY",
+    "tipoChave": "3",
+    "chave": "pagamentos@empresa.example"
+  },
+  {
+    "referencia": "A31",
+    "ispb": "60746948",
+    "agencia": "77",
+    "conta": "8888",
+    "digito": "2",
+    "documento": "12345678000190",
+    "nome": "Recebedor Exemplo Ltda",
+    "comentario": "",
+    "txid": "",
+    "tipoConta": "OTHR",
+    "tipoChave": "4",
+    "chave": "123e4567-e89b-12d3-a456-426614174000"
+  }
+]

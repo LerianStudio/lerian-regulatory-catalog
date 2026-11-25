@@ -1,0 +1,30 @@
+{
+  "_about": "Org J — declarante da e-Financeira COMPLETA, sintética e declarada como tal. Organização nova (não reaproveita a I), com CNPJ no formato ALFANUMÉRICO da Receita: EF9J2K7A000114, DV calculado pela regra da IN RFB 2.229/2024 (valor de cada caractere = código ASCII − 48; pesos 5,4,3,2,9,8,7,6,5,4,3,2 e depois 6,5,4,3,2,9,8,7,6,5,4,3,2; resto < 2 → 0, senão 11 − resto), a mesma conta que reproduz o exemplo da Receita (12ABC34501DE-35) e os CNPJs dos cenários H e I. O line1 'Av. Brasil, 1.500 sala 10.0' tem vírgula, pontos e um '10.0' que um formatador numérico mexeria: o texto livre sai como foi escrito. CEP com traço (sai em oito dígitos), cidade Campinas, município 3509502 (Campinas, SP). Os fills preenchem TODO opcional: GIIN na máscara do Anexo II (98Q96B.00000.LE.250 — seis e cinco alfanuméricos sem a letra O, LE, três dígitos: casa com o pattern do contrato), categoria FATCA602, tpNome OECD207, tpEndereco OECD304; três tipos de entidade (1, 2, 6) e duas residências fiscais (BR, US). O conjunto nifs fica como a referência o declara, vazio.",
+  "organization": {
+    "legalName": "Declarante Completa e-Financeira S.A. (sintética, homologação)",
+    "doingBusinessAs": "Declarante Completa",
+    "legalDocument": "EF9J2K7A000114",
+    "address": {
+      "line1": "Av. Brasil, 1.500 sala 10.0",
+      "line2": "Torre Norte",
+      "zipCode": "13015-904",
+      "city": "Campinas",
+      "state": "SP",
+      "country": "BR"
+    }
+  },
+  "fills": {
+    "br.rfb.efinanceira-cad-declarante": {
+      "declarante.tpAmb": "2",
+      "declarante.inDeclaranteCRS": "1",
+      "declarante.inDeclaranteFATCA": "1",
+      "declarante.municipio": "3509502",
+      "declarante.giin": "98Q96B.00000.LE.250",
+      "declarante.categoriaDeclarante": "FATCA602",
+      "declarante.tpNome": "OECD207",
+      "declarante.tpEndereco": "OECD304",
+      "tiposEntidade.tpEntidade": ["1", "2", "6"],
+      "residenciasFiscais.pais": ["BR", "US"]
+    }
+  }
+}

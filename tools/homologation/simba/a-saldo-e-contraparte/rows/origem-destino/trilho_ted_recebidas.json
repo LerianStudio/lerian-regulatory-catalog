@@ -1,0 +1,49 @@
+[
+  {
+    "referencia": "A3",
+    "ispb": "",
+    "tipoConta": "CG",
+    "tipoContaInformado": "CG"
+  },
+  {
+    "referencia": "A12",
+    "ispb": "",
+    "tipoConta": "1",
+    "tipoContaInformado": "CACC"
+  },
+  {
+    "referencia": "A13",
+    "ispb": "",
+    "tipoConta": "-"
+  },
+  {
+    "referencia": "A14",
+    "ispb": "",
+    "tipoConta": "-",
+    "tipoContaInformado": "XY"
+  },
+  {
+    "referencia": "A15",
+    "ispb": "",
+    "tipoConta": "CPAY",
+    "tipoContaInformado": "CPAY"
+  },
+  {
+    "referencia": "A28",
+    "ispb": "",
+    "tipoConta": "SLRY",
+    "tipoContaInformado": "SLRY"
+  },
+  {
+    "referencia": "A35",
+    "ispb": "60746948",
+    "tipoConta": "1",
+    "tipoContaInformado": "CACC"
+  },
+  {
+    "referencia": "A36",
+    "ispb": "60746948",
+    "tipoConta": "1",
+    "tipoContaInformado": "CACC"
+  }
+]

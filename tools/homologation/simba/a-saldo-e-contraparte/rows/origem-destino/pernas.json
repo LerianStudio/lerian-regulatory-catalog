@@ -1,0 +1,68 @@
+[
+  {
+    "operacaoId": "o5",
+    "transacaoId": "t5",
+    "contaId": "c1",
+    "valor": "30.00",
+    "natureza": "D",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "titularId": "h1"
+  },
+  {
+    "operacaoId": "o6",
+    "transacaoId": "t5",
+    "contaId": "k2",
+    "valor": "30.00",
+    "natureza": "C",
+    "numeroAgencia": "00001",
+    "numeroConta": "765432-1",
+    "tipoConta": "6",
+    "titularId": "h2"
+  },
+  {
+    "operacaoId": "o7",
+    "transacaoId": "t5",
+    "contaId": "c1",
+    "valor": "1.00",
+    "natureza": "D",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "titularId": "h1"
+  },
+  {
+    "operacaoId": "o43",
+    "transacaoId": "t43",
+    "contaId": "c1",
+    "valor": "50.00",
+    "natureza": "D",
+    "numeroAgencia": "00001",
+    "numeroConta": "1234567",
+    "tipoConta": "6",
+    "titularId": "h1"
+  },
+  {
+    "operacaoId": "o44",
+    "transacaoId": "t43",
+    "contaId": "k2",
+    "valor": "50.00",
+    "natureza": "C",
+    "numeroAgencia": "00001",
+    "numeroConta": "7654321",
+    "tipoConta": "6",
+    "titularId": "h2"
+  },
+  {
+    "operacaoId": "o45",
+    "transacaoId": "t43",
+    "contaId": "k3",
+    "valor": "50.00",
+    "natureza": "C",
+    "numeroAgencia": "00001",
+    "numeroConta": "5555555",
+    "tipoConta": "6",
+    "titularId": "h2"
+  }
+]

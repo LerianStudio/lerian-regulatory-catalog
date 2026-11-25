@@ -1,0 +1,171 @@
+[
+  {
+    "name": "UF do exterior pela sigla",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}00{% else %}{{ t.codigoUf }}{% endif %}",
+    "new": "{{ t.codigoUf }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 2,
+      "field": 14
+    }
+  },
+  {
+    "name": "exterior sem a cidade 0000000",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% endif %}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 2,
+      "field": 13
+    }
+  },
+  {
+    "name": "pais pelo codigo",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.nomePais != \"-\" %}{{ ascii(t.nomePais)|slice:\":40\" }}{% endif %}",
+    "new": "{{ t.pais }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 1,
+      "field": 15
+    }
+  },
+  {
+    "name": "sem pais tratado como exterior",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% endif %}",
+    "new": "{% if t.nomePais != \"Brasil\" %}0000000{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 3,
+      "field": 13
+    }
+  },
+  {
+    "name": "nome do pais da contraparte sem a troca de acentos",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{{ ascii(u.nomePais)|slice:\":40\" }}",
+    "new": "{{ u.nomePais|slice:\":40\" }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 6,
+      "field": 15
+    }
+  },
+  {
+    "name": "pais em minuscula tratado como exterior",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% endif %}",
+    "new": "{% if t.pais and t.pais != \"BR\" %}0000000{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 4,
+      "field": 13
+    }
+  },
+  {
+    "name": "UF da contraparte no exterior pela sigla",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}00{% else %}{{ u.codigoUf }}{% endif %}",
+    "new": "{{ u.codigoUf }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 6,
+      "field": 14
+    }
+  },
+  {
+    "name": "contraparte no exterior sem a cidade 0000000",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}0000000{% endif %}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 6,
+      "field": 13
+    }
+  },
+  {
+    "name": "quebra de linha (LF) no nome parte o registro",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "|replace:cr|replace:lf }}",
+    "new": "|replace:cr }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 1,
+      "field": 9
+    }
+  },
+  {
+    "name": "retorno de carro (CR) no nome fica no registro",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "|replace:cr|replace:lf }}",
+    "new": "|replace:lf }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 2,
+      "field": 9
+    }
+  },
+  {
+    "name": "renda da pessoa natural fora do campo 18",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% elif t.renda %}{{ t.renda|replace:\".:\" }}{% endif %}",
+    "new": "{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 3,
+      "field": 18
+    }
+  },
+  {
+    "name": "Brasil sem UF escreve 00",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% else %}{{ t.codigoUf }}{% endif %}",
+    "new": "{% else %}{% if t.codigoUf %}{{ t.codigoUf }}{% else %}00{% endif %}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 5,
+      "field": 14
+    }
+  },
+  {
+    "name": "contraparte no Brasil sem UF escreve 00",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% else %}{{ u.codigoUf }}{% endif %}",
+    "new": "{% else %}{% if u.codigoUf %}{{ u.codigoUf }}{% else %}00{% endif %}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 7,
+      "field": 14
+    }
+  }
+]

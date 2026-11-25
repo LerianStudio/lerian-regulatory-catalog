@@ -1,0 +1,810 @@
+# Contrato do arquivo V ORIGEM-DESTINO do SIMBA (IN BCB 636/2025).
+#
+# QUEM CURA: a Lerian, a partir da transcricao oficial da IN BCB 636/2025 em
+# br/bcb/simba/normas/IN-BCB-636-2025.md ("IN :N" abaixo e a linha dessa copia).
+# Leiaute: art. 2o, V (IN :35), art. 3o (IN :57-73) e Anexo I, arquivo V
+# Origem-Destino, campos 1 a 28 (IN :198-229).
+#
+# O QUE E: uma ou mais linhas por lancamento do EXTRATO, dizendo quem esta do outro
+# lado. Todo lancamento do EXTRATO tem pelo menos uma linha aqui (IN :170, "vinculando
+# cada registro do arquivo EXTRATO aos seus correspondentes registros"): o campo 2 e
+# o numero do lancamento no EXTRATO. Os dois documentos leem o MESMO conjunto
+# `lancamentos`, na mesma ordem, e numeram do mesmo jeito.
+#
+# FORMA DO ARQUIVO (IN art. 3o): texto ASCII, sem cabecalho, colunas separadas
+# por TAB, linha terminada em CR LF, valores em centavos sem separador (IN :73).
+#
+# DE ONDE VEM A CONTRAPARTE, nesta ordem: a propria instituicao na perna de tarifa;
+# a linha do plugin da transacao (Pix lerian, Pix JD, TED), lida no banco do plugin;
+# a outra perna da mesma transacao, de natureza oposta e mesmo valor, quando e conta
+# de cliente no CRM; senao uma linha vazia com a observacao "contraparte nao identificada pelo trilho".
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentContract
+
+metadata:
+  id: br.bcb.simba.origem-destino
+  country: BR
+  regulator: BCB
+  document: ORIGEM-DESTINO          # o nome do arquivo na IN 636 art. 2º (AGENCIAS, CONTAS, TITULARES, EXTRATO, ORIGEM-DESTINO)
+  family: simba
+  title: SIMBA — Origem-Destino
+  summary: >-
+    Origem e destino dos recursos de cada lançamento do EXTRATO: a contraparte pelo plugin
+    Pix ou TED da transação, pela outra perna interna, ou a própria instituição na tarifa.
+  version: 1.2.0
+  status: draft
+  output: txt
+  timezone: America/Sao_Paulo
+  appliesTo:
+    institutionTypes: [IP, SCD, SCFI]
+  periodicity: eventual
+  layout:
+    version: "IN BCB 636/2025"
+    mandatoryFrom: "2026-12-01"
+  sourceOfTruth:
+    layoutManual: https://www.bcb.gov.br/estabilidadefinanceira/exibenormativo?tipo=Instru%C3%A7%C3%A3o%20Normativa%20BCB&numero=636
+
+parameters:
+  - name: caso
+    type: string
+    required: true
+    pattern: '^[0-9]{3}-[A-Z]{2,6}-[0-9]{6}-[0-9]{2}$'
+    description: Número do caso SIMBA, como está na ordem.
+  - name: documentos
+    type: string
+    multiple: true
+    required: true
+    description: >-
+      CPFs e CNPJs da ordem, somente dígitos, sem pontos, traços ou barras: o documento formatado não encontra
+      contas, e o caso sai como resposta vazia para ele, sem erro.
+  - name: contas
+    type: string
+    multiple: true
+    required: false
+    description: >-
+      Números de conta da ordem, com DV, só dígitos. Preencher só quando o ofício restringir a contas específicas; o
+      normal é não preencher (ausente, todas as contas dos documentos). Preencher sem a ordem pedir omite contas do
+      investigado.
+  - name: inicio
+    type: date
+    required: true
+    description: Primeiro dia do afastamento do sigilo.
+  - name: fim
+    type: date
+    closed: true
+    required: true
+    notBefore: inicio
+    description: Último dia do afastamento do sigilo.
+
+filing:
+  period: [caso]
+  # Uma ordem pode ser gerada de novo (dado corrigido, cadastro completado). So a
+  # geracao mais nova do mesmo caso pode ser aprovada: aprovar uma anterior
+  # entregaria ao orgao o arquivo que a correcao ja substituiu.
+  approve: newest
+  # Conta do caso sem lancamento no periodo sai no CONTAS com o campo 7 = 2 (IN :126) e nao
+  # tem linha aqui; sem lancamento em nenhuma conta do caso, o arquivo sai vazio (0 byte),
+  # sem cabecalho (IN art. 3o, I, :59), e e entregue assim.
+  allowEmpty: true
+
+datasets:
+  # A instituicao: contraparte da perna de tarifa e da outra perna interna (campos 5,
+  # 9, 10, 11 e 19 da propria instituicao).
+  - name: instituicao
+    description: A instituição que responde ao caso, uma linha.
+    grain: singleton
+    fields:
+      - name: compe
+        type: string
+        required: true
+        pattern: '^[0-9]{3}$'
+        description: Código Compe da instituição, ou 999 quando ela não tem (IN 636, Anexo I, ORIGEM-DESTINO, campo 5, na contraparte interna).
+      - name: cnpj
+        type: string
+        length: 14
+        required: true
+        normalize: alphanumeric
+        identifiesInstitution: true
+        pattern: '^[0-9A-Z]{14}$'
+        description: CNPJ da instituição (IN 636, Anexo I, ORIGEM-DESTINO, campos 10 e 19 na tarifa, 19 na contraparte interna).
+      - name: nomeUnicad
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome da instituição como está no Unicad (campo 11 na tarifa). O template o corta em 80 posições.
+
+  # O CONJUNTO QUE O ORIGEM-DESTINO TAMBEM LE, igual nos dois contratos: o numero do
+  # lancamento e a posicao dele aqui. A consulta que o entrega agrupa por
+  # (transacao, operacao, ...), o que fixa a ordem das linhas; cada operacao e um grupo.
+  - name: lancamentos
+    description: Os lançamentos das contas do caso no período, um por operação, na ordem da consulta.
+    grain: [transacaoId, operacaoId]
+    consolidation:
+      key: [transacaoId, operacaoId]
+      whenKeyRepeats: refuse
+      columns: {contaId: first, numeroAgencia: first, numeroConta: first, tipoConta: first,
+                dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
+                valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, rail: first, fluxo: first, direcao: first,
+                agregado: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
+                iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
+    fields:
+      - name: operacaoId
+        type: string
+        required: true
+        description: A operação do Midaz. Não vai ao arquivo; identifica a linha e a perna de tarifa.
+      - name: transacaoId
+        type: string
+        required: true
+        description: A transação do Midaz. Não vai ao arquivo; liga o estorno, a metadata e a sessão (campo 27).
+      - name: contaId
+        type: string
+        required: true
+        description: A conta do Midaz do lançamento. Não vai ao arquivo.
+      - name: numeroAgencia
+        type: string
+        required: true
+        pattern: '^[0-9]{5}$'
+        description: Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, EXTRATO, campo 3).
+      - name: numeroConta
+        type: string
+        required: true
+        pattern: '^[^\t\r\n]{1,20}$'
+        description: Número da conta com o dígito verificador, como o CRM o guarda (IN 636, Anexo I, EXTRATO, campo 4).
+      - name: tipoConta
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5", "6"]
+        description: Tipo da conta no código da IN (IN 636, Anexo I, EXTRATO, campo 5).
+      - name: dataLancamento
+        type: date
+        required: true
+        description: Data do lançamento, no dia civil de Brasília (IN 636, Anexo I, EXTRATO, campo 6).
+      - name: horaLancamento
+        type: string
+        required: true
+        pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|\+00:00)$'
+        description: >-
+          O instante do lançamento em UTC; o template escreve hhmmss (IN 636, Anexo I, EXTRATO, campo 23; IN 636, art.
+          3º, VI). Instante em outro fuso recusa a geração, em vez de sair a hora local.
+      - name: descricao
+        type: string
+        required: false
+        description: Descrição da operação no Midaz (IN 636, Anexo I, EXTRATO, campo 8). O template corta em 100 posições.
+      - name: descricaoTransacao
+        type: string
+        required: false
+        description: Descrição da transação no Midaz, usada quando a da operação vem vazia (campo 8).
+      - name: valor
+        type: decimal
+        required: true
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Valor do lançamento em reais, sem sinal (IN 636, Anexo I, EXTRATO, campo 10). O template escreve centavos.
+      - name: natureza
+        type: string
+        required: true
+        domain: ["C", "D"]
+        description: Natureza do lançamento, C crédito ou D débito (IN 636, Anexo I, EXTRATO, campo 11).
+      - name: naturezaOposta
+        type: string
+        required: true
+        domain: ["C", "D"]
+        description: A natureza da outra perna (D para um crédito, C para um débito). Só o ORIGEM-DESTINO a lê.
+      - name: tipoOperacao
+        type: string
+        required: true
+        description: >-
+          O tipo da operação no Midaz (operation.type): DEBIT, CREDIT, OVERDRAFT (a parcela do cheque especial), BLOCK e
+          UNBLOCK (bloqueio e desbloqueio judicial) ou, na cobrança de dívida de tarifa, FEE_SETTLEMENT e FEE_REFUND,
+          que o motor grava sem feeLeg e são perna de tarifa.
+      - name: saldoApos
+        type: decimal
+        required: true
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Saldo disponível da conta após o lançamento, como o Midaz o gravou (IN 636, Anexo I, EXTRATO, campos 12 e 13).
+      - name: rail
+        type: string
+        required: false
+        description: Trilho gravado pelo plugin na metadata da transação (TED, PIX, INTERNAL). Decide o campo 9.
+      - name: fluxo
+        type: string
+        required: false
+        description: Fluxo gravado pelo plugin (CASH_OUT, CASH_IN, P2P, REFUND, MED, AUTOMATIC_DEBIT). Decide o campo 9.
+      - name: direcao
+        type: string
+        required: false
+        description: Direção gravada pelo plugin em relação à conta do cliente (IN, OUT). Vazia, vale a natureza.
+      - name: agregado
+        type: string
+        required: false
+        description: Id do registro do plugin TED ou Pix JD que a transação liquida. Liga a contraparte do ORIGEM-DESTINO.
+      - name: tipoPagamento
+        type: string
+        required: false
+        description: payment_type do Pix lerian (PIX_IN no recebimento).
+      - name: tipoIniciacao
+        type: string
+        required: false
+        description: initiation_type do Pix lerian (MANUAL, DICT, QR_CODE, AUTO).
+      - name: e2eEnvio
+        type: string
+        required: false
+        description: end_to_end_id do envio do Pix lerian.
+      - name: iniciacao
+        type: string
+        required: false
+        description: initiation_id do envio do Pix lerian.
+      - name: e2eRecebimento
+        type: string
+        required: false
+        description: inbound_end_to_end_id do recebimento do Pix lerian.
+      - name: devolucao
+        type: string
+        required: false
+        description: refund_id da devolução do Pix lerian.
+      - name: e2eOriginal
+        type: string
+        required: false
+        description: original_end_to_end_id da devolução do Pix lerian.
+
+  # Operacoes que o motor de tarifas do Midaz marcou com feeLeg = "true": o campo 9
+  # sai 105 (tarifas), depois da regra do estorno.
+  - name: taxas
+    description: As operações dos lançamentos que são a perna de tarifa de uma transação.
+    grain: [operacaoId]
+    consolidation:
+      key: [operacaoId]
+      whenKeyRepeats: refuse
+      columns: {}
+    fields:
+      - name: operacaoId
+        type: string
+        required: true
+        description: A operação de tarifa. Não vai ao arquivo.
+
+  # As pernas das transacoes dos lancamentos que sao conta de cliente no CRM. A
+  # contraparte interna de um lancamento e a perna da mesma transacao com a natureza
+  # oposta e o mesmo valor (a perna de tarifa de quem pagou, de outro valor, fica fora).
+  - name: pernas
+    description: As pernas em conta do CRM das transações dos lançamentos, uma por operação.
+    grain: [operacaoId]
+    consolidation:
+      key: [operacaoId]
+      whenKeyRepeats: refuse
+      columns: {transacaoId: first, contaId: first, valor: first, natureza: first, numeroAgencia: first,
+                numeroConta: first, tipoConta: first, titularId: first}
+    fields:
+      - name: operacaoId
+        type: string
+        required: true
+        description: A operação do Midaz. Não vai ao arquivo.
+      - name: transacaoId
+        type: string
+        required: true
+        description: A transação do Midaz. Não vai ao arquivo.
+      - name: contaId
+        type: string
+        required: true
+        description: A conta do Midaz da perna. Não vai ao arquivo.
+      - name: valor
+        type: decimal
+        required: true
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: Valor da perna em reais (IN 636, Anexo I, ORIGEM-DESTINO, campo 3). O template escreve centavos.
+      - name: natureza
+        type: string
+        required: true
+        domain: ["C", "D"]
+        description: Natureza da perna, C crédito ou D débito.
+      - name: numeroAgencia
+        type: string
+        required: true
+        pattern: '^[0-9]{5}$'
+        description: Número da agência sem DV; 00001 sem agência física (IN 636, Anexo I, ORIGEM-DESTINO, campo 6).
+      - name: numeroConta
+        type: string
+        required: true
+        normalize: digits
+        pattern: '^[0-9]{1,20}$'
+        description: >-
+          Número da conta com o dígito verificador, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 7, Numérico; IN
+          636, art. 3º, VII, sem formatação): o CRM guarda a conta como recebeu, às vezes com hífen.
+      - name: tipoConta
+        type: string
+        required: true
+        domain: ["1", "2", "3", "4", "5", "6"]
+        description: Tipo da conta no código da IN (IN 636, Anexo I, ORIGEM-DESTINO, campo 8).
+      - name: titularId
+        type: string
+        required: false
+        description: O titular da conta no CRM (holder_id). Não vai ao arquivo; acha o cadastro.
+
+  # O cadastro do titular de cada conta das outras pernas.
+  - name: titulares_od
+    description: Tipo de pessoa, documento e nome do titular de cada conta das outras pernas.
+    grain: [titularId]
+    consolidation:
+      key: [titularId]
+      whenKeyRepeats: refuse
+      columns: {tipoPessoa: first, documento: first, nome: first}
+    fields:
+      - name: titularId
+        type: string
+        required: true
+        description: O titular no CRM. Não vai ao arquivo.
+      - name: tipoPessoa
+        type: string
+        required: true
+        domain: ["1", "2"]
+        description: 1 pessoa natural, 2 jurídica (IN 636, Anexo I, ORIGEM-DESTINO, campo 9).
+      - name: documento
+        type: string
+        required: false
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ do titular, só dígitos e, no CNPJ alfanumérico, letras maiúsculas (IN 636, Anexo I, ORIGEM-DESTINO, campo 10).
+      - name: nome
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome do titular (IN 636, Anexo I, ORIGEM-DESTINO, campo 11). O template o corta em 80 posições.
+
+  # A contraparte pela linha do plugin que liquidou a transacao: um conjunto por
+  # plugin e sentido (cada um le uma consulta que espera a metadata da transacao). A
+  # referencia e o E2E (Pix lerian) ou o id da linha no plugin (Pix JD, TED: o
+  # aggregateId da metadata); um lancamento acha no maximo uma linha.
+  - name: trilho_pix_lerian_envios
+    description: Os Pix enviados pelo Pix lerian; a contraparte é o destino.
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, tipoChave: first, chave: first, tipoConta: first, tipoContaInformado: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O E2E do Pix. Não vai ao arquivo.
+      - name: ispb
+        type: string
+        required: false
+        pattern: '^[0-9]{8}$'
+        description: ISPB da instituição da contraparte, oito dígitos como texto; o template o converte no Compe (IN 636, Anexo I, ORIGEM-DESTINO, campo 5).
+      - name: agencia
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,5}$'
+        description: Agência da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 6).
+      - name: conta
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,20}$'
+        description: Conta da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 7).
+      - name: documento
+        type: string
+        required: false
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da contraparte, só dígitos e, no CNPJ alfanumérico, letras maiúsculas (IN 636, Anexo I, ORIGEM-DESTINO, campo 10). O tamanho decide o campo 9.
+      - name: nome
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome da contraparte (IN 636, Anexo I, ORIGEM-DESTINO, campo 11). O template o corta em 80 posições.
+      - name: comentario
+        type: string
+        required: false
+        description: Mensagem do pagador no Pix (IN 636, Anexo I, ORIGEM-DESTINO, campo 27). O template a corta em 500 posições.
+      - name: txid
+        type: string
+        required: false
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: >-
+          TxId do Pix (TransactionIdentification; IN 636, Anexo I, ORIGEM-DESTINO, campo 28), o mesmo do campo 26 do
+          EXTRATO. Sem ele, o campo sai em branco e o campo 18 diz por quê.
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^([12]|TRAN|SLRY|OTHR|-)$'
+        description: >-
+          Tipo de conta da contraparte no código do campo 8 do ORIGEM-DESTINO (IN 636, Anexo I): 1 para CACC e 2 para
+          SVGS do domínio do SPI. TRAN, SLRY e OTHR não têm código literal na IN e ficam com o próprio código; "-" para
+          tipo ausente ou fora do domínio. Nos três últimos casos o campo 8 sai em branco e o campo 18 diz por quê.
+      - name: tipoContaInformado
+        type: string
+        required: false
+        description: O tipo de conta como o plugin o grava. Só distingue o tipo ausente do fora do domínio; não vai ao arquivo.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix do recebedor no código da IN (IN 636, Anexo I, ORIGEM-DESTINO, campo 25): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix do recebedor como o DICT a registra (IN 636, Anexo I, ORIGEM-DESTINO, campo 26); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
+
+  - name: trilho_pix_lerian_recebimentos
+    description: Os Pix recebidos pelo Pix lerian; a contraparte é a origem.
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {ispb: first, agencia: first, conta: first, documento: first, nome: first, comentario: first, txid: first, tipoConta: first, tipoContaInformado: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O E2E do Pix. Não vai ao arquivo.
+      - name: ispb
+        type: string
+        required: false
+        pattern: '^[0-9]{8}$'
+        description: ISPB da instituição da contraparte, oito dígitos como texto; o template o converte no Compe (IN 636, Anexo I, ORIGEM-DESTINO, campo 5).
+      - name: agencia
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,5}$'
+        description: Agência da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 6).
+      - name: conta
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,20}$'
+        description: Conta da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 7).
+      - name: documento
+        type: string
+        required: false
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da contraparte, só dígitos e, no CNPJ alfanumérico, letras maiúsculas (IN 636, Anexo I, ORIGEM-DESTINO, campo 10). O tamanho decide o campo 9.
+      - name: nome
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome da contraparte (IN 636, Anexo I, ORIGEM-DESTINO, campo 11). O template o corta em 80 posições.
+      - name: comentario
+        type: string
+        required: false
+        description: Mensagem do pagador no Pix (IN 636, Anexo I, ORIGEM-DESTINO, campo 27). O template a corta em 500 posições.
+      - name: txid
+        type: string
+        required: false
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: >-
+          TxId do Pix (TransactionIdentification; IN 636, Anexo I, ORIGEM-DESTINO, campo 28), o mesmo do campo 26 do
+          EXTRATO. Sem ele, o campo sai em branco e o campo 18 diz por quê.
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^([12]|TRAN|SLRY|OTHR|-)$'
+        description: >-
+          Tipo de conta da contraparte no código do campo 8 do ORIGEM-DESTINO (IN 636, Anexo I): 1 para CACC e 2 para
+          SVGS do domínio do SPI. TRAN, SLRY e OTHR não têm código literal na IN e ficam com o próprio código; "-" para
+          tipo ausente ou fora do domínio. Nos três últimos casos o campo 8 sai em branco e o campo 18 diz por quê.
+      - name: tipoContaInformado
+        type: string
+        required: false
+        description: O tipo de conta como o plugin o grava. Só distingue o tipo ausente do fora do domínio; não vai ao arquivo.
+
+  - name: trilho_pix_jd_envios
+    description: Os Pix enviados pelo Pix JD; a contraparte é o recebedor (payee).
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoChave: first, chave: first, tipoConta: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O id da linha no Pix JD. Não vai ao arquivo.
+      - name: ispb
+        type: string
+        required: false
+        pattern: '^[0-9]{8}$'
+        description: ISPB da instituição da contraparte, oito dígitos como texto; o template o converte no Compe (IN 636, Anexo I, ORIGEM-DESTINO, campo 5).
+      - name: agencia
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,5}$'
+        description: Agência da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 6).
+      - name: conta
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,20}$'
+        description: Conta da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 7).
+      - name: digito
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,2}$'
+        description: Dígito da conta, que o Pix JD grava à parte. O template o junta ao número (campo 7).
+      - name: documento
+        type: string
+        required: false
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da contraparte, só dígitos e, no CNPJ alfanumérico, letras maiúsculas (IN 636, Anexo I, ORIGEM-DESTINO, campo 10). O tamanho decide o campo 9.
+      - name: nome
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome da contraparte (IN 636, Anexo I, ORIGEM-DESTINO, campo 11). O template o corta em 80 posições.
+      - name: comentario
+        type: string
+        required: false
+        description: Mensagem do pagador no Pix (IN 636, Anexo I, ORIGEM-DESTINO, campo 27). O template a corta em 500 posições.
+      - name: txid
+        type: string
+        required: false
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: >-
+          TxId do Pix (TransactionIdentification; IN 636, Anexo I, ORIGEM-DESTINO, campo 28), o mesmo do campo 26 do
+          EXTRATO. Sem ele, o campo sai em branco e o campo 18 diz por quê.
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^([12]|TRAN|SLRY|OTHR|-)$'
+        description: >-
+          Tipo de conta da contraparte no código do campo 8 do ORIGEM-DESTINO (IN 636, Anexo I): 1 e 2 para o tpConta 0
+          e 2 da JDPI (conta corrente de cliente, conta poupança); TRAN, SLRY e OTHR para 3, 1 e 4; "-" quando o plugin
+          não gravou o tipo (fora do Pix entre contas da própria instituição). Sem código, o campo 8 sai em branco e o
+          campo 18 diz por quê.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix do recebedor no código da IN (IN 636, Anexo I, ORIGEM-DESTINO, campo 25): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix do recebedor como o DICT a registra (IN 636, Anexo I, ORIGEM-DESTINO, campo 26); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
+
+  - name: trilho_pix_jd_recebimentos
+    description: Os Pix recebidos pelo Pix JD; a contraparte é o pagador (payer).
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {ispb: first, agencia: first, conta: first, digito: first, documento: first, nome: first, comentario: first, txid: first, tipoChave: first, chave: first, tipoConta: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O id da linha no Pix JD. Não vai ao arquivo.
+      - name: ispb
+        type: string
+        required: false
+        pattern: '^[0-9]{8}$'
+        description: ISPB da instituição da contraparte, oito dígitos como texto; o template o converte no Compe (IN 636, Anexo I, ORIGEM-DESTINO, campo 5).
+      - name: agencia
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,5}$'
+        description: Agência da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 6).
+      - name: conta
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,20}$'
+        description: Conta da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 7).
+      - name: digito
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,2}$'
+        description: Dígito da conta, que o Pix JD grava à parte. O template o junta ao número (campo 7).
+      - name: documento
+        type: string
+        required: false
+        normalize: alphanumeric
+        pattern: '^([0-9]{11}|[0-9A-Z]{14})$'
+        description: CPF ou CNPJ da contraparte, só dígitos e, no CNPJ alfanumérico, letras maiúsculas (IN 636, Anexo I, ORIGEM-DESTINO, campo 10). O tamanho decide o campo 9.
+      - name: nome
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome da contraparte (IN 636, Anexo I, ORIGEM-DESTINO, campo 11). O template o corta em 80 posições.
+      - name: comentario
+        type: string
+        required: false
+        description: Mensagem do pagador no Pix (IN 636, Anexo I, ORIGEM-DESTINO, campo 27). O template a corta em 500 posições.
+      - name: txid
+        type: string
+        required: false
+        pattern: '^[^\t\r\n]{1,35}$'
+        description: >-
+          TxId do Pix (TransactionIdentification; IN 636, Anexo I, ORIGEM-DESTINO, campo 28), o mesmo do campo 26 do
+          EXTRATO. Sem ele, o campo sai em branco e o campo 18 diz por quê.
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^([12]|TRAN|SLRY|OTHR|-)$'
+        description: >-
+          Tipo de conta da contraparte no código do campo 8 do ORIGEM-DESTINO (IN 636, Anexo I): 1 e 2 para o tpConta 0
+          e 2 da JDPI (conta corrente de cliente, conta poupança); TRAN, SLRY e OTHR para 3, 1 e 4; "-" quando o plugin
+          não gravou o tipo (fora do Pix entre contas da própria instituição). Sem código, o campo 8 sai em branco e o
+          campo 18 diz por quê.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix do pagador no código da IN (IN 636, Anexo I, ORIGEM-DESTINO, campo 25): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix do pagador como o DICT a registra (IN 636, Anexo I, ORIGEM-DESTINO, campo 26); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
+
+  - name: trilho_ted_enviadas
+    description: O recebedor das TEDs enviadas (o documento, cifrado no plugin, fica fora).
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {ispb: first, agencia: first, conta: first, nome: first, tipoContaInformado: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O id da TED no plugin. Não vai ao arquivo.
+      - name: ispb
+        type: string
+        required: false
+        pattern: '^[0-9]{8}$'
+        description: ISPB da instituição da contraparte, oito dígitos como texto; o template o converte no Compe (IN 636, Anexo I, ORIGEM-DESTINO, campo 5).
+      - name: agencia
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,5}$'
+        description: Agência da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 6).
+      - name: conta
+        type: string
+        required: false
+        normalize: digits
+        pattern: '^[0-9]{1,20}$'
+        description: Conta da contraparte como o plugin a grava, só dígitos (IN 636, Anexo I, ORIGEM-DESTINO, campo 7).
+      - name: nome
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: Nome da contraparte (IN 636, Anexo I, ORIGEM-DESTINO, campo 11). O template o corta em 80 posições.
+      - name: tipoContaInformado
+        type: string
+        required: true
+        description: >-
+          Tipo de conta do recebedor como o plugin o grava (em claro): CACC, SVGS, SLRY ou uma grafia de conta de
+          pagamento (CPAY, PG, PAYMENT, TRAN, 4), os que a API do plugin aceita. O template o traduz no campo 8 do
+          ORIGEM-DESTINO (IN 636, Anexo I): CACC 1, SVGS 2; conta de pagamento e SLRY saem em branco, com o motivo no
+          campo 18, e outro valor também, com o motivo de fora do domínio. Obrigatório: toda TED enviada que chega ao OD
+          o tem (a devolução de uma TED recebida, que o plugin grava sem ele, não chega: sai pelo revert do Midaz, ver
+          devolucao-e-estorno). O motor não aceita `case` sobre o subcaminho JSONB, por isso a tradução fica no
+          template.
+
+  - name: trilho_ted_recebidas
+    description: O banco do pagador das TEDs recebidas (os demais dados, cifrados no plugin, ficam fora).
+    grain: [referencia]
+    consolidation:
+      key: [referencia]
+      whenKeyRepeats: refuse
+      columns: {ispb: first, tipoConta: first, tipoContaInformado: first}
+    fields:
+      - name: referencia
+        type: string
+        required: true
+        description: O id da TED no plugin. Não vai ao arquivo.
+      - name: ispb
+        type: string
+        required: false
+        pattern: '^[0-9]{8}$'
+        description: ISPB da instituição da contraparte, oito dígitos como texto; o template o converte no Compe (IN 636, Anexo I, ORIGEM-DESTINO, campo 5).
+      - name: tipoConta
+        type: string
+        required: true
+        pattern: '^([123]|CPAY|CD|CG|SLRY|-)$'
+        description: >-
+          Tipo de conta do pagador no código do campo 8 do ORIGEM-DESTINO (IN 636, Anexo I): 1 para CACC, 2 para SVGS e
+          PP, 3 para CI, como o plugin grava o TpCt do STR. CPAY e CD (mais de um código possível na IN), CG e SLRY
+          ficam com o próprio código; "-" para tipo ausente ou fora do domínio. Nesses casos o campo 8 sai em branco e o
+          campo 18 diz por quê.
+      - name: tipoContaInformado
+        type: string
+        required: false
+        description: O tipo de conta como o plugin o grava. Só distingue o tipo ausente do fora do domínio; não vai ao arquivo.
+
+knownGaps:
+  - id: numeracao-entre-geracoes
+    description: >-
+      O EXTRATO e o ORIGEM-DESTINO são gerados um a um. Um lançamento gravado entre as duas gerações desloca os
+      números (campo 2); gere os dois de novo e confira que o número de lançamentos é o mesmo.
+  - id: ted-cifrada
+    description: >-
+      O plugin de TED grava cifrados o documento do recebedor e os dados do pagador da TED recebida. Na TED enviada saem
+      banco, agência, conta e nome; o CPF/CNPJ (campo 10) e o tipo de pessoa (campo 9) em branco, com o motivo no campo
+      18. Na TED recebida sai só o banco (campo 5); agência, conta, tipo de pessoa, CPF/CNPJ e nome (campos 6, 7, 9, 10
+      e 11) em branco, com o motivo no campo 18 (OBSERVACAO), e não o 00001, que diz que não há agência física (IN 636,
+      Anexo I, ORIGEM-DESTINO, campo 6). O tipo de conta (IN 636, Anexo I, ORIGEM-DESTINO, campo 8), como o plugin o
+      grava, sai só para CACC (1), SVGS (2) e, na TED recebida, PP (2) e CI (3); a conta de pagamento e, na recebida, a
+      CD (mais de um código possível na IN), a CG e a SLRY, o tipo ausente (só na recebida; na enviada o tipo é
+      obrigatório) e o fora do domínio saem em branco, com o motivo no campo 18. No Pix lerian, CACC 1 e SVGS 2 (domínio
+      do SPI); no Pix JD, tpConta 0 e 2 (descritos pelo fornecedor como os do SPI) saem 1 e 2. TRAN, SLRY, OTHR, ausente
+      e fora do domínio saem em branco com motivo; no Pix JD o tipo só existe no Pix entre contas da própria
+      instituição.
+  - id: devolucao-e-estorno
+    description: >-
+      Devolução e estorno não herdam a contraparte da transação original, e as linhas de devolução dos plugins não são
+      lidas nesta versão: a devolução e o revert do Midaz saem com a outra perna interna ou com a linha vazia. Exceção:
+      o débito com a metadata de uma TED recebida, a devolução (revert do Midaz) ou o estorno pedido pelo banco
+      remetente (lançamento novo com a mesma metadata), sai com o remetente da TED recebida (banco, e o mesmo motivo dos
+      dados cifrados), porque o dinheiro volta a ele. A cobrança de dívida de tarifa (FEE_SETTLEMENT) que o Midaz grava
+      na mesma transação do crédito é tarifa, não contraparte.
+  - id: tipo-de-conta-do-trilho
+    description: >-
+      O tipo da conta da contraparte de outra instituição (IN 636, Anexo I, ORIGEM-DESTINO, campo 8) só sai com código
+      onde o tipo que o plugin grava casa com a IN ao pé da letra: conta corrente (1), poupança (2), investimento (3, só
+      na TED). Conta de pagamento e de depósito (mais de um código possível na IN; a de pagamento é 6 só quando
+      pré-paga), garantida, salário e PI, e o tipo ausente ou fora do domínio, saem em branco com o motivo no campo 18.
+  - id: cnpj-da-instituicao-externa
+    description: >-
+      O campo 19 da contraparte de outra instituição sai do ISPB pela lista de participantes ativos do Pix
+      (tabelas/ParticipantesPix.csv), a única lista do Banco Central com o CNPJ. Fica em branco, com o motivo no
+      campo 18, quando o plugin não grava o ISPB ou quando a instituição não é participante ativa do Pix (uma TED
+      com banco que só participa do STR, por exemplo): nenhuma tabela pública do Banco Central dá esse CNPJ.
+  - id: chave-pix-da-contraparte
+    description: >-
+      Os campos 25 e 26 (chave Pix da contraparte) saem do plugin no Pix enviado (a chave do recebedor: no Pix
+      lerian, da iniciação do Pix, transfer_initiations; no Pix JD, da transação) e no Pix JD recebido, quando o plugin
+      grava a chave do pagador. No Pix lerian recebido saem em branco: o pagador não usa chave, e o plugin não a grava.
+  - id: contraparte-interna-pelo-valor
+    description: >-
+      A outra perna interna só é contraparte quando tem a natureza oposta e o mesmo valor do lançamento. Assim a perna
+      de tarifa de quem pagou não vira contraparte; em troca, uma transferência repartida em pernas de valores
+      diferentes (um débito para duas contas) sai com a linha vazia.
+  - id: plugin-de-outra-empresa
+    description: >-
+      Contraparte liquidada por provedor que não é plugin Lerian não é lida: sai a outra perna interna ou a linha
+      vazia. Boleto e cheque não existem como produto: campos 12 a 16 e 20 a 24 em branco.
+  - id: ispb-numerico
+    description: >-
+      O ISPB tem de chegar como texto de oito dígitos. Um ISPB que chegue como número com casas decimais sai como
+      código 999.
+  - id: so-titular
+    description: >-
+      As contas do caso são as que o documento investigado titula e as em que ele é cotitular (parte PRIMARY_HOLDER
+      do instrumento, contas_cotitular). A conta em que ele é só representante legal ou RESPONSIBLE_PARTY não entra:
+      a IN fala das contas investigadas e não diz se a conta de quem só representa o titular é uma delas.
+  - id: cotitular-no-periodo
+    description: >-
+      A conta de que o investigado é cotitular entra quando a cotitularidade cruza o período pedido em um dia ao
+      menos (start_date até o fim, e end_date ausente ou a partir do início). Com sobreposição parcial, o EXTRATO e
+      o ORIGEM-DESTINO trazem todo o movimento da conta no período, inclusive os dias em que o investigado ainda não
+      era cotitular ou já tinha saído: é movimento de conta de terceiro sem sigilo afastado nesses dias. A parte
+      sem start_date (registro antigo) entra sempre; não se consulta a abertura da conta (opening_date), e a
+      conferência avisa o cotitular sem o início do vínculo (TITULARES, campo 20). Nas bordas, o Reporter fecha o
+      período no fuso configurado dele e o CRM grava a data do vínculo à meia-noite UTC: num fuso atrás de UTC, a
+      cotitularidade que termina no primeiro dia do período fica fora, e a que começa no dia seguinte ao fim entra.

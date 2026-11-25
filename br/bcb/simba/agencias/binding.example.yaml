@@ -1,0 +1,365 @@
+# Binding do SIMBA AGENCIAS — QUEM PREENCHE E O CLIENTE.
+#
+# Exemplo preenchido contra o Midaz e o CRM do Midaz (`plugin_crm`). As contas do
+# caso saem de `contas_do_caso` (as que o investigado titula) e de `contas_cotitular`
+# (as em que ele e cotitular), as mesmas consultas (mesmo texto) nos bindings de
+# CONTAS, TITULARES, EXTRATO e ORIGEM-DESTINO: trocar de onde vem o conjunto de
+# contas do caso e trocar SO essas duas consultas. As demais leem os ids das duas.
+#
+# O CADASTRO DE AGENCIAS E DO TENANT. Agencia nao e entidade no Midaz nem no CRM:
+# o CRM guarda so o numero (`banking_details.branch`, texto livre). Cada atributo
+# da agencia e um `case` por esse numero, preenchido UMA vez na implantacao. O
+# cadastro e fechado: agencia que um `case` nao lista recusa a geracao, e toda
+# agencia listada tem todos os atributos (o motor nao aceita valor vazio num
+# `case`). Os valores abaixo sao SINTETICOS: "0001" e a agencia sem agencia
+# fisica, cadastrada com as sentinelas do Anexo I, e "0002" uma agencia fisica
+# ficticia. Agencia aberta: fechamento 9999-12-31, que sai 31129999, a sentinela da IN para
+# agencia nao fechada (IN BCB 636/2025, Anexo I, AGENCIAS campo 11).
+# O mesmo cadastro vai no binding do CONTAS (numero da agencia em 5 digitos).
+#
+# Campo 14 (se a instituicao possui agencia fisica, 1 ou 2) e da INSTITUICAO:
+# `possuiAgenciaFisica` em `instituicao`. Com 2, o template escreve as
+# sentinelas do Anexo I em toda linha, qualquer que seja o cadastro.
+#
+# Filtro encadeado `{query, column}`: grafia provisoria do motor; se
+# mudar, e `sed` nos bindings.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.simba.agencias
+contractVersion: 1.1.0
+
+queries:
+  - name: declarante
+    description: A organização do Midaz, que é a instituição que responde ao caso. O CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    filters:
+      - field: deleted_at
+        operator: isNull
+
+  # As contas do caso: as que o documento investigado TITULA (contas_do_caso) e as em que
+  # ele e cotitular (contas_cotitular). Representante e procurador nao entram. Excluida do
+  # CRM fica fora; encerrada entra. Toda consulta que le as contas do caso le as duas.
+  - name: contas_do_caso
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: document, operator: in, values: [{parameter: documentos}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
+
+  # As contas em que o documento investigado e cotitular no periodo: a parte do instrumento
+  # com o documento da ordem e o papel PRIMARY_HOLDER, cuja cotitularidade cruza o periodo
+  # pedido em pelo menos um dia (start_date ate o fim, e end_date ausente ou a partir do
+  # inicio). O filtro do documento pergunta pelo digest das partes
+  # (search.related_party_documents) e o Reporter confere, parte a parte, o documento
+  # decifrado; papel e datas sao conferidos na mesma parte, depois do expand. Representante
+  # (LEGAL_REPRESENTATIVE) e RESPONSIBLE_PARTY nao entram.
+  # O motor nao executa anyOf, entao cada combinacao e uma consulta e a contas_cotitular e a
+  # uniao delas: vinculo aberto (sem end_date) ou encerrado no periodo, com start_date ate o
+  # fim ou ausente (registro antigo: entra sempre; opening_date nao e consultada).
+  - name: cotitular_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: contas_cotitular
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: cotitular_aberto, column: account_id}, {query: cotitular_encerrado, column: account_id}, {query: cotitular_sem_inicio_aberto, column: account_id}, {query: cotitular_sem_inicio_encerrado, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document]
+
+  # A agencia de cada conta do caso, com o cadastro do tenant.
+  - name: agencias_caso
+    description: As contas do caso, lidas de novo para levar o cadastro da agência de cada uma.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: nome_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "nao possui agencia fisica"}
+            "0002": {constant: "AGENCIA EXEMPLO"}
+          otherwise: refuse
+      - as: endereco_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "nao possui agencia fisica"}
+            "0002": {constant: "RUA EXEMPLO, 100, SALA 1"}
+          otherwise: refuse
+      - as: codigo_cidade
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "0000000"}
+            "0002": {constant: "3550308"}
+          otherwise: refuse
+      - as: codigo_uf
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00"}
+            "0002": {constant: "35"}
+          otherwise: refuse
+      - as: pais_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "Brasil"}
+            "0002": {constant: "Brasil"}
+          otherwise: refuse
+      - as: cep_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00000000"}
+            "0002": {constant: "01000000"}
+          otherwise: refuse
+      - as: telefone_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "0000000000"}
+            "0002": {constant: "1100000000"}
+          otherwise: refuse
+      - as: data_abertura_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "2020-01-01"}
+            "0002": {constant: "2020-01-01"}
+          otherwise: refuse
+      - as: data_fechamento_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "9999-12-31"}
+            "0002": {constant: "9999-12-31"}
+          otherwise: refuse
+
+  # Os lancamentos das contas do caso no periodo do afastamento, para achar as
+  # outras pernas (contas com que elas transacionaram, IN art. 2o, I, :27).
+  - name: lancamentos
+    description: Lançamentos das contas do caso no período, só a transação de cada um.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    select: [transaction_id, account_id]
+
+  # Toda perna das mesmas transacoes. Inclui a propria conta do caso (o motor nao
+  # tem `nin` com valores de consulta): o template nao repete agencia ja escrita.
+  - name: outras_pernas
+    description: As pernas das transações dos lançamentos do caso.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: transaction_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  # A agencia de cada conta das outras pernas que esta no CRM. Conta de sistema
+  # ou de liquidacao (sem instrumento no CRM) nao e conta de cliente e nao entra.
+  - name: agencias_contraparte
+    description: As contas das outras pernas que têm instrumento no CRM, com o cadastro da agência.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: outras_pernas, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: nome_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "nao possui agencia fisica"}
+            "0002": {constant: "AGENCIA EXEMPLO"}
+          otherwise: refuse
+      - as: endereco_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "nao possui agencia fisica"}
+            "0002": {constant: "RUA EXEMPLO, 100, SALA 1"}
+          otherwise: refuse
+      - as: codigo_cidade
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "0000000"}
+            "0002": {constant: "3550308"}
+          otherwise: refuse
+      - as: codigo_uf
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00"}
+            "0002": {constant: "35"}
+          otherwise: refuse
+      - as: pais_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "Brasil"}
+            "0002": {constant: "Brasil"}
+          otherwise: refuse
+      - as: cep_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00000000"}
+            "0002": {constant: "01000000"}
+          otherwise: refuse
+      - as: telefone_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "0000000000"}
+            "0002": {constant: "1100000000"}
+          otherwise: refuse
+      - as: data_abertura_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "2020-01-01"}
+            "0002": {constant: "2020-01-01"}
+          otherwise: refuse
+      - as: data_fechamento_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "9999-12-31"}
+            "0002": {constant: "9999-12-31"}
+          otherwise: refuse
+
+datasets:
+  instituicao:
+    from:
+      query: declarante
+    fields:
+      cnpj:
+        from: query
+        column: legal_document
+      compe:
+        from: manual
+        pendingReason: "o código Compe da instituição, com 3 dígitos; 999 se ela não tem código Compe"
+      nomeUnicad:
+        from: manual
+        pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
+      possuiAgenciaFisica:
+        from: manual
+        pendingReason: "1 se a instituição tem agência física, 2 se não tem (campo 14)"
+
+  agencias_do_caso:
+    from:
+      query: agencias_caso
+    fields:
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      nomeAgencia: {from: query, column: nome_agencia}
+      endereco: {from: query, column: endereco_agencia}
+      codigoCidade: {from: query, column: codigo_cidade}
+      codigoUf: {from: query, column: codigo_uf}
+      pais: {from: query, column: pais_agencia}
+      cep: {from: query, column: cep_agencia}
+      telefone: {from: query, column: telefone_agencia}
+      dataAbertura: {from: query, column: data_abertura_agencia}
+      dataFechamento: {from: query, column: data_fechamento_agencia}
+
+  agencias_contraparte:
+    from:
+      query: agencias_contraparte
+    fields:
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      nomeAgencia: {from: query, column: nome_agencia}
+      endereco: {from: query, column: endereco_agencia}
+      codigoCidade: {from: query, column: codigo_cidade}
+      codigoUf: {from: query, column: codigo_uf}
+      pais: {from: query, column: pais_agencia}
+      cep: {from: query, column: cep_agencia}
+      telefone: {from: query, column: telefone_agencia}
+      dataAbertura: {from: query, column: data_abertura_agencia}
+      dataFechamento: {from: query, column: data_fechamento_agencia}
+
+manualOverrides: []

@@ -1,0 +1,14 @@
+[
+  {
+    "referencia": "A19",
+    "ispb": "11222333",
+    "agencia": "1",
+    "conta": "7654",
+    "digito": "3",
+    "documento": "98765432100",
+    "nome": "Cliente Da Casa",
+    "tipoConta": "1",
+    "tipoChave": "-",
+    "chave": "chave.fora@example.com"
+  }
+]

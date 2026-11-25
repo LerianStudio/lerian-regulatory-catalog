@@ -1,0 +1,443 @@
+# Binding do SIMBA CONTAS — QUEM PREENCHE E O CLIENTE.
+#
+# Exemplo preenchido contra o Midaz (`midaz_onboarding`, `midaz_transaction`) e o
+# CRM do Midaz (`plugin_crm`). As contas do caso saem de `contas_do_caso` (as que o
+# investigado titula) e de `contas_cotitular` (as em que ele e cotitular), as mesmas
+# consultas (mesmo texto) nos bindings de AGENCIAS, TITULARES, EXTRATO e
+# ORIGEM-DESTINO: trocar de onde vem o conjunto de contas do caso e trocar SO essas
+# duas consultas. As demais leem os ids das duas.
+#
+# O NUMERO DA AGENCIA (5 digitos; 00001 sem agencia fisica) sai do cadastro de
+# agencias do tenant, o MESMO `case` do binding do AGENCIAS (valores SINTETICOS
+# aqui: "0001" digital, "0002" fisica ficticia). Agencia fora do cadastro recusa.
+#
+# O TIPO DA CONTA vem de `regulatory_fields.account_type` do CRM, cujos valores o
+# proprio Midaz documenta com os codigos da IN (midaz pkg/mmodel/instrument.go:19).
+# Conta sem tipo, ou com outro, recusa a geracao: preencha o tipo no CRM.
+#
+# SALDOS (campos 10 e 11): soma, com sinal, dos lancamentos que movem saldo em BRL,
+# inclusive a chave de sistema overdraft (a parte do saque tirada do cheque especial e
+# a parte do credito que o paga), sem reservas e liberacoes, ate o inicio do primeiro dia (`lt` o dia
+# `inicio`) e ate o fim do ultimo (`lt` o fim de `fim`). Credito soma, debito
+# subtrai; outra direcao recusa a geracao (como no Cadoc 4010).
+#
+# DATAS DO CRM GRAVADAS COMO INSTANTE (`civilDate: true`): o CRM do Midaz guarda
+# o encerramento da conta (`banking_details.closing_date`) como data e hora a
+# meia-noite UTC (um documento nao tem tipo de dia). Sem a marca, o motor corta o instante no fuso do documento e o
+# dia sai um antes. Com `civilDate: true` o binding le o dia UTC; um instante fora
+# da meia-noite recusa a geracao. A chave exige o Reporter que a conhece.
+#
+# Filtro encadeado `{query, column}`: grafia provisoria do motor; se
+# mudar, e `sed` nos bindings.
+
+apiVersion: reporter.lerian.io/v1alpha1
+kind: DocumentBinding
+
+contract: br.bcb.simba.contas
+contractVersion: 1.1.0
+
+queries:
+  - name: declarante
+    description: A organização do Midaz, que é a instituição que responde ao caso. O CNPJ dela é o do arquivo.
+    dataSource: midaz_onboarding
+    table: organization
+    filters:
+      - field: deleted_at
+        operator: isNull
+
+  # As contas do caso: as que o documento investigado TITULA (contas_do_caso) e as em que
+  # ele e cotitular (contas_cotitular). Representante e procurador nao entram. Excluida do
+  # CRM fica fora; encerrada entra. Toda consulta que le as contas do caso le as duas.
+  - name: contas_do_caso
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: document, operator: in, values: [{parameter: documentos}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
+
+  # As contas em que o documento investigado e cotitular no periodo: a parte do instrumento
+  # com o documento da ordem e o papel PRIMARY_HOLDER, cuja cotitularidade cruza o periodo
+  # pedido em pelo menos um dia (start_date ate o fim, e end_date ausente ou a partir do
+  # inicio). O filtro do documento pergunta pelo digest das partes
+  # (search.related_party_documents) e o Reporter confere, parte a parte, o documento
+  # decifrado; papel e datas sao conferidos na mesma parte, depois do expand. Representante
+  # (LEGAL_REPRESENTATIVE) e RESPONSIBLE_PARTY nao entram.
+  # O motor nao executa anyOf, entao cada combinacao e uma consulta e a contas_cotitular e a
+  # uniao delas: vinculo aberto (sem end_date) ou encerrado no periodo, com start_date ate o
+  # fim ou ausente (registro antigo: entra sempre; opening_date nao e consultada).
+  - name: cotitular_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: contas_cotitular
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: cotitular_aberto, column: account_id}, {query: cotitular_encerrado, column: account_id}, {query: cotitular_sem_inicio_aberto, column: account_id}, {query: cotitular_sem_inicio_encerrado, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document]
+
+  - name: contas_investigadas_dados
+    description: As contas do caso, com agência, tipo, saldos e o volume do período.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+    # Quem junta outra consulta diz o que entrega: o motor recusa o junte de consulta aberta.
+    # O junte de consulta traz tambem a coluna pela qual a parceira agrupa, com o nome
+    # dela: duas parceiras agrupadas por `account_id` dariam dois valores a um nome.
+    # So a primeira agrupa por `account_id`; as outras agrupam por uma copia dele com
+    # nome proprio (`conta_saldo_final`, `conta_movimento`).
+    select: [account_id, banking_details.account, banking_details.opening_date, banking_details.closing_date, numero_agencia, tipo_conta]
+    join:
+      - query: saldo_inicial_caso
+        match: {account_id: account_id}
+      - query: saldo_final_caso
+        match: {account_id: conta_saldo_final}
+      - query: movimento_caso
+        match: {account_id: conta_movimento}
+
+  - name: saldo_inicial_caso
+    description: Saldo de cada conta do caso antes do primeiro dia do afastamento.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: lt, values: [{parameter: inicio}]}
+    compute:
+      - as: valor_no_razao
+        case:
+          column: direction
+          when:
+            credit: {column: amount}
+            debit: {negate: amount}
+          otherwise: refuse
+    aggregate:
+      groupBy: [account_id]
+      measures:
+        - as: saldo_inicial
+          fn: sum
+          of: valor_no_razao
+
+  - name: saldo_final_caso
+    description: Saldo de cada conta do caso no fim do último dia do afastamento.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    compute:
+      - as: valor_no_razao
+        case:
+          column: direction
+          when:
+            credit: {column: amount}
+            debit: {negate: amount}
+          otherwise: refuse
+      # A conta do lancamento sob outro nome (o filtro ja fixa BRL), para o junte.
+      - as: conta_saldo_final
+        case:
+          column: asset_code
+          when:
+            BRL: {column: account_id}
+          otherwise: refuse
+    aggregate:
+      groupBy: [conta_saldo_final]
+      measures:
+        - as: saldo_final
+          fn: sum
+          of: valor_no_razao
+
+  # Campo 7: houve lancamento da conta no periodo? A soma dos valores (sempre
+  # positiva) so existe se houve; sem lancamento a conta nao tem linha aqui.
+  - name: movimento_caso
+    description: Volume dos lançamentos de cada conta do caso no período.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    compute:
+      - as: valor_absoluto
+        case:
+          column: direction
+          when:
+            credit: {column: amount}
+            debit: {column: amount}
+          otherwise: refuse
+      # A conta do lancamento sob outro nome (o filtro ja fixa BRL), para o junte.
+      - as: conta_movimento
+        case:
+          column: asset_code
+          when:
+            BRL: {column: account_id}
+          otherwise: refuse
+    aggregate:
+      groupBy: [conta_movimento]
+      measures:
+        - as: volume_periodo
+          fn: sum
+          of: valor_absoluto
+
+  # Contas com que as do caso transacionaram no periodo (IN art. 2o, II, :29;
+  # campo 7 = 3): as outras pernas das transacoes dos lancamentos do caso.
+  - name: lancamentos
+    description: Lançamentos das contas do caso no período, só a transação de cada um.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    select: [transaction_id, account_id]
+
+  # Toda perna das mesmas transacoes, inclusive a propria conta do caso (o motor
+  # nao tem `nin` com valores de consulta): o template nao a repete.
+  - name: outras_pernas
+    description: As pernas das transações dos lançamentos do caso.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: transaction_id, operator: in, values: [{query: lancamentos, column: transaction_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  # So as outras pernas que sao conta de cliente no CRM. Conta de sistema ou de
+  # liquidacao, sem instrumento, nao entra.
+  - name: contas_contraparte
+    description: Os ids das contas das outras pernas que têm instrumento no CRM.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: outras_pernas, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: contas_contraparte_dados
+    description: As contas das outras pernas, com agência, tipo e saldos.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    compute:
+      - as: numero_agencia
+        case:
+          column: banking_details.branch
+          when:
+            "0001": {constant: "00001"}
+            "0002": {constant: "00002"}
+          otherwise: refuse
+      - as: tipo_conta
+        case:
+          column: regulatory_fields.account_type
+          when:
+            DEPOSIT: {constant: "1"}
+            SAVINGS: {constant: "2"}
+            INVESTMENT: {constant: "3"}
+            OTHER_FINANCIAL_INVESTMENTS: {constant: "4"}
+            NON_RESIDENT: {constant: "5"}
+            PAYMENT: {constant: "6"}
+          otherwise: refuse
+    # Quem junta outra consulta diz o que entrega: o motor recusa o junte de consulta aberta.
+    # A segunda parceira agrupa por uma copia de `account_id` com nome proprio, como
+    # em `contas_investigadas_dados`.
+    select: [account_id, banking_details.account, banking_details.opening_date, banking_details.closing_date, numero_agencia, tipo_conta]
+    join:
+      - query: saldo_inicial_contraparte
+        match: {account_id: account_id}
+      - query: saldo_final_contraparte
+        match: {account_id: conta_saldo_final}
+
+  - name: saldo_inicial_contraparte
+    description: Saldo de cada conta das outras pernas antes do primeiro dia do afastamento.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: lt, values: [{parameter: inicio}]}
+    compute:
+      - as: valor_no_razao
+        case:
+          column: direction
+          when:
+            credit: {column: amount}
+            debit: {negate: amount}
+          otherwise: refuse
+    aggregate:
+      groupBy: [account_id]
+      measures:
+        - as: saldo_inicial
+          fn: sum
+          of: valor_no_razao
+
+  - name: saldo_final_contraparte
+    description: Saldo de cada conta das outras pernas no fim do último dia do afastamento.
+    dataSource: midaz_transaction
+    table: operation
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
+      - {field: balance_affected, operator: eq, values: ["true"]}
+      - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
+      - {field: asset_code, operator: eq, values: ["BRL"]}
+      - {field: deleted_at, operator: isNull}
+      - {field: created_at, operator: lt, values: [{parameter: fim, at: end}]}
+    compute:
+      - as: valor_no_razao
+        case:
+          column: direction
+          when:
+            credit: {column: amount}
+            debit: {negate: amount}
+          otherwise: refuse
+      # A conta do lancamento sob outro nome (o filtro ja fixa BRL), para o junte.
+      - as: conta_saldo_final
+        case:
+          column: asset_code
+          when:
+            BRL: {column: account_id}
+          otherwise: refuse
+    aggregate:
+      groupBy: [conta_saldo_final]
+      measures:
+        - as: saldo_final
+          fn: sum
+          of: valor_no_razao
+
+datasets:
+  instituicao:
+    from:
+      query: declarante
+    fields:
+      cnpj:
+        from: query
+        column: legal_document
+      compe:
+        from: manual
+        pendingReason: "o código Compe da instituição, com 3 dígitos; 999 se ela não tem código Compe"
+      nomeUnicad:
+        from: manual
+        pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
+
+  contas_investigadas:
+    from:
+      query: contas_investigadas_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      dataAbertura: {from: query, column: banking_details.opening_date}
+      dataEncerramento: {from: query, column: banking_details.closing_date, civilDate: true}
+      saldoInicial: {from: query, column: saldo_inicial}
+      saldoFinal: {from: query, column: saldo_final}
+      volumePeriodo: {from: query, column: volume_periodo}
+
+  contas_contraparte:
+    from:
+      query: contas_contraparte_dados
+    fields:
+      contaId: {from: query, column: account_id}
+      numeroAgencia: {from: query, column: numero_agencia}
+      numeroConta: {from: query, column: banking_details.account}
+      tipoConta: {from: query, column: tipo_conta}
+      dataAbertura: {from: query, column: banking_details.opening_date}
+      dataEncerramento: {from: query, column: banking_details.closing_date, civilDate: true}
+      saldoInicial: {from: query, column: saldo_inicial}
+      saldoFinal: {from: query, column: saldo_final}
+
+manualOverrides: []

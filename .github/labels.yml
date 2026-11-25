@@ -15,6 +15,10 @@
   color: "5319e7"
   description: Cadoc 4111 — Saldos Contábeis Diários
 
+- name: simba
+  color: "006b75"
+  description: SIMBA — Respostas de afastamento de sigilo bancário
+
 - name: cosif
   color: "c5def5"
   description: COSIF chart of accounts (regulator source)

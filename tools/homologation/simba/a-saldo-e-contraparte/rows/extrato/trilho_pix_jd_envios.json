@@ -1,0 +1,20 @@
+[
+  {
+    "referencia": "A29",
+    "txid": "",
+    "tipoChave": "2",
+    "chave": "+5511988887777"
+  },
+  {
+    "referencia": "A30",
+    "txid": "",
+    "tipoChave": "3",
+    "chave": "pagamentos@empresa.example"
+  },
+  {
+    "referencia": "A31",
+    "txid": "",
+    "tipoChave": "4",
+    "chave": "123e4567-e89b-12d3-a456-426614174000"
+  }
+]
