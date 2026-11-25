@@ -33,9 +33,9 @@ metadata:
   family: simba
   title: SIMBA — Extrato
   summary: >-
-    Lancamentos das contas investigadas no periodo do afastamento do sigilo, com valor,
-    natureza, saldo apos o lancamento e o codigo do tipo de lancamento do Anexo II.
-  version: 1.0.2
+    Lançamentos das contas investigadas no período do afastamento do sigilo, com valor,
+    natureza, saldo após o lançamento e o código do tipo de lançamento do Anexo II.
+  version: 1.2.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -53,21 +53,21 @@ parameters:
     type: string
     required: true
     pattern: '^[0-9]{3}-[A-Z]{2,6}-[0-9]{6}-[0-9]{2}$'
-    description: Numero do caso SIMBA, como esta na ordem.
+    description: Número do caso SIMBA, como está na ordem.
   - name: documentos
     type: string
     multiple: true
     required: true
     description: >-
-      CPFs e CNPJs da ordem, somente digitos, sem pontos, tracos ou barras: o documento formatado nao encontra
+      CPFs e CNPJs da ordem, somente dígitos, sem pontos, traços ou barras: o documento formatado não encontra
       contas, e o caso sai como resposta vazia para ele, sem erro.
   - name: contas
     type: string
     multiple: true
     required: false
     description: >-
-      Numeros de conta da ordem, com DV, so digitos. Preencher so quando o oficio restringir a contas especificas; o
-      normal e nao preencher (ausente, todas as contas dos documentos). Preencher sem a ordem pedir omite contas do
+      Números de conta da ordem, com DV, só dígitos. Preencher só quando o ofício restringir a contas específicas; o
+      normal é não preencher (ausente, todas as contas dos documentos). Preencher sem a ordem pedir omite contas do
       investigado.
   - name: inicio
     type: date
@@ -78,7 +78,7 @@ parameters:
     closed: true
     required: true
     notBefore: inicio
-    description: Ultimo dia do afastamento do sigilo.
+    description: Último dia do afastamento do sigilo.
 
 filing:
   period: [caso]
@@ -95,14 +95,14 @@ datasets:
   # Os campos 2, 15, 16 e 17 sao da instituicao e se repetem em toda linha (IN :171,
   # :184, :185, :186).
   - name: instituicao
-    description: A instituicao que responde ao caso, uma linha.
+    description: A instituição que responde ao caso, uma linha.
     grain: singleton
     fields:
       - name: compe
         type: string
         required: true
         pattern: '^[0-9]{3}$'
-        description: Codigo Compe da instituicao, ou 999 quando ela nao tem (campo 2, IN :171).
+        description: Código Compe da instituição, ou 999 quando ela não tem (IN 636, Anexo I, EXTRATO, campo 2).
       - name: cnpj
         type: string
         length: 14
@@ -110,23 +110,23 @@ datasets:
         normalize: alphanumeric
         identifiesInstitution: true
         pattern: '^[0-9A-Z]{14}$'
-        description: CNPJ da instituicao (campo 15, IN :184).
+        description: CNPJ da instituição (IN 636, Anexo I, EXTRATO, campo 15).
       - name: nomeUnicad
         type: string
         required: true
         pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: Nome da instituicao como esta no Unicad (campo 16, IN :185). O template o corta em 50 posicoes.
+        description: Nome da instituição como está no Unicad (IN 636, Anexo I, EXTRATO, campo 16). O template o corta em 50 posições.
       - name: interfaceTransacao
         type: string
         required: true
         domain: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-        description: Canal das transacoes no codigo da IN (campo 17, IN :186). Nenhuma aplicacao Lerian registra o canal por lancamento; o cliente declara um so.
+        description: Canal das transações no código da IN (IN 636, Anexo I, EXTRATO, campo 17). Nenhuma aplicação Lerian registra o canal por lançamento; o cliente declara um só.
 
   # O CONJUNTO QUE O ORIGEM-DESTINO TAMBEM LE, igual nos dois contratos: o numero do
   # lancamento e a posicao dele aqui. A consulta que o entrega agrupa por
   # (transacao, operacao, ...), o que fixa a ordem das linhas; cada operacao e um grupo.
   - name: lancamentos
-    description: Os lancamentos das contas do caso no periodo, um por operacao, na ordem da consulta.
+    description: Os lançamentos das contas do caso no período, um por operação, na ordem da consulta.
     grain: [transacaoId, operacaoId]
     consolidation:
       key: [transacaoId, operacaoId]
@@ -141,98 +141,98 @@ datasets:
       - name: operacaoId
         type: string
         required: true
-        description: A operacao do Midaz. Nao vai ao arquivo; identifica a linha e a perna de tarifa.
+        description: A operação do Midaz. Não vai ao arquivo; identifica a linha e a perna de tarifa.
       - name: transacaoId
         type: string
         required: true
-        description: A transacao do Midaz. Nao vai ao arquivo; liga o estorno, a metadata e a sessao (campo 27).
+        description: A transação do Midaz. Não vai ao arquivo; liga o estorno, a metadata e a sessão (campo 27).
       - name: contaId
         type: string
         required: true
-        description: A conta do Midaz do lancamento. Nao vai ao arquivo.
+        description: A conta do Midaz do lançamento. Não vai ao arquivo.
       - name: numeroAgencia
         type: string
         required: true
         pattern: '^[0-9]{5}$'
-        description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 3, IN :172).
+        description: Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, EXTRATO, campo 3).
       - name: numeroConta
         type: string
         required: true
         pattern: '^[^\t\r\n]{1,20}$'
-        description: Numero da conta com o digito verificador, como o CRM o guarda (campo 4, IN :173).
+        description: Número da conta com o dígito verificador, como o CRM o guarda (IN 636, Anexo I, EXTRATO, campo 4).
       - name: tipoConta
         type: string
         required: true
         domain: ["1", "2", "3", "4", "5", "6"]
-        description: Tipo da conta no codigo da IN (campo 5, IN :174).
+        description: Tipo da conta no código da IN (IN 636, Anexo I, EXTRATO, campo 5).
       - name: dataLancamento
         type: date
         required: true
-        description: Data do lancamento, no dia civil de Brasilia (campo 6, IN :175).
+        description: Data do lançamento, no dia civil de Brasília (IN 636, Anexo I, EXTRATO, campo 6).
       - name: horaLancamento
         type: string
         required: true
         pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|\+00:00)$'
         description: >-
-          O instante do lancamento em UTC; o template escreve hhmmss (campo 23, IN :192; IN art. 3o VI, :69).
-          Instante em outro fuso recusa a geracao, em vez de sair a hora local.
+          O instante do lançamento em UTC; o template escreve hhmmss (IN 636, Anexo I, EXTRATO, campo 23;
+          IN 636, art. 3º, VI). Instante em outro fuso recusa a geração, em vez de sair a hora local.
       - name: descricao
         type: string
         required: false
-        description: Descricao da operacao no Midaz (campo 8, IN :177). O template corta em 100 posicoes.
+        description: Descrição da operação no Midaz (IN 636, Anexo I, EXTRATO, campo 8). O template corta em 100 posições.
       - name: descricaoTransacao
         type: string
         required: false
-        description: Descricao da transacao no Midaz, usada quando a da operacao vem vazia (campo 8).
+        description: Descrição da transação no Midaz, usada quando a da operação vem vazia (campo 8).
       - name: valor
         type: decimal
         required: true
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Valor do lancamento em reais, sem sinal (campo 10, IN :179). O template escreve centavos.
+        description: Valor do lançamento em reais, sem sinal (IN 636, Anexo I, EXTRATO, campo 10). O template escreve centavos.
       - name: natureza
         type: string
         required: true
         domain: ["C", "D"]
-        description: Natureza do lancamento, C credito ou D debito (campo 11, IN :180).
+        description: Natureza do lançamento, C crédito ou D débito (IN 636, Anexo I, EXTRATO, campo 11).
       - name: naturezaOposta
         type: string
         required: true
         domain: ["C", "D"]
-        description: A natureza da outra perna (D para um credito, C para um debito). So o ORIGEM-DESTINO a le.
+        description: A natureza da outra perna (D para um crédito, C para um débito). Só o ORIGEM-DESTINO a lê.
       - name: tipoOperacao
         type: string
         required: true
         description: >-
-          O tipo da operacao no Midaz (operation.type): DEBIT, CREDIT, OVERDRAFT (a parcela do cheque especial), BLOCK e
-          UNBLOCK (bloqueio e desbloqueio judicial) ou, na cobranca de divida de tarifa, FEE_SETTLEMENT e FEE_REFUND, que o
-          motor grava sem feeLeg e sao perna de tarifa.
+          O tipo da operação no Midaz (operation.type): DEBIT, CREDIT, OVERDRAFT (a parcela do cheque especial), BLOCK e
+          UNBLOCK (bloqueio e desbloqueio judicial) ou, na cobrança de dívida de tarifa, FEE_SETTLEMENT e FEE_REFUND, que o
+          motor grava sem feeLeg e são perna de tarifa.
       - name: saldoApos
         type: decimal
         required: true
         description: >-
-          Saldo disponivel da conta apos o lancamento, como o Midaz o gravou (nunca abaixo de zero). Com o bloqueado
-          e o cheque especial usado, da o saldo da conta dos campos 12 e 13 (IN :181-182). Sem `format`: o template
-          faz conta com ele, e o valor formatado chega cercado para impressao, nao para conta.
+          Saldo disponível da conta após o lançamento, como o Midaz o gravou (nunca abaixo de zero). Com o bloqueado
+          e o cheque especial usado, dá o saldo da conta dos campos 12 e 13 (IN 636, Anexo I, EXTRATO). Sem `format`:
+          o template faz conta com ele, e o valor formatado chega cercado para impressão, não para conta.
       - name: chaveSaldo
         type: string
         required: false
         description: >-
-          A chave de saldo da operacao. Na chave overdraft (a parte de um saque tirada do cheque especial, ou a parte
-          de um credito que o paga), o saldo disponivel gravado e a divida, e o saldo da conta e menos ela.
+          A chave de saldo da operação. Na chave overdraft (a parte de um saque tirada do cheque especial, ou a parte
+          de um crédito que o paga), o saldo disponível gravado é a dívida, e o saldo da conta é menos ela.
       - name: bloqueadoApos
         type: decimal
         required: true
-        description: Saldo bloqueado da conta apos o lancamento (on_hold), somado ao disponivel no campo 12.
+        description: Saldo bloqueado da conta após o lançamento (on_hold), somado ao disponível no campo 12.
       - name: chequeEspecialApos
         type: decimal
         required: false
         description: >-
-          Cheque especial usado apos o lancamento, do snapshot da operacao; subtraido no campo 12. Ausente em
-          operacao gravada antes de o Midaz guardar o snapshot: conta 0, e a conferencia lista o lancamento.
+          Cheque especial usado após o lançamento, do snapshot da operação; subtraído no campo 12. Ausente em
+          operação gravada antes de o Midaz guardar o snapshot: conta 0, e a conferência lista o lançamento.
       - name: rail
         type: string
         required: false
-        description: Trilho gravado pelo plugin na metadata da transacao (TED, PIX, INTERNAL). Decide o campo 9.
+        description: Trilho gravado pelo plugin na metadata da transação (TED, PIX, INTERNAL). Decide o campo 9.
       - name: fluxo
         type: string
         required: false
@@ -240,11 +240,11 @@ datasets:
       - name: direcao
         type: string
         required: false
-        description: Direcao gravada pelo plugin em relacao a conta do cliente (IN, OUT). Vazia, vale a natureza.
+        description: Direção gravada pelo plugin em relação à conta do cliente (IN, OUT). Vazia, vale a natureza.
       - name: agregado
         type: string
         required: false
-        description: Id do registro do plugin TED ou Pix JD que a transacao liquida. Liga a contraparte do ORIGEM-DESTINO.
+        description: Id do registro do plugin TED ou Pix JD que a transação liquida. Liga a contraparte do ORIGEM-DESTINO.
       - name: tipoPagamento
         type: string
         required: false
@@ -270,16 +270,16 @@ datasets:
       - name: devolucao
         type: string
         required: false
-        description: refund_id da devolucao do Pix lerian.
+        description: refund_id da devolução do Pix lerian.
       - name: e2eOriginal
         type: string
         required: false
-        description: original_end_to_end_id da devolucao do Pix lerian.
+        description: original_end_to_end_id da devolução do Pix lerian.
 
   # Transacoes que sao revert de outra no Midaz (parent_transaction_id): o campo 9
   # sai 140 no debito e 264 no credito, antes de qualquer outra regra.
   - name: estornos
-    description: As transacoes dos lancamentos que estornam outra transacao.
+    description: As transações dos lançamentos que estornam outra transação.
     grain: [transacaoId]
     consolidation:
       key: [transacaoId]
@@ -289,12 +289,12 @@ datasets:
       - name: transacaoId
         type: string
         required: true
-        description: A transacao de estorno. Nao vai ao arquivo.
+        description: A transação de estorno. Não vai ao arquivo.
 
   # Operacoes que o motor de tarifas do Midaz marcou com feeLeg = "true": o campo 9
   # sai 105 (tarifas), depois da regra do estorno.
   - name: taxas
-    description: As operacoes dos lancamentos que sao a perna de tarifa de uma transacao.
+    description: As operações dos lançamentos que são a perna de tarifa de uma transação.
     grain: [operacaoId]
     consolidation:
       key: [operacaoId]
@@ -304,7 +304,7 @@ datasets:
       - name: operacaoId
         type: string
         required: true
-        description: A operacao de tarifa. Nao vai ao arquivo.
+        description: A operação de tarifa. Não vai ao arquivo.
 
   # O TxId do Pix (campo 26) pela linha do plugin que liquidou o Pix, a mesma que o
   # ORIGEM-DESTINO le (campo 28): um conjunto por plugin e sentido. A referencia e o E2E
@@ -315,17 +315,32 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {txid: first}
+      columns: {txid: first, tipoChave: first, chave: first}
     fields:
       - name: referencia
         type: string
         required: true
-        description: O E2E do Pix. Nao vai ao arquivo.
+        description: O E2E do Pix. Não vai ao arquivo.
       - name: txid
         type: string
         required: false
         pattern: '^[^\t\r\n]{1,35}$'
-        description: TxId do Pix (TransactionIdentification, campo 26, IN :195). Sem ele, o campo sai em branco.
+        description: TxId do Pix (TransactionIdentification; IN 636, Anexo I, EXTRATO, campo 26). Sem ele, o campo sai em branco.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix usada no envio no código da IN (IN 636, Anexo I, EXTRATO, campo 24): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix usada no envio como o DICT a registra (IN 636, Anexo I, EXTRATO, campo 25); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
 
   - name: trilho_pix_lerian_recebimentos
     description: Os Pix recebidos pelo Pix lerian.
@@ -338,12 +353,12 @@ datasets:
       - name: referencia
         type: string
         required: true
-        description: O E2E do Pix. Nao vai ao arquivo.
+        description: O E2E do Pix. Não vai ao arquivo.
       - name: txid
         type: string
         required: false
         pattern: '^[^\t\r\n]{1,35}$'
-        description: TxId do Pix (TransactionIdentification, campo 26, IN :195). Sem ele, o campo sai em branco.
+        description: TxId do Pix (TransactionIdentification; IN 636, Anexo I, EXTRATO, campo 26). Sem ele, o campo sai em branco.
 
   - name: trilho_pix_jd_envios
     description: Os Pix enviados pelo Pix JD.
@@ -351,17 +366,32 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {txid: first}
+      columns: {txid: first, tipoChave: first, chave: first}
     fields:
       - name: referencia
         type: string
         required: true
-        description: O id da linha no Pix JD. Nao vai ao arquivo.
+        description: O id da linha no Pix JD. Não vai ao arquivo.
       - name: txid
         type: string
         required: false
         pattern: '^[^\t\r\n]{1,35}$'
-        description: TxId do Pix (TransactionIdentification, campo 26, IN :195). Sem ele, o campo sai em branco.
+        description: TxId do Pix (TransactionIdentification; IN 636, Anexo I, EXTRATO, campo 26). Sem ele, o campo sai em branco.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix usada no envio no código da IN (IN 636, Anexo I, EXTRATO, campo 24): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix usada no envio como o DICT a registra (IN 636, Anexo I, EXTRATO, campo 25); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
 
   - name: trilho_pix_jd_recebimentos
     description: Os Pix recebidos pelo Pix JD.
@@ -369,65 +399,94 @@ datasets:
     consolidation:
       key: [referencia]
       whenKeyRepeats: refuse
-      columns: {txid: first}
+      columns: {txid: first, tipoChave: first, chave: first}
     fields:
       - name: referencia
         type: string
         required: true
-        description: O id da linha no Pix JD. Nao vai ao arquivo.
+        description: O id da linha no Pix JD. Não vai ao arquivo.
       - name: txid
         type: string
         required: false
         pattern: '^[^\t\r\n]{1,35}$'
-        description: TxId do Pix (TransactionIdentification, campo 26, IN :195). Sem ele, o campo sai em branco.
+        description: TxId do Pix (TransactionIdentification; IN 636, Anexo I, EXTRATO, campo 26). Sem ele, o campo sai em branco.
+      - name: tipoChave
+        type: string
+        required: false
+        pattern: '^([1-4]|-)$'
+        description: >-
+          Tipo da chave Pix pela qual o Pix chegou no código da IN (IN 636, Anexo I, EXTRATO, campo 24): 1 CPF/CNPJ, 2 telefone,
+          3 e-mail, 4 aleatória; "-" sem tipo (sem chave) ou fora do domínio, e o campo sai em branco.
+      - name: chave
+        type: string
+        required: false
+        pattern: '^[\x21-\x7E]{1,77}$'
+        description: >-
+          Chave Pix pela qual o Pix chegou como o DICT a registra (IN 636, Anexo I, EXTRATO, campo 25); o template tira o "+" do
+          telefone, que a IN pede só com dígitos, a partir do 55. Sem chave (Pix manual ou por QR sem chave), o campo
+          sai em branco.
 
 knownGaps:
   - id: saldo-do-midaz
     description: >-
-      O campo 12 sai dos saldos que o Midaz gravou em cada operacao (disponivel, bloqueado e cheque especial
-      usado), na ordem em que gravou. Com lancamento retroativo, ou conta com mais de uma chave de saldo, o saldo da
-      linha nao fecha com o saldo do CONTAS. O motor nao tem soma corrida.
+      O campo 12 sai dos saldos que o Midaz gravou em cada operação (disponível, bloqueado e cheque especial
+      usado), na ordem em que gravou. Com lançamento retroativo, ou conta com mais de uma chave de saldo, o saldo da
+      linha não fecha com o saldo do CONTAS. O motor não tem soma corrida.
   - id: parcela-de-cheque-especial
     description: >-
-      A parcela de um lancamento tirada do (ou paga ao) cheque especial e gravada pelo Midaz em operacao propria, na
-      chave overdraft, sem a metadata da operacao que a gerou e sem nada que a ligue a ela. Sai em linha propria, com o
-      codigo da transacao (a metadata da transacao e a mesma), e traz o saldo da chave de cheque especial (menos a
-      divida, sem o bloqueado); o saldo real da conta esta na linha da parte do disponivel, inclusive quando ela e de
-      R$ 0,00. Numa transacao que tambem tem tarifa, a parcela pode ser da tarifa e sai com o codigo e a contraparte da
-      transacao. Num credito que quita a divida e sobra saldo, a parcela sai com saldo 000 C e, gravada depois da linha
-      principal, pode ser a ultima da conta no periodo e diferir do saldo final do CONTAS.
+      A parcela de um lançamento tirada do (ou paga ao) cheque especial é gravada pelo Midaz em operação própria, na
+      chave overdraft, sem a metadata da operação que a gerou e sem nada que a ligue a ela. Sai em linha própria, com o
+      código da transação (a metadata da transação é a mesma), e traz o saldo da chave de cheque especial (menos a
+      dívida, sem o bloqueado); o saldo real da conta está na linha da parte do disponível, inclusive quando ela é de
+      R$ 0,00. Numa transação que também tem tarifa, a parcela pode ser da tarifa e sai com o código e a contraparte da
+      transação. Num crédito que quita a dívida e sobra saldo, a parcela sai com saldo 000 C e, gravada depois da linha
+      principal, pode ser a última da conta no período e diferir do saldo final do CONTAS.
   - id: reserva-com-validacao-de-rota
     description: >-
-      Num ledger que valida rotas, a reserva cancelada sai como um debito e um credito de mesmo valor, e uma reserva
-      ainda aberta na data de corte sai como debito, sem a operacao que a concluiria.
+      Num ledger que valida rotas, a reserva cancelada sai como um débito e um crédito de mesmo valor, e uma reserva
+      ainda aberta na data de corte sai como débito, sem a operação que a concluiria.
   - id: cheque-especial-antes-do-snapshot
     description: >-
-      Operacao gravada antes de o Midaz guardar o cheque especial usado no snapshot nao o tem: o saldo dela sai sem
-      o cheque especial. A conferencia lista esses lancamentos.
+      Operação gravada antes de o Midaz guardar o cheque especial usado no snapshot não o tem: o saldo dela sai sem
+      o cheque especial. A conferência lista esses lançamentos.
   - id: codigo-generico
     description: >-
-      O campo 9 sai 125 (debito) ou 218 (credito) quando nenhuma regra se aplica: lancamento sem metadata de plugin,
-      tarifa avulsa sem feeLeg, transferencia interna sem metadata, MED, Pix Automatico, bloqueio cautelar. Os dois
-      codigos sao descontinuados em 01/06/2028 (IN art. 2o, § 4o, :55) sem substituto indicado.
+      O campo 9 sai 125 (débito) ou 218 (crédito) quando nenhuma regra se aplica: lançamento sem metadata de plugin,
+      tarifa avulsa sem feeLeg, transferência interna sem metadata, MED, Pix Automático, bloqueio cautelar. Os dois
+      códigos são descontinuados em 01/06/2028 (IN 636, art. 2º, § 4º) sem substituto indicado.
   - id: codigos-especificos
     description: >-
-      Pix Saque e Pix Troco, mesma titularidade e pagamentos de boleto nao tem marca nos plugins: saem com o codigo
-      largo da regra (135/261 no Pix, 134/259 na TED). O 223 (Pix recebido por QR Code) so sai no Pix lerian, que
-      grava a forma de iniciacao na metadata.
+      Pix Saque e Pix Troco, mesma titularidade e pagamentos de boleto não têm marca nos plugins: saem com o código
+      largo da regra (135/261 no Pix, 134/259 na TED). O 223 (Pix recebido por QR Code) só sai no Pix lerian, que
+      grava a forma de iniciação na metadata.
   - id: canal-local-dispositivo
     description: >-
-      Nenhuma aplicacao Lerian registra canal, local, IP, porta ou MAC do lancamento. O campo 17 e um canal so,
+      Nenhuma aplicação Lerian registra canal, local, IP, porta ou MAC do lançamento. O campo 17 é um canal só,
       declarado pelo cliente; 14, 20, 21 e 22 saem em branco; 18 e 19 com as sentinelas da IN (0000000 e 00).
   - id: chave-e-txid-pix
     description: >-
-      Os campos 24 e 25 (chave Pix) saem em branco: a chave nao esta na metadata da transacao. O campo 26 sai com o
+      Os campos 24 e 25 (chave Pix) saem do plugin: no Pix lerian enviado, da iniciação do Pix
+      (transfer_initiations); no Pix JD, da chave do recebedor gravada na transação. No Pix lerian recebido saem em
+      branco: o plugin não grava a chave pela qual o Pix chegou. No Pix sem chave (manual ou QR sem chave) também.
+      O campo 26 sai com o
       TxId que o plugin grava, o mesmo do ORIGEM-DESTINO 28, e em branco no Pix sem TxId (chave ou manual) e no Pix
-      enviado pelo Pix JD, que repassa o TxId ao SPI sem guarda-lo; o ORIGEM-DESTINO diz o motivo no campo 18.
+      enviado pelo Pix JD, que repassa o TxId ao SPI sem guardá-lo; o ORIGEM-DESTINO diz o motivo no campo 18.
   - id: instante-em-utc
     description: >-
-      A hora (campo 23) sai do instante do lancamento como o motor o entrega. Instante que nao chega em UTC recusa a
-      geracao (pattern do campo), em vez de sair a hora de outro fuso.
+      A hora (campo 23) sai do instante do lançamento como o motor o entrega. Instante que não chega em UTC recusa a
+      geração (pattern do campo), em vez de sair a hora de outro fuso.
   - id: so-titular
     description: >-
-      As contas do caso sao as que o documento investigado TITULA. A conta em que ele e so cotitular, representante
-      ou procurador nao entra: o indice das partes no CRM nao separa o papel.
+      As contas do caso são as que o documento investigado titula e as em que ele é cotitular (parte PRIMARY_HOLDER
+      do instrumento, contas_cotitular). A conta em que ele é só representante legal ou RESPONSIBLE_PARTY não entra:
+      a IN fala das contas investigadas e não diz se a conta de quem só representa o titular é uma delas.
+  - id: cotitular-no-periodo
+    description: >-
+      A conta de que o investigado é cotitular entra quando a cotitularidade cruza o período pedido em um dia ao
+      menos (start_date até o fim, e end_date ausente ou a partir do início). Com sobreposição parcial, o EXTRATO e
+      o ORIGEM-DESTINO trazem todo o movimento da conta no período, inclusive os dias em que o investigado ainda não
+      era cotitular ou já tinha saído: é movimento de conta de terceiro sem sigilo afastado nesses dias. A parte
+      sem start_date (registro antigo) entra sempre; não se consulta a abertura da conta (opening_date), e a
+      conferência avisa o cotitular sem o início do vínculo (TITULARES, campo 20). Nas bordas, o Reporter fecha o
+      período no fuso configurado dele e o CRM grava a data do vínculo à meia-noite UTC: num fuso atrás de UTC, a
+      cotitularidade que termina no primeiro dia do período fica fora, e a que começa no dia seguinte ao fim entra.

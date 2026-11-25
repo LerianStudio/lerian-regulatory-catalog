@@ -1780,8 +1780,10 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
     e nunca pela ponta (`at`) de um período, que uma lista não tem.
 
     Um valor de consulta (`{query, column}`) é o conjunto de valores de uma coluna de
-    outra consulta, lido só por `in`, sozinho na condição e só no nível de cima de
-    filters (nunca em having nem dentro de anyOf/allOf). A consulta existe, não é a
+    outra consulta, lido só por `in` e só no nível de cima de filters (nunca em having nem
+    dentro de anyOf/allOf). Uma condição lê um valor de consulta ou vários, a união deles
+    (o motor junta os valores de cada um, uma vez cada), nunca ao lado de um literal ou de
+    um parâmetro, e não nomeia a mesma origem duas vezes. A consulta existe, não é a
     própria, seleciona ou agrega, e entrega a coluna antes dos juntes. Um nome trocado não
     falharia na escrita: o `in` sairia vazio e o documento, sem linha, com cara de certo.
 
@@ -1806,8 +1808,11 @@ def _check_filter_values(doc_dir: Path, contract: dict, binding: dict) -> None:
         if condition.get("operator") != QUERY_VALUE_OPERATOR:
             fail(f"{where}: lê os valores de uma consulta com {condition.get('operator')!r}; "
                  f"só {QUERY_VALUE_OPERATOR} lê um conjunto")
-        if len(values) != 1:
+        if any(not (isinstance(v, dict) and is_query_value(v)) for v in values):
             fail(f"{where}: lê os valores de uma consulta e outros valores; a condição lê uma coisa só")
+        same = [v for v in values if v == value]
+        if len(same) > 1:  # fail() diz a repetição uma vez só
+            fail(f"{where}: lê a coluna '{column}' de '{source}' duas vezes; cada origem entra uma vez")
         if source == qname:
             fail(f"{where}: lê os valores da própria consulta; um filtro lê de outra")
             return

@@ -1,0 +1,119 @@
+[
+  {
+    "name": "parte de contraparte lida no cadastro das contas do caso",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "for w in cadastro_partes_contraparte|where:dchave",
+    "new": "for w in cadastro_partes|where:dchave",
+    "count": 4,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 9,
+      "field": 12
+    }
+  },
+  {
+    "name": "parte no exterior sem a cidade 0000000",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if k.nomePais != \"Brasil\" and k.nomePais != \"-\" %}0000000{% endif %}",
+    "new": "",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 4,
+      "field": 13
+    }
+  },
+  {
+    "name": "parte sem cadastro sem o e-mail nao declarado",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% empty %}\te-mail nao declarado{% endfor %}",
+    "new": "{% empty %}\t{% endfor %}",
+    "count": 4,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 5,
+      "field": 25
+    }
+  },
+  {
+    "name": "parte sem celular sem o outro telefone",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% else %}{{ ascii(k.outroTelefone)|slice:\":20\" }}{% endif %}",
+    "new": "{% else %}{% endif %}",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 2,
+      "field": 17
+    }
+  },
+  {
+    "name": "cotitular pessoa juridica com a renda e nao o faturamento",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if k.tipoPessoa == \"2\" %}{% if k.faturamento %}{{ k.faturamento|replace:\".:\" }}{% endif %}",
+    "new": "{% if k.tipoPessoa == \"9\" %}{% if k.faturamento %}{{ k.faturamento|replace:\".:\" }}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 3,
+      "field": 18
+    }
+  },
+  {
+    "name": "procuradora cadastrada sai com o faturamento (campo 18 so do correntista)",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{# 18 e 19 so do correntista #}",
+    "new": "{% if k.faturamento %}{{ k.faturamento|replace:\".:\" }}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 4,
+      "field": 18
+    }
+  },
+  {
+    "name": "procuradora cadastrada sai com o e-mail do cadastro (campo 25 so do titular)",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "e-mail nao declarado{% empty %}",
+    "new": "{{ k.emailPrincipal }}{% empty %}",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 4,
+      "field": 25
+    }
+  },
+  {
+    "name": "procurador cadastrado de contraparte sai com a renda (campo 18 so do correntista)",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{# 18 e 19 so do correntista, contraparte #}",
+    "new": "{% if w.renda %}{{ w.renda|replace:\".:\" }}{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 10,
+      "field": 18
+    }
+  },
+  {
+    "name": "titular de conta co-titulada, fora da ordem, dito investigado",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "\tT\t{% if t.documento in system.documentos %}1{% else %}0{% endif %}\t",
+    "new": "\tT\t1\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 6,
+      "field": 6
+    }
+  }
+]

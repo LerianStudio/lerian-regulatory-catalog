@@ -1,9 +1,10 @@
 # Binding do SIMBA AGENCIAS — QUEM PREENCHE E O CLIENTE.
 #
 # Exemplo preenchido contra o Midaz e o CRM do Midaz (`plugin_crm`). As contas do
-# caso saem de `contas_do_caso`, a mesma consulta (mesmo texto) nos bindings de
+# caso saem de `contas_do_caso` (as que o investigado titula) e de `contas_cotitular`
+# (as em que ele e cotitular), as mesmas consultas (mesmo texto) nos bindings de
 # CONTAS, TITULARES, EXTRATO e ORIGEM-DESTINO: trocar de onde vem o conjunto de
-# contas do caso e trocar SO essa consulta. As demais leem os ids dela.
+# contas do caso e trocar SO essas duas consultas. As demais leem os ids das duas.
 #
 # O CADASTRO DE AGENCIAS E DO TENANT. Agencia nao e entidade no Midaz nem no CRM:
 # o CRM guarda so o numero (`banking_details.branch`, texto livre). Cada atributo
@@ -27,19 +28,20 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.agencias
-contractVersion: 1.0.1
+contractVersion: 1.1.0
 
 queries:
   - name: declarante
-    description: A organizacao do Midaz, que e a instituicao que responde ao caso. O CNPJ dela e o do arquivo.
+    description: A organização do Midaz, que é a instituição que responde ao caso. O CNPJ dela é o do arquivo.
     dataSource: midaz_onboarding
     table: organization
     filters:
       - field: deleted_at
         operator: isNull
 
-  # As contas do caso: as que o documento investigado TITULA (cotitular, representante e
-  # procurador nao entram). Excluida do CRM fica fora; encerrada entra.
+  # As contas do caso: as que o documento investigado TITULA (contas_do_caso) e as em que
+  # ele e cotitular (contas_cotitular). Representante e procurador nao entram. Excluida do
+  # CRM fica fora; encerrada entra. Toda consulta que le as contas do caso le as duas.
   - name: contas_do_caso
     dataSource: plugin_crm
     table: aliases
@@ -49,13 +51,83 @@ queries:
       - {field: deleted_at, operator: isNull}
     select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
 
-  # A agencia de cada conta do caso, com o cadastro do tenant.
-  - name: agencias_caso
-    description: As contas do caso, lidas de novo para levar o cadastro da agencia de cada uma.
+  # As contas em que o documento investigado e cotitular no periodo: a parte do instrumento
+  # com o documento da ordem e o papel PRIMARY_HOLDER, cuja cotitularidade cruza o periodo
+  # pedido em pelo menos um dia (start_date ate o fim, e end_date ausente ou a partir do
+  # inicio). O filtro do documento pergunta pelo digest das partes
+  # (search.related_party_documents) e o Reporter confere, parte a parte, o documento
+  # decifrado; papel e datas sao conferidos na mesma parte, depois do expand. Representante
+  # (LEGAL_REPRESENTATIVE) e RESPONSIBLE_PARTY nao entram.
+  # O motor nao executa anyOf, entao cada combinacao e uma consulta e a contas_cotitular e a
+  # uniao delas: vinculo aberto (sem end_date) ou encerrado no periodo, com start_date ate o
+  # fim ou ausente (registro antigo: entra sempre; opening_date nao e consultada).
+  - name: cotitular_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: contas_cotitular
     dataSource: plugin_crm
     table: aliases
     filters:
-      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: account_id, operator: in, values: [{query: cotitular_aberto, column: account_id}, {query: cotitular_encerrado, column: account_id}, {query: cotitular_sem_inicio_aberto, column: account_id}, {query: cotitular_sem_inicio_encerrado, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document]
+
+  # A agencia de cada conta do caso, com o cadastro do tenant.
+  - name: agencias_caso
+    description: As contas do caso, lidas de novo para levar o cadastro da agência de cada uma.
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: deleted_at, operator: isNull}
     compute:
       - as: numero_agencia
@@ -132,11 +204,11 @@ queries:
   # Os lancamentos das contas do caso no periodo do afastamento, para achar as
   # outras pernas (contas com que elas transacionaram, IN art. 2o, I, :27).
   - name: lancamentos
-    description: Lancamentos das contas do caso no periodo, so a transacao de cada um.
+    description: Lançamentos das contas do caso no período, só a transação de cada um.
     dataSource: midaz_transaction
     table: operation
     filters:
-      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
       - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
@@ -148,7 +220,7 @@ queries:
   # Toda perna das mesmas transacoes. Inclui a propria conta do caso (o motor nao
   # tem `nin` com valores de consulta): o template nao repete agencia ja escrita.
   - name: outras_pernas
-    description: As pernas das transacoes dos lancamentos do caso.
+    description: As pernas das transações dos lançamentos do caso.
     dataSource: midaz_transaction
     table: operation
     filters:
@@ -162,7 +234,7 @@ queries:
   # A agencia de cada conta das outras pernas que esta no CRM. Conta de sistema
   # ou de liquidacao (sem instrumento no CRM) nao e conta de cliente e nao entra.
   - name: agencias_contraparte
-    description: As contas das outras pernas que tem instrumento no CRM, com o cadastro da agencia.
+    description: As contas das outras pernas que têm instrumento no CRM, com o cadastro da agência.
     dataSource: plugin_crm
     table: aliases
     filters:
@@ -250,13 +322,13 @@ datasets:
         column: legal_document
       compe:
         from: manual
-        pendingReason: "o codigo Compe da instituicao, 3 digitos; 999 se ela nao tem codigo Compe"
+        pendingReason: "o código Compe da instituição, com 3 dígitos; 999 se ela não tem código Compe"
       nomeUnicad:
         from: manual
-        pendingReason: "o nome da instituicao exatamente como esta no Unicad do Banco Central"
+        pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
       possuiAgenciaFisica:
         from: manual
-        pendingReason: "1 se a instituicao possui agencia fisica, 2 se nao possui (campo 14)"
+        pendingReason: "1 se a instituição tem agência física, 2 se não tem (campo 14)"
 
   agencias_do_caso:
     from:

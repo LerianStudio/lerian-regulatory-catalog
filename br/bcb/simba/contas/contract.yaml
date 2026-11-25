@@ -29,9 +29,9 @@ metadata:
   family: simba
   title: SIMBA — Contas
   summary: >-
-    Contas investigadas e contas da mesma instituicao com as quais elas transacionaram
-    no periodo do afastamento do sigilo, com abertura, encerramento e saldos.
-  version: 1.0.1
+    Contas investigadas e contas da mesma instituição com as quais elas transacionaram
+    no período do afastamento do sigilo, com abertura, encerramento e saldos.
+  version: 1.1.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -49,21 +49,21 @@ parameters:
     type: string
     required: true
     pattern: '^[0-9]{3}-[A-Z]{2,6}-[0-9]{6}-[0-9]{2}$'
-    description: Numero do caso SIMBA, como esta na ordem.
+    description: Número do caso SIMBA, como está na ordem.
   - name: documentos
     type: string
     multiple: true
     required: true
     description: >-
-      CPFs e CNPJs da ordem, somente digitos, sem pontos, tracos ou barras: o documento formatado nao encontra
+      CPFs e CNPJs da ordem, somente dígitos, sem pontos, traços ou barras: o documento formatado não encontra
       contas, e o caso sai como resposta vazia para ele, sem erro.
   - name: contas
     type: string
     multiple: true
     required: false
     description: >-
-      Numeros de conta da ordem, com DV, so digitos. Preencher so quando o oficio restringir a contas especificas; o
-      normal e nao preencher (ausente, todas as contas dos documentos). Preencher sem a ordem pedir omite contas do
+      Números de conta da ordem, com DV, só dígitos. Preencher só quando o ofício restringir a contas específicas; o
+      normal é não preencher (ausente, todas as contas dos documentos). Preencher sem a ordem pedir omite contas do
       investigado.
   - name: inicio
     type: date
@@ -74,7 +74,7 @@ parameters:
     closed: true
     required: true
     notBefore: inicio
-    description: Ultimo dia do afastamento do sigilo.
+    description: Último dia do afastamento do sigilo.
 
 filing:
   period: [caso]
@@ -87,14 +87,14 @@ datasets:
   # Os campos 1, 8 e 9 sao da instituicao e se repetem em toda linha (IN :118,
   # :127, :128).
   - name: instituicao
-    description: A instituicao que responde ao caso, uma linha.
+    description: A instituição que responde ao caso, uma linha.
     grain: singleton
     fields:
       - name: compe
         type: string
         required: true
         pattern: '^[0-9]{3}$'
-        description: Codigo Compe da instituicao, ou 999 quando ela nao tem (campo 1, IN :118).
+        description: Código Compe da instituição, ou 999 quando ela não tem (IN 636, Anexo I, CONTAS, campo 1).
       - name: cnpj
         type: string
         length: 14
@@ -102,17 +102,17 @@ datasets:
         normalize: alphanumeric
         identifiesInstitution: true
         pattern: '^[0-9A-Z]{14}$'
-        description: CNPJ da instituicao (campo 8, IN :127).
+        description: CNPJ da instituição (IN 636, Anexo I, CONTAS, campo 8).
       - name: nomeUnicad
         type: string
         required: true
         pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: Nome da instituicao como esta no Unicad (campo 9, IN :128). O template o corta em 50 posicoes.
+        description: Nome da instituição como está no Unicad (IN 636, Anexo I, CONTAS, campo 9). O template o corta em 50 posições.
 
   # Dois conjuntos porque o motor nao une duas consultas. A conta das outras
   # pernas que tambem e do caso sai so uma vez, como investigada (template).
   - name: contas_investigadas
-    description: As contas do caso. Campo 7 = 1 com lancamento no periodo, 2 sem.
+    description: As contas do caso. Campo 7 = 1 com lançamento no período, 2 sem.
     grain: [contaId]
     # Investigado sem conta na instituicao: nao ha arquivo a gerar (os arquivos sao das contas, IN art. 1o, :23, e
     # nao tem cabecalho, art. 3o, I, :59). Sem linha nenhuma a geracao e recusada antes de montar o arquivo, dizendo
@@ -127,46 +127,46 @@ datasets:
       - name: contaId
         type: string
         required: true
-        description: A conta do Midaz. Nao vai ao arquivo; identifica a linha.
+        description: A conta do Midaz. Não vai ao arquivo; identifica a linha.
       - name: numeroAgencia
         type: string
         required: true
         pattern: '^[0-9]{5}$'
-        description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :119).
+        description: Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, CONTAS, campo 2).
       - name: numeroConta
         type: string
         required: true
         pattern: '^[^\t\r\n]{1,20}$'
-        description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :120).
+        description: Número da conta com o dígito verificador, como o CRM o guarda (IN 636, Anexo I, CONTAS, campo 3).
       - name: tipoConta
         type: string
         required: true
         domain: ["1", "2", "3", "4", "5", "6"]
-        description: Tipo da conta no codigo da IN (campo 4, IN :121).
+        description: Tipo da conta no código da IN (IN 636, Anexo I, CONTAS, campo 4).
       - name: dataAbertura
         type: date
         required: false
-        description: Data de abertura da conta (campo 5, IN :122). Sem sentinela na IN; ausente, sai em branco.
+        description: Data de abertura da conta (IN 636, Anexo I, CONTAS, campo 5). Sem sentinela na IN; ausente, sai em branco.
       - name: dataEncerramento
         type: date
         required: false
-        description: Data de encerramento da conta; ausente, a conta esta aberta e sai 31129999 (campo 6, IN :125).
+        description: Data de encerramento da conta; ausente, a conta está aberta e sai 31129999 (IN 636, Anexo I, CONTAS, campo 6).
       - name: saldoInicial
         type: decimal
         required: false
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Saldo da conta no inicio do primeiro dia do afastamento, em reais (campo 10, IN :129). Ausente, a conta nao tinha lancamento antes da data e sai 000.
+        description: Saldo da conta no início do primeiro dia do afastamento, em reais (IN 636, Anexo I, CONTAS, campo 10). Ausente, a conta não tinha lançamento antes da data e sai 000.
       - name: saldoFinal
         type: decimal
         required: false
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Saldo da conta no fim do ultimo dia do afastamento, em reais (campo 11, IN :130). Ausente, sai 000.
+        description: Saldo da conta no fim do último dia do afastamento, em reais (IN 636, Anexo I, CONTAS, campo 11). Ausente, sai 000.
       - name: volumePeriodo
         type: decimal
         required: false
-        description: Soma dos valores dos lancamentos da conta no periodo. So diz se houve lancamento (campo 7, 1 ou 2, IN :126); nao vai ao arquivo.
+        description: Soma dos valores dos lançamentos da conta no período. Só diz se houve lançamento, o código 1 ou 2 do campo 7 (IN 636, Anexo I, CONTAS); não vai ao arquivo.
   - name: contas_contraparte
-    description: As contas da mesma instituicao com que uma conta do caso transacionou no periodo. Campo 7 = 3.
+    description: As contas da mesma instituição com que uma conta do caso transacionou no período. Campo 7 = 3.
     grain: [contaId]
     consolidation:
       key: [contaId]
@@ -177,71 +177,82 @@ datasets:
       - name: contaId
         type: string
         required: true
-        description: A conta do Midaz. Nao vai ao arquivo; identifica a linha.
+        description: A conta do Midaz. Não vai ao arquivo; identifica a linha.
       - name: numeroAgencia
         type: string
         required: true
         pattern: '^[0-9]{5}$'
-        description: Numero da agencia sem DV, cinco digitos; 00001 sem agencia fisica (campo 2, IN :119).
+        description: Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, CONTAS, campo 2).
       - name: numeroConta
         type: string
         required: true
         pattern: '^[^\t\r\n]{1,20}$'
-        description: Numero da conta com o digito verificador, como o CRM o guarda (campo 3, IN :120).
+        description: Número da conta com o dígito verificador, como o CRM o guarda (IN 636, Anexo I, CONTAS, campo 3).
       - name: tipoConta
         type: string
         required: true
         domain: ["1", "2", "3", "4", "5", "6"]
-        description: Tipo da conta no codigo da IN (campo 4, IN :121).
+        description: Tipo da conta no código da IN (IN 636, Anexo I, CONTAS, campo 4).
       - name: dataAbertura
         type: date
         required: false
-        description: Data de abertura da conta (campo 5, IN :122). Sem sentinela na IN; ausente, sai em branco.
+        description: Data de abertura da conta (IN 636, Anexo I, CONTAS, campo 5). Sem sentinela na IN; ausente, sai em branco.
       - name: dataEncerramento
         type: date
         required: false
-        description: Data de encerramento da conta; ausente, a conta esta aberta e sai 31129999 (campo 6, IN :125).
+        description: Data de encerramento da conta; ausente, a conta está aberta e sai 31129999 (IN 636, Anexo I, CONTAS, campo 6).
       - name: saldoInicial
         type: decimal
         required: false
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Saldo da conta no inicio do primeiro dia do afastamento, em reais (campo 10, IN :129). Ausente, a conta nao tinha lancamento antes da data e sai 000.
+        description: Saldo da conta no início do primeiro dia do afastamento, em reais (IN 636, Anexo I, CONTAS, campo 10). Ausente, a conta não tinha lançamento antes da data e sai 000.
       - name: saldoFinal
         type: decimal
         required: false
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
-        description: Saldo da conta no fim do ultimo dia do afastamento, em reais (campo 11, IN :130). Ausente, sai 000.
+        description: Saldo da conta no fim do último dia do afastamento, em reais (IN 636, Anexo I, CONTAS, campo 11). Ausente, sai 000.
 
 knownGaps:
   - id: saldo-negativo
     description: >-
-      Os campos 10 e 11 sao numericos (so algarismos, IN art. 3o VII, :71) e o Anexo I nao lhes da sinal nem
-      natureza (IN :129-130), ao contrario do EXTRATO. Uma conta que comeca ou termina o periodo devedora (cheque
-      especial) sai com o saldo em valor absoluto: o arquivo nao distingue -12,50 de 12,50. Quem aprova confere as
-      contas com saldo negativo antes de aprovar.
+      Os campos 10 e 11 são numéricos (só algarismos; IN 636, art. 3º, VII) e o Anexo I não lhes dá sinal nem
+      natureza (IN 636, Anexo I, CONTAS, campos 10 e 11), ao contrário do EXTRATO. Uma conta que começa ou termina o
+      período devedora (cheque especial) sai com o saldo em valor absoluto: o arquivo não distingue -12,50 de 12,50.
+      Quem aprova confere as contas com saldo negativo antes de aprovar.
   - id: reserva-aberta-na-data
     description: >-
-      As reservas e liberacoes do Midaz (operacoes ON_HOLD e RELEASE) nao entram no saldo nem nos lancamentos: a
-      transferencia concluida sai uma vez so. Num ledger que valida rotas, uma reserva ainda aberta na data de corte
-      ja tirou o valor do disponivel, e o saldo sai sem o valor reservado.
+      As reservas e liberações do Midaz (operações ON_HOLD e RELEASE) não entram no saldo nem nos lançamentos: a
+      transferência concluída sai uma vez só. Num ledger que valida rotas, uma reserva ainda aberta na data de corte
+      já tirou o valor do disponível, e o saldo sai sem o valor reservado.
   - id: saldo-pela-soma-dos-lancamentos
     description: >-
-      O saldo e a soma, com sinal, dos lancamentos que movem saldo em BRL desde a abertura ate a data, inclusive na
-      chave de sistema overdraft, onde fica a parte do saque tirada do cheque especial (e a parte do credito que o
-      paga), sem as reservas e liberacoes. Le o mesmo razao que o Midaz por SQL: cliente com arquivo morto (retain) perde o historico e
-      o saldo sai errado sem aviso.
+      O saldo é a soma, com sinal, dos lançamentos que movem saldo em BRL desde a abertura até a data, inclusive na
+      chave de sistema overdraft, onde fica a parte do saque tirada do cheque especial (e a parte do crédito que o
+      paga), sem as reservas e liberações. Lê o mesmo razão que o Midaz por SQL: cliente com arquivo morto (retain)
+      perde o histórico e o saldo sai errado sem aviso.
   - id: conta-de-outra-perna-sem-crm
     description: >-
-      Uma conta das outras pernas so entra se tiver instrumento no CRM. Conta de sistema, de liquidacao ou de outra
-      instituicao nao e conta da mesma instituicao com cliente, e nao entra.
+      Uma conta das outras pernas só entra se tiver instrumento no CRM. Conta de sistema, de liquidação ou de outra
+      instituição não é conta da mesma instituição com cliente, e não entra.
   - id: so-titular
     description: >-
-      As contas do caso sao as que o documento investigado TITULA. A conta em que ele e so cotitular, representante
-      ou procurador nao entra: o indice das partes no CRM nao separa o papel.
+      As contas do caso são as que o documento investigado titula e as em que ele é cotitular (parte PRIMARY_HOLDER
+      do instrumento, contas_cotitular). A conta em que ele é só representante legal ou RESPONSIBLE_PARTY não entra:
+      a IN fala das contas investigadas e não diz se a conta de quem só representa o titular é uma delas.
+  - id: cotitular-no-periodo
+    description: >-
+      A conta de que o investigado é cotitular entra quando a cotitularidade cruza o período pedido em um dia ao
+      menos (start_date até o fim, e end_date ausente ou a partir do início). Com sobreposição parcial, o EXTRATO e
+      o ORIGEM-DESTINO trazem todo o movimento da conta no período, inclusive os dias em que o investigado ainda não
+      era cotitular ou já tinha saído: é movimento de conta de terceiro sem sigilo afastado nesses dias. A parte
+      sem start_date (registro antigo) entra sempre; não se consulta a abertura da conta (opening_date), e a
+      conferência avisa o cotitular sem o início do vínculo (TITULARES, campo 20). Nas bordas, o Reporter fecha o
+      período no fuso configurado dele e o CRM grava a data do vínculo à meia-noite UTC: num fuso atrás de UTC, a
+      cotitularidade que termina no primeiro dia do período fica fora, e a que começa no dia seguinte ao fim entra.
   - id: excluida-do-crm
     description: >-
-      Uma conta apagada do CRM (deleted_at) nao entra. Uma conta encerrada (closing_date) entra, com a data.
+      Uma conta apagada do CRM (deleted_at) não entra. Uma conta encerrada (closing_date) entra, com a data.
   - id: conta-incorporada
     description: >-
-      O campo 12 sai sempre em branco (conta nativa, IN :132): nenhuma aplicacao Lerian registra que uma conta veio de
-      uma instituicao sucedida.
+      O campo 12 sai sempre em branco (conta nativa; IN 636, Anexo I, CONTAS, campo 12): nenhuma aplicação Lerian
+      registra que uma conta veio de uma instituição sucedida.

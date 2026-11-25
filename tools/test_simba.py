@@ -73,6 +73,8 @@ ROOT = Path(__file__).resolve().parent.parent
 FAMILY = Path("br") / "bcb" / "simba"
 # A consulta que fixa as contas de um caso: todo documento a declara.
 CASE_ACCOUNTS = "contas_do_caso"
+# As contas em que o investigado é cotitular: toda consulta que lê as contas do caso lê as duas.
+COHOLDER_ACCOUNTS = "contas_cotitular"
 # O parâmetro que nomeia os investigados: toda consulta de cliente chega nele.
 INVESTIGATED = "documentos"
 # Quem lê a própria instituição não lê cliente: fica fora da conferência acima.
@@ -138,8 +140,8 @@ def overdraft_left_out(found: dict[str, dict]) -> list[str]:
     return problems
 
 
-HOLDER_QUERIES = ("cadastro_titulares", "cadastro_contraparte")
-HOLDER_SETS = ("titulares", "titulares_contraparte")
+HOLDER_QUERIES = ("cadastro_titulares", "cadastro_contraparte", "cadastro_partes", "cadastro_partes_contraparte")
+HOLDER_SETS = ("titulares", "titulares_contraparte", "cadastro_partes", "cadastro_partes_contraparte")
 # A data em que o binding leu as linhas vigentes da tabela de países (o comentário dele diz).
 COUNTRIES_READ_ON = datetime.date(2026, 11, 19)
 NO_UF, NO_COUNTRY = "00", "-"
@@ -160,7 +162,9 @@ def country_names_mismatch(found: dict[str, dict]) -> list[str]:
     # O motor compara o texto como está: o código vem nas duas grafias (BR e br).
     expected = {spelled: {"constant": name} for code, name in
                 tabelas_receita.load("paises.txt", COUNTRIES_READ_ON).items() for spelled in (code, code.lower())}
-    ufs = {sigla: {"constant": code} for sigla, code in yaml.safe_load(UF_TABLE.read_text(encoding="utf-8")).items()}
+    # A sigla vem nas duas grafias (SP e sp), como o país: o motor compara o texto como está.
+    ufs = {spelled: {"constant": code} for sigla, code in yaml.safe_load(UF_TABLE.read_text(encoding="utf-8")).items()
+           for spelled in (sigla, sigla.lower())}
     queries = queries_of(found.get("titulares", {}))
     problems = []
     for name in HOLDER_QUERIES:
@@ -327,6 +331,51 @@ def pix_account_type_off(found: dict[str, dict]) -> list[str]:
     return problems
 
 
+# Tipo da chave Pix -> código dos campos 24 do EXTRATO e 25 do ORIGEM-DESTINO (IN :193, :226):
+# 1 CPF/CNPJ, 2 telefone, 3 e-mail, 4 aleatória. O Pix lerian grava o tipo do DICT; o Pix JD, o
+# código do plugin (internal/transactions/domain/enums.go: 0 CPF, 1 CNPJ, 2 e-mail, 3 telefone,
+# 4 aleatória). Fora do domínio, "-".
+PIX_LERIAN_KEY_TYPES = {"CPF": "1", "CNPJ": "1", "PHONE": "2", "EMAIL": "3", "EVP": "4"}
+PIX_JD_KEY_TYPES = {"0": "1", "1": "1", "2": "3", "3": "2", "4": "4"}
+# Por consulta: a coluna do tipo, a tradução e a coluna da chave que o trilho escreve.
+PIX_KEY_QUERIES = {
+    "extrato": {"pix_lerian_envios_txid": ("chave_tipo_informado", PIX_LERIAN_KEY_TYPES, "chave"),
+                "pix_jd_envios_txid": ("payee_key_type", PIX_JD_KEY_TYPES, "payee_key"),
+                "pix_jd_recebimentos_txid": ("payee_key_type", PIX_JD_KEY_TYPES, "payee_key")},
+    "origem-destino": {"pix_lerian_envios": ("chave_tipo_informado", PIX_LERIAN_KEY_TYPES, "chave"),
+                       "pix_jd_envios": ("payee_key_type", PIX_JD_KEY_TYPES, "payee_key"),
+                       "pix_jd_recebimentos": ("payer_key_type", PIX_JD_KEY_TYPES, "payer_key")},
+}
+
+
+def pix_key_type_off(found: dict[str, dict]) -> list[str]:
+    """Onde a tradução do tipo da chave Pix deixa de ser a decidida, a chave sai de outra coluna, ou a chave do
+    Pix lerian não vem da iniciação."""
+    problems = []
+    for document, wanted in sorted(PIX_KEY_QUERIES.items()):
+        queries = queries_of(found.get(document, {}))
+        datasets = (found.get(document, {}).get("datasets") or {}).values()
+        for name, (column, expected, key) in sorted(wanted.items()):
+            query = queries.get(name) or {}
+            trails = [d.get("fields") or {} for d in datasets if ((d or {}).get("from") or {}).get("query") == name]
+            if not trails or key not in (query.get("select") or []) or any(
+                    (f.get("chave") or {}).get("column") != key or (f.get("tipoChave") or {}).get("column") != "tipo_chave"
+                    for f in trails):
+                problems.append(f"{document}: a chave de '{name}' não sai de {key}")
+            case = _compute(query, "tipo_chave").get("case") or {}
+            when = {str(k): (v or {}).get("constant") for k, v in (case.get("when") or {}).items()}
+            if case.get("column") != column or when != expected or case.get("otherwise") != {"constant": "-"}:
+                problems.append(f"{document}: '{name}' traduz {column} como {when}, e a decisão é {expected} (resto '-')")
+            if name.startswith("pix_lerian"):
+                joins = [j for j in query.get("join") or [] if j.get("table") == "transfer_initiations"]
+                if not joins or joins[0].get("match") != {"initiation_id": "id"} or joins[0].get("type") != "left" or \
+                        (joins[0].get("columns") or {}).get("chave_tipo_informado") != "destination_key_type" or \
+                        (joins[0].get("columns") or {}).get("chave") != "destination_key_value":
+                    problems.append(f"{document}: '{name}' não traz a chave da iniciação do Pix "
+                                    "(transfer_initiations por initiation_id, left)")
+    return problems
+
+
 def plain_computes_off(found: dict[str, dict]) -> list[str]:
     """Os `case` de fonte Postgres que leem um subcaminho JSON, que o motor recusa."""
     problems = []
@@ -446,8 +495,13 @@ def account_patterns_off(found: dict[str, dict]) -> list[str]:
 
 # A renda e o faturamento do TITULARES só saem em BRL: o catálogo não converte moeda. O campo 18
 # leva o faturamento da pessoa jurídica (tipoPessoa 2) e a renda dos demais; só a figura que vai
-# ao arquivo é conferida. Fora do formato ISO (três maiúsculas), a moeda recusa sempre.
-HOLDER_CURRENCIES = ("titulares", "titulares_contraparte")
+# ao arquivo é conferida. Fora do formato ISO (três maiúsculas), a moeda recusa sempre. Nas
+# partes, só o cotitular leva a renda (renda_cotitulares); o cadastro das demais partes
+# (cadastro_partes) não tem moeda conferida, e um procurador em USD não recusa o arquivo.
+HOLDER_CURRENCIES = ("titulares", "titulares_contraparte", "renda_cotitulares", "renda_cotitulares_contraparte")
+PARTY_REGISTRIES = ("cadastro_partes", "cadastro_partes_contraparte")
+COHOLDER_CURRENCY_QUERIES = {"renda_cotitulares": "cotitulares_documentos",
+                             "renda_cotitulares_contraparte": "cotitulares_documentos_contraparte"}
 FILED = {"moedaRenda": ("1", "2"), "moedaFaturamento": ("2", "1")}  # campo -> (tipo que imprime, tipo que não)
 
 
@@ -501,6 +555,27 @@ def currency_rules_off(found: dict[str, dict]) -> list[str]:
                     problems.append(f"titulares: '{dataset}.{field}' = {value!r} passaria fora do formato ISO")
     return problems
 
+def party_currency_scope_off(found: dict[str, dict], binding: dict) -> list[str]:
+    """Onde a moeda de uma parte que não imprime a renda (L, R, P, O) ainda recusaria o arquivo."""
+    doc = found.get("titulares", {})
+    problems = []
+    for dataset in PARTY_REGISTRIES:
+        for field, (filed, _) in sorted(FILED.items()):
+            if _row_refused(doc, dataset, {"tipoPessoa": filed, field: "USD"}):
+                problems.append(f"titulares: '{dataset}.{field}' = 'USD' recusaria um procurador, que não imprime a renda")
+    queries = queries_of(binding)
+    for name, documents in sorted(COHOLDER_CURRENCY_QUERIES.items()):
+        read = queries.get(name) or {}
+        if not any(c.get("field") == "document" and any(isinstance(v, dict) and v.get("query") == documents
+                                                         for v in c.get("values") or [])
+                   for c in _filters(read)):
+            problems.append(f"titulares: '{name}' não lê o cadastro pelos documentos de '{documents}'")
+        if not any(c.get("field") == "related_parties.role" and c.get("operator") == "eq"
+                   and c.get("values") == ["PRIMARY_HOLDER"] for c in _filters(queries.get(documents) or {})):
+            problems.append(f"titulares: '{documents}' não se restringe aos cotitulares (PRIMARY_HOLDER)")
+    return problems
+
+
 def exchange_refusal_off(root: Path) -> list[str]:
     """O TITULARES recusa a geração só com operaCambio "sim": o pendente (vazio) deixa o rascunho sair."""
     text = (root / FAMILY / "titulares" / "template.tpl").read_text(encoding="utf-8")
@@ -520,9 +595,10 @@ ASCII_FIELDS = {
     "agencias": {(ds, f) for ds in ("agencias_do_caso", "agencias_contraparte")
                  for f in ("endereco", "nomeAgencia", "pais", "telefone")} | {("instituicao", "nomeUnicad")},
     "contas": {("instituicao", "nomeUnicad")},
-    "titulares": {(ds, f) for ds in ("titulares", "titulares_contraparte")
+    "titulares": {(ds, f) for ds in ("titulares", "titulares_contraparte", "cadastro_partes", "cadastro_partes_contraparte")
                   for f in ("nome", "nomeSocial", "logradouro", "complemento", "nomePais", "celular",
-                            "outroTelefone", "emailPrincipal", "emailSecundario")}
+                            "outroTelefone", "emailPrincipal", "emailSecundario")
+                  if not (ds.startswith("cadastro_partes") and f == "nome")}
                  | {("partes", "nome"), ("partes_contraparte", "nome"), ("instituicao", "nomeUnicad")},
     "extrato": {("instituicao", "nomeUnicad")},
     "origem-destino": {(ds, "nome") for ds in ("trilho_pix_lerian_envios", "trilho_pix_lerian_recebimentos",
@@ -681,6 +757,82 @@ def _reads(query: dict) -> tuple[set[str], set[str]]:
     return parameters, sources
 
 
+# A cotitularidade entra se cruza o período pedido em um dia ao menos: start_date antes do primeiro instante depois
+# do fim (ou ausente, registro antigo) e end_date ausente (vigente) ou a partir do primeiro instante do início. O
+# motor não executa anyOf, então cada combinação é uma consulta e as contas de cotitular são a união delas.
+COHOLDER_START = {"no período": ("lt", [{"parameter": "fim", "at": "end"}]), "ausente": ("isNull", None)}
+COHOLDER_END = {"vigente": ("isNull", None), "no período": ("gte", [{"parameter": "inicio", "at": "start"}])}
+# O resto de cada ramo: a parte é o documento da ordem como PRIMARY_HOLDER (sem o papel, um representante entraria), na
+# conta da ordem, não apagada.
+COHOLDER_SCOPE = [{"field": "related_parties.document", "operator": "in", "values": [{"parameter": "documentos"}]},
+                  {"field": "related_parties.role", "operator": "eq", "values": ["PRIMARY_HOLDER"]},
+                  {"field": "banking_details.account", "operator": "in", "values": [{"parameter": "contas"}]},
+                  {"field": "deleted_at", "operator": "isNull"}]
+COHOLDER_BRANCHES = {"cotitular_aberto": ("no período", "vigente"),
+                     "cotitular_encerrado": ("no período", "no período"),
+                     "cotitular_sem_inicio_aberto": ("ausente", "vigente"),
+                     "cotitular_sem_inicio_encerrado": ("ausente", "no período")}
+
+
+def coholder_period_off(found: dict[str, dict]) -> list[str]:
+    """Onde as contas de cotitular deixam de ser as da cotitularidade que cruza o período pedido."""
+    problems = []
+    for document, binding in sorted(found.items()):
+        queries = queries_of(binding)
+        for name, (start, end) in sorted(COHOLDER_BRANCHES.items()):
+            dates = {}
+            for condition in (queries.get(name) or {}).get("filters") or []:
+                if isinstance(condition, dict) and condition.get("field") in ("related_parties.start_date",
+                                                                              "related_parties.end_date"):
+                    dates.setdefault(condition["field"], []).append((condition.get("operator"), condition.get("values")))
+            if dates != {"related_parties.start_date": [COHOLDER_START[start]],
+                         "related_parties.end_date": [COHOLDER_END[end]]}:
+                problems.append(f"{document}: '{name}' não lê o início {start} e o fim {end} da cotitularidade")
+            rest = [c for c in (queries.get(name) or {}).get("filters") or []
+                    if not (isinstance(c, dict) and c.get("field") in ("related_parties.start_date",
+                                                                        "related_parties.end_date"))]
+            if sorted(map(str, rest)) != sorted(map(str, COHOLDER_SCOPE)) or \
+                    (queries.get(name) or {}).get("expand") != "related_parties":
+                problems.append(f"{document}: '{name}' não é a parte PRIMARY_HOLDER com o documento da ordem, na conta "
+                                "da ordem, não apagada")
+        union = [(v.get("query"), v.get("column")) for c in (queries.get(COHOLDER_ACCOUNTS) or {}).get("filters") or []
+                 if isinstance(c, dict) and c.get("field") == "account_id"
+                 for v in c.get("values") or [] if isinstance(v, dict)]
+        if sorted(union) != sorted((name, "account_id") for name in COHOLDER_BRANCHES):
+            problems.append(f"{document}: '{COHOLDER_ACCOUNTS}' não é a união das contas de "
+                            f"{', '.join(sorted(COHOLDER_BRANCHES))}")
+    return problems
+
+
+# A parte sem start_date (registro antigo) entra pela regra do período; o início do vínculo dela não pode ser
+# obrigatório, ou a geração inteira do TITULARES é recusada por causa dessa parte.
+PART_START = {("titulares", "partes", "dataInicio"), ("titulares", "partes_contraparte", "dataInicio")}
+
+
+def part_start_required(found: dict[str, dict]) -> list[str]:
+    """Os inícios de vínculo de parte que o contrato exige, e que recusariam a geração com a parte sem start_date."""
+    problems = []
+    for document, dataset, field in sorted(PART_START):
+        fields = {f.get("name"): f for d in found.get(document, {}).get("datasets") or []
+                  if isinstance(d, dict) and d.get("name") == dataset for f in d.get("fields") or []}
+        if field not in fields or fields[field].get("required") is not False:
+            problems.append(f"{document}: '{dataset}.{field}' não é opcional; a parte sem start_date recusa o arquivo")
+    return problems
+
+
+def coholder_accounts_missing(found: dict[str, dict]) -> list[str]:
+    """As consultas que leem as contas do caso e deixam de fora as contas em que o investigado é cotitular."""
+    problems = []
+    for document, binding in sorted(found.items()):
+        for name, query in sorted(queries_of(binding).items()):
+            for condition in query.get("filters") or []:
+                read = {(v.get("query"), v.get("column")) for v in condition.get("values") or [] if isinstance(v, dict)}
+                if (CASE_ACCOUNTS, "account_id") in read and (COHOLDER_ACCOUNTS, "account_id") not in read:
+                    problems.append(f"{document}: '{name}' lê as contas do caso ({CASE_ACCOUNTS}.account_id) sem as de "
+                                    f"cotitular ({COHOLDER_ACCOUNTS}.account_id)")
+    return problems
+
+
 def unscoped_queries(found: dict[str, dict]) -> list[str]:
     """As consultas de cliente que não chegam ao parâmetro dos investigados."""
     problems = []
@@ -711,6 +863,15 @@ class SimbaBindings(unittest.TestCase):
 
     def test_todo_documento_declara_as_contas_do_caso(self) -> None:
         self.assertEqual([], missing_case_accounts(bindings(ROOT)))
+
+    def test_so_entra_a_cotitularidade_que_cruza_o_periodo(self) -> None:
+        self.assertEqual([], coholder_period_off(bindings(ROOT)))
+
+    def test_parte_sem_inicio_do_vinculo_nao_recusa_o_titulares(self) -> None:
+        self.assertEqual([], part_start_required(contracts(ROOT)))
+
+    def test_quem_le_as_contas_do_caso_le_as_de_cotitular(self) -> None:
+        self.assertEqual([], coholder_accounts_missing(bindings(ROOT)))
 
     def test_toda_consulta_de_cliente_chega_aos_investigados(self) -> None:
         self.assertEqual([], unscoped_queries(bindings(ROOT)))
@@ -752,6 +913,9 @@ class SimbaBindings(unittest.TestCase):
     def test_tipo_de_conta_do_pix_so_onde_a_in_casa(self) -> None:
         self.assertEqual([], pix_account_type_off(bindings(ROOT)))
 
+    def test_tipo_da_chave_pix_no_codigo_da_in(self) -> None:
+        self.assertEqual([], pix_key_type_off(bindings(ROOT)))
+
     def test_os_lancamentos_do_od_sao_os_do_extrato(self) -> None:
         self.assertEqual([], entries_mismatch(contracts(ROOT)))
 
@@ -763,6 +927,25 @@ class SimbaBindings(unittest.TestCase):
 
     def test_renda_e_faturamento_so_saem_em_brl(self) -> None:
         self.assertEqual([], currency_rules_off(contracts(ROOT)))
+
+    def test_moeda_so_de_quem_imprime_a_renda(self) -> None:
+        self.assertEqual([], party_currency_scope_off(contracts(ROOT), bindings(ROOT)["titulares"]))
+
+    def test_moeda_do_procurador_que_recusa_e_pega(self) -> None:
+        found = copy.deepcopy(contracts(ROOT))
+        for r in found["titulares"]["rules"]:
+            if r.get("id") == "moeda-do-faturamento-partes":
+                r["appliesTo"] = "cadastro_partes"
+        self.assertIn("titulares: 'cadastro_partes.moedaFaturamento' = 'USD' recusaria um procurador, que não imprime a renda",
+                      party_currency_scope_off(found, bindings(ROOT)["titulares"]))
+
+    def test_moeda_lida_de_todas_as_partes_e_pega(self) -> None:
+        binding = copy.deepcopy(bindings(ROOT)["titulares"])
+        for q in binding["queries"]:
+            if q.get("name") == "cotitulares_documentos":
+                q["filters"] = [c for c in q["filters"] if c.get("field") != "related_parties.role"]
+        self.assertIn("titulares: 'cotitulares_documentos' não se restringe aos cotitulares (PRIMARY_HOLDER)",
+                      party_currency_scope_off(contracts(ROOT), binding))
 
     def test_texto_que_passa_pelo_ascii_tem_o_pattern_do_macro(self) -> None:
         self.assertEqual([], ascii_fields_off(ROOT, contracts(ROOT)))
@@ -790,6 +973,24 @@ class Mutations(unittest.TestCase):
         self.found = bindings(ROOT)
         self.assertIn("contas", self.found)
 
+    def test_telefone_e_email_trocados_na_chave_do_pix_jd_sao_pegos(self) -> None:
+        found = copy.deepcopy(self.found)
+        when = _compute(queries_of(found["origem-destino"])["pix_jd_envios"], "tipo_chave")["case"]["when"]
+        when["2"], when["3"] = when["3"], when["2"]
+        self.assertEqual(1, len(pix_key_type_off(found)))
+
+    def test_chave_do_pix_jd_lida_da_outra_parte_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        queries_of(found["origem-destino"])["pix_jd_envios"]["select"].append("payer_key")
+        found["origem-destino"]["datasets"]["trilho_pix_jd_envios"]["fields"]["chave"]["column"] = "payer_key"
+        self.assertEqual(["origem-destino: a chave de 'pix_jd_envios' não sai de payee_key"], pix_key_type_off(found))
+
+    def test_chave_do_pix_lerian_sem_a_iniciacao_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        queries_of(found["extrato"])["pix_lerian_envios_txid"]["join"] = []
+        self.assertEqual(["extrato: 'pix_lerian_envios_txid' não traz a chave da iniciação do Pix "
+                          "(transfer_initiations por initiation_id, left)"], pix_key_type_off(found))
+
     def test_um_filtro_a_menos_numa_copia_da_consulta_e_pego(self) -> None:
         found = copy.deepcopy(self.found)
         query = queries_of(found["contas"])[CASE_ACCOUNTS]
@@ -808,9 +1009,71 @@ class Mutations(unittest.TestCase):
         query = queries_of(found["contas"])["lancamentos"]
         for condition in query["filters"]:
             for value in condition.get("values") or []:
-                if isinstance(value, dict) and value.get("query") == CASE_ACCOUNTS:
+                if isinstance(value, dict) and value.get("query") in (CASE_ACCOUNTS, COHOLDER_ACCOUNTS):
                     value["query"] = "declarante"
         self.assertTrue(any("'lancamentos'" in p for p in unscoped_queries(found)))
+
+    def test_inicio_do_vinculo_obrigatorio_e_pego(self) -> None:
+        found = contracts(ROOT)
+        for d in found["titulares"]["datasets"]:
+            if d.get("name") == "partes":
+                for f in d["fields"]:
+                    if f.get("name") == "dataInicio":
+                        f["required"] = True
+        self.assertEqual(["titulares: 'partes.dataInicio' não é opcional; a parte sem start_date recusa o arquivo"],
+                         part_start_required(found))
+
+    def test_ex_cotitular_de_antes_do_periodo_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        query = queries_of(found["contas"])["cotitular_encerrado"]
+        query["filters"] = [c for c in query["filters"] if c.get("field") != "related_parties.end_date"]
+        self.assertEqual(["contas: 'cotitular_encerrado' não lê o início no período e o fim no período da "
+                          "cotitularidade"], coholder_period_off(found))
+
+    def test_cotitularidade_vigente_fora_da_uniao_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        for condition in queries_of(found["extrato"])[COHOLDER_ACCOUNTS]["filters"]:
+            if condition.get("field") == "account_id":
+                condition["values"] = [v for v in condition["values"] if v.get("query") != "cotitular_aberto"]
+        self.assertEqual(["extrato: 'contas_cotitular' não é a união das contas de cotitular_aberto, "
+                          "cotitular_encerrado, cotitular_sem_inicio_aberto, cotitular_sem_inicio_encerrado"],
+                         coholder_period_off(found))
+
+    def test_borda_do_periodo_fora_do_dia_e_pega(self) -> None:
+        # Quem começou no último dia e quem saiu no primeiro dia do período entram: o fim é o primeiro instante
+        # depois do último dia, e o início é o primeiro instante do primeiro dia.
+        for field, value in (("related_parties.start_date", {"parameter": "fim", "at": "start"}),
+                             ("related_parties.end_date", {"parameter": "inicio", "at": "end"})):
+            found = copy.deepcopy(self.found)
+            for condition in queries_of(found["titulares"])["cotitular_encerrado"]["filters"]:
+                if condition.get("field") == field:
+                    condition["values"] = [value]
+            self.assertEqual(["titulares: 'cotitular_encerrado' não lê o início no período e o fim no período da "
+                              "cotitularidade"], coholder_period_off(found))
+
+    def test_ramo_sem_o_papel_a_conta_ou_o_apagado_e_pego(self) -> None:
+        # Sem o papel, um representante entraria; sem as contas da ordem, outra conta; sem deleted_at, a apagada.
+        for field in ("related_parties.role", "banking_details.account", "deleted_at"):
+            found = copy.deepcopy(self.found)
+            query = queries_of(found["contas"])["cotitular_aberto"]
+            query["filters"] = [c for c in query["filters"] if c.get("field") != field]
+            self.assertEqual(["contas: 'cotitular_aberto' não é a parte PRIMARY_HOLDER com o documento da ordem, na "
+                              "conta da ordem, não apagada"], coholder_period_off(found))
+
+    def test_registro_sem_inicio_fora_da_uniao_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        found["agencias"]["queries"] = [q for q in found["agencias"]["queries"]
+                                        if q.get("name") != "cotitular_sem_inicio_aberto"]
+        self.assertIn("agencias: 'cotitular_sem_inicio_aberto' não lê o início ausente e o fim vigente da "
+                      "cotitularidade", coholder_period_off(found))
+
+    def test_consulta_que_esquece_as_contas_de_cotitular_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        for condition in queries_of(found["extrato"])["lancamentos_dados"]["filters"]:
+            values = condition.get("values") or []
+            condition["values"] = [v for v in values if not (isinstance(v, dict) and v.get("query") == COHOLDER_ACCOUNTS)]
+        self.assertEqual(["extrato: 'lancamentos_dados' lê as contas do caso (contas_do_caso.account_id) sem as de "
+                          "cotitular (contas_cotitular.account_id)"], coholder_accounts_missing(found))
 
     def test_consulta_que_volta_a_ler_reservas_e_pega(self) -> None:
         found = copy.deepcopy(self.found)
@@ -1020,6 +1283,12 @@ class Mutations(unittest.TestCase):
         found = copy.deepcopy(self.found)
         del _compute(queries_of(found["titulares"])["cadastro_titulares"], "codigo_uf")["case"]["when"]["DF"]
         self.assertEqual(["titulares: 'cadastro_titulares' traduz a UF 'DF', que a tabela do IBGE tem e a consulta não"],
+                         country_names_mismatch(found))
+
+    def test_uf_em_minuscula_que_falta_numa_consulta_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        del _compute(queries_of(found["titulares"])["cadastro_partes"], "codigo_uf")["case"]["when"]["sp"]
+        self.assertEqual(["titulares: 'cadastro_partes' traduz a UF 'sp', que a tabela do IBGE tem e a consulta não"],
                          country_names_mismatch(found))
 
     def test_uf_sem_traducao_que_recusa_e_pega(self) -> None:
