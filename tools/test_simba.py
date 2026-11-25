@@ -73,6 +73,8 @@ ROOT = Path(__file__).resolve().parent.parent
 FAMILY = Path("br") / "bcb" / "simba"
 # A consulta que fixa as contas de um caso: todo documento a declara.
 CASE_ACCOUNTS = "contas_do_caso"
+# As contas em que o investigado é cotitular: toda consulta que lê as contas do caso lê as duas.
+COHOLDER_ACCOUNTS = "contas_cotitular"
 # O parâmetro que nomeia os investigados: toda consulta de cliente chega nele.
 INVESTIGATED = "documentos"
 # Quem lê a própria instituição não lê cliente: fica fora da conferência acima.
@@ -755,6 +757,82 @@ def _reads(query: dict) -> tuple[set[str], set[str]]:
     return parameters, sources
 
 
+# A cotitularidade entra se cruza o período pedido em um dia ao menos: start_date antes do primeiro instante depois
+# do fim (ou ausente, registro antigo) e end_date ausente (vigente) ou a partir do primeiro instante do início. O
+# motor não executa anyOf, então cada combinação é uma consulta e as contas de cotitular são a união delas.
+COHOLDER_START = {"no período": ("lt", [{"parameter": "fim", "at": "end"}]), "ausente": ("isNull", None)}
+COHOLDER_END = {"vigente": ("isNull", None), "no período": ("gte", [{"parameter": "inicio", "at": "start"}])}
+# O resto de cada ramo: a parte é o documento da ordem como PRIMARY_HOLDER (sem o papel, um representante entraria), na
+# conta da ordem, não apagada.
+COHOLDER_SCOPE = [{"field": "related_parties.document", "operator": "in", "values": [{"parameter": "documentos"}]},
+                  {"field": "related_parties.role", "operator": "eq", "values": ["PRIMARY_HOLDER"]},
+                  {"field": "banking_details.account", "operator": "in", "values": [{"parameter": "contas"}]},
+                  {"field": "deleted_at", "operator": "isNull"}]
+COHOLDER_BRANCHES = {"cotitular_aberto": ("no período", "vigente"),
+                     "cotitular_encerrado": ("no período", "no período"),
+                     "cotitular_sem_inicio_aberto": ("ausente", "vigente"),
+                     "cotitular_sem_inicio_encerrado": ("ausente", "no período")}
+
+
+def coholder_period_off(found: dict[str, dict]) -> list[str]:
+    """Onde as contas de cotitular deixam de ser as da cotitularidade que cruza o período pedido."""
+    problems = []
+    for document, binding in sorted(found.items()):
+        queries = queries_of(binding)
+        for name, (start, end) in sorted(COHOLDER_BRANCHES.items()):
+            dates = {}
+            for condition in (queries.get(name) or {}).get("filters") or []:
+                if isinstance(condition, dict) and condition.get("field") in ("related_parties.start_date",
+                                                                              "related_parties.end_date"):
+                    dates.setdefault(condition["field"], []).append((condition.get("operator"), condition.get("values")))
+            if dates != {"related_parties.start_date": [COHOLDER_START[start]],
+                         "related_parties.end_date": [COHOLDER_END[end]]}:
+                problems.append(f"{document}: '{name}' não lê o início {start} e o fim {end} da cotitularidade")
+            rest = [c for c in (queries.get(name) or {}).get("filters") or []
+                    if not (isinstance(c, dict) and c.get("field") in ("related_parties.start_date",
+                                                                        "related_parties.end_date"))]
+            if sorted(map(str, rest)) != sorted(map(str, COHOLDER_SCOPE)) or \
+                    (queries.get(name) or {}).get("expand") != "related_parties":
+                problems.append(f"{document}: '{name}' não é a parte PRIMARY_HOLDER com o documento da ordem, na conta "
+                                "da ordem, não apagada")
+        union = [(v.get("query"), v.get("column")) for c in (queries.get(COHOLDER_ACCOUNTS) or {}).get("filters") or []
+                 if isinstance(c, dict) and c.get("field") == "account_id"
+                 for v in c.get("values") or [] if isinstance(v, dict)]
+        if sorted(union) != sorted((name, "account_id") for name in COHOLDER_BRANCHES):
+            problems.append(f"{document}: '{COHOLDER_ACCOUNTS}' não é a união das contas de "
+                            f"{', '.join(sorted(COHOLDER_BRANCHES))}")
+    return problems
+
+
+# A parte sem start_date (registro antigo) entra pela regra do período; o início do vínculo dela não pode ser
+# obrigatório, ou a geração inteira do TITULARES é recusada por causa dessa parte.
+PART_START = {("titulares", "partes", "dataInicio"), ("titulares", "partes_contraparte", "dataInicio")}
+
+
+def part_start_required(found: dict[str, dict]) -> list[str]:
+    """Os inícios de vínculo de parte que o contrato exige, e que recusariam a geração com a parte sem start_date."""
+    problems = []
+    for document, dataset, field in sorted(PART_START):
+        fields = {f.get("name"): f for d in found.get(document, {}).get("datasets") or []
+                  if isinstance(d, dict) and d.get("name") == dataset for f in d.get("fields") or []}
+        if field not in fields or fields[field].get("required") is not False:
+            problems.append(f"{document}: '{dataset}.{field}' não é opcional; a parte sem start_date recusa o arquivo")
+    return problems
+
+
+def coholder_accounts_missing(found: dict[str, dict]) -> list[str]:
+    """As consultas que leem as contas do caso e deixam de fora as contas em que o investigado é cotitular."""
+    problems = []
+    for document, binding in sorted(found.items()):
+        for name, query in sorted(queries_of(binding).items()):
+            for condition in query.get("filters") or []:
+                read = {(v.get("query"), v.get("column")) for v in condition.get("values") or [] if isinstance(v, dict)}
+                if (CASE_ACCOUNTS, "account_id") in read and (COHOLDER_ACCOUNTS, "account_id") not in read:
+                    problems.append(f"{document}: '{name}' lê as contas do caso ({CASE_ACCOUNTS}.account_id) sem as de "
+                                    f"cotitular ({COHOLDER_ACCOUNTS}.account_id)")
+    return problems
+
+
 def unscoped_queries(found: dict[str, dict]) -> list[str]:
     """As consultas de cliente que não chegam ao parâmetro dos investigados."""
     problems = []
@@ -785,6 +863,15 @@ class SimbaBindings(unittest.TestCase):
 
     def test_todo_documento_declara_as_contas_do_caso(self) -> None:
         self.assertEqual([], missing_case_accounts(bindings(ROOT)))
+
+    def test_so_entra_a_cotitularidade_que_cruza_o_periodo(self) -> None:
+        self.assertEqual([], coholder_period_off(bindings(ROOT)))
+
+    def test_parte_sem_inicio_do_vinculo_nao_recusa_o_titulares(self) -> None:
+        self.assertEqual([], part_start_required(contracts(ROOT)))
+
+    def test_quem_le_as_contas_do_caso_le_as_de_cotitular(self) -> None:
+        self.assertEqual([], coholder_accounts_missing(bindings(ROOT)))
 
     def test_toda_consulta_de_cliente_chega_aos_investigados(self) -> None:
         self.assertEqual([], unscoped_queries(bindings(ROOT)))
@@ -922,9 +1009,71 @@ class Mutations(unittest.TestCase):
         query = queries_of(found["contas"])["lancamentos"]
         for condition in query["filters"]:
             for value in condition.get("values") or []:
-                if isinstance(value, dict) and value.get("query") == CASE_ACCOUNTS:
+                if isinstance(value, dict) and value.get("query") in (CASE_ACCOUNTS, COHOLDER_ACCOUNTS):
                     value["query"] = "declarante"
         self.assertTrue(any("'lancamentos'" in p for p in unscoped_queries(found)))
+
+    def test_inicio_do_vinculo_obrigatorio_e_pego(self) -> None:
+        found = contracts(ROOT)
+        for d in found["titulares"]["datasets"]:
+            if d.get("name") == "partes":
+                for f in d["fields"]:
+                    if f.get("name") == "dataInicio":
+                        f["required"] = True
+        self.assertEqual(["titulares: 'partes.dataInicio' não é opcional; a parte sem start_date recusa o arquivo"],
+                         part_start_required(found))
+
+    def test_ex_cotitular_de_antes_do_periodo_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        query = queries_of(found["contas"])["cotitular_encerrado"]
+        query["filters"] = [c for c in query["filters"] if c.get("field") != "related_parties.end_date"]
+        self.assertEqual(["contas: 'cotitular_encerrado' não lê o início no período e o fim no período da "
+                          "cotitularidade"], coholder_period_off(found))
+
+    def test_cotitularidade_vigente_fora_da_uniao_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        for condition in queries_of(found["extrato"])[COHOLDER_ACCOUNTS]["filters"]:
+            if condition.get("field") == "account_id":
+                condition["values"] = [v for v in condition["values"] if v.get("query") != "cotitular_aberto"]
+        self.assertEqual(["extrato: 'contas_cotitular' não é a união das contas de cotitular_aberto, "
+                          "cotitular_encerrado, cotitular_sem_inicio_aberto, cotitular_sem_inicio_encerrado"],
+                         coholder_period_off(found))
+
+    def test_borda_do_periodo_fora_do_dia_e_pega(self) -> None:
+        # Quem começou no último dia e quem saiu no primeiro dia do período entram: o fim é o primeiro instante
+        # depois do último dia, e o início é o primeiro instante do primeiro dia.
+        for field, value in (("related_parties.start_date", {"parameter": "fim", "at": "start"}),
+                             ("related_parties.end_date", {"parameter": "inicio", "at": "end"})):
+            found = copy.deepcopy(self.found)
+            for condition in queries_of(found["titulares"])["cotitular_encerrado"]["filters"]:
+                if condition.get("field") == field:
+                    condition["values"] = [value]
+            self.assertEqual(["titulares: 'cotitular_encerrado' não lê o início no período e o fim no período da "
+                              "cotitularidade"], coholder_period_off(found))
+
+    def test_ramo_sem_o_papel_a_conta_ou_o_apagado_e_pego(self) -> None:
+        # Sem o papel, um representante entraria; sem as contas da ordem, outra conta; sem deleted_at, a apagada.
+        for field in ("related_parties.role", "banking_details.account", "deleted_at"):
+            found = copy.deepcopy(self.found)
+            query = queries_of(found["contas"])["cotitular_aberto"]
+            query["filters"] = [c for c in query["filters"] if c.get("field") != field]
+            self.assertEqual(["contas: 'cotitular_aberto' não é a parte PRIMARY_HOLDER com o documento da ordem, na "
+                              "conta da ordem, não apagada"], coholder_period_off(found))
+
+    def test_registro_sem_inicio_fora_da_uniao_e_pego(self) -> None:
+        found = copy.deepcopy(self.found)
+        found["agencias"]["queries"] = [q for q in found["agencias"]["queries"]
+                                        if q.get("name") != "cotitular_sem_inicio_aberto"]
+        self.assertIn("agencias: 'cotitular_sem_inicio_aberto' não lê o início ausente e o fim vigente da "
+                      "cotitularidade", coholder_period_off(found))
+
+    def test_consulta_que_esquece_as_contas_de_cotitular_e_pega(self) -> None:
+        found = copy.deepcopy(self.found)
+        for condition in queries_of(found["extrato"])["lancamentos_dados"]["filters"]:
+            values = condition.get("values") or []
+            condition["values"] = [v for v in values if not (isinstance(v, dict) and v.get("query") == COHOLDER_ACCOUNTS)]
+        self.assertEqual(["extrato: 'lancamentos_dados' lê as contas do caso (contas_do_caso.account_id) sem as de "
+                          "cotitular (contas_cotitular.account_id)"], coholder_accounts_missing(found))
 
     def test_consulta_que_volta_a_ler_reservas_e_pega(self) -> None:
         found = copy.deepcopy(self.found)

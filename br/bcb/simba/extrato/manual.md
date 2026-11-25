@@ -33,8 +33,8 @@ liberações do Midaz (operações `ON_HOLD` e `RELEASE`) ficam fora: a transfer
 por reserva sai uma vez só, com a operação que a concluiu. Num ledger que valida rotas, a reserva
 cancelada sai como um débito e um crédito de mesmo valor (a reserva e a devolução), e uma reserva
 ainda aberta na data de corte sai como débito, sem a operação que a concluiria. As contas
-do caso são as mesmas do CONTAS: as que um documento da ordem titula (cotitular,
-representante e procurador não entram).
+do caso são as mesmas do CONTAS: as que um documento da ordem titula e as em que ele é
+cotitular (representante e procurador não entram).
 
 ## Número do lançamento e o ORIGEM-DESTINO
 

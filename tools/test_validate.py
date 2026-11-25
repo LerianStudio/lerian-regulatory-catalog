@@ -2642,6 +2642,20 @@ MUTATIONS: list[Mutation] = [
         "lê os valores de uma consulta e outros valores",
     ),
     Mutation(
+        "valor-de-consulta-repetido",
+        "a mesma origem duas vezes na união: o motor recusa na carga",
+        lambda b: query(chained_filter(b)[HIER]["binding"], "detalhado")["filters"][0]["values"].append(
+            {"query": "por_titular", "column": "titular"}),
+        "lê a coluna 'titular' de 'por_titular' duas vezes; cada origem entra uma vez",
+    ),
+    Mutation(
+        "valor-de-consulta-unido-a-literal",
+        "um literal ao lado de dois valores de consulta",
+        lambda b: query(chained_filter(b)[HIER]["binding"], "detalhado")["filters"][0]["values"].extend(
+            [{"query": "base_titulares", "column": "titular"}, "X"]),
+        "lê os valores de uma consulta e outros valores",
+    ),
+    Mutation(
         "valor-de-consulta-inexistente",
         "nome trocado: o `in` vazio não devolveria linha nenhuma, em silêncio",
         lambda b: chained_filter(b, query="por_titulr"),
@@ -2956,6 +2970,19 @@ class ValidatorSuite(unittest.TestCase):
         """
         code, out = _run(self._write(chained_filter(fixtures.bundle())))
         self.assertEqual(code, 0, f"o filtro encadeado deveria validar:\n{out}")
+
+    def test_a_filter_read_from_two_queries_is_valid(self) -> None:
+        """Dois `{query, column}` na mesma condição: o `in` lê a união dos valores.
+
+        É o que as contas do caso do SIMBA fazem: as que o investigado titula e as em
+        que ele é cotitular, duas consultas, um filtro só. O motor junta os valores.
+        """
+        data = chained_filter(fixtures.bundle())
+        query(data[HIER]["binding"], "base_titulares")["select"] = ["_id", "titular"]
+        query(data[HIER]["binding"], "detalhado")["filters"][0]["values"].append(
+            {"query": "base_titulares", "column": "titular"})
+        code, out = _run(self._write(data))
+        self.assertEqual(code, 0, f"o filtro que lê duas consultas deveria validar:\n{out}")
 
     def test_a_cycle_through_from_alone_is_reported_once(self) -> None:
         """O ciclo só de `from` continua com a mensagem dele, uma vez.

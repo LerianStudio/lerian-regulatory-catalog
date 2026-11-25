@@ -34,7 +34,7 @@ metadata:
   summary: >-
     Agências das contas investigadas e das contas da mesma instituição com as quais
     elas transacionaram no período do afastamento do sigilo, uma linha por agência.
-  version: 1.0.2
+  version: 1.1.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -294,3 +294,13 @@ knownGaps:
   - id: excluida-do-crm
     description: >-
       Uma conta apagada do CRM (deleted_at) não entra, e a agência dela só entra se outra conta do caso a tiver.
+  - id: cotitular-no-periodo
+    description: >-
+      A conta de que o investigado é cotitular entra quando a cotitularidade cruza o período pedido em um dia ao
+      menos (start_date até o fim, e end_date ausente ou a partir do início). Com sobreposição parcial, o EXTRATO e
+      o ORIGEM-DESTINO trazem todo o movimento da conta no período, inclusive os dias em que o investigado ainda não
+      era cotitular ou já tinha saído: é movimento de conta de terceiro sem sigilo afastado nesses dias. A parte
+      sem start_date (registro antigo) entra sempre; não se consulta a abertura da conta (opening_date), e a
+      conferência avisa o cotitular sem o início do vínculo (TITULARES, campo 20). Nas bordas, o Reporter fecha o
+      período no fuso configurado dele e o CRM grava a data do vínculo à meia-noite UTC: num fuso atrás de UTC, a
+      cotitularidade que termina no primeiro dia do período fica fora, e a que começa no dia seguinte ao fim entra.

@@ -3,8 +3,8 @@
 # Exemplo preenchido contra o Midaz (`midaz_onboarding`, `midaz_transaction`), a
 # metadata do Midaz (`midaz_metadata`, o Mongo das colecoes `transaction` e
 # `operation`) e o CRM do Midaz (`plugin_crm`). As contas do caso saem de
-# `contas_do_caso`, a mesma consulta (mesmo texto) nos bindings de AGENCIAS, CONTAS,
-# TITULARES e ORIGEM-DESTINO.
+# `contas_do_caso` e de `contas_cotitular`, as mesmas consultas (mesmo texto) nos
+# bindings de AGENCIAS, CONTAS, TITULARES e ORIGEM-DESTINO.
 #
 # MESMA NUMERACAO DO ORIGEM-DESTINO: `lancamentos_dados` e as consultas que ela junta
 # (`lancamentos_descricao`, `contas_lancamento`, `metadados_transacao`) e `taxas_lancamento` tem o MESMO texto
@@ -31,7 +31,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.extrato
-contractVersion: 1.1.0
+contractVersion: 1.2.0
 
 queries:
 
@@ -43,8 +43,9 @@ queries:
       - field: deleted_at
         operator: isNull
 
-  # As contas do caso: as que o documento investigado TITULA (cotitular, representante e
-  # procurador nao entram). Excluida do CRM fica fora; encerrada entra.
+  # As contas do caso: as que o documento investigado TITULA (contas_do_caso) e as em que
+  # ele e cotitular (contas_cotitular). Representante e procurador nao entram. Excluida do
+  # CRM fica fora; encerrada entra. Toda consulta que le as contas do caso le as duas.
   - name: contas_do_caso
     dataSource: plugin_crm
     table: aliases
@@ -54,12 +55,82 @@ queries:
       - {field: deleted_at, operator: isNull}
     select: [account_id, document, banking_details.branch, banking_details.account, regulatory_fields.account_type, banking_details.type, banking_details.opening_date, banking_details.closing_date]
 
+  # As contas em que o documento investigado e cotitular no periodo: a parte do instrumento
+  # com o documento da ordem e o papel PRIMARY_HOLDER, cuja cotitularidade cruza o periodo
+  # pedido em pelo menos um dia (start_date ate o fim, e end_date ausente ou a partir do
+  # inicio). O filtro do documento pergunta pelo digest das partes
+  # (search.related_party_documents) e o Reporter confere, parte a parte, o documento
+  # decifrado; papel e datas sao conferidos na mesma parte, depois do expand. Representante
+  # (LEGAL_REPRESENTATIVE) e RESPONSIBLE_PARTY nao entram.
+  # O motor nao executa anyOf, entao cada combinacao e uma consulta e a contas_cotitular e a
+  # uniao delas: vinculo aberto (sem end_date) ou encerrado no periodo, com start_date ate o
+  # fim ou ausente (registro antigo: entra sempre; opening_date nao e consultada).
+  - name: cotitular_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: lt, values: [{parameter: fim, at: end}]}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_aberto
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: isNull}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: cotitular_sem_inicio_encerrado
+    dataSource: plugin_crm
+    table: aliases
+    expand: related_parties
+    filters:
+      - {field: related_parties.document, operator: in, values: [{parameter: documentos}]}
+      - {field: related_parties.role, operator: eq, values: ["PRIMARY_HOLDER"]}
+      - {field: related_parties.start_date, operator: isNull}
+      - {field: related_parties.end_date, operator: gte, values: [{parameter: inicio, at: start}]}
+      - {field: banking_details.account, operator: in, values: [{parameter: contas}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id]
+
+  - name: contas_cotitular
+    dataSource: plugin_crm
+    table: aliases
+    filters:
+      - {field: account_id, operator: in, values: [{query: cotitular_aberto, column: account_id}, {query: cotitular_encerrado, column: account_id}, {query: cotitular_sem_inicio_aberto, column: account_id}, {query: cotitular_sem_inicio_encerrado, column: account_id}]}
+      - {field: deleted_at, operator: isNull}
+    select: [account_id, document]
+
   - name: lancamentos
     description: Lançamentos das contas do caso no período, só a transação de cada um.
     dataSource: midaz_transaction
     table: operation
     filters:
-      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
       - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
@@ -73,7 +144,7 @@ queries:
     dataSource: midaz_transaction
     table: operation
     filters:
-      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
       - {field: type, operator: nin, values: ["ON_HOLD", "RELEASE"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
@@ -122,7 +193,7 @@ queries:
     dataSource: midaz_transaction
     table: operation
     filters:
-      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: balance_affected, operator: eq, values: ["true"]}
       - {field: asset_code, operator: eq, values: ["BRL"]}
       - {field: deleted_at, operator: isNull}
@@ -143,7 +214,7 @@ queries:
     dataSource: plugin_crm
     table: aliases
     filters:
-      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}]}
+      - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: deleted_at, operator: isNull}
     compute:
       - as: numero_agencia

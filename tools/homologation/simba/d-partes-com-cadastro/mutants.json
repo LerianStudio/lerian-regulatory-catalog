@@ -8,7 +8,7 @@
     "count": 4,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 7,
+      "line": 9,
       "field": 12
     }
   },
@@ -99,8 +99,21 @@
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
-      "line": 8,
+      "line": 10,
       "field": 18
+    }
+  },
+  {
+    "name": "titular de conta co-titulada, fora da ordem, dito investigado",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "\tT\t{% if t.documento in system.documentos %}1{% else %}0{% endif %}\t",
+    "new": "\tT\t1\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 6,
+      "field": 6
     }
   }
 ]

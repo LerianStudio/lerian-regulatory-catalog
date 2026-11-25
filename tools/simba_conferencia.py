@@ -410,7 +410,7 @@ def _account_balance(row: dict) -> Decimal | None:
 
 
 def check_case_documents(path: Path | None, titulares: list[list[str]], report: Report) -> None:
-    """Cada documento da ordem aparece como titular de alguma conta no TITULARES."""
+    """Cada documento da ordem aparece como titular ou cotitular de alguma conta no TITULARES."""
     if path is None:
         report.warn("TITULARES: sem --documentos, o documento da ordem sem nenhuma conta NÃO foi conferido")
         return
@@ -422,19 +422,36 @@ def check_case_documents(path: Path | None, titulares: list[list[str]], report: 
     if not documents:
         report.error(f"--documentos: {path.name} não traz documento nenhum")
         return
-    # O TITULARES já escreve o documento só com dígitos (e letras, no CNPJ alfanumérico). Só o
-    # titular conta: a conta em que o documento é cotitular, representante ou procurador não é
-    # selecionada por ele.
-    holders = {field(r, 8) for r in titulares if field(r, 5) == HOLDER}
+    # O TITULARES já escreve o documento só com dígitos (e letras, no CNPJ alfanumérico). O
+    # titular e o cotitular (campo 5 = T ou 1, 2, ...) contam: as contas em que o documento é
+    # titular ou cotitular são do caso. Representante, procurador e outros (L, P, R, O) não:
+    # a conta em que o documento só representa o titular não é selecionada por ele.
+    holders = {field(r, 8) for r in titulares if field(r, 5) == HOLDER or field(r, 5).isdigit()}
     missing = [str(i) for i, document in enumerate(documents, 1) if _digits(document) not in holders]
     if missing:
         report.warn(f"TITULARES: o(s) documento(s) nº {', '.join(missing)} da ordem (posição em --documentos) não "
-                    "titula(m) conta nenhuma nos arquivos; confira se foi digitado certo antes de declará-lo(s) sem "
+                    "titula(m) nem cotitula(m) conta nenhuma nos arquivos; confira se foi digitado certo antes de declará-lo(s) sem "
                     "relacionamento no atendimento da requisição")
 
 
 def _digits(text: str) -> str:
     return "".join(c for c in text if c.isalnum()).upper()
+
+
+def check_coholder_start(titulares: list[list[str]], report: Report) -> None:
+    """O cotitular da ordem sem o início do vínculo (campo 20 em branco, ou do ano 0001, o instante zero do registro
+    antigo).
+
+    A conta de que o documento da ordem é cotitular entra quando a cotitularidade cruza o período; sem a data de
+    início ela entra sempre, sem essa conferência, e quem aprova confere se o vínculo cruza o período. Só a pessoa da
+    ordem (campo 6 = 1) escolhe a conta pelas datas: o outro cotitular de uma conta do caso não a escolheu.
+    """
+    loose = sum(1 for r in titulares if field(r, 5).isdigit() and field(r, 6) == "1"
+                and (not field(r, 20) or field(r, 20).endswith("0001")))
+    if loose:
+        report.warn(f"TITULARES: {loose} cotitular(es) com sigilo afastado (campo 6 = 1) sem a data de início do "
+                    "vínculo (campo 20 em branco ou do ano 0001): a conta entrou sem conferir se a cotitularidade "
+                    "cruza o período")
 
 
 def check_identity(titulares: list[list[str]], report: Report) -> None:
@@ -649,6 +666,7 @@ def conferir(folder: Path, caso: str, drafts_folder: Path | None = None, previou
     check_generic_entries(files["EXTRATO"], files["ORIGEM_DESTINO"], report)
     check_identity(files["TITULARES"], report)
     check_case_documents(documents, files["TITULARES"], report)
+    check_coholder_start(files["TITULARES"], report)
     check_entry_balances(drafts, report)
     check_overdraft_rows(drafts, report)
     if previous_folder is None:
