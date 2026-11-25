@@ -14,9 +14,10 @@
 # separador (IN :73). A forma e do template; o formato de cada campo esta aqui.
 #
 # DE ONDE VEM CADA CAMPO: conta, tipo, abertura e encerramento do CRM do Midaz;
-# saldos da soma dos lancamentos do Midaz ate a data; numero da agencia do
-# cadastro de agencias do tenant (o mesmo do AGENCIAS); CNPJ da organizacao do
-# Midaz; COMPE e nome no Unicad preenchidos pelo cliente no mapeamento.
+# saldos da soma dos lancamentos do Midaz ate a data; numero da agencia do CRM
+# (`banking_details.branch`); CNPJ da organizacao do Midaz; COMPE e nome no
+# Unicad preenchidos pelo cliente no mapeamento; o CNPJ da instituicao sucedida
+# (campo 12), que o Midaz nao possui, manual.
 
 apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentContract
@@ -31,7 +32,7 @@ metadata:
   summary: >-
     Contas investigadas e contas da mesma instituição com as quais elas transacionaram
     no período do afastamento do sigilo, com abertura, encerramento e saldos.
-  version: 1.1.0
+  version: 1.2.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -122,7 +123,7 @@ datasets:
       key: [contaId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, dataAbertura: first, dataEncerramento: first,
-                saldoInicial: first, saldoFinal: first, volumePeriodo: first}
+                saldoInicial: first, saldoFinal: first, volumePeriodo: first, contaIncorporada: first}
     fields:
       - name: contaId
         type: string
@@ -131,8 +132,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
-        description: Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, CONTAS, campo 2).
+        pattern: '^[0-9]{1,5}$'
+        description: >-
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, CONTAS, campo 2).
       - name: numeroConta
         type: string
         required: true
@@ -165,6 +168,13 @@ datasets:
         type: decimal
         required: false
         description: Soma dos valores dos lançamentos da conta no período. Só diz se houve lançamento, o código 1 ou 2 do campo 7 (IN 636, Anexo I, CONTAS); não vai ao arquivo.
+      - name: contaIncorporada
+        type: string
+        required: false
+        pattern: '^[0-9A-Z]{14}$'
+        description: >-
+          CNPJ da instituição sucedida, quando a conta veio de uma incorporação; em branco na conta nativa (IN 636,
+          Anexo I, CONTAS, campo 12). O Midaz não registra sucessão.
   - name: contas_contraparte
     description: As contas da mesma instituição com que uma conta do caso transacionou no período. Campo 7 = 3.
     grain: [contaId]
@@ -172,7 +182,7 @@ datasets:
       key: [contaId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, dataAbertura: first, dataEncerramento: first,
-                saldoInicial: first, saldoFinal: first}
+                saldoInicial: first, saldoFinal: first, contaIncorporada: first}
     fields:
       - name: contaId
         type: string
@@ -181,8 +191,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
-        description: Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, CONTAS, campo 2).
+        pattern: '^[0-9]{1,5}$'
+        description: >-
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, CONTAS, campo 2).
       - name: numeroConta
         type: string
         required: true
@@ -211,6 +223,13 @@ datasets:
         required: false
         format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
         description: Saldo da conta no fim do último dia do afastamento, em reais (IN 636, Anexo I, CONTAS, campo 11). Ausente, sai 000.
+      - name: contaIncorporada
+        type: string
+        required: false
+        pattern: '^[0-9A-Z]{14}$'
+        description: >-
+          CNPJ da instituição sucedida, quando a conta veio de uma incorporação; em branco na conta nativa (IN 636,
+          Anexo I, CONTAS, campo 12). O Midaz não registra sucessão.
 
 knownGaps:
   - id: saldo-negativo
@@ -254,5 +273,6 @@ knownGaps:
       Uma conta apagada do CRM (deleted_at) não entra. Uma conta encerrada (closing_date) entra, com a data.
   - id: conta-incorporada
     description: >-
-      O campo 12 sai sempre em branco (conta nativa; IN 636, Anexo I, CONTAS, campo 12): nenhuma aplicação Lerian
-      registra que uma conta veio de uma instituição sucedida.
+      O Midaz não registra sucessão de instituição (IN 636, Anexo I, CONTAS, campo 12). O CNPJ da instituição
+      sucedida é um campo opcional da conta, mapeado como manual com o motivo: a instituição o corrige no rascunho
+      ou o traz de uma base dela (fonte adicional, also, pela conta). Vazio, sai em branco, a conta nativa.

@@ -81,12 +81,12 @@ cautelar. Revise as linhas com `125`/`218` antes de aprovar.
 
 ## O que o tenant preenche no mapeamento (binding)
 
-1. **Número da agência** (`numero_agencia`): o mesmo cadastro de agências do AGÊNCIAS, 5
-   dígitos sem DV, `00001` sem agência física. Os valores do exemplo são sintéticos.
+1. **Número da agência**: vem do CRM (`banking_details.branch`); o template completa com
+   zeros (`1` e `0001` saem `00001`).
 2. **Código Compe** (`compe`): 3 dígitos, ou `999` se a instituição não tem.
 3. **Nome no Unicad** (`nomeUnicad`).
-4. **Canal** (`interfaceTransacao`, campo 17): um código de 1 a 9 da IN para todas as linhas
-   (o exemplo declara `9`, outros). Nenhuma aplicação Lerian registra o canal por lançamento.
+4. **Canal** (`interfaceTransacao`, campo 17): manual. O código de 1 a 9 da IN para todo
+   lançamento que não traz o próprio (`interface`). O Midaz não registra o canal.
 5. **Fonte `midaz_metadata`**: o Mongo da metadata do Midaz (coleções `transaction` e
    `operation`), que a configuração padrão do Reporter não traz; cadastre-a antes.
 6. **Fontes dos plugins de Pix** (`pix_lerian`, `pix_jd`), as mesmas do ORIGEM-DESTINO: o
@@ -121,8 +121,11 @@ que ele não cobre também faz o Reporter recusar a geração.
 
 ## Campos que saem em branco ou com sentinela, e por quê
 
-- 14 (`INFO_ADICIONAIS_LOCAL_TRANSACAO`), 20 a 22 (IP, porta, MAC): em branco; nenhuma
-  aplicação Lerian registra o dado.
+- 14 (`INFO_ADICIONAIS_LOCAL_TRANSACAO`), 17 (canal), 18 e 19 (cidade e UF), 20 a 22 (IP,
+  porta, MAC): campos manuais do lançamento (`infoLocal`, `interface`, `codigoCidade`,
+  `codigoUf`, `ip`, `portaIp`, `macAddress`). O Midaz não os possui. Vazios, o 17 sai com o
+  canal da instituição, o 18 e o 19 com `0000000` e `00` (as sentinelas da IN para
+  localização indisponível) e o 14 e o 20 a 22 em branco.
 - 24 e 25 (chave Pix): a chave usada no Pix, pela linha do plugin. No envio, a chave do
   recebedor: no Pix lerian, da iniciação do Pix (`transfer_initiations`, pelo
   `initiation_id` da transferência); no Pix JD, da transação (`payee_key`). No recebimento
@@ -130,7 +133,6 @@ que ele não cobre também faz o Reporter recusar a geração.
   CPF/CNPJ, 2 telefone, 3 e-mail, 4 aleatória), e o telefone sai só com dígitos, a partir do
   55. Em branco no Pix sem chave (manual ou QR sem chave), no Pix recebido pelo Pix lerian
   (o plugin não grava a chave do recebimento) e fora do Pix.
-- 18 e 19: `0000000` e `00`, as sentinelas da IN para localização indisponível.
 - 26 (`ID_TRANSACAO_PIX`, `TransactionIdentification <TxId>`; IN 636, Anexo I, EXTRATO,
   campo 26): o TxId que o plugin que liquidou o Pix grava, o mesmo do campo 28 do
   ORIGEM-DESTINO; nunca o EndToEndId, que é outro identificador. Em branco fora do Pix, no Pix
@@ -173,6 +175,31 @@ CONTAS, campo 7) e não tem linha aqui. Quando nenhuma conta do caso tem lançam
 arquivo sai vazio (0 byte, sem cabeçalho, IN 636, art. 3º, I) e é aprovado e entregue assim, com
 os outros quatro. O contrato declara isso (`filing.allowEmpty`); um Reporter anterior a esse
 recurso recusa o contrato na carga.
+
+## Campos que o Midaz não possui
+
+Um campo do Anexo I que nenhuma aplicação Lerian registra entra no mapeamento como manual
+(`from: manual`), com o motivo no `pendingReason`: o Midaz não possui o campo, e a
+instituição o informa. Há três formas, e o campo é opcional nas três:
+
+1. **Correção no rascunho**, linha a linha, para poucos casos.
+2. **Uma base da instituição**: uma fonte adicional (`also`) do mesmo conjunto, com a consulta
+   na base dela e a mesma chave do conjunto (`rowKey`); o Reporter une as linhas pela chave.
+3. **Deixar pendente**: o campo sai em branco (ou com a sentinela que a IN dá), como a IN
+   aceita na inexistência da informação (IN 636, art. 2º, § 1º).
+
+CUIDADO: nunca dê um valor fixo (`value`) a um campo que muda por pessoa ou por lançamento.
+O valor manual vale para todas as linhas.
+
+## Versão do Midaz
+
+Os mapeamentos de exemplo leem o CRM do Midaz 4.0 ou posterior. A partir da 4.0, a API do
+CRM chama de instrumento (`instruments`) o que antes era alias, mas o Midaz continua
+gravando os instrumentos na coleção `aliases_<organização>` do MongoDB, e é essa coleção que
+o Reporter lê (`table: aliases`). Não troque `aliases` por `instruments` no mapeamento: a
+coleção `instruments` não existe. Campos como `regulatory_fields.account_type`,
+`related_parties` e `banking_details.closing_date` só existem no CRM do Midaz 4.x; com o
+plugin de CRM anterior (v2.x) o documento não gera.
 
 ## Limitações desta versão
 

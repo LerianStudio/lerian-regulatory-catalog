@@ -1,0 +1,18 @@
+{
+  "description": "Sintetico. O AGENCIAS com o cadastro de agencias escrito a mao no mapeamento (cadastro_agencias, filho de instituicao) e o numero da agencia como o CRM grava (banking_details.branch, sem completar). Conta c1 e c2 na agencia 0001 (uma linha so), c3 na 0002, agencia fechada em 30/06/2026, com acento no nome. Conta de contraparte c9 na 0001 (ja listada, nao se repete) e c8 na 7, que o cadastro nao traz: sai com o numero completado com zeros (00007), os campos 3 a 10 em branco e o fechamento 31129999, e a conferencia aponta.",
+  "documents": [
+    "br/bcb/simba/agencias"
+  ],
+  "system": {
+    "caso": "001-XYZ-000006-01",
+    "inicio": "2026-12-01",
+    "fim": "2026-12-31",
+    "documentos": [
+      "12345678909"
+    ]
+  },
+  "institution": {
+    "name": "Instituicao Exemplo",
+    "identifier": "11222333000181"
+  }
+}

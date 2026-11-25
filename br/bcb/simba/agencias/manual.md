@@ -47,20 +47,17 @@ anterior, mesmo com documentos ou período corrigidos.
 
 ## O que o tenant preenche no mapeamento (binding)
 
-1. **Cadastro de agências**, uma vez na implantação. Agência não existe como entidade no
-   Midaz nem no CRM: o CRM guarda só o número da agência de cada conta
-   (`banking_details.branch`). Cada atributo é um `case` por esse número:
-   `numero_agencia` (5 dígitos, sem DV), `nome_agencia`, `endereco_agencia`,
-   `codigo_cidade` (IBGE, 7 dígitos), `codigo_uf` (IBGE, 2 dígitos; SP = 35),
-   `pais_agencia`, `cep_agencia`, `telefone_agencia`, `data_abertura_agencia`,
-   `data_fechamento_agencia` (agência aberta: `9999-12-31`, que sai `31129999`, a sentinela
-   da IN para agência não fechada; IN 636, Anexo I, AGÊNCIAS, campo 11).
-   Os valores do exemplo são **sintéticos** e precisam ser trocados. O cadastro é
-   **fechado**: uma agência que ele não lista recusa a geração, e uma conta **sem**
-   `banking_details.branch` no CRM também. Toda agência listada tem **todos** os
-   atributos: o Reporter não aceita valor vazio num `case`. A agência sem agência física
-   (instituição digital: o número que o cadastro mapeia para `00001`) é cadastrada com as
-   sentinelas do Anexo I (ver abaixo). O mesmo `numero_agencia` vai no binding do CONTAS.
+1. **Cadastro de agências** (`cadastro_agencias`), uma vez na implantação. Agência não existe
+   como entidade no Midaz nem no CRM: o CRM guarda só o número da agência de cada conta
+   (`banking_details.branch`), que o Reporter lê como está gravado e completa com zeros à
+   esquerda (`1` e `0001` saem `00001`). O resto o Midaz não possui: escreva uma linha por
+   agência no lugar de `rows: []` e apague o `pendingReason`. Cada linha tem `agencia` (5
+   dígitos, sem DV, a chave), `nomeAgencia`, `endereco`, `codigoCidade` (IBGE, 7 dígitos),
+   `codigoUf` (IBGE, 2 dígitos; SP = 35), `pais`, `cep`, `telefone`, `dataAbertura` e
+   `dataFechamento` (agência aberta: `9999-12-31` ou ausente, que sai `31129999`, a sentinela
+   da IN; IN 636, Anexo I, AGÊNCIAS, campo 11). Sem linha nenhuma, o rascunho fica com a
+   pendência e não pode ser aprovado. O número da conta tem até 5 dígitos: um
+   `banking_details.branch` com letra, hífen ou mais dígitos recusa a geração.
 2. **Código Compe** da instituição (`compe`): 3 dígitos, ou `999` se ela não tem.
 3. **Nome no Unicad** (`nomeUnicad`): exatamente como está no cadastro do Banco Central.
 4. **Se a instituição possui agência física** (`possuiAgenciaFisica`, campo 14): `1`
@@ -76,15 +73,22 @@ Num tenant com mais de uma organização, o cadastro da instituição no Reporte
 
 Com `possuiAgenciaFisica = 2`, toda linha sai com as sentinelas do Anexo I, sem acento,
 qualquer que seja o cadastro: nome e endereço `nao possui agencia fisica`, cidade
-`0000000`, UF `00`, CEP `00000000`, telefone `0000000000`. O número da agência vem do
-cadastro: preencha `numero_agencia: "00001"`, que é o número que a IN pede (IN 636, Anexo I,
-AGÊNCIAS, campo 2); com outro número, a linha sai com ele. A data de abertura não tem sentinela:
-informe a data de início de operação da instituição. Agência aberta: fechamento
-`9999-12-31`, que sai `31129999`.
+`0000000`, UF `00`, CEP `00000000`, telefone `0000000000`. O número da agência vem do CRM;
+grave `1` ou `0001` nas contas, que sai `00001`, o número que a IN pede (IN 636, Anexo I,
+AGÊNCIAS, campo 2). No cadastro, basta a linha `00001` com `pais` e as datas. A data de
+abertura não tem sentinela: informe a data de início de operação da instituição.
 
-Com `possuiAgenciaFisica = 1`, os campos saem do cadastro. Uma agência sem agência
-física nessa instituição (a agência `00001`) é cadastrada com as mesmas sentinelas,
-como no exemplo.
+Com `possuiAgenciaFisica = 1`, os campos saem do cadastro.
+
+## Versão do Midaz
+
+Os mapeamentos de exemplo leem o CRM do Midaz 4.0 ou posterior. A partir da 4.0, a API do
+CRM chama de instrumento (`instruments`) o que antes era alias, mas o Midaz continua
+gravando os instrumentos na coleção `aliases_<organização>` do MongoDB, e é essa coleção que
+o Reporter lê (`table: aliases`). Não troque `aliases` por `instruments` no mapeamento: a
+coleção `instruments` não existe. Campos como `regulatory_fields.account_type`,
+`related_parties` e `banking_details.closing_date` só existem no CRM do Midaz 4.x; com o
+plugin de CRM anterior (v2.x) o documento não gera.
 
 ## Período
 
@@ -96,12 +100,11 @@ O período vai do início do dia `inicio` ao fim do dia `fim` no calendário do 
 A IN manda informar o campo, ou a sentinela quando a própria IN dá uma. Onde não há dado
 nem sentinela, o campo sai **em branco**:
 
-- `DATA_ABERTURA_AGENCIA` (campo 10): a IN não dá sentinela. O cadastro do exemplo a
-  preenche para toda agência; um binding que não mapeia `data_abertura_agencia` a deixa em
-  branco em todas.
-- Os demais campos do cadastro não saem em branco: toda agência listada tem todos os
-  atributos (o Reporter recusa valor vazio num `case`). Na implantação, a agência física
-  entra com o cadastro completo, telefone inclusive; sem isso ela não pode ser listada.
+- Campos 3 a 10 de uma agência que o cadastro não traz: a linha sai só com o número, a
+  instituição e o fechamento `31129999`. O template não recusa a geração; a conferência
+  (`tools/simba_conferencia.py`) aponta a agência, e a linha dela tem de ser escrita no
+  cadastro antes de aprovar.
+- Campo opcional que a linha do cadastro omite (`dataAbertura`, por exemplo): em branco.
 
 ## Nome dos arquivos na entrega
 

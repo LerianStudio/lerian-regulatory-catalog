@@ -13,16 +13,19 @@
 # uma delas e mudar nos dois; senao o numero do lancamento (campo 1) aponta para
 # outra linha no ORIGEM-DESTINO.
 #
-# O NUMERO DA AGENCIA (5 digitos; 00001 sem agencia fisica) sai do cadastro de
-# agencias do tenant, o MESMO `case` do binding do AGENCIAS (valores SINTETICOS
-# aqui: "0001" digital, "0002" fisica ficticia). Agencia fora do cadastro recusa.
+# O NUMERO DA AGENCIA e o `banking_details.branch` do CRM, como esta gravado. O
+# contrato aceita ate 5 digitos (sem DV) e recusa o resto; o template completa com
+# zeros a esquerda ("1" e "0001" saem 00001, IN 636 Anexo I).
 #
 # O TIPO DA CONTA vem de `regulatory_fields.account_type` do CRM, cujos valores o
 # proprio Midaz documenta com os codigos da IN (midaz pkg/mmodel/instrument.go:19).
 #
 # NATUREZA (campo 11): credit C, debit D; outra direcao, ou nenhuma, recusa a geracao.
 #
-# O CANAL (campo 17) e um so por instituicao: declare em `interfaceTransacao`.
+# O CANAL (campo 17): o da instituicao em `interfaceTransacao`, para todo lancamento
+# que nao traz o proprio (`interface`). Canal, local, IP, porta e MAC (campos 14 e
+# 17 a 22) o Midaz nao possui: ficam manuais; traga-os de uma base sua com uma
+# fonte adicional (`also`) do conjunto lancamentos, pela transacao e operacao.
 #
 # Filtro encadeado `{query, column}`: grafia provisoria do motor; se
 # mudar, e `sed` nos bindings.
@@ -31,7 +34,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.extrato
-contractVersion: 1.2.0
+contractVersion: 1.3.0
 
 queries:
 
@@ -217,13 +220,6 @@ queries:
       - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: deleted_at, operator: isNull}
     compute:
-      - as: numero_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00001"}
-            "0002": {constant: "00002"}
-          otherwise: refuse
       - as: tipo_conta
         case:
           column: regulatory_fields.account_type
@@ -235,7 +231,7 @@ queries:
             NON_RESIDENT: {constant: "5"}
             PAYMENT: {constant: "6"}
           otherwise: refuse
-    select: [account_id, banking_details.account, numero_agencia, tipo_conta]
+    select: [account_id, banking_details.account, banking_details.branch, tipo_conta]
 
   # A metadata que os plugins gravam na transacao do Midaz (Mongo do Midaz, colecao
   # `transaction`): rail, flow, direction e aggregateId do contrato de
@@ -382,11 +378,11 @@ datasets:
       nomeUnicad:
         from: manual
         pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
-      # Campo 17: o canal das transacoes (1 agencia ... 5 mobile, 9 outros). Nenhuma
-      # aplicacao registra o canal por lancamento; declare o do seu produto.
+      # Campo 17: o canal das transacoes (1 agencia ... 5 mobile, 9 outros). O Midaz
+      # nao registra o canal; declare o do seu produto.
       interfaceTransacao:
-        from: constant
-        value: "9"
+        from: manual
+        pendingReason: "o canal das transações no código da IN (1 agência, 2 correspondente, 3 autoatendimento, 4 internet banking, 5 mobile banking, 6 telefone, 7 TEF/POS, 8 fora da instituição, 9 outros), para todo lançamento que não traz o próprio. O Midaz não possui este campo: informe manualmente"
 
   lancamentos:
     from:
@@ -395,7 +391,7 @@ datasets:
       operacaoId: {from: query, column: id}
       transacaoId: {from: query, column: transaction_id}
       contaId: {from: query, column: account_id}
-      numeroAgencia: {from: query, column: numero_agencia}
+      numeroAgencia: {from: query, column: banking_details.branch}
       numeroConta: {from: query, column: banking_details.account}
       tipoConta: {from: query, column: tipo_conta}
       dataLancamento: {from: query, column: created_at}
@@ -421,6 +417,13 @@ datasets:
       e2eRecebimento: {from: query, column: metadata.inbound_end_to_end_id}
       devolucao: {from: query, column: metadata.refund_id}
       e2eOriginal: {from: query, column: metadata.original_end_to_end_id}
+      infoLocal: {from: manual, pendingReason: "a informação adicional do local da transação. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      interface: {from: manual, pendingReason: "o canal deste lançamento no código da IN (vazio: o da instituição). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      codigoCidade: {from: manual, pendingReason: "o código IBGE do município da transação, 7 dígitos (vazio: 0000000). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      codigoUf: {from: manual, pendingReason: "o código IBGE da UF da transação, 2 dígitos (vazio: 00). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      ip: {from: manual, pendingReason: "o endereço IP do aparelho usado na transação. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      portaIp: {from: manual, pendingReason: "a porta do endereço IP do aparelho. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      macAddress: {from: manual, pendingReason: "o endereço MAC do aparelho usado na transação. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   estornos:
     from:

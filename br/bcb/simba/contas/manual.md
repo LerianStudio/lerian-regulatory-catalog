@@ -40,11 +40,13 @@ em vez de sair um arquivo sem lançamento nenhum.
 
 ## O que o tenant preenche no mapeamento (binding)
 
-1. **Número da agência** (`numero_agencia`): o mesmo cadastro de agências do AGÊNCIAS, 5
-   dígitos sem DV, `00001` sem agência física. Os valores do exemplo são sintéticos. Conta
-   sem `banking_details.branch` no CRM, ou com agência fora do cadastro, recusa a geração.
+1. **Número da agência**: vem do CRM (`banking_details.branch`), como está gravado; o
+   template completa com zeros (`1` e `0001` saem `00001`). Com letra, hífen ou mais de 5
+   dígitos, ou sem o número, a geração é recusada.
 2. **Código Compe** (`compe`): 3 dígitos, ou `999` se a instituição não tem.
 3. **Nome no Unicad** (`nomeUnicad`).
+4. **Instituição sucedida** (`contaIncorporada`, campo 12): manual. Ver Campos que o Midaz
+   não possui.
 
 O CNPJ vem da organização do Midaz. O tipo da conta vem do CRM
 (`regulatory_fields.account_type`: DEPOSIT 1, SAVINGS 2, INVESTMENT 3,
@@ -81,9 +83,9 @@ data).
 
 - `DATA_ABERTURA_CONTA` (campo 5): vem do CRM (`banking_details.opening_date`); a IN não dá
   sentinela, e sem a data o campo sai em branco.
-- `CONTA_INSTITUICAO_INCORPORADA` (campo 12): sempre em branco. A IN manda deixar em branco
-  a conta nativa, e nenhuma aplicação Lerian registra que uma conta veio de uma instituição
-  sucedida.
+- `CONTA_INSTITUICAO_INCORPORADA` (campo 12): o CNPJ da instituição sucedida, campo manual. O
+  Midaz não registra sucessão. Vazio, a conta é nativa e o campo sai em branco, como a IN
+  manda.
 
 Sem data de encerramento, o campo 6 sai `31129999`, a sentinela da IN.
 
@@ -139,6 +141,31 @@ requisição.
   porque ele usa uma macro. A geração não.
 - **Uma instituição por arquivo**: um documento entregue em base individual não soma
   instituições diferentes.
+
+## Campos que o Midaz não possui
+
+Um campo do Anexo I que nenhuma aplicação Lerian registra entra no mapeamento como manual
+(`from: manual`), com o motivo no `pendingReason`: o Midaz não possui o campo, e a
+instituição o informa. Há três formas, e o campo é opcional nas três:
+
+1. **Correção no rascunho**, linha a linha, para poucos casos.
+2. **Uma base da instituição**: uma fonte adicional (`also`) do mesmo conjunto, com a consulta
+   na base dela e a mesma chave do conjunto (`rowKey`); o Reporter une as linhas pela chave.
+3. **Deixar pendente**: o campo sai em branco (ou com a sentinela que a IN dá), como a IN
+   aceita na inexistência da informação (IN 636, art. 2º, § 1º).
+
+CUIDADO: nunca dê um valor fixo (`value`) a um campo que muda por pessoa ou por lançamento.
+O valor manual vale para todas as linhas.
+
+## Versão do Midaz
+
+Os mapeamentos de exemplo leem o CRM do Midaz 4.0 ou posterior. A partir da 4.0, a API do
+CRM chama de instrumento (`instruments`) o que antes era alias, mas o Midaz continua
+gravando os instrumentos na coleção `aliases_<organização>` do MongoDB, e é essa coleção que
+o Reporter lê (`table: aliases`). Não troque `aliases` por `instruments` no mapeamento: a
+coleção `instruments` não existe. Campos como `regulatory_fields.account_type`,
+`related_parties` e `banking_details.closing_date` só existem no CRM do Midaz 4.x; com o
+plugin de CRM anterior (v2.x) o documento não gera.
 
 ## Fonte primária
 

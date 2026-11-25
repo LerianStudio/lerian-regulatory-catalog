@@ -16,8 +16,8 @@
     "name": "exterior sem a cidade 0000000",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% endif %}",
-    "new": "",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% else %}{{ t.codigoCidade }}{% endif %}",
+    "new": "{{ t.codigoCidade }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
@@ -42,8 +42,8 @@
     "name": "sem pais tratado como exterior",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% endif %}",
-    "new": "{% if t.nomePais != \"Brasil\" %}0000000{% endif %}",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% else %}{{ t.codigoCidade }}{% endif %}",
+    "new": "{% if t.nomePais != \"Brasil\" %}0000000{% else %}{{ t.codigoCidade }}{% endif %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
@@ -68,8 +68,8 @@
     "name": "pais em minuscula tratado como exterior",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% endif %}",
-    "new": "{% if t.pais and t.pais != \"BR\" %}0000000{% endif %}",
+    "old": "{% if t.nomePais != \"Brasil\" and t.nomePais != \"-\" %}0000000{% else %}{{ t.codigoCidade }}{% endif %}",
+    "new": "{% if t.pais and t.pais != \"BR\" %}0000000{% else %}{{ t.codigoCidade }}{% endif %}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/titulares",
@@ -94,7 +94,7 @@
     "name": "contraparte no exterior sem a cidade 0000000",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}0000000{% endif %}",
+    "old": "{% if u.nomePais != \"Brasil\" and u.nomePais != \"-\" %}0000000{% else %}{{ u.codigoCidade }}{% endif %}",
     "new": "",
     "count": 1,
     "expect": {
@@ -166,6 +166,45 @@
       "document": "br/bcb/simba/titulares",
       "line": 7,
       "field": 14
+    }
+  },
+  {
+    "name": "documento de identificacao do titular em branco",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{{ ascii(t.nomeDocIdentificacao)|slice:\":50\" }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 1,
+      "field": 10
+    }
+  },
+  {
+    "name": "codigo IBGE da cidade do titular no Brasil em branco",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "0000000{% else %}{{ t.codigoCidade }}{% endif %}",
+    "new": "0000000{% endif %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 1,
+      "field": 13
+    }
+  },
+  {
+    "name": "dispositivos do titular em branco",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{{ ascii(t.dispositivos)|slice:\":500\" }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 1,
+      "field": 26
     }
   }
 ]

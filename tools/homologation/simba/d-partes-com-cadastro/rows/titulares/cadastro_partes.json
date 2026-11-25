@@ -12,7 +12,10 @@
     "renda": "7500.00",
     "dataRenda": "2026-05-31",
     "emailPrincipal": "carlos@example.com",
-    "emailSecundario": "carlos.alt@example.com"
+    "emailSecundario": "carlos.alt@example.com",
+    "contratoCambio": "0",
+    "nomeDocIdentificacao": "CNH",
+    "numeroDocIdentificacao": "CNH 01234567890 DETRAN/SP"
   },
   {
     "documento": "33445566000186",

@@ -2,7 +2,7 @@
   {
     "contaId": "c9",
     "parteId": "p9",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333340",
     "tipoConta": "1",
     "vinculo": "C",
@@ -13,7 +13,7 @@
   {
     "contaId": "c9",
     "parteId": "p10",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333340",
     "tipoConta": "1",
     "vinculo": "P",

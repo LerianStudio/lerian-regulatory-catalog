@@ -5,7 +5,7 @@
     "file": "template.tpl",
     "old": "for w in cadastro_partes_contraparte|where:dchave",
     "new": "for w in cadastro_partes|where:dchave",
-    "count": 4,
+    "count": 14,
     "expect": {
       "document": "br/bcb/simba/titulares",
       "line": 9,
@@ -16,7 +16,7 @@
     "name": "parte no exterior sem a cidade 0000000",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{% if k.nomePais != \"Brasil\" and k.nomePais != \"-\" %}0000000{% endif %}",
+    "old": "{% if k.nomePais != \"Brasil\" and k.nomePais != \"-\" %}0000000{% else %}{{ k.codigoCidade }}{% endif %}",
     "new": "",
     "count": 2,
     "expect": {
@@ -114,6 +114,45 @@
       "document": "br/bcb/simba/titulares",
       "line": 6,
       "field": 6
+    }
+  },
+  {
+    "name": "contrato de cambio do titular ignorado com operaCambio sim",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{% if instituicao.operaCambio == \"sim\" %}{{ t.contratoCambio }}{% else %}0{% endif %}",
+    "new": "0",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 1,
+      "field": 28
+    }
+  },
+  {
+    "name": "contrato de cambio da parte ignorado com operaCambio sim",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{{ k.contratoCambio }}",
+    "new": "",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 2,
+      "field": 28
+    }
+  },
+  {
+    "name": "documento de identificacao da parte em branco",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{{ ascii(k.nomeDocIdentificacao)|slice:\":50\" }}",
+    "new": "",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 2,
+      "field": 10
     }
   }
 ]

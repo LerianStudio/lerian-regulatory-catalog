@@ -1,7 +1,7 @@
 [
   {
     "contaId": "c1",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333331",
     "tipoConta": "1",
     "tipoPessoa": "1",
@@ -14,11 +14,12 @@
     "cep": "01001000",
     "celular": "11999990000",
     "dataInicio": "2024-01-02",
-    "emailPrincipal": "maria@example.com"
+    "emailPrincipal": "maria@example.com",
+    "contratoCambio": "1"
   },
   {
     "contaId": "c2",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333332",
     "tipoConta": "1",
     "tipoPessoa": "1",

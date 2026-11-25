@@ -1,0 +1,67 @@
+[
+  {
+    "name": "cadastro lido pelo numero sem completar com zeros",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "kc=na|stringformat:\"%05s\"|stringformat:\"agencia:%s\"",
+    "new": "kc=na|stringformat:\"agencia:%s\"",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 1,
+      "field": 3
+    }
+  },
+  {
+    "name": "numero da agencia de contraparte sem completar com zeros",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{{ b.numeroAgencia|stringformat:\"%05s\" }}",
+    "new": "{{ b.numeroAgencia }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 3,
+      "field": 2
+    }
+  },
+  {
+    "name": "agencia fechada sai como aberta",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{% if g.dataFechamento %}{{ g.dataFechamento|date:\"02012006\" }}",
+    "new": "{% if false %}{{ g.dataFechamento|date:\"02012006\" }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 2,
+      "field": 11
+    }
+  },
+  {
+    "name": "agencia fora do cadastro sem a sentinela de aberta",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{% empty %}31129999{% endfor %}",
+    "new": "{% empty %}{% endfor %}",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 3,
+      "field": 11
+    }
+  },
+  {
+    "name": "nome da agencia do cadastro sem tirar o acento",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{{ ascii(g.nomeAgencia)|slice:\":50\" }}",
+    "new": "{{ g.nomeAgencia|slice:\":50\" }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 2,
+      "field": 3
+    }
+  }
+]

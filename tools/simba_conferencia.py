@@ -18,6 +18,11 @@ ERRO (corrigir ou gerar de novo antes de aprovar):
     numeração: gere os dois de novo);
   * conta do EXTRATO ou do TITULARES que não está no CONTAS; agência do CONTAS que
     não está no AGENCIAS;
+  * agência do AGENCIAS sem nome (campo 3) com a instituição declarando agência física
+    (campo 14 = 1), ou sem país (campo 7): o cadastro de agências do mapeamento não traz
+    a agência gravada na conta;
+  * campo 28 do TITULARES em branco (instituição que firma contrato de câmbio sem o
+    valor da pessoa);
   * Compe da instituição diferente entre AGENCIAS, CONTAS, TITULARES e EXTRATO, ou
     conta do TITULARES ou do EXTRATO com um tipo de conta que o CONTAS não lhe dá;
   * conta do EXTRATO que o CONTAS não dá como investigada com movimento (campo 7 = 1),
@@ -246,6 +251,13 @@ def check_membership(files: dict[str, list[list[str]]], report: Report) -> None:
             report.error(f"{name}: a conta {key[1]} da agência {key[0]} não está no CONTAS")
     for branch in sorted({field(r, 2) for r in files["CONTAS"]} - branches):
         report.error(f"CONTAS: a agência {branch} não está no AGENCIAS")
+    # A agência que o cadastro de agências do mapeamento não traz sai só com o número: o
+    # template não recusa a geração. Com agência física (campo 14 = 1), falta o nome; sem
+    # ela, o nome é a sentinela, e o que falta é o país (campo 7, que vem sempre do cadastro).
+    for branch in sorted({field(r, 2) for r in files["AGENCIAS"]
+                          if not field(r, 7) or (field(r, 14) == "1" and not field(r, 3))}):
+        report.error(f"AGENCIAS: a agência {branch} não está no cadastro de agências do mapeamento "
+                     "(cadastro_agencias); escreva a linha dela e gere de novo")
     # O TITULARES traz também os titulares das contas de contraparte (campo 7 = 3); o
     # EXTRATO, só as contas investigadas que tiveram lançamento. Uma conta é o número COM o
     # tipo: o mesmo número pode ser duas contas (corrente e poupança).
@@ -455,15 +467,27 @@ def check_coholder_start(titulares: list[list[str]], report: Report) -> None:
 
 
 def check_identity(titulares: list[list[str]], report: Report) -> None:
-    """Identificação e dispositivos que o TITULARES deixa em branco, contados por arquivo."""
+    """Campos que o Midaz não possui e o TITULARES deixa em branco, contados por arquivo.
+
+    São campos manuais do mapeamento: vazios, a instituição não os informou (por correção ou
+    por uma base dela). O 28 é obrigatório e sem sentinela: em branco, é erro.
+    """
     without_id = sum(1 for r in titulares if not field(r, 10) and not field(r, 11))
     without_device = sum(1 for r in titulares if not field(r, 26) and not field(r, 27))
+    without_city = sum(1 for r in titulares if not field(r, 13))
     if without_id:
         report.warn(f"TITULARES: {without_id} linha(s) sem documento de identificação (campos 10 e 11; "
-                    "nenhuma aplicação Lerian registra esse dado)")
+                    "o Midaz não possui o dado: informe-o no rascunho ou mapeie uma base sua)")
     if without_device:
         report.warn(f"TITULARES: {without_device} linha(s) sem dispositivo cadastrado (campos 26 e 27; "
-                    "nenhuma aplicação Lerian registra esse dado)")
+                    "o Midaz não possui o dado: informe-o no rascunho ou mapeie uma base sua)")
+    if without_city:
+        report.warn(f"TITULARES: {without_city} linha(s) sem o código IBGE da cidade (campo 13; o CRM guarda o "
+                    "nome da cidade: informe o código no rascunho ou mapeie uma base sua)")
+    without_fx = sum(1 for r in titulares if not field(r, 28))
+    if without_fx:
+        report.error(f"TITULARES: {without_fx} linha(s) sem o campo 28 (contrato de câmbio); a instituição "
+                     "declara operaCambio sim: informe o contratoCambio de cada pessoa")
 
 
 def check_generic_entries(extrato: list[list[str]], od: list[list[str]], report: Report) -> None:

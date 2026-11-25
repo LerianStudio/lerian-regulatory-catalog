@@ -1,7 +1,7 @@
 [
   {
     "contaId": "c9",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333339",
     "tipoConta": "1",
     "tipoPessoa": "1",
@@ -15,7 +15,7 @@
   },
   {
     "contaId": "c10",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333340",
     "tipoConta": "1",
     "tipoPessoa": "1",
