@@ -132,7 +132,7 @@ datasets:
   # guarda so o numero (`banking_details.branch`). O resto e da instituicao,
   # escrito a mao no binding, uma linha por agencia (`rows`), e o template o le
   # pelo numero da agencia de cada conta, com cinco digitos. Agencia da conta que
-  # o cadastro nao traz recusa a geracao.
+  # o cadastro escrito nao traz recusa a geracao.
   - name: cadastro_agencias
     description: O cadastro das agências da instituição, uma linha por agência, escrito no mapeamento.
     grain: [agencia]
@@ -254,7 +254,7 @@ knownGaps:
       (cadastro_agencias, uma linha por agência); enquanto não tem linha, o rascunho fica com uma pendência que
       impede a aprovação. O template acha a agência de cada conta pelo número com cinco dígitos ("1" e "0001"
       são a mesma agência, numa linha só). Uma agência que o cadastro não traz recusa a geração, com a mensagem
-      do que escrever no mapeamento.
+      do que escrever no mapeamento. Com o cadastro ainda pendente, o rascunho sai e a pendência impede a aprovação.
   - id: uf-pelo-cadastro
     description: >-
       O código IBGE da UF vem pronto do cadastro de agências. O bloco uf-ibge.compute.yaml (sigla para código) não se

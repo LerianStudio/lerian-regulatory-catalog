@@ -589,10 +589,11 @@ def unregistered_agency_allowed(root: Path) -> list[str]:
     """Os dois laços do AGÊNCIAS recusam a geração quando o cadastro não traz a agência da conta.
 
     Sem a recusa, a linha sai só com o número e os campos 3 a 10 em branco, e o rascunho é aprovado:
-    o cadastro é do mapeamento, e a aprovação só barra pendência de campo obrigatório.
+    o cadastro é do mapeamento, e a aprovação só barra pendência de campo obrigatório. Com o cadastro
+    ainda pendente (rows: []), a guarda não recusa: o rascunho sai e a pendência impede a aprovação.
     """
     text = (root / FAMILY / "agencias" / "template.tpl").read_text(encoding="utf-8")
-    if text.count("{% if not instituicao.cadastro_agencias|where:kc %}{% fail ") != 2:
+    if text.count("{% if instituicao.cadastro_agencias and not instituicao.cadastro_agencias|where:kc %}{% fail ") != 2:
         return ["agencias: agência fora do cadastro de agências não recusa a geração nos dois laços"]
     return []
 

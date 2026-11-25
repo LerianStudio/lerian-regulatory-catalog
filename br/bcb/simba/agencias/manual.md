@@ -101,7 +101,8 @@ A IN manda informar o campo, ou a sentinela quando a própria IN dá uma. Onde n
 nem sentinela, o campo sai **em branco**:
 
 - Agência de conta que o cadastro não traz: a geração é recusada, com a mensagem do que
-  escrever no mapeamento. `1` e `0001` no CRM são a mesma agência, numa linha só.
+  escrever no mapeamento. Com o cadastro ainda pendente, o rascunho sai com a pendência,
+  que impede a aprovação. `1` e `0001` no CRM são a mesma agência, numa linha só.
 - Campo opcional que a linha do cadastro omite (`dataAbertura`, por exemplo): em branco.
 
 ## Nome dos arquivos na entrega
