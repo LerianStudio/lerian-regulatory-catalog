@@ -5,7 +5,7 @@
     "file": "template.tpl",
     "old": "for w in cadastro_partes_contraparte|where:dchave",
     "new": "for w in cadastro_partes|where:dchave",
-    "count": 14,
+    "count": 12,
     "expect": {
       "document": "br/bcb/simba/titulares",
       "line": 9,
@@ -133,7 +133,7 @@
     "name": "contrato de cambio da parte ignorado com operaCambio sim",
     "document": "br/bcb/simba/titulares",
     "file": "template.tpl",
-    "old": "{{ k.contratoCambio }}",
+    "old": "{{ p.contratoCambio }}",
     "new": "",
     "count": 2,
     "expect": {
@@ -153,6 +153,45 @@
       "document": "br/bcb/simba/titulares",
       "line": 2,
       "field": 10
+    }
+  },
+  {
+    "name": "contrato de cambio do titular de contraparte ignorado",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{{ u.contratoCambio }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 8,
+      "field": 28
+    }
+  },
+  {
+    "name": "dispositivos do titular de contraparte em branco",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{{ ascii(u.dispositivos)|slice:\":500\" }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 8,
+      "field": 26
+    }
+  },
+  {
+    "name": "contrato de cambio da parte de contraparte ignorado",
+    "document": "br/bcb/simba/titulares",
+    "file": "template.tpl",
+    "old": "{{ q.contratoCambio }}",
+    "new": "",
+    "count": 2,
+    "expect": {
+      "document": "br/bcb/simba/titulares",
+      "line": 9,
+      "field": 28
     }
   }
 ]

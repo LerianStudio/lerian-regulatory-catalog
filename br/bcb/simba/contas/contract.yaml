@@ -275,4 +275,4 @@ knownGaps:
     description: >-
       O Midaz não registra sucessão de instituição (IN 636, Anexo I, CONTAS, campo 12). O CNPJ da instituição
       sucedida é um campo opcional da conta, mapeado como manual com o motivo: a instituição o corrige no rascunho
-      ou o traz de uma base dela (fonte adicional, also, pela conta). Vazio, sai em branco, a conta nativa.
+      ou o traz de uma base dela (consulta juntada à da conta pelo id). Vazio, sai em branco, a conta nativa.

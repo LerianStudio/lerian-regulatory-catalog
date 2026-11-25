@@ -348,7 +348,7 @@ datasets:
       key: [contaId, parteId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, vinculo: first, documento: first,
-                nome: first, dataInicio: first, dataFim: first}
+                nome: first, dataInicio: first, dataFim: first, contratoCambio: first}
     fields:
       - name: contaId
         type: string
@@ -412,6 +412,14 @@ datasets:
 
 
   # Uma linha por conta de contraparte: a do titular (campo 5 = T; campo 6 pela pessoa, IN :142).
+      - name: contratoCambio
+        type: string
+        required: false
+        domain: ["0", "1"]
+        description: >-
+          1 se a pessoa firmou contrato de câmbio com a instituição no período, 0 se não (IN 636, Anexo I, TITULARES,
+          campo 28). Só é lido com operaCambio "sim"; com "nao", o campo sai 0 para toda pessoa.
+
   - name: titulares_contraparte
     description: >-
       O titular de cada conta da mesma instituição com que uma conta do caso transacionou no período (CONTAS, campo 7
@@ -634,7 +642,7 @@ datasets:
       key: [contaId, parteId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, vinculo: first, documento: first,
-                nome: first, dataInicio: first, dataFim: first}
+                nome: first, dataInicio: first, dataFim: first, contratoCambio: first}
     fields:
       - name: contaId
         type: string
@@ -699,6 +707,14 @@ datasets:
   # O cadastro das partes relacionadas das contas do caso que tambem sao titulares no CRM, um por documento.
   # Nao gera linha: o template o liga a cada parte pelo documento e escreve os campos 12 a
   # 17 e 24 da parte com ele, e 18, 19 e 25 so do cotitular. Parte sem cadastro sai com esses campos em branco.
+      - name: contratoCambio
+        type: string
+        required: false
+        domain: ["0", "1"]
+        description: >-
+          1 se a pessoa firmou contrato de câmbio com a instituição no período, 0 se não (IN 636, Anexo I, TITULARES,
+          campo 28). Só é lido com operaCambio "sim"; com "nao", o campo sai 0 para toda pessoa.
+
   - name: cadastro_partes
     description: >-
       O cadastro de titulares do CRM das partes relacionadas (cotitular, representante, procurador) das contas do caso, pelo
@@ -710,7 +726,7 @@ datasets:
       columns: {tipoPessoa: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first,
                 cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first,
                 faturamento: first, dataFaturamento: first, nomeSocial: first,
-                emailPrincipal: first, emailSecundario: first, nomeDocIdentificacao: first, numeroDocIdentificacao: first, codigoCidade: first, dispositivos: first, computadores: first, contratoCambio: first}
+                emailPrincipal: first, emailSecundario: first, nomeDocIdentificacao: first, numeroDocIdentificacao: first, codigoCidade: first, dispositivos: first, computadores: first}
     fields:
       - name: documento
         type: string
@@ -853,13 +869,6 @@ datasets:
         description: >-
           Computadores cadastrados para o internet banking, separados por ponto e vírgula (IN 636, Anexo I, TITULARES,
           campo 27). O Midaz não possui. O template o corta em 500 posições.
-      - name: contratoCambio
-        type: string
-        required: false
-        domain: ["0", "1"]
-        description: >-
-          1 se a pessoa firmou contrato de câmbio com a instituição no período, 0 se não (IN 636, Anexo I, TITULARES,
-          campo 28). Só é lido com operaCambio "sim"; com "nao", o campo sai 0 para toda pessoa.
 
   # O cadastro das partes relacionadas das contas de contraparte que tambem sao titulares no CRM, um por documento.
   # Nao gera linha: o template o liga a cada parte pelo documento e escreve os campos 12 a
@@ -875,7 +884,7 @@ datasets:
       columns: {tipoPessoa: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first,
                 cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first,
                 faturamento: first, dataFaturamento: first, nomeSocial: first,
-                emailPrincipal: first, emailSecundario: first, nomeDocIdentificacao: first, numeroDocIdentificacao: first, codigoCidade: first, dispositivos: first, computadores: first, contratoCambio: first}
+                emailPrincipal: first, emailSecundario: first, nomeDocIdentificacao: first, numeroDocIdentificacao: first, codigoCidade: first, dispositivos: first, computadores: first}
     fields:
       - name: documento
         type: string
@@ -1018,13 +1027,6 @@ datasets:
         description: >-
           Computadores cadastrados para o internet banking, separados por ponto e vírgula (IN 636, Anexo I, TITULARES,
           campo 27). O Midaz não possui. O template o corta em 500 posições.
-      - name: contratoCambio
-        type: string
-        required: false
-        domain: ["0", "1"]
-        description: >-
-          1 se a pessoa firmou contrato de câmbio com a instituição no período, 0 se não (IN 636, Anexo I, TITULARES,
-          campo 28). Só é lido com operaCambio "sim"; com "nao", o campo sai 0 para toda pessoa.
 
   # A moeda da renda de quem a imprime numa linha de parte: o cotitular (campo 5 = 1, 2...), o
   # unico que leva os campos 18 e 19 (renda-e-email-so-do-correntista). Nao gera linha: so as
@@ -1373,12 +1375,15 @@ knownGaps:
       O Midaz não possui os campos 10 e 11 (documento de identificação que não seja CPF ou CNPJ), 13 (código IBGE da
       cidade de quem mora no Brasil; o CRM guarda o nome), 26 e 27 (dispositivos e computadores cadastrados) e 28
       (contrato de câmbio) (IN 636, Anexo I, TITULARES). Cada um é um campo opcional do titular e do cadastro da
-      parte, mapeado como manual com o motivo: a instituição o informa por correção no rascunho, linha a linha, ou
-      mapeia o campo para uma base dela (uma fonte adicional, also, do mesmo conjunto, pela chave dele). Vazio, o
+      parte (o 28, na linha da parte), mapeado como manual com o motivo: a instituição o informa por correção no
+      rascunho, linha a linha, ou
+      mapeia o campo para uma base dela (consulta juntada à do conjunto pela conta ou pelo documento). Vazio, o
       campo sai em branco, como a IN aceita na inexistência da informação (art. 2º, § 1º); quem mora no exterior
       sai 0000000 no 13. Com operaCambio "nao", o 28 sai 0; com "sim", o 28 sem valor sai em branco e a
       conferência aponta. Nunca dê a um desses campos um valor fixo no mapeamento: ele se repetiria em toda pessoa.
-      A parte sem cadastro no CRM não tem onde receber esses valores e sai com eles em branco.
+      A parte sem cadastro no CRM não tem onde receber 10, 11, 13, 26 e 27 e sai com eles em branco; o 28 é da
+      linha dela, e tem onde receber. Com operaCambio "sim", o 28 vazio não impede a aprovação (o campo é
+      opcional, porque a instituição que não firma câmbio nunca o preenche): a conferência o aponta como erro.
   - id: uf-fora-da-tabela
     description: >-
       O campo 14 converte a sigla da UF do endereço principal do titular para o código IBGE. Quem mora no Brasil (país

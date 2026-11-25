@@ -1025,5 +1025,44 @@
       "line": 2,
       "field": 24
     }
+  },
+  {
+    "name": "documento da contraparte em branco na linha do trilho",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ ascii(nome)|slice:\":80\" }}\t{{ docod(l) }}\t0\t",
+    "new": "{{ ascii(nome)|slice:\":80\" }}\t\t\t\t\t\t0\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 12
+    }
+  },
+  {
+    "name": "endossante do cheque em branco",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ ascii(l.nomeEndossante)|slice:\":80\" }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 15
+    }
+  },
+  {
+    "name": "boleto em branco na perna interna",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% endfor %}\t{{ docod(l) }}\t0\t\t{{ instituicao.cnpj }}\t{{ boleto(l) }}\t",
+    "new": "{% endfor %}\t{{ docod(l) }}\t0\t\t{{ instituicao.cnpj }}\t\t\t\t\t\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 5,
+      "field": 24
+    }
   }
 ]

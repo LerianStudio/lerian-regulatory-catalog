@@ -318,7 +318,7 @@ datasets:
       - name: portaIp
         type: string
         required: false
-        pattern: '^[0-9]{1,5}$'
+        pattern: '^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-6])$'
         description: >-
           Porta do endereço IP, de 1 a 65536 (IN 636, Anexo I, EXTRATO, campo 21). O Midaz não possui.
       - name: macAddress
@@ -516,7 +516,7 @@ knownGaps:
     description: >-
       O Midaz não possui canal, local, IP, porta nem MAC do lançamento (IN 636, Anexo I, EXTRATO, campos 14 e 17 a
       22). Cada um é um campo opcional do lançamento, mapeado como manual com o motivo: a instituição o traz de uma
-      base dela (uma fonte adicional, also, do conjunto lancamentos, pela transação e operação) ou o corrige linha a
+      base dela (consulta juntada à de lancamentos_dados pelo id da operação) ou o corrige linha a
       linha no rascunho. Vazio, o 17 sai com o canal declarado da instituição (interfaceTransacao), o 18 e o 19 com
       as sentinelas da IN (0000000 e 00) e o 14 e o 20 a 22 em branco. Nunca dê a um desses campos um valor fixo no
       mapeamento: ele se repetiria em todo lançamento.

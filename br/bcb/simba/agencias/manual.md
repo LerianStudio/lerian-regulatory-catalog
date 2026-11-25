@@ -100,10 +100,8 @@ O período vai do início do dia `inicio` ao fim do dia `fim` no calendário do 
 A IN manda informar o campo, ou a sentinela quando a própria IN dá uma. Onde não há dado
 nem sentinela, o campo sai **em branco**:
 
-- Campos 3 a 10 de uma agência que o cadastro não traz: a linha sai só com o número, a
-  instituição e o fechamento `31129999`. O template não recusa a geração; a conferência
-  (`tools/simba_conferencia.py`) aponta a agência, e a linha dela tem de ser escrita no
-  cadastro antes de aprovar.
+- Agência de conta que o cadastro não traz: a geração é recusada, com a mensagem do que
+  escrever no mapeamento. `1` e `0001` no CRM são a mesma agência, numa linha só.
 - Campo opcional que a linha do cadastro omite (`dataAbertura`, por exemplo): em branco.
 
 ## Nome dos arquivos na entrega

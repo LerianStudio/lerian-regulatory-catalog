@@ -24,8 +24,9 @@
 #
 # O CANAL (campo 17): o da instituicao em `interfaceTransacao`, para todo lancamento
 # que nao traz o proprio (`interface`). Canal, local, IP, porta e MAC (campos 14 e
-# 17 a 22) o Midaz nao possui: ficam manuais; traga-os de uma base sua com uma
-# fonte adicional (`also`) do conjunto lancamentos, pela transacao e operacao.
+# 17 a 22) o Midaz nao possui: ficam manuais; para traze-los de uma base sua,
+# junte (`join`) a consulta dela a `lancamentos_dados` pelo id da operacao e
+# mapeie o campo `from: query`.
 #
 # Filtro encadeado `{query, column}`: grafia provisoria do motor; se
 # mudar, e `sed` nos bindings.
@@ -378,11 +379,11 @@ datasets:
       nomeUnicad:
         from: manual
         pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
-      # Campo 17: o canal das transacoes (1 agencia ... 5 mobile, 9 outros). O Midaz
+      # Campo 17: o canal das transacoes (1 agencia ... 5 mobile, 8 comercio, 9 outros). O Midaz
       # nao registra o canal; declare o do seu produto.
       interfaceTransacao:
         from: manual
-        pendingReason: "o canal das transações no código da IN (1 agência, 2 correspondente, 3 autoatendimento, 4 internet banking, 5 mobile banking, 6 telefone, 7 TEF/POS, 8 fora da instituição, 9 outros), para todo lançamento que não traz o próprio. O Midaz não possui este campo: informe manualmente"
+        pendingReason: "o canal das transações no código da IN (1 agência física, 2 correspondente bancário, 3 terminal de autoatendimento, 4 internet banking, 5 mobile banking, 6 empresa transportadora de valores (ETV), 7 casa lotérica, 8 estabelecimento comercial, 9 outros), para todo lançamento que não traz o próprio. O Midaz não possui este campo: informe manualmente"
 
   lancamentos:
     from:

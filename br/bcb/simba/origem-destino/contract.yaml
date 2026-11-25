@@ -866,9 +866,9 @@ knownGaps:
       O Midaz e os plugins não possuem o documento de identificação da contraparte (campos 12 e 13; Pix e TED trazem
       só o CPF/CNPJ), nem boleto e cheque, que não são produtos Lerian (campos 14 a 16 e 20 a 24) (IN 636, Anexo I,
       ORIGEM-DESTINO). Cada um é um campo opcional do lançamento, mapeado como manual com o motivo: a instituição o
-      traz de uma base dela (uma fonte adicional, also, do conjunto lancamentos, pela transação e operação) ou o
-      corrige linha a linha no rascunho. Vazio, sai em branco. Saem na linha do trilho e na linha vazia; na tarifa e
-      na outra perna interna ficam em branco. Nunca dê a um desses campos um valor fixo no mapeamento: ele se
+      traz de uma base dela (consulta juntada à de lancamentos_dados pelo id da operação) ou o
+      corrige linha a linha no rascunho. Vazio, sai em branco. Saem em toda linha do lançamento (trilho, outra
+      perna interna, tarifa e linha vazia). Nunca dê a um desses campos um valor fixo no mapeamento: ele se
       repetiria em todo lançamento.
   - id: ispb-numerico
     description: >-

@@ -22,5 +22,16 @@
     "telefone": "2130000000",
     "dataAbertura": "2021-03-01",
     "dataFechamento": "2026-06-30"
+  },
+  {
+    "agencia": "00003",
+    "nomeAgencia": "AGENCIA NORTE",
+    "endereco": "AV CENTRAL, 3",
+    "codigoCidade": "1302603",
+    "codigoUf": "13",
+    "pais": "Brasil",
+    "cep": "69005000",
+    "telefone": "9230000000",
+    "dataAbertura": "2022-05-02"
   }
 ]

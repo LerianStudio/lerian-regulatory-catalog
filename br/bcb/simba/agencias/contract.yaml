@@ -132,7 +132,7 @@ datasets:
   # guarda so o numero (`banking_details.branch`). O resto e da instituicao,
   # escrito a mao no binding, uma linha por agencia (`rows`), e o template o le
   # pelo numero da agencia de cada conta, com cinco digitos. Agencia da conta que
-  # o cadastro nao traz sai so com o numero: a conferencia aponta.
+  # o cadastro nao traz recusa a geracao.
   - name: cadastro_agencias
     description: O cadastro das agências da instituição, uma linha por agência, escrito no mapeamento.
     grain: [agencia]
@@ -252,10 +252,9 @@ knownGaps:
       Agência não é entidade em nenhuma aplicação Lerian: o Midaz não possui nome, endereço, cidade, UF, país, CEP,
       telefone nem datas da agência. O cadastro é da instituição e é escrito à mão no mapeamento
       (cadastro_agencias, uma linha por agência); enquanto não tem linha, o rascunho fica com uma pendência que
-      impede a aprovação. O template acha a agência de cada conta pelo número com cinco dígitos. Uma agência que o
-      cadastro não traz sai só com o número, a instituição e os demais campos em branco (o template não recusa a
-      geração), e a conferência (tools/simba_conferencia.py) aponta a linha. Grave a agência no CRM sempre do
-      mesmo jeito: "1" e "0001" são a mesma agência no arquivo, mas duas linhas no AGÊNCIAS.
+      impede a aprovação. O template acha a agência de cada conta pelo número com cinco dígitos ("1" e "0001"
+      são a mesma agência, numa linha só). Uma agência que o cadastro não traz recusa a geração, com a mensagem
+      do que escrever no mapeamento.
   - id: uf-pelo-cadastro
     description: >-
       O código IBGE da UF vem pronto do cadastro de agências. O bloco uf-ibge.compute.yaml (sigla para código) não se

@@ -2844,6 +2844,7 @@ datasets:
       nome: {from: query, column: related_parties.name}
       dataInicio: {from: query, column: related_parties.start_date, civilDate: true}
       dataFim: {from: query, column: related_parties.end_date, civilDate: true}
+      contratoCambio: {from: manual, pendingReason: "1 se a pessoa firmou contrato de câmbio no período, 0 se não; só é lido com operaCambio sim. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   titulares_contraparte:
     from:
@@ -2896,6 +2897,7 @@ datasets:
       nome: {from: query, column: related_parties.name}
       dataInicio: {from: query, column: related_parties.start_date, civilDate: true}
       dataFim: {from: query, column: related_parties.end_date, civilDate: true}
+      contratoCambio: {from: manual, pendingReason: "1 se a pessoa firmou contrato de câmbio no período, 0 se não; só é lido com operaCambio sim. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   cadastro_partes:
     from:
@@ -2923,7 +2925,6 @@ datasets:
       codigoCidade: {from: manual, pendingReason: "o código IBGE da cidade de domicílio da pessoa, 7 dígitos (quem mora no exterior sai 0000000 sem ele). O CRM guarda o nome da cidade, não o código: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
       dispositivos: {from: manual, pendingReason: "os dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
       computadores: {from: manual, pendingReason: "os computadores cadastrados para o internet banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
-      contratoCambio: {from: manual, pendingReason: "1 se a pessoa firmou contrato de câmbio no período, 0 se não; só é lido com operaCambio sim. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   cadastro_partes_contraparte:
     from:
@@ -2951,7 +2952,6 @@ datasets:
       codigoCidade: {from: manual, pendingReason: "o código IBGE da cidade de domicílio da pessoa, 7 dígitos (quem mora no exterior sai 0000000 sem ele). O CRM guarda o nome da cidade, não o código: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
       dispositivos: {from: manual, pendingReason: "os dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
       computadores: {from: manual, pendingReason: "os computadores cadastrados para o internet banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
-      contratoCambio: {from: manual, pendingReason: "1 se a pessoa firmou contrato de câmbio no período, 0 se não; só é lido com operaCambio sim. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   renda_cotitulares:
     from:

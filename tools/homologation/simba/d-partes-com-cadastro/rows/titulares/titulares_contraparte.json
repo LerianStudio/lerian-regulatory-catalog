@@ -9,6 +9,9 @@
     "nome": "Lia Contraparte",
     "pais": "BR",
     "nomePais": "Brasil",
-    "dataInicio": "2022-05-06"
+    "dataInicio": "2022-05-06",
+    "contratoCambio": "1",
+    "dispositivos": "Moto G IMEI 350000000000003",
+    "computadores": "desktop 00:1B:2C:3D:4E:5F"
   }
 ]

@@ -75,7 +75,7 @@ conta do caso.
    contrato de câmbio. Sem o valor, o campo sai em branco e a conferência aponta.
 6. **Campos que o Midaz não possui** (manuais, no titular e no cadastro da parte):
    `nomeDocIdentificacao` e `numeroDocIdentificacao` (10 e 11), `codigoCidade` (13),
-   `dispositivos` e `computadores` (26 e 27) e `contratoCambio` (28).
+   `dispositivos` e `computadores` (26 e 27); `contratoCambio` (28) no titular e na linha da parte.
 
 O CNPJ vem da organização do Midaz. O tipo da conta vem do CRM
 (`regulatory_fields.account_type`: DEPOSIT 1, SAVINGS 2, INVESTMENT 3,
@@ -202,8 +202,10 @@ Um campo do Anexo I que nenhuma aplicação Lerian registra entra no mapeamento 
 instituição o informa. Há três formas, e o campo é opcional nas três:
 
 1. **Correção no rascunho**, linha a linha, para poucos casos.
-2. **Uma base da instituição**: uma fonte adicional (`also`) do mesmo conjunto, com a consulta
-   na base dela e a mesma chave do conjunto (`rowKey`); o Reporter une as linhas pela chave.
+2. **Uma base da instituição**: uma consulta na base dela, juntada (`join`) à consulta que
+   enche o conjunto pela chave da linha (a operação, a conta ou o documento), e o campo mapeado
+   `from: query` com a coluna dela. O Reporter junta consultas de bases diferentes, como já
+   junta o CRM e o razão do Midaz.
 3. **Deixar pendente**: o campo sai em branco (ou com a sentinela que a IN dá), como a IN
    aceita na inexistência da informação (IN 636, art. 2º, § 1º).
 

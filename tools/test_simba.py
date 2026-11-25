@@ -585,6 +585,18 @@ def party_currency_scope_off(found: dict[str, dict], binding: dict) -> list[str]
     return problems
 
 
+def unregistered_agency_allowed(root: Path) -> list[str]:
+    """Os dois laços do AGÊNCIAS recusam a geração quando o cadastro não traz a agência da conta.
+
+    Sem a recusa, a linha sai só com o número e os campos 3 a 10 em branco, e o rascunho é aprovado:
+    o cadastro é do mapeamento, e a aprovação só barra pendência de campo obrigatório.
+    """
+    text = (root / FAMILY / "agencias" / "template.tpl").read_text(encoding="utf-8")
+    if text.count("{% if not instituicao.cadastro_agencias|where:kc %}{% fail ") != 2:
+        return ["agencias: agência fora do cadastro de agências não recusa a geração nos dois laços"]
+    return []
+
+
 def exchange_refusal_off(root: Path) -> list[str]:
     """O campo 28 lê o contratoCambio da pessoa só com operaCambio "sim"; o pendente (vazio) sai 0.
 
@@ -980,6 +992,18 @@ class SimbaBindings(unittest.TestCase):
 
     def test_periodo_invertido_e_recusado(self) -> None:
         self.assertEqual([], reversed_period_allowed(contracts(ROOT)))
+
+    def test_agencia_fora_do_cadastro_recusa_a_geracao(self) -> None:
+        self.assertEqual([], unregistered_agency_allowed(ROOT))
+
+    def test_agencia_fora_do_cadastro_sem_recusa_e_pega(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / FAMILY / "agencias"
+            target.mkdir(parents=True)
+            text = (ROOT / FAMILY / "agencias" / "template.tpl").read_text(encoding="utf-8")
+            (target / "template.tpl").write_text(text.replace("{% fail ", "{% comment ", 1), encoding="utf-8")
+            self.assertEqual(["agencias: agência fora do cadastro de agências não recusa a geração nos dois laços"],
+                             unregistered_agency_allowed(Path(tmp)))
 
     def test_so_o_cambio_declarado_sim_le_o_campo_da_pessoa(self) -> None:
         self.assertEqual([], exchange_refusal_off(ROOT))

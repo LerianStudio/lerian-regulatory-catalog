@@ -17,7 +17,11 @@
     "tipoPagamento": "PIX_IN",
     "tipoIniciacao": "QR_CODE",
     "e2eRecebimento": "E00000000202612021300EXEMPLO0001",
-    "saldoApos": "150.00"
+    "saldoApos": "150.00",
+    "nomeDocIdentificacaoOd": "Passaporte",
+    "numeroDocIdentificacaoOd": "FX123456",
+    "nomeEndossante": "José Endossante",
+    "docEndossante": "RG 7654321 SSP/RJ"
   },
   {
     "operacaoId": "o2",
@@ -100,7 +104,9 @@
     "rail": "INTERNAL",
     "fluxo": "P2P",
     "direcao": "OUT",
-    "saldoApos": "50.00"
+    "saldoApos": "50.00",
+    "codigoBarras": "34191.79001 01043.510047 91020.150008 8 84340000005000",
+    "valorNominalBoleto": "30.00"
   },
   {
     "operacaoId": "o7",

@@ -129,8 +129,7 @@ Na tarifa e na contraparte interna, o CNPJ da própria instituição.
   no campo 18 (ver CNPJ da instituição da contraparte).
 - 12 e 13 (documento de identificação da contraparte), 14 a 16 (boleto e cheque) e 20 a 24
   (boleto): campos manuais do lançamento. Pix e TED trazem só o CPF/CNPJ, e boleto e cheque
-  não são produtos Lerian. Vazios, saem em branco. Saem na linha do trilho e na linha vazia;
-  na tarifa e na outra perna interna, em branco.
+  não são produtos Lerian. Vazios, saem em branco. Saem em toda linha do lançamento.
 - 25 e 26 (chave Pix da contraparte): no Pix enviado, a chave do recebedor (Pix lerian: da
   iniciação do Pix, `transfer_initiations`; Pix JD: `payee_key`); no Pix JD recebido, a chave
   do pagador quando o plugin a grava (`payer_key`). O tipo vira o código da IN (1 CPF/CNPJ, 2
@@ -157,8 +156,10 @@ Um campo do Anexo I que nenhuma aplicação Lerian registra entra no mapeamento 
 instituição o informa. Há três formas, e o campo é opcional nas três:
 
 1. **Correção no rascunho**, linha a linha, para poucos casos.
-2. **Uma base da instituição**: uma fonte adicional (`also`) do mesmo conjunto, com a consulta
-   na base dela e a mesma chave do conjunto (`rowKey`); o Reporter une as linhas pela chave.
+2. **Uma base da instituição**: uma consulta na base dela, juntada (`join`) à consulta que
+   enche o conjunto pela chave da linha (a operação, a conta ou o documento), e o campo mapeado
+   `from: query` com a coluna dela. O Reporter junta consultas de bases diferentes, como já
+   junta o CRM e o razão do Midaz.
 3. **Deixar pendente**: o campo sai em branco (ou com a sentinela que a IN dá), como a IN
    aceita na inexistência da informação (IN 636, art. 2º, § 1º).
 
