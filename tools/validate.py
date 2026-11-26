@@ -1692,6 +1692,31 @@ def _check_case_answer(where: str, name: str, which: str, answer: object) -> Non
         fail(f"{where}: {which} de '{name}' responde com exatamente um de column, negate ou constant")
 
 
+def _check_source_version(doc_dir: Path, qname: str, query: dict) -> None:
+    """A versão da fonte é da tabela que a consulta lê: `column` obrigatória, `digest` opcional, nada mais.
+
+    A declaração não entra na leitura; quem confere que as colunas existem é o Reporter.
+    """
+    if "sourceVersion" not in query:
+        return
+
+    where = f"{doc_dir.relative_to(ROOT)}: consulta '{qname}'"
+    if "from" in query or not query.get("table"):
+        fail(f"{where}: declara sourceVersion e não lê uma tabela; a versão é de uma tabela da fonte, e só uma consulta com dataSource e table, sem from, a declara")
+
+    declared = query["sourceVersion"]
+    if not isinstance(declared, dict) or set(declared) - {"column", "digest"}:
+        fail(f"{where}: sourceVersion é um mapeamento de column e, opcionalmente, digest; traz {declared!r}")
+        return
+
+    for key in ("column", "digest"):
+        if key != "column" and key not in declared:
+            continue
+        value = declared.get(key)
+        if not isinstance(value, str) or not value.strip():
+            fail(f"{where}: sourceVersion tem {key} {value!r}; {key} é o nome de uma coluna da tabela, em texto")
+
+
 def _check_parameter_values(doc_dir: Path, qname: str, filters: object) -> None:
     """Um valor de filtro lido de um parâmetro: um só, e a ponta certa do período."""
     if not isinstance(filters, list):
@@ -1994,6 +2019,7 @@ def check_binding_queries(doc_dir: Path, binding: dict) -> None:
         _check_removed_grammar(doc_dir, qname, query)
         _check_computes(doc_dir, qname, query)
         _check_parameter_values(doc_dir, qname, query.get("filters"))
+        _check_source_version(doc_dir, qname, query)
 
         raw_join = query.get("join")
         if raw_join is not None and not isinstance(raw_join, list):
