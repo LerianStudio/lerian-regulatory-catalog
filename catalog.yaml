@@ -157,7 +157,7 @@ documents:
     document: "3040"
     family: scr
     title: SCR Documento 3040 - Dados Individualizados de Risco de Crédito
-    version: 1.0.0
+    version: 1.0.1
     status: draft
     periodicity: monthly
     appliesTo:
