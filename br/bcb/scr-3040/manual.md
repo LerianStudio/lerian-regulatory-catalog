@@ -54,8 +54,8 @@ volta com o documento.
 2. **Escopo da fonte `lender`, escrito à mão.** A proposta automática de instituições só cobre
    a tabela de organização do Midaz e tabela com coluna `organization_id`, e as visões do
    Lender têm `midaz_organization_id`. No escopo da instituição, liste as **três visões**
-   (`public__scr_operation_current`, `public__scr_maturity_current`,
-   `public__scr_guarantee_current`), cada uma com a condição
+   (`scr_operation_current`, `scr_maturity_current`, `scr_guarantee_current`), pelo mesmo
+   nome sem schema que as consultas usam, cada uma com a condição
    `midaz_organization_id = <organização da instituição>`. Sem isso o Reporter recusa a leitura.
 3. **Permissão no banco do tenant do Lender**, para o papel de banco do Reporter, e nada mais:
 
@@ -116,11 +116,11 @@ pesam para a remessa:
    até a consulta ao BACEN responder.
 2. **A operação que saiu do livro no mês** sai com `Inf` de saída; as lacunas dele estão em `saida-do-mes`.
 3. **Garantia de contrato carregado** só a partir da data-base que contém o dia da carga.
-4. **`Cli.IniRelactCli`** (decisão do Fred, 10/11): sai o menor entre o dia civil da criação do titular no
+4. **`Cli.IniRelactCli`**: sai o menor entre o dia civil da criação do titular no
    CRM (America/Sao_Paulo) e o contrato mais antigo dele no Lender, em qualquer estado (liquidado,
    refinanciado, baixado ou vendido também contam; o carregado conta pela data da CCB original).
    Nunca depois de uma `DtContr` do mesmo cliente, e nunca avança de uma remessa para outra
    enquanto existir um contrato mais antigo.
 5. **`Venc` 205 a 290** sem a dedução da renda não recebida em stop accrual.
 6. **Indx na taxa flutuante**: o XSD exige `Indx` em todo `Op`; a taxa flutuante sai sem ele
-   (`indx-pos-fixado`) e não valida até a lane F6.
+   (`indx-pos-fixado`) e não valida enquanto o Lender não publicar o percentual do indexador.

@@ -85,7 +85,7 @@ documents:
     document: evtAberturaeFinanceira
     family: e-financeira
     title: e-Financeira — Abertura
-    version: 1.0.0
+    version: 1.0.1
     status: draft
     periodicity: semiannual
     appliesTo:

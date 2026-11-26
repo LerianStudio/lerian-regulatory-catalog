@@ -3,14 +3,16 @@
 # Midaz e o CRM do Midaz.
 #
 # O QUE É DESTE EXEMPLO e não do documento: o nome das fontes (lender, midaz_onboarding,
-# plugin_crm), o schema das visões e os valores que as colunas carregam.
+# plugin_crm), o schema das visões e os valores que as colunas carregam. As consultas leem as
+# visões pelo nome sem schema, que o Reporter resolve no único schema da fonte que a tem. Quando
+# a fonte expõe a visão em mais de um schema, o cliente escreve a chave com o schema (`schema__visão`).
 #
 # O ESCOPO DA FONTE `lender` É ESCRITO À MÃO. A proposta automática de instituições só cobre
 # a tabela de organização do Midaz e tabela com coluna `organization_id`, e as visões têm
 # `midaz_organization_id`. No escopo da instituição, a fonte `lender` lista as TRÊS visões
-# (public__scr_operation_current, public__scr_maturity_current, public__scr_guarantee_current),
-# cada uma com a condição `midaz_organization_id = <organização da instituição>`. Sem isso o
-# Reporter recusa a leitura de tabela que o escopo não cobre.
+# (scr_operation_current, scr_maturity_current, scr_guarantee_current), pelo mesmo nome sem
+# schema das consultas, cada uma com a condição `midaz_organization_id = <organização da
+# instituição>`. Sem isso o Reporter recusa a leitura de tabela que o escopo não cobre.
 #
 # SEM DADO PESSOAL NO LENDER. O Lender publica o titular por holder_id e midaz_organization_id.
 # O documento do cliente e o do garantidor chegam pelo junte da consulta `holders` (o CRM),
@@ -72,7 +74,7 @@ queries:
   - name: clientes
     description: Um cliente por titular com operação na data-base, com o documento, o tipo e a criação lidos do CRM.
     dataSource: lender
-    table: public__scr_operation_current
+    table: scr_operation_current
     sourceVersion: {column: version, digest: dataset_digest}
     filters:
       # A versão corrente da competência. O dataset do Lender é por data-base.
@@ -95,7 +97,7 @@ queries:
   - name: operacoes
     description: As operações do dataset na data-base.
     dataSource: lender
-    table: public__scr_operation_current
+    table: scr_operation_current
     sourceVersion: {column: version, digest: dataset_digest}
     filters:
       - field: competencia
@@ -105,7 +107,7 @@ queries:
   - name: vencimentos
     description: Os valores de vencimento (Venc), uma linha por código.
     dataSource: lender
-    table: public__scr_maturity_current
+    table: scr_maturity_current
     sourceVersion: {column: version, digest: dataset_digest}
     filters:
       - field: competencia
@@ -115,7 +117,7 @@ queries:
   - name: garantias
     description: As garantias das operações, com o documento do garantidor lido do CRM.
     dataSource: lender
-    table: public__scr_guarantee_current
+    table: scr_guarantee_current
     sourceVersion: {column: version, digest: dataset_digest}
     filters:
       - field: competencia
@@ -132,7 +134,7 @@ queries:
   - name: aquisicoes
     description: As operações adquiridas por recompra, para o Inf 1002.
     dataSource: lender
-    table: public__scr_operation_current
+    table: scr_operation_current
     sourceVersion: {column: version, digest: dataset_digest}
     filters:
       - field: competencia
@@ -147,7 +149,7 @@ queries:
   - name: reestruturacoes
     description: As operações com reestruturação até a data-base, para o Inf 1701.
     dataSource: lender
-    table: public__scr_operation_current
+    table: scr_operation_current
     sourceVersion: {column: version, digest: dataset_digest}
     filters:
       - field: competencia
@@ -194,7 +196,7 @@ datasets:
         pendingReason: Sem fonte viva; ausente significa N para o SCR, mas o campo é obrigatório no leiaute.
       PorteCli:
         from: manual
-        pendingReason: O Reporter deriva o porte na data-base (DEC-LMS-90) e ainda não o executa.
+        pendingReason: O Reporter deriva o porte na data-base e ainda não o executa.
       TpCtrl:
         from: manual
         pendingReason: Sem fonte viva (obrigatório só para PJ).
@@ -271,7 +273,7 @@ datasets:
       guarantorDocument: {from: query, column: document}
       Compart:
         from: manual
-        pendingReason: O critério que leva linked_book_contracts ao código do Anexo 49 está pendente de confirmação (decisão 28).
+        pendingReason: O critério que leva linked_book_contracts ao código do Anexo 49 está pendente de confirmação.
 
   Inf1002:
     from:

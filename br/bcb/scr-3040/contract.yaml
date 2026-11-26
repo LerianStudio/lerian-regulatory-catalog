@@ -6,7 +6,7 @@
 #
 # XSD OFICIAL: schema/scr3040.202607.xsd (origem em schema/README.md). O motor não confere o arquivo contra ele em tempo de execução.
 #
-# ESCOPO (decisão 25 do programa Lender x BFC): cabeçalho, Cli, Op, Venc, Gar e dois
+# ESCOPO: cabeçalho, Cli, Op, Venc, Gar e dois
 # Inf (1002 e 1701) e o Inf de saída da operação que deixou a instituição no mês (0301, 0302, 0304,
 # 0310, 0311, 0316, 0317). Ficam fora Agreg, Sicor, ConIpocs, ContInstFinRes4966,
 # Estagio, Perda e os demais Inf; cada um está declarado em knownGaps.
@@ -452,59 +452,59 @@ datasets:
 # dataset do Lender, que a impõe uma vez, onde nasce. O motor confere o grão de cada conjunto.
 
 knownGaps:
-  # ── As sete perguntas regulatórias abertas (consulta externa, decisão 28) ──
+  # ── As sete perguntas regulatórias abertas (consulta ao BACEN) ──
   - id: q1-ipoc
     description: >-
       Op.IPOC é composto no template (CNPJ raiz da instituição, modalidade, tipo do cliente, código do
       cliente, código do contrato; I p.17-18) e nunca conferido contra o SCR. Se a regra de unicidade e de
-      mudança de IPOC vale para a operação carregada pela E8 espera a consulta ao BACEN. Responde: Fred, com o BACEN.
+      mudança de IPOC vale para a operação carregada espera a consulta ao BACEN. Responde: a Lerian, com o BACEN.
   - id: q2-contrt-unico
     description: >-
       Se Op.Contrt precisa ser único por instituição, e não só o IPOC, espera a consulta ao BACEN. O Lender grava o número
-      do cliente ou, sem ele, o id da conta. Responde: Fred, com o BACEN.
+      do cliente ou, sem ele, o id da conta. Responde: a Lerian, com o BACEN.
   - id: q3-gar-anexos
     description: >-
       O bloco Gar e os Anexos 12, 47, 48 e 49 entram na data-base maio/2026 (README.md de schema/). Quais tipos de garantia o
       Lender pode declarar fora o FGTS (0889), e como o critério de compartilhamento vira o código do Anexo 49, espera a consulta.
-      Gar.Compart não é preenchido. Responde: Fred, com o BACEN.
+      Gar.Compart não é preenchido. Responde: a Lerian, com o BACEN.
   - id: q4-natuop-ccb-comprada
     description: >-
       Op.NatuOp e Inf 1002 de uma CCB comprada. O template escreve NatuOp 01 para origin granted e 03 para consignado_repurchase
       (I p.54; a natureza 03 da recompra é a leitura do catálogo do Lender) e NÃO escreve NatuOp para origin acquisition, nem Inf 1002 dela. A operação adquirida sai sem natureza até
-      a consulta responder. Responde: Fred, com o BACEN.
+      a consulta responder. Responde: a Lerian, com o BACEN.
   - id: q5-conversao
     description: >-
-      Op.CaracEspecial 01 e Inf 1701 de um contrato carregado pela E8 depois da conversão: o Lender só valida o formato do que
-      o cliente carrega (confirmações 1 e 5 da E8). Responde: Fred, com o BACEN.
+      Op.CaracEspecial 01 e Inf 1701 de um contrato carregado depois da conversão: o Lender só valida o formato do que
+      o cliente carrega. Responde: a Lerian, com o BACEN.
   - id: q6-anexo-42
     description: >-
-      Estagio e o Anexo 42 (motivos de alocação) não são produzidos; fora do escopo da decisão 25. Responde: Fred.
+      Estagio e o Anexo 42 (motivos de alocação) não são produzidos; fora do escopo deste documento. Responde: a Lerian.
   - id: q7-primeira-data-base
     description: >-
-      Qual é a primeira data-base que o Lender entrega depois do corte de um contrato carregado espera a consulta. Responde: Fred.
+      Qual é a primeira data-base que o Lender entrega depois do corte de um contrato carregado espera a consulta. Responde: a Lerian.
 
   # ── Campos do dataset pendentes de confirmação ──
   - id: dtcontr-data-de-liberacao
     description: >-
-      Op.DtContr do contrato carregado é a data de liberação original (E8, confirmação 1). Do contrato que o Lender origina, é o dia
+      Op.DtContr do contrato carregado é a data de liberação original. Do contrato que o Lender origina, é o dia
       civil da primeira liberação: a emissão e a assinatura da CCB são datas candidatas, e só a liberação existe em todo contrato.
-      Responde: Fred, na consulta externa.
+      Responde: a Lerian, na consulta ao BACEN.
   - id: sitgar-03-vlrdata-dtreav-inf0317
     description: >-
       Gar.SitGar 03 (honrada) quando há recebimento de execução em vigor, Gar.VlrData e Gar.DtReav da execução e Inf 0317 estão pendentes de
-      confirmação (decisão 28). Se o antecipado (prepaid_amount) conta em VlrData também. O binding não escreve recovered_amount nem
-      recovered_on: as colunas estão na visão e nenhum campo as lê. Responde: Fred.
+      confirmação. Se o antecipado (prepaid_amount) conta em VlrData também. O binding não escreve recovered_amount nem
+      recovered_on: as colunas estão na visão e nenhum campo as lê. Responde: a Lerian.
   - id: compart-codigo
     description: >-
       Gar.Compart: a visão traz linked_book_contracts (uma contagem), e o critério que a leva a 01, 02 ou 03 (I p.79) está pendente.
   - id: gar-carregado-na-data-base-do-corte
     description: >-
       A garantia de um contrato carregado só aparece a partir da data-base que contém o dia da carga: vínculo e situação levam o relógio de
-      parede (E6 §1 e §2.10). Na data-base do corte o contrato sai sem Gar. Responde: Fred (E6, E8).
+      parede. Na data-base do corte o contrato sai sem Gar. Responde: a Lerian.
   - id: venc-205-290-stop-accrual
     description: >-
       Venc 205 a 290 saem sem a dedução da renda não recebida do ativo problemático em stop accrual. O Lender não guarda esse saldo em D
-      pronto para ler. A dedução espera uma lane própria.
+      pronto para ler. A dedução ainda não é feita.
   - id: venc-310-330-liquido-ou-bruto
     description: >-
       Venc v310 a v330 carregam o carrying_amount da baixa, bruto das recuperações posteriores (credit_loss_recoveries). Se o valor
@@ -512,30 +512,30 @@ knownGaps:
   - id: venc-60-80-creditos-a-liberar
     description: >-
       Venc v60 e v80 (créditos a liberar) não saem: o Lender não guarda a data de liberação, que I p.75 (c) usa para contar os dias.
-      VlrContr leva o contratado inteiro (I p.53), mas o a liberar não aparece em Venc. Quem responde: Fred. v20 e v40 (limites, só
+      VlrContr leva o contratado inteiro (I p.53), mas o a liberar não aparece em Venc. Quem responde: a Lerian. v20 e v40 (limites, só
       modalidades 19xx, I p.74 b) e v199 não têm produto no Lender, e por isso não são lacunas.
   - id: inf1002-valor
     description: >-
       Inf 1002 Valor sai como o valor negociado (o preço pago ao fundo), como pede I p.101 (tabela e natureza 03). L Anexo 26 l.65
-      (modificada em 2026-10-18) pede o valor de face. Os dois arquivos oficiais divergem; a consulta ao BACEN (decisão 28) decide. Quem responde: Fred.
+      (modificada em 2026-10-18) pede o valor de face. Os dois arquivos oficiais divergem; a consulta ao BACEN decide. Quem responde: a Lerian.
   - id: caracespecial-nao-produzidas
     description: CaracEspecial 02, 09, 17, 20 e 22 não são produzidas pelo dataset (sem fonte viva no Lender).
   - id: indx-pos-fixado
     description: >-
       Op.Indx e Op.PercIndx só saem para origin fixa (Indx 11 e PercIndx 0, I p.50). Para taxa flutuante o Lender publica o código do
-      índice da tabela de taxas dele, sem mapa para o Anexo 5, e o percentual do indexador espera a lane F6: Indx e PercIndx ficam
+      índice da tabela de taxas dele, sem mapa para o Anexo 5, e o percentual do indexador ainda não é publicado: Indx e PercIndx ficam
       de fora, e o arquivo sai sem eles. O XSD oficial exige Indx em todo Op (schema/scr3040.202607.xsd, tipoOperacao): a remessa com flutuante não valida.
 
   # ── Campos sem fonte viva, marcados como pendência no binding ──
   - id: cli-sem-fonte
     description: >-
       Cli.Autorzc, Cli.TpCtrl, Cli.FatAnual, Cli.PorteCli e Cli.CongEcon não têm fonte viva (fontes planejadas no catálogo do Lender).
-      PorteCli é derivado pelo Reporter na data-base (DEC-LMS-90), que ainda não o executa.
+      PorteCli é derivado pelo Reporter na data-base, que ainda não o executa.
   - id: gar-sem-valor-original
     description: >-
-      A remessa exige VlrOrig quando TpVlrGar é 01, e o XSD recusa vazio. O E6 aceita ativo sem originalValue e aval com valueType 1, e o
+      A remessa exige VlrOrig quando TpVlrGar é 01, e o XSD recusa vazio. O Lender aceita ativo sem originalValue e aval com valueType 1, e o
       template escreve VlrOrig="" nesses casos; o contrato não tem requiredWhen executável (pkg/reporter/contract/rules.go). O Lender deve
-      recusar valueType 1 sem originalValue e valueType 1 em garantidor. Responde: Fred.
+      recusar valueType 1 sem originalValue e valueType 1 em garantidor. Responde: a Lerian.
   - id: perfil-da-instituicao
     description: >-
       Doc3040.NomeResp, EmailResp, TelResp, MetodApPE e MetodDifTJE, Op.OrigemRec e Op.CEP vêm do perfil de reporte da instituição
@@ -551,12 +551,12 @@ knownGaps:
       de saída (I p.88-95) e sem ProvConsttd nem Venc (I p.89). O que o Lender não entrega fica declarado e a remessa mantém a lacuna, sem
       recusar o contrato: 0311 Ident (o Lender guarda o código COMPE do destino, não a raiz do CNPJ) e 0311 Cd até a efetivada chegar; 0316
       Valor da renegociação do art. 22 (candidatos: principal baixado, saldo contábil ou principal mais juros baixados; I p.95 diz só
-      "valor renegociado", decisão 28) e, sem contrato ou modalidade do sucessor, 0316 Cd; 0304 Ident quando o fundo não tem CNPJ. Responde: Fred, com o BACEN.
+      "valor renegociado") e, sem contrato ou modalidade do sucessor, 0316 Cd; 0304 Ident quando o fundo não tem CNPJ. Responde: a Lerian, com o BACEN.
   - id: verba-rescisoria
     description: >-
       A fração de verbas rescisórias da garantia do consignado não tem subtipo no Anexo 12: nenhuma linha Gar sai para ela, e a leitura é do
       compliance do cliente.
-  - id: fora-da-decisao-25
+  - id: fora-do-escopo
     description: Agreg, Sicor, ConIpocs, ContInstFinRes4966, Perda e os Inf fora 1002, 1701 e os de saída listados acima não são produzidos.
 
   # ── Limites desta curadoria ──
