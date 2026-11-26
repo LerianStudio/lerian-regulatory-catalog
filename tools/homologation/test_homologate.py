@@ -134,7 +134,7 @@ FECHAMENTO = "br.rfb.efinanceira-fechamento"
 ABERTURA_REFERENCE = (ROOT / "br" / "rfb" / "efinanceira-abertura" / "binding.example.yaml").read_text(encoding="utf-8")
 CONTACTS = [
     {"cpf": "52998224725", "nome": "Ana", "uf": "SP", "email": "ana@x.com.br"},
-    {"cpf": "16899535009", "nome": "Bruno D'Ávila", "uf": "RJ", "email": "bruno@x.com.br"},
+    {"cpf": "12312312387", "nome": "Bruno D'Ávila", "uf": "RJ", "email": "bruno@x.com.br"},
 ]
 
 

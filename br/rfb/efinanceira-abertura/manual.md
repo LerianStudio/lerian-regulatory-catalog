@@ -146,10 +146,10 @@ São linhas escritas no mapeamento, uma por pessoa, no lugar de `rows: []` — e
          telefone: "33334444", ramal: "210", logradouro: "Av. Paulista", numero: "1000",
          complemento: "cj 101", bairro: "Bela Vista", cep: "01310100",
          municipio: "São Paulo", uf: SP, email: "ana@exemplo.com.br"}
-      - {cpf: "16899535009", nome: "Bruno Lima", setor: "Tecnologia", ddd: "11",
+      - {cpf: "12312312387", nome: "Fulano de Tal", setor: "Tecnologia", ddd: "11",
          telefone: "33335555", logradouro: "Av. Paulista", numero: "1000",
          bairro: "Bela Vista", cep: "01310100", municipio: "São Paulo", uf: SP,
-         email: "bruno@exemplo.com.br"}
+         email: "fulano@exemplo.com.br"}
 ```
 
 Cada linha é conferida contra o contrato quando o mapeamento é salvo: os campos
