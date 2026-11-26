@@ -419,6 +419,55 @@ MUTATIONS: list[Mutation] = [
             {"join": [{"query": "movimento", "match": {"k": "k"}}]}),
         "ciclo por `join`",
     ),
+    # ------------------------------------- binding: versão da fonte (sourceVersion)
+    Mutation(
+        "versao-da-fonte-sem-coluna",
+        "versão da fonte sem a coluna que a carrega não diz o que ler",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica").update(
+            {"sourceVersion": {"digest": "digest_versao"}}),
+        "sourceVersion tem column None",
+    ),
+    Mutation(
+        "versao-da-fonte-coluna-vazia",
+        "coluna de versão em branco não é o nome de coluna nenhuma",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica")["sourceVersion"].update(
+            {"column": "  "}),
+        "sourceVersion tem column '  '",
+    ),
+    Mutation(
+        "versao-da-fonte-digest-vazio",
+        "digest declarado e vazio não é o nome de coluna nenhuma",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica")["sourceVersion"].update(
+            {"digest": ""}),
+        "sourceVersion tem digest ''",
+    ),
+    Mutation(
+        "versao-da-fonte-chave-desconhecida",
+        "subchave fora de column e digest não tem significado",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica")["sourceVersion"].update(
+            {"table": "outra"}),
+        "sourceVersion é um mapeamento de column e, opcionalmente, digest",
+    ),
+    Mutation(
+        "versao-da-fonte-nao-e-mapa",
+        "versão da fonte que é texto solto não declara coluna",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica").update(
+            {"sourceVersion": "versao"}),
+        "sourceVersion é um mapeamento de column e, opcionalmente, digest",
+    ),
+    Mutation(
+        "versao-da-fonte-em-consulta-composta",
+        "consulta que compõe sobre outra não lê tabela, então não tem versão de fonte",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica").update(
+            {"from": "outra"}),
+        "declara sourceVersion e não lê uma tabela",
+    ),
+    Mutation(
+        "versao-da-fonte-sem-tabela",
+        "versão da fonte numa consulta sem tabela não tem de onde ser lida",
+        lambda b: query(b[PLANO]["binding"], "saldos_por_rubrica").pop("table"),
+        "declara sourceVersion e não lê uma tabela",
+    ),
     # ----------------------------------------------------- binding: hierarquia
     Mutation(
         "childof-sem-parentmatch",
@@ -2730,7 +2779,7 @@ _NOT_CONTRACT_KEYS = {
     "manualOverrides", "columns", "aggregation", "aggregate", "dataSource", "column",
     "table", "source", "filters", "select", "groupBy", "lookup", "of", "as", "on",
     "accumulate", "rowKey", "compute", "case", "otherwise", "at", "calendar", "operator",
-    "values", "parameter", "anyOf", "allOf",
+    "values", "parameter", "anyOf", "allOf", "sourceVersion", "digest",
     # o texto livre que saiu da gramática: lido só para ser recusado
     "assert",
     "when", "value", "statedIn", "pendingReason", "measures", "contract", "institution",
