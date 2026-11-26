@@ -32,7 +32,7 @@ metadata:
   summary: >-
     Origem e destino dos recursos de cada lançamento do EXTRATO: a contraparte pelo plugin
     Pix ou TED da transação, pela outra perna interna, ou a própria instituição na tarifa.
-  version: 1.2.0
+  version: 1.3.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -127,7 +127,7 @@ datasets:
                 dataLancamento: first, horaLancamento: first, descricao: first, descricaoTransacao: first,
                 valor: first, natureza: first, naturezaOposta: first, tipoOperacao: first, saldoApos: first, rail: first, fluxo: first, direcao: first,
                 agregado: first, tipoPagamento: first, tipoIniciacao: first, e2eEnvio: first,
-                iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first}
+                iniciacao: first, e2eRecebimento: first, devolucao: first, e2eOriginal: first, nomeDocIdentificacaoOd: first, numeroDocIdentificacaoOd: first, codigoBarras: first, nomeEndossante: first, docEndossante: first, beneficiarioBoleto: first, pagadorBoleto: first, cnpjEmissoraBoleto: first, nomeEmissoraBoleto: first, valorNominalBoleto: first}
     fields:
       - name: operacaoId
         type: string
@@ -144,8 +144,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
-        description: Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, EXTRATO, campo 3).
+        pattern: '^[0-9]{1,5}$'
+        description: >-
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, EXTRATO, campo 3).
       - name: numeroConta
         type: string
         required: true
@@ -246,6 +248,74 @@ datasets:
         type: string
         required: false
         description: original_end_to_end_id da devolução do Pix lerian.
+      - name: nomeDocIdentificacaoOd
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do documento de identificação do ordenante ou beneficiário que não seja CPF, como RG ou passaporte (IN
+          636, Anexo I, ORIGEM-DESTINO, campo 12). Pix e TED trazem só o CPF/CNPJ. O template o corta em 50 posições.
+      - name: numeroDocIdentificacaoOd
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Número e complemento do documento de identificação do ordenante ou beneficiário (IN 636, Anexo I,
+          ORIGEM-DESTINO, campo 13). O template o corta em 20 posições.
+      - name: codigoBarras
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Código de barras do boleto, com o DV e os separadores (IN 636, Anexo I, ORIGEM-DESTINO, campo 14). Boleto
+          não é produto Lerian. O template o corta em 100 posições.
+      - name: nomeEndossante
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do endossante do cheque (IN 636, Anexo I, ORIGEM-DESTINO, campo 15). Cheque não é produto Lerian. O
+          template o corta em 80 posições.
+      - name: docEndossante
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome, número e complemento do documento do endossante do cheque (IN 636, Anexo I, ORIGEM-DESTINO, campo 16).
+          O template o corta em 50 posições.
+      - name: beneficiarioBoleto
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do cedente beneficiário do boleto (IN 636, Anexo I, ORIGEM-DESTINO, campo 20). O template o corta em
+          250 posições.
+      - name: pagadorBoleto
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do sacado pagador do boleto (IN 636, Anexo I, ORIGEM-DESTINO, campo 21). O template o corta em 250
+          posições.
+      - name: cnpjEmissoraBoleto
+        type: string
+        required: false
+        pattern: '^[0-9A-Z]{14}$'
+        description: >-
+          CNPJ da instituição que emitiu o boleto, sem separadores (IN 636, Anexo I, ORIGEM-DESTINO, campo 22).
+      - name: nomeEmissoraBoleto
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome da instituição que emitiu o boleto, como no Unicad (IN 636, Anexo I, ORIGEM-DESTINO, campo 23). O
+          template o corta em 50 posições.
+      - name: valorNominalBoleto
+        type: decimal
+        required: false
+        format: {scale: 2, scaleIsExact: true, decimalSeparator: ".", groupSeparator: ""}
+        description: >-
+          Valor nominal do boleto em reais (IN 636, Anexo I, ORIGEM-DESTINO, campo 24). O template escreve centavos.
 
   # Operacoes que o motor de tarifas do Midaz marcou com feeLeg = "true": o campo 9
   # sai 105 (tarifas), depois da regra do estorno.
@@ -299,8 +369,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
-        description: Número da agência sem DV; 00001 sem agência física (IN 636, Anexo I, ORIGEM-DESTINO, campo 6).
+        pattern: '^[0-9]{1,5}$'
+        description: >-
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, ORIGEM-DESTINO, campo 6).
       - name: numeroConta
         type: string
         required: true
@@ -788,7 +860,16 @@ knownGaps:
   - id: plugin-de-outra-empresa
     description: >-
       Contraparte liquidada por provedor que não é plugin Lerian não é lida: sai a outra perna interna ou a linha
-      vazia. Boleto e cheque não existem como produto: campos 12 a 16 e 20 a 24 em branco.
+      vazia.
+  - id: campos-sem-fonte-no-midaz
+    description: >-
+      O Midaz e os plugins não possuem o documento de identificação da contraparte (campos 12 e 13; Pix e TED trazem
+      só o CPF/CNPJ), nem boleto e cheque, que não são produtos Lerian (campos 14 a 16 e 20 a 24) (IN 636, Anexo I,
+      ORIGEM-DESTINO). Cada um é um campo opcional do lançamento, mapeado como manual com o motivo: a instituição o
+      traz de uma base dela (consulta juntada à de lancamentos_dados pelo id da operação) ou o
+      corrige linha a linha no rascunho. Vazio, sai em branco. Saem em toda linha do lançamento (trilho, outra
+      perna interna, tarifa e linha vazia). Nunca dê a um desses campos um valor fixo no mapeamento: ele se
+      repetiria em todo lançamento.
   - id: ispb-numerico
     description: >-
       O ISPB tem de chegar como texto de oito dígitos. Um ISPB que chegue como número com casas decimais sai como

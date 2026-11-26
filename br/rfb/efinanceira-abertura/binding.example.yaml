@@ -16,7 +16,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.rfb.efinanceira-abertura
-contractVersion: 1.0.0
+contractVersion: 1.0.1
 
 queries:
   - name: declarante

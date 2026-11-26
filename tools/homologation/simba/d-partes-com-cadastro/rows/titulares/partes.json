@@ -2,18 +2,19 @@
   {
     "contaId": "c1",
     "parteId": "p1",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333331",
     "tipoConta": "1",
     "vinculo": "C",
     "documento": "52998224725",
     "nome": "Carlos Cotitular",
-    "dataInicio": "2024-02-03"
+    "dataInicio": "2024-02-03",
+    "contratoCambio": "0"
   },
   {
     "contaId": "c1",
     "parteId": "p4",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333331",
     "tipoConta": "1",
     "vinculo": "C",
@@ -24,7 +25,7 @@
   {
     "contaId": "c1",
     "parteId": "p2",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333331",
     "tipoConta": "1",
     "vinculo": "O",
@@ -36,7 +37,7 @@
   {
     "contaId": "c1",
     "parteId": "p3",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333331",
     "tipoConta": "1",
     "vinculo": "L",
@@ -47,7 +48,7 @@
   {
     "contaId": "c2",
     "parteId": "p4",
-    "numeroAgencia": "00001",
+    "numeroAgencia": "0001",
     "numeroConta": "3333332",
     "tipoConta": "1",
     "vinculo": "C",

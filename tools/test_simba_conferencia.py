@@ -45,6 +45,7 @@ def conta(agencia: str, numero: str, movimento: str, inicial: str, final: str) -
 def titular(agencia: str, numero: str) -> list[str]:
     row = [""] * 28
     row[:11] = ["999", agencia, numero, "6", "T", "1", "1", "00000000000", "PESSOA EXEMPLO", "RG", "000000"]
+    row[12] = "3550308"
     row[25:27] = ["DISPOSITIVO EXEMPLO", "COMPUTADOR EXEMPLO"]
     row[27] = "0"
     return row
@@ -338,6 +339,29 @@ class Conferencia(unittest.TestCase):
         files = case()
         files["AGENCIAS"] = [agencia("0002")]
         self.assert_says(self.run_case(files).errors, "CONTAS: a agência 0001 não está no AGENCIAS")
+
+    def test_agencia_fora_do_cadastro_de_agencias_e_erro(self) -> None:
+        files = case()
+        sem_cadastro = agencia("0007")
+        sem_cadastro[2:10] = [""] * 8
+        files["AGENCIAS"].append(sem_cadastro)
+        report = self.run_case(files)
+        self.assertTrue(any("agência 0007 não está no cadastro de agências" in e for e in report.errors), report.errors)
+
+    def test_agencia_sem_fisica_com_o_pais_nao_e_erro(self) -> None:
+        files = case()
+        digital = agencia("0001")
+        digital[2:6] = ["nao possui agencia fisica", "nao possui agencia fisica", "0000000", "00"]
+        digital[13] = "2"
+        files["AGENCIAS"] = [digital]
+        report = self.run_case(files)
+        self.assertFalse(any("cadastro de agências" in e for e in report.errors), report.errors)
+
+    def test_campo_28_em_branco_e_erro(self) -> None:
+        files = case()
+        files["TITULARES"][0][27] = ""
+        report = self.run_case(files)
+        self.assertTrue(any("sem o campo 28" in e for e in report.errors), report.errors)
 
     def test_ultimo_saldo_diferente_do_contas_e_aviso(self) -> None:
         files = case()

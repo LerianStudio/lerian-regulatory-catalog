@@ -6,16 +6,13 @@
 # CONTAS, TITULARES, EXTRATO e ORIGEM-DESTINO: trocar de onde vem o conjunto de
 # contas do caso e trocar SO essas duas consultas. As demais leem os ids das duas.
 #
-# O CADASTRO DE AGENCIAS E DO TENANT. Agencia nao e entidade no Midaz nem no CRM:
-# o CRM guarda so o numero (`banking_details.branch`, texto livre). Cada atributo
-# da agencia e um `case` por esse numero, preenchido UMA vez na implantacao. O
-# cadastro e fechado: agencia que um `case` nao lista recusa a geracao, e toda
-# agencia listada tem todos os atributos (o motor nao aceita valor vazio num
-# `case`). Os valores abaixo sao SINTETICOS: "0001" e a agencia sem agencia
-# fisica, cadastrada com as sentinelas do Anexo I, e "0002" uma agencia fisica
-# ficticia. Agencia aberta: fechamento 9999-12-31, que sai 31129999, a sentinela da IN para
-# agencia nao fechada (IN BCB 636/2025, Anexo I, AGENCIAS campo 11).
-# O mesmo cadastro vai no binding do CONTAS (numero da agencia em 5 digitos).
+# O CADASTRO DE AGENCIAS E DA INSTITUICAO. Agencia nao e entidade no Midaz nem no
+# CRM: o CRM guarda so o numero (`banking_details.branch`, texto livre), que vem
+# cru nas consultas; o contrato aceita ate 5 digitos e o template completa com
+# zeros. Nome, endereco, cidade, UF, pais, CEP, telefone e datas o Midaz nao
+# possui: sao as linhas de `cadastro_agencias`, escritas a mao, uma por agencia,
+# no lugar de `rows: []` (apague o pendingReason ao escrever). O template acha
+# cada agencia pelo numero com cinco digitos (`agencia`).
 #
 # Campo 14 (se a instituicao possui agencia fisica, 1 ou 2) e da INSTITUICAO:
 # `possuiAgenciaFisica` em `instituicao`. Com 2, o template escreve as
@@ -28,7 +25,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.agencias
-contractVersion: 1.1.0
+contractVersion: 1.2.0
 
 queries:
   - name: declarante
@@ -121,85 +118,15 @@ queries:
       - {field: deleted_at, operator: isNull}
     select: [account_id, document]
 
-  # A agencia de cada conta do caso, com o cadastro do tenant.
+  # A agencia de cada conta do caso: so o numero, como o CRM grava.
   - name: agencias_caso
-    description: As contas do caso, lidas de novo para levar o cadastro da agência de cada uma.
+    description: As contas do caso, lidas de novo para levar o número da agência de cada uma.
     dataSource: plugin_crm
     table: aliases
     filters:
       - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: deleted_at, operator: isNull}
-    compute:
-      - as: numero_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00001"}
-            "0002": {constant: "00002"}
-          otherwise: refuse
-      - as: nome_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "nao possui agencia fisica"}
-            "0002": {constant: "AGENCIA EXEMPLO"}
-          otherwise: refuse
-      - as: endereco_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "nao possui agencia fisica"}
-            "0002": {constant: "RUA EXEMPLO, 100, SALA 1"}
-          otherwise: refuse
-      - as: codigo_cidade
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "0000000"}
-            "0002": {constant: "3550308"}
-          otherwise: refuse
-      - as: codigo_uf
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00"}
-            "0002": {constant: "35"}
-          otherwise: refuse
-      - as: pais_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "Brasil"}
-            "0002": {constant: "Brasil"}
-          otherwise: refuse
-      - as: cep_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00000000"}
-            "0002": {constant: "01000000"}
-          otherwise: refuse
-      - as: telefone_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "0000000000"}
-            "0002": {constant: "1100000000"}
-          otherwise: refuse
-      - as: data_abertura_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "2020-01-01"}
-            "0002": {constant: "2020-01-01"}
-          otherwise: refuse
-      - as: data_fechamento_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "9999-12-31"}
-            "0002": {constant: "9999-12-31"}
-          otherwise: refuse
+    select: [account_id, banking_details.branch]
 
   # Os lancamentos das contas do caso no periodo do afastamento, para achar as
   # outras pernas (contas com que elas transacionaram, IN art. 2o, I, :27).
@@ -234,83 +161,13 @@ queries:
   # A agencia de cada conta das outras pernas que esta no CRM. Conta de sistema
   # ou de liquidacao (sem instrumento no CRM) nao e conta de cliente e nao entra.
   - name: agencias_contraparte
-    description: As contas das outras pernas que têm instrumento no CRM, com o cadastro da agência.
+    description: As contas das outras pernas que têm instrumento no CRM, com o número da agência.
     dataSource: plugin_crm
     table: aliases
     filters:
       - {field: account_id, operator: in, values: [{query: outras_pernas, column: account_id}]}
       - {field: deleted_at, operator: isNull}
-    compute:
-      - as: numero_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00001"}
-            "0002": {constant: "00002"}
-          otherwise: refuse
-      - as: nome_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "nao possui agencia fisica"}
-            "0002": {constant: "AGENCIA EXEMPLO"}
-          otherwise: refuse
-      - as: endereco_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "nao possui agencia fisica"}
-            "0002": {constant: "RUA EXEMPLO, 100, SALA 1"}
-          otherwise: refuse
-      - as: codigo_cidade
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "0000000"}
-            "0002": {constant: "3550308"}
-          otherwise: refuse
-      - as: codigo_uf
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00"}
-            "0002": {constant: "35"}
-          otherwise: refuse
-      - as: pais_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "Brasil"}
-            "0002": {constant: "Brasil"}
-          otherwise: refuse
-      - as: cep_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00000000"}
-            "0002": {constant: "01000000"}
-          otherwise: refuse
-      - as: telefone_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "0000000000"}
-            "0002": {constant: "1100000000"}
-          otherwise: refuse
-      - as: data_abertura_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "2020-01-01"}
-            "0002": {constant: "2020-01-01"}
-          otherwise: refuse
-      - as: data_fechamento_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "9999-12-31"}
-            "0002": {constant: "9999-12-31"}
-          otherwise: refuse
+    select: [account_id, banking_details.branch]
 
 datasets:
   instituicao:
@@ -330,36 +187,30 @@ datasets:
         from: manual
         pendingReason: "1 se a instituição tem agência física, 2 se não tem (campo 14)"
 
+  # O cadastro de agencias da instituicao: uma linha por agencia, com o numero em
+  # cinco digitos (`agencia`) e os campos 3 a 11 do Anexo I. Sem agencia fisica
+  # (possuiAgenciaFisica 2), bastam agencia, pais e datas. Escreva as linhas no
+  # lugar de `rows: []` e apague o pendingReason, por exemplo:
+  #   rows:
+  #     - {agencia: "00001", pais: Brasil, dataAbertura: "2020-01-01", dataFechamento: "9999-12-31"}
+  #     - {agencia: "00002", nomeAgencia: "AGENCIA CENTRO", endereco: "RUA ..., 100", codigoCidade: "3550308",
+  #        codigoUf: "35", pais: Brasil, cep: "01000000", telefone: "1130000000", dataAbertura: "2020-01-01"}
+  cadastro_agencias:
+    rows: []
+    pendingReason: "o cadastro das agências da instituição, uma linha por agência: número com cinco dígitos, nome, endereço, código IBGE da cidade e da UF, país, CEP, telefone e datas de abertura e fechamento. O Midaz não possui esses dados: informe manualmente"
+
   agencias_do_caso:
     from:
       query: agencias_caso
     fields:
       contaId: {from: query, column: account_id}
-      numeroAgencia: {from: query, column: numero_agencia}
-      nomeAgencia: {from: query, column: nome_agencia}
-      endereco: {from: query, column: endereco_agencia}
-      codigoCidade: {from: query, column: codigo_cidade}
-      codigoUf: {from: query, column: codigo_uf}
-      pais: {from: query, column: pais_agencia}
-      cep: {from: query, column: cep_agencia}
-      telefone: {from: query, column: telefone_agencia}
-      dataAbertura: {from: query, column: data_abertura_agencia}
-      dataFechamento: {from: query, column: data_fechamento_agencia}
+      numeroAgencia: {from: query, column: banking_details.branch}
 
   agencias_contraparte:
     from:
       query: agencias_contraparte
     fields:
       contaId: {from: query, column: account_id}
-      numeroAgencia: {from: query, column: numero_agencia}
-      nomeAgencia: {from: query, column: nome_agencia}
-      endereco: {from: query, column: endereco_agencia}
-      codigoCidade: {from: query, column: codigo_cidade}
-      codigoUf: {from: query, column: codigo_uf}
-      pais: {from: query, column: pais_agencia}
-      cep: {from: query, column: cep_agencia}
-      telefone: {from: query, column: telefone_agencia}
-      dataAbertura: {from: query, column: data_abertura_agencia}
-      dataFechamento: {from: query, column: data_fechamento_agencia}
+      numeroAgencia: {from: query, column: banking_details.branch}
 
 manualOverrides: []

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "agencia fechada sai como aberta",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{% if g.dataFechamento %}{{ g.dataFechamento|date:\"02012006\" }}",
+    "new": "{% if false %}{{ g.dataFechamento|date:\"02012006\" }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 2,
+      "field": 11
+    }
+  },
+  {
+    "name": "nome da agencia do cadastro sem tirar o acento",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{{ ascii(g.nomeAgencia)|slice:\":50\" }}",
+    "new": "{{ g.nomeAgencia|slice:\":50\" }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 2,
+      "field": 3
+    }
+  },
+  {
+    "name": "mesma agencia em duas grafias sai duas vezes",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{% if not vista(agencias_do_caso, ate, np) %}",
+    "new": "{% if true %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 2,
+      "field": 2
+    }
+  },
+  {
+    "name": "agencia de contraparte ja listada no caso sai de novo",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{% if not vista(agencias_do_caso, \":\", np) and",
+    "new": "{% if",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 4,
+      "field": 1
+    }
+  },
+  {
+    "name": "numero da agencia de contraparte sem completar com zeros",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{{ b.numeroAgencia|stringformat:\"%05s\" }}",
+    "new": "{{ b.numeroAgencia }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 3,
+      "field": 2
+    }
+  },
+  {
+    "name": "agencia aberta sem a sentinela 31129999",
+    "document": "br/bcb/simba/agencias",
+    "file": "template.tpl",
+    "old": "{% else %}31129999{% endif %}{% empty %}31129999{% endfor %}\t{{ instituicao.cnpj }}\t{{ ascii(instituicao.nomeUnicad)|slice:\":50\" }}\t{{ instituicao.possuiAgenciaFisica }}\r\n{% endif %}{% endwith %}{% endwith %}{% endfor %}\n{%- endautoescape",
+    "new": "{% endif %}{% empty %}31129999{% endfor %}\t{{ instituicao.cnpj }}\t{{ ascii(instituicao.nomeUnicad)|slice:\":50\" }}\t{{ instituicao.possuiAgenciaFisica }}\r\n{% endif %}{% endwith %}{% endwith %}{% endfor %}\n{%- endautoescape",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/agencias",
+      "line": 3,
+      "field": 11
+    }
+  }
+]

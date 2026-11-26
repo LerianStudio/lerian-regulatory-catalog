@@ -159,8 +159,8 @@
     "name": "TED recebida sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\", pg.tipoConta, \"\", \"\", \"\") }}",
-    "new": "\", \"\", \"\", \"\", \"\") }}",
+    "old": "\", pg.tipoConta, \"\", \"\", \"\", l) }}",
+    "new": "\", \"\", \"\", \"\", \"\", l) }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -211,8 +211,8 @@
     "name": "Pix de conta corrente sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"\", pb.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\", \"\", \"\") }}",
-    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", \"\", \"\") }}",
+    "old": "\"\", pb.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\", \"\", \"\", l) }}",
+    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", \"\", \"\", l) }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -276,8 +276,8 @@
     "name": "Pix JD de conta corrente sem o codigo do tipo de conta",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"\", pd.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\", pd.tipoChave, pd.chave) }}",
-    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", pd.tipoChave, pd.chave) }}",
+    "old": "\"\", pd.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\", pd.tipoChave, pd.chave, l) }}",
+    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", pd.tipoChave, pd.chave, l) }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -289,7 +289,7 @@
     "name": "tarifa com a agencia fixa em 00001",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{{ l.numeroAgencia }}\t\t\t2\t",
+    "old": "{{ l.numeroAgencia|stringformat:\"%05s\" }}\t\t\t2\t",
     "new": "00001\t\t\t2\t",
     "count": 1,
     "expect": {
@@ -328,8 +328,8 @@
     "name": "TED enviada sem a base do motivo",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\", \"1\", \"\", \"\", \"\")",
-    "new": "\"\", \"1\", \"\", \"\", \"\")",
+    "old": "\"tipo de pessoa e CPF/CNPJ do recebedor nao informados: o plugin de TED grava cifrado o documento do recebedor\", \"1\", \"\", \"\", \"\", l)",
+    "new": "\"\", \"1\", \"\", \"\", \"\", l)",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -380,8 +380,8 @@
     "name": "Pix lerian enviado de conta corrente sem o codigo",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"\", pa.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\", pa.tipoChave, pa.chave) }}",
-    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", pa.tipoChave, pa.chave) }}",
+    "old": "\"\", pa.tipoConta, \"TxId nao informado: Pix sem identificador de conciliacao\", pa.tipoChave, pa.chave, l) }}",
+    "new": "\"\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", pa.tipoChave, pa.chave, l) }}",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -705,8 +705,8 @@
     "name": "Pix JD enviado dito sem identificador de conciliacao",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: o plugin de Pix nao grava o TxId do Pix enviado\", pc.tipoChave, pc.chave)",
-    "new": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", pc.tipoChave, pc.chave)",
+    "old": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: o plugin de Pix nao grava o TxId do Pix enviado\", pc.tipoChave, pc.chave, l)",
+    "new": "\"tipo de conta do recebedor TRAN sem codigo unico na IN\", \"\", \"TxId nao informado: Pix sem identificador de conciliacao\", pc.tipoChave, pc.chave, l)",
     "count": 1,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
@@ -926,13 +926,143 @@
     "name": "ORIGEM-DESTINO 25 e 26 sem a chave do Pix lerian enviado",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "pa.tipoChave, pa.chave) }}",
-    "new": "\"\", \"\") }}",
+    "old": "pa.tipoChave, pa.chave, l) }}",
+    "new": "\"\", \"\", l) }}",
     "count": 5,
     "expect": {
       "document": "br/bcb/simba/origem-destino",
       "line": 31,
       "field": 25
+    }
+  },
+  {
+    "name": "canal do lancamento trocado pelo da instituicao",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% if l.interface %}{{ l.interface }}{% else %}",
+    "new": "{% if false %}{{ l.interface }}{% else %}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 2,
+      "field": 17
+    }
+  },
+  {
+    "name": "cidade da transacao informada sai como sentinela",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{% if l.codigoCidade %}{{ l.codigoCidade }}{% else %}0000000{% endif %}",
+    "new": "0000000",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 2,
+      "field": 18
+    }
+  },
+  {
+    "name": "IP informado do lancamento em branco",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ ascii(l.ip)|slice:\":39\" }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 2,
+      "field": 20
+    }
+  },
+  {
+    "name": "informacao de local sem tirar o acento",
+    "document": "br/bcb/simba/extrato",
+    "file": "template.tpl",
+    "old": "{{ ascii(l.infoLocal)|slice:\":100\" }}",
+    "new": "{{ l.infoLocal|slice:\":100\" }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/extrato",
+      "line": 2,
+      "field": 14
+    }
+  },
+  {
+    "name": "documento da contraparte informado em branco na linha vazia",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "\t{{ docod(l) }}\t0\tcontraparte nao identificada pelo trilho",
+    "new": "\t\t\t\t\t\t0\tcontraparte nao identificada pelo trilho",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 2,
+      "field": 12
+    }
+  },
+  {
+    "name": "boleto informado em branco na linha vazia",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "contraparte nao identificada pelo trilho\t\t{{ boleto(l) }}\t",
+    "new": "contraparte nao identificada pelo trilho\t\t\t\t\t\t\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 2,
+      "field": 20
+    }
+  },
+  {
+    "name": "valor do boleto sem centavos",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ l.valorNominalBoleto|replace:\".:\" }}",
+    "new": "{{ l.valorNominalBoleto }}",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 2,
+      "field": 24
+    }
+  },
+  {
+    "name": "documento da contraparte em branco na linha do trilho",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ ascii(nome)|slice:\":80\" }}\t{{ docod(l) }}\t0\t",
+    "new": "{{ ascii(nome)|slice:\":80\" }}\t\t\t\t\t\t0\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 12
+    }
+  },
+  {
+    "name": "endossante do cheque em branco",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{{ ascii(l.nomeEndossante)|slice:\":80\" }}",
+    "new": "",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 1,
+      "field": 15
+    }
+  },
+  {
+    "name": "boleto em branco na perna interna",
+    "document": "br/bcb/simba/origem-destino",
+    "file": "template.tpl",
+    "old": "{% endfor %}\t{{ docod(l) }}\t0\t\t{{ instituicao.cnpj }}\t{{ boleto(l) }}\t",
+    "new": "{% endfor %}\t{{ docod(l) }}\t0\t\t{{ instituicao.cnpj }}\t\t\t\t\t\t",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/origem-destino",
+      "line": 5,
+      "field": 24
     }
   }
 ]
