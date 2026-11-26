@@ -124,6 +124,7 @@ PLANO_BINDING = {
     "queries": [
         {"name": "declarante", "dataSource": "fonte_cadastro", "table": "organizacao"},
         {"name": "saldos_por_rubrica", "dataSource": "fonte_x", "table": "lancamento",
+         "sourceVersion": {"column": "versao", "digest": "digest_versao"},
          "filters": [{"field": "status", "operator": "eq", "values": ["OK"]},
                      {"field": "criado_em", "operator": "lt", "values": [{"parameter": "dataBase", "at": "end"}]}],
          "join": [{"table": "saldo", "match": {"saldo_id": "id"}, "columns": {"natureza": "lado_natural"}}],
@@ -358,6 +359,7 @@ HIER_BINDING = {
          "filters": [{"field": "_id", "operator": "in", "values": [{"parameter": "titularesPedidos"}]}],
          "join": [{"table": "aliases", "match": {"holder_id": "_id"}, "columns": {"apelido": "alias"}}]},
         {"name": "movimento", "dataSource": "fonte_x", "table": "lancamento",
+         "sourceVersion": {"column": "versao"},
          "join": [{"query": "base_titulares", "match": {"conta": "conta"}}],
          "derive": [{"as": "dia", "from": "criado_em", "apply": "date"}]},
         {"name": "por_titular", "from": "movimento",

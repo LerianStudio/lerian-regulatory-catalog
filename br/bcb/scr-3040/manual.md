@@ -67,6 +67,27 @@ volta com o documento.
    para a competência; o 3040 de um mês lê a última versão publicada dela.
 5. **Os campos pendentes**, abaixo.
 
+## A versão que a remessa leu
+
+As consultas que leem as três visões declaram, no binding de referência, a coluna de versão
+(`version`) e a de digest (`dataset_digest`). Com isso o Reporter guarda, junto com a remessa, a
+versão de cada visão que ela leu. Nos documentos recentes, em rascunho ou já aprovados (por padrão,
+gerados nos últimos 400 dias e conferidos de hora em hora), ele marca a remessa quando a visão
+passa a mostrar outra versão da mesma data-base.
+
+A marca não muda o arquivo e não impede a aprovação: ela diz que a fonte publicou outra versão do
+período. Gerar de novo, com a `remessa` somada de um, é decisão da instituição. A versão é da
+competência inteira do banco de origem, não só da instituição: uma correção de outra instituição do
+mesmo banco também marca.
+
+Quem assinou a versão 1.0.0 recebe a declaração adotando a 1.1.0 e recomeçando o mapeamento a
+partir da referência. O recomeço mantém o que foi preenchido à mão nos campos e as fontes
+acrescentadas, mas não mantém os valores informados em `manualOverrides`: copie essa lista antes de
+recomeçar e informe-a de novo depois. Quem personalizou o mapeamento acrescenta
+`sourceVersion: {column: version, digest: dataset_digest}` a cada consulta que lê uma das três
+visões: recomeçar trocaria as outras edições pela referência. Adotar sem uma das duas coisas deixa o
+mapeamento sem a declaração, e a remessa não é marcada.
+
 ## Rascunho até a instituição completar
 
 O binding de referência declara `generatable: false`: o arquivo sai como **rascunho**, com
