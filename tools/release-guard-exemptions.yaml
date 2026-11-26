@@ -9,22 +9,6 @@
 # Subir a versão do documento torna a isenção sem efeito; aí ela sai.
 
 exemptions:
-  - document: br.bcb.scr-3040
-    version: "1.0.0"
-    tags: [v1.1.0-beta.1, v1.1.0-beta.2]
-    contentSha256: 30ea2c4919d74b9a5f08e15fd00dbd08f83fd1766de77f107c73fceb248a06e7
-    reason: >-
-      Publicado com conteúdos diferentes sob a mesma versão antes da guarda; subir a versão
-      obrigaria os clientes deste documento a readotar, e isso é decisão dos donos dele.
-    date: "2026-11-21"
-  - document: br.rfb.efinanceira-abertura
-    version: "1.0.0"
-    tags: [v1.1.0-beta.4]
-    contentSha256: 36380c82f7e3cd38244ea0eb101bc91ecc38d3311bc4a931babe66f455370323
-    reason: >-
-      Publicado com conteúdos diferentes sob a mesma versão antes da guarda; subir a versão
-      obrigaria os clientes deste documento a readotar, e isso é decisão dos donos dele.
-    date: "2026-11-21"
   - document: br.rfb.efinanceira-cad-declarante
     version: "1.0.0"
     tags: [v1.1.0-beta.2, v1.1.0-beta.3, v1.1.0-rc.1]

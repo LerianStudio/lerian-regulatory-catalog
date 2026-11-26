@@ -53,7 +53,7 @@ metadata:
   title: e-Financeira — Abertura
   summary: >-
     Abertura da e-Financeira de um semestre: as datas do período, o responsável pelas requisições de movimentação financeira (RMF), os responsáveis pela e-Financeira e o representante legal. Uma abertura original por semestre; reenviada como retificação quando muda.
-  version: 1.0.0
+  version: 1.0.1
   status: draft
   output: xml
   appliesTo:
