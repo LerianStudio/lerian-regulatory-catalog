@@ -81,10 +81,12 @@ competência inteira do banco de origem, não só da instituição: uma correç�
 mesmo banco também marca.
 
 Quem assinou a versão 1.0.0 recebe a declaração adotando a 1.1.0 e recomeçando o mapeamento a
-partir da referência; o recomeço mantém o que foi preenchido à mão e as fontes acrescentadas. Quem
-personalizou o mapeamento acrescenta `sourceVersion: {column: version, digest: dataset_digest}` a
-cada consulta que lê uma das três visões: recomeçar trocaria as outras edições pela referência.
-Adotar sem uma das duas coisas deixa o mapeamento sem a declaração, e a remessa não é marcada.
+partir da referência. O recomeço mantém o que foi preenchido à mão nos campos e as fontes
+acrescentadas, mas não mantém os valores informados em `manualOverrides`: copie essa lista antes de
+recomeçar e informe-a de novo depois. Quem personalizou o mapeamento acrescenta
+`sourceVersion: {column: version, digest: dataset_digest}` a cada consulta que lê uma das três
+visões: recomeçar trocaria as outras edições pela referência. Adotar sem uma das duas coisas deixa o
+mapeamento sem a declaração, e a remessa não é marcada.
 
 ## Rascunho até a instituição completar
 
