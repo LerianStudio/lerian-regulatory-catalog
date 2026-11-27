@@ -56,12 +56,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The version guard compares each released document with every release tag
           # that published it: it needs the tags, which a shallow clone lacks.
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install --require-hashes -r tools/requirements.txt
