@@ -107,7 +107,8 @@ Na tarifa e na contraparte interna, o CNPJ da própria instituição.
 
 ## O que o tenant preenche no mapeamento (binding)
 
-1. **Número da agência** (`numero_agencia`): o mesmo cadastro de agências do AGÊNCIAS.
+1. **Número da agência**: vem do CRM (`banking_details.branch`); o template completa com
+   zeros (`1` e `0001` saem `00001`).
 2. **Código Compe** (`compe`) e **nome no Unicad** (`nomeUnicad`) da instituição.
 3. **Fontes de dados**: `midaz_metadata` (o Mongo da metadata do Midaz) e uma fonte por plugin
    usado: `pix_lerian`, `pix_jd`, `bank_transfer`. Quem não usa um plugin apaga as consultas
@@ -126,8 +127,9 @@ Na tarifa e na contraparte interna, o CNPJ da própria instituição.
 - 19 (CNPJ da instituição) da contraparte de outra instituição: sai em branco quando o
   plugin não grava o ISPB ou a instituição não é participante ativa do Pix, com o motivo
   no campo 18 (ver CNPJ da instituição da contraparte).
-- 12 e 13 (documento de identificação): não existe em nenhuma aplicação.
-- 14 a 16 e 20 a 24 (boleto e cheque): não existem como produto.
+- 12 e 13 (documento de identificação da contraparte), 14 a 16 (boleto e cheque) e 20 a 24
+  (boleto): campos manuais do lançamento. Pix e TED trazem só o CPF/CNPJ, e boleto e cheque
+  não são produtos Lerian. Vazios, saem em branco. Saem em toda linha do lançamento.
 - 25 e 26 (chave Pix da contraparte): no Pix enviado, a chave do recebedor (Pix lerian: da
   iniciação do Pix, `transfer_initiations`; Pix JD: `payee_key`); no Pix JD recebido, a chave
   do pagador quando o plugin a grava (`payer_key`). O tipo vira o código da IN (1 CPF/CNPJ, 2
@@ -146,6 +148,33 @@ Na tarifa e na contraparte interna, o CNPJ da própria instituição.
     JD, inclusive o pagamento de QR dinâmico, que tem TxId: o plugin o repassa ao SPI e não o
     guarda, ou seja, inviabilidade técnica.
 - 27 e 28 fora do Pix.
+
+## Campos que o Midaz não possui
+
+Um campo do Anexo I que nenhuma aplicação Lerian registra entra no mapeamento como manual
+(`from: manual`), com o motivo no `pendingReason`: o Midaz não possui o campo, e a
+instituição o informa. Há três formas, e o campo é opcional nas três:
+
+1. **Correção no rascunho**, linha a linha, para poucos casos.
+2. **Uma base da instituição**: uma consulta na base dela, juntada (`join`) à consulta que
+   enche o conjunto pela chave da linha (a operação, a conta ou o documento), e o campo mapeado
+   `from: query` com a coluna dela. O Reporter junta consultas de bases diferentes, como já
+   junta o CRM e o razão do Midaz.
+3. **Deixar pendente**: o campo sai em branco (ou com a sentinela que a IN dá), como a IN
+   aceita na inexistência da informação (IN 636, art. 2º, § 1º).
+
+CUIDADO: nunca dê um valor fixo (`value`) a um campo que muda por pessoa ou por lançamento.
+O valor manual vale para todas as linhas.
+
+## Versão do Midaz
+
+Os mapeamentos de exemplo leem o CRM do Midaz 4.0 ou posterior. A partir da 4.0, a API do
+CRM chama de instrumento (`instruments`) o que antes era alias, mas o Midaz continua
+gravando os instrumentos na coleção `aliases_<organização>` do MongoDB, e é essa coleção que
+o Reporter lê (`table: aliases`). Não troque `aliases` por `instruments` no mapeamento: a
+coleção `instruments` não existe. Campos como `regulatory_fields.account_type`,
+`related_parties` e `banking_details.closing_date` só existem no CRM do Midaz 4.x; com o
+plugin de CRM anterior (v2.x) o documento não gera.
 
 ## Nome dos arquivos na entrega
 

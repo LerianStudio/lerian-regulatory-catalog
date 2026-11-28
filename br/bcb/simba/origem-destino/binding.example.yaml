@@ -29,7 +29,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.origem-destino
-contractVersion: 1.2.0
+contractVersion: 1.3.0
 
 queries:
 
@@ -215,13 +215,6 @@ queries:
       - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: deleted_at, operator: isNull}
     compute:
-      - as: numero_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00001"}
-            "0002": {constant: "00002"}
-          otherwise: refuse
       - as: tipo_conta
         case:
           column: regulatory_fields.account_type
@@ -233,7 +226,7 @@ queries:
             NON_RESIDENT: {constant: "5"}
             PAYMENT: {constant: "6"}
           otherwise: refuse
-    select: [account_id, banking_details.account, numero_agencia, tipo_conta]
+    select: [account_id, banking_details.account, banking_details.branch, tipo_conta]
 
   # A metadata que os plugins gravam na transacao do Midaz (Mongo do Midaz, colecao
   # `transaction`): rail, flow, direction e aggregateId do contrato de
@@ -324,13 +317,6 @@ queries:
       - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
       - {field: deleted_at, operator: isNull}
     compute:
-      - as: numero_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00001"}
-            "0002": {constant: "00002"}
-          otherwise: refuse
       - as: tipo_conta
         case:
           column: regulatory_fields.account_type
@@ -342,7 +328,7 @@ queries:
             NON_RESIDENT: {constant: "5"}
             PAYMENT: {constant: "6"}
           otherwise: refuse
-    select: [account_id, holder_id, numero_agencia, tipo_conta, banking_details.account]
+    select: [account_id, holder_id, banking_details.branch, tipo_conta, banking_details.account]
 
   - name: cadastro_od
     description: Nome, documento e tipo de pessoa do titular de cada conta das outras pernas.
@@ -588,7 +574,7 @@ datasets:
       operacaoId: {from: query, column: id}
       transacaoId: {from: query, column: transaction_id}
       contaId: {from: query, column: account_id}
-      numeroAgencia: {from: query, column: numero_agencia}
+      numeroAgencia: {from: query, column: banking_details.branch}
       numeroConta: {from: query, column: banking_details.account}
       tipoConta: {from: query, column: tipo_conta}
       dataLancamento: {from: query, column: created_at}
@@ -611,6 +597,16 @@ datasets:
       e2eRecebimento: {from: query, column: metadata.inbound_end_to_end_id}
       devolucao: {from: query, column: metadata.refund_id}
       e2eOriginal: {from: query, column: metadata.original_end_to_end_id}
+      nomeDocIdentificacaoOd: {from: manual, pendingReason: "o nome do documento de identificação da contraparte que não seja CPF (RG, passaporte...). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      numeroDocIdentificacaoOd: {from: manual, pendingReason: "o número e o complemento do documento de identificação da contraparte. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      codigoBarras: {from: manual, pendingReason: "o código de barras do boleto pago ou recebido no lançamento. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      nomeEndossante: {from: manual, pendingReason: "o nome do endossante do cheque. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      docEndossante: {from: manual, pendingReason: "o documento do endossante do cheque. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      beneficiarioBoleto: {from: manual, pendingReason: "o nome do beneficiário do boleto. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      pagadorBoleto: {from: manual, pendingReason: "o nome do pagador do boleto. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      cnpjEmissoraBoleto: {from: manual, pendingReason: "o CNPJ da instituição que emitiu o boleto. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      nomeEmissoraBoleto: {from: manual, pendingReason: "o nome da instituição que emitiu o boleto, como no Unicad. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      valorNominalBoleto: {from: manual, pendingReason: "o valor nominal do boleto. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   taxas:
     from:
@@ -627,7 +623,7 @@ datasets:
       contaId: {from: query, column: account_id}
       valor: {from: query, column: amount}
       natureza: {from: query, column: natureza}
-      numeroAgencia: {from: query, column: numero_agencia}
+      numeroAgencia: {from: query, column: banking_details.branch}
       numeroConta: {from: query, column: banking_details.account}
       tipoConta: {from: query, column: tipo_conta}
       titularId: {from: query, column: holder_id}

@@ -15,9 +15,11 @@
 # por TAB, linha terminada em CR LF, datas ddmmaaaa. A forma e do template; o
 # formato de cada campo esta aqui.
 #
-# DE ONDE VEM CADA CAMPO: o cadastro de agencias e do tenant (numero, nome,
-# endereco, cidade, UF, pais, CEP, telefone e datas), escrito no binding num `case`
-# pelo numero da agencia. O CNPJ vem da organizacao do Midaz. O COMPE, o nome no
+# DE ONDE VEM CADA CAMPO: o numero da agencia vem do CRM do Midaz
+# (`banking_details.branch` de cada conta). O resto da agencia (nome, endereco,
+# cidade, UF, pais, CEP, telefone e datas) nao existe no Midaz: e o cadastro de
+# agencias da instituicao, linhas escritas a mao no binding (`cadastro_agencias`).
+# O CNPJ vem da organizacao do Midaz. O COMPE, o nome no
 # Unicad e se a instituicao possui agencia fisica (campo 14) sao da instituicao,
 # preenchidos pelo cliente no mapeamento.
 
@@ -34,7 +36,7 @@ metadata:
   summary: >-
     Agências das contas investigadas e das contas da mesma instituição com as quais
     elas transacionaram no período do afastamento do sigilo, uma linha por agência.
-  version: 1.1.0
+  version: 1.2.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -119,12 +121,84 @@ datasets:
         domain: ["1", "2"]
         description: >-
           1 se a instituição possui agência física, 2 se não possui (IN 636, Anexo I, AGÊNCIAS, campo 14). Com 2, o
-          template escreve as sentinelas do Anexo I nos campos 3 a 6, 8 e 9 de toda linha.
+          template escreve as sentinelas do Anexo I nos campos 3 a 6, 8 e 9 de toda linha, e o cadastro de agências
+          só precisa do país e das datas.
 
   # Uma linha por CONTA, com a agencia dela; o template escreve cada agencia uma vez
   # so (IN :27 pede as agencias, nao as contas). Dois conjuntos porque o motor nao
   # une duas consultas: o das contas investigadas e o das contas com que elas
   # transacionaram. A forma dos dois e a mesma.
+  # O CADASTRO DE AGENCIAS. Agencia nao e entidade no Midaz nem no CRM: o CRM
+  # guarda so o numero (`banking_details.branch`). O resto e da instituicao,
+  # escrito a mao no binding, uma linha por agencia (`rows`), e o template o le
+  # pelo numero da agencia de cada conta, com cinco digitos. Agencia da conta que
+  # o cadastro escrito nao traz recusa a geracao.
+  - name: cadastro_agencias
+    description: O cadastro das agências da instituição, uma linha por agência, escrito no mapeamento.
+    grain: [agencia]
+    childOf: {dataset: instituicao}
+    nonEmpty: true
+    fields:
+      - name: agencia
+        type: string
+        required: true
+        pattern: '^[0-9]{5}$'
+        description: >-
+          Número da agência sem DV, cinco dígitos, como sai no arquivo; 00001 sem agência física (IN 636, Anexo I,
+          AGÊNCIAS, campo 2). É por ele que a linha encontra a agência de cada conta.
+      - name: nomeAgencia
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome da agência (IN 636, Anexo I, AGÊNCIAS, campo 3). Sem agência física (campo 14 = 2), o template escreve a sentinela.
+      - name: endereco
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Endereço e complemento da agência (IN 636, Anexo I, AGÊNCIAS, campo 4). Sem agência física (campo 14 = 2), a sentinela.
+      - name: codigoCidade
+        type: string
+        required: false
+        pattern: '^[0-9]{7}$'
+        description: >-
+          Código IBGE do município da agência; 0000000 no exterior (IN 636, Anexo I, AGÊNCIAS, campo 5).
+      - name: codigoUf
+        type: string
+        required: false
+        pattern: '^[0-9]{2}$'
+        description: Código IBGE da UF da agência; 00 no exterior (IN 636, Anexo I, AGÊNCIAS, campo 6).
+      - name: pais
+        type: string
+        required: true
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do país da agência (IN 636, Anexo I, AGÊNCIAS, campo 7). O template o corta em 40 posições.
+      - name: cep
+        type: string
+        required: false
+        pattern: '^[0-9]{8}$'
+        description: CEP da agência, oito dígitos (IN 636, Anexo I, AGÊNCIAS, campo 8).
+      - name: telefone
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Telefone da agência (IN 636, Anexo I, AGÊNCIAS, campo 9). O template o corta em 20 posições.
+      - name: dataAbertura
+        type: date
+        required: false
+        description: >-
+          Data de abertura da agência (IN 636, Anexo I, AGÊNCIAS, campo 10). Sem sentinela na IN; ausente, sai em
+          branco.
+      - name: dataFechamento
+        type: date
+        required: false
+        description: >-
+          Data de fechamento da agência (IN 636, Anexo I, AGÊNCIAS, campo 11). Agência aberta: 9999-12-31, ou
+          ausente; sai 31129999, a sentinela da IN.
+
   - name: agencias_do_caso
     description: A agência de cada conta investigada.
     grain: [contaId]
@@ -135,9 +209,7 @@ datasets:
     consolidation:
       key: [contaId]
       whenKeyRepeats: refuse
-      columns: {numeroAgencia: first, nomeAgencia: first, endereco: first,
-                codigoCidade: first, codigoUf: first, pais: first, cep: first, telefone: first,
-                dataAbertura: first, dataFechamento: first}
+      columns: {numeroAgencia: first}
     fields:
       - name: contaId
         type: string
@@ -146,71 +218,17 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
+        pattern: '^[0-9]{1,5}$'
         description: >-
-          Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, AGÊNCIAS, campo 2).
-      - name: nomeAgencia
-        type: string
-        required: false
-        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: >-
-          Nome da agência (IN 636, Anexo I, AGÊNCIAS, campo 3). Sem agência física, o template escreve a sentinela.
-      - name: endereco
-        type: string
-        required: false
-        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: >-
-          Endereço e complemento da agência (IN 636, Anexo I, AGÊNCIAS, campo 4). Sem agência física, a sentinela.
-      - name: codigoCidade
-        type: string
-        required: false
-        pattern: '^[0-9]{7}$'
-        description: >-
-          Código IBGE do município da agência; 0000000 no exterior (IN 636, Anexo I, AGÊNCIAS, campo 5).
-      - name: codigoUf
-        type: string
-        required: false
-        pattern: '^[0-9]{2}$'
-        description: Código IBGE da UF da agência; 00 no exterior (IN 636, Anexo I, AGÊNCIAS, campo 6).
-      - name: pais
-        type: string
-        required: true
-        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: >-
-          Nome do país da agência (IN 636, Anexo I, AGÊNCIAS, campo 7). O template o corta em 40 posições.
-      - name: cep
-        type: string
-        required: false
-        pattern: '^[0-9]{8}$'
-        description: CEP da agência, oito dígitos (IN 636, Anexo I, AGÊNCIAS, campo 8).
-      - name: telefone
-        type: string
-        required: false
-        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: >-
-          Telefone da agência (IN 636, Anexo I, AGÊNCIAS, campo 9). O template o corta em 20 posições.
-      - name: dataAbertura
-        type: date
-        required: false
-        description: >-
-          Data de abertura da agência (IN 636, Anexo I, AGÊNCIAS, campo 10). Sem sentinela na IN; ausente, sai em
-          branco.
-      - name: dataFechamento
-        type: date
-        required: false
-        description: >-
-          Data de fechamento da agência (IN 636, Anexo I, AGÊNCIAS, campo 11). Agência aberta: 9999-12-31, ou
-          ausente; sai 31129999, a sentinela da IN.
-
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, AGÊNCIAS, campo 2).
   - name: agencias_contraparte
     description: A agência de cada conta da mesma instituição com que uma conta investigada transacionou no período.
     grain: [contaId]
     consolidation:
       key: [contaId]
       whenKeyRepeats: refuse
-      columns: {numeroAgencia: first, nomeAgencia: first, endereco: first,
-                codigoCidade: first, codigoUf: first, pais: first, cep: first, telefone: first,
-                dataAbertura: first, dataFechamento: first}
+      columns: {numeroAgencia: first}
     fields:
       - name: contaId
         type: string
@@ -219,61 +237,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
+        pattern: '^[0-9]{1,5}$'
         description: >-
-          Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, AGÊNCIAS, campo 2).
-      - name: nomeAgencia
-        type: string
-        required: false
-        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: >-
-          Nome da agência (IN 636, Anexo I, AGÊNCIAS, campo 3). Sem agência física, o template escreve a sentinela.
-      - name: endereco
-        type: string
-        required: false
-        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: >-
-          Endereço e complemento da agência (IN 636, Anexo I, AGÊNCIAS, campo 4). Sem agência física, a sentinela.
-      - name: codigoCidade
-        type: string
-        required: false
-        pattern: '^[0-9]{7}$'
-        description: >-
-          Código IBGE do município da agência; 0000000 no exterior (IN 636, Anexo I, AGÊNCIAS, campo 5).
-      - name: codigoUf
-        type: string
-        required: false
-        pattern: '^[0-9]{2}$'
-        description: Código IBGE da UF da agência; 00 no exterior (IN 636, Anexo I, AGÊNCIAS, campo 6).
-      - name: pais
-        type: string
-        required: true
-        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: >-
-          Nome do país da agência (IN 636, Anexo I, AGÊNCIAS, campo 7). O template o corta em 40 posições.
-      - name: cep
-        type: string
-        required: false
-        pattern: '^[0-9]{8}$'
-        description: CEP da agência, oito dígitos (IN 636, Anexo I, AGÊNCIAS, campo 8).
-      - name: telefone
-        type: string
-        required: false
-        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
-        description: >-
-          Telefone da agência (IN 636, Anexo I, AGÊNCIAS, campo 9). O template o corta em 20 posições.
-      - name: dataAbertura
-        type: date
-        required: false
-        description: >-
-          Data de abertura da agência (IN 636, Anexo I, AGÊNCIAS, campo 10). Sem sentinela na IN; ausente, sai em
-          branco.
-      - name: dataFechamento
-        type: date
-        required: false
-        description: >-
-          Data de fechamento da agência (IN 636, Anexo I, AGÊNCIAS, campo 11). Agência aberta: 9999-12-31, ou
-          ausente; sai 31129999, a sentinela da IN.
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, AGÊNCIAS, campo 2).
 
 knownGaps:
   - id: agencia-da-transacao
@@ -282,13 +249,15 @@ knownGaps:
       registra em que agência um lançamento foi feito; o arquivo leva só as agências das contas.
   - id: cadastro-de-agencias-no-binding
     description: >-
-      Agência não é entidade em nenhuma aplicação Lerian. O cadastro (número, nome, endereço, cidade, UF, país, CEP,
-      telefone, datas) é do tenant e vive no binding, num case pelo número da agência gravado no CRM. Uma agência
-      que o cadastro não lista recusa a geração, e toda agência listada tem todos os atributos: o Reporter não aceita
-      valor vazio num case. A agência sem agência física é cadastrada com as sentinelas do Anexo I.
+      Agência não é entidade em nenhuma aplicação Lerian: o Midaz não possui nome, endereço, cidade, UF, país, CEP,
+      telefone nem datas da agência. O cadastro é da instituição e é escrito à mão no mapeamento
+      (cadastro_agencias, uma linha por agência); enquanto não tem linha, o rascunho fica com uma pendência que
+      impede a aprovação. O template acha a agência de cada conta pelo número com cinco dígitos ("1" e "0001"
+      são a mesma agência, numa linha só). Uma agência que o cadastro não traz recusa a geração, com a mensagem
+      do que escrever no mapeamento. Com o cadastro ainda pendente, o rascunho sai e a pendência impede a aprovação.
   - id: uf-pelo-cadastro
     description: >-
-      O código IBGE da UF vem pronto do cadastro do tenant. O bloco uf-ibge.compute.yaml (sigla para código) não se
+      O código IBGE da UF vem pronto do cadastro de agências. O bloco uf-ibge.compute.yaml (sigla para código) não se
       aplica aqui: a sigla também seria uma coluna calculada, e o Reporter recusa uma coluna calculada que lê
       outra.
   - id: excluida-do-crm

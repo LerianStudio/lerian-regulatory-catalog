@@ -17,9 +17,10 @@
 #
 # DE ONDE VEM CADA CAMPO: conta, tipo e partes relacionadas do instrumento do CRM
 # do Midaz; dados da pessoa titular do cadastro de titulares do CRM; numero da
-# agencia do cadastro de agencias do tenant (o mesmo do AGENCIAS); CNPJ da
-# organizacao do Midaz; COMPE, nome no Unicad e se a instituicao firma contrato de
-# cambio preenchidos pelo cliente no mapeamento.
+# agencia do CRM (`banking_details.branch`); CNPJ da organizacao do Midaz; COMPE,
+# nome no Unicad e se a instituicao firma contrato de cambio preenchidos pelo
+# cliente no mapeamento. Documento de identificacao, codigo IBGE da cidade,
+# dispositivos e contrato de cambio da pessoa o Midaz nao possui: manuais.
 
 apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentContract
@@ -34,7 +35,7 @@ metadata:
   summary: >-
     Titulares, cotitulares, representantes e procuradores das contas investigadas e das contas com que elas
     transacionaram, uma linha por vínculo da pessoa com a conta, com cadastro, renda e datas do vínculo.
-  version: 1.3.0
+  version: 1.4.0
   status: draft
   output: txt
   timezone: America/Sao_Paulo
@@ -119,8 +120,8 @@ datasets:
         domain: ["nao", "sim"]
         description: >-
           Se a instituição firma contrato de câmbio. Com "nao", o campo 28 sai 0 para toda pessoa (IN 636, Anexo I,
-          TITULARES, campo 28). Com "sim", a geração é recusada: nenhuma aplicação Lerian registra contrato de câmbio,
-          e não há fonte para o 1 (knownGaps).
+          TITULARES, campo 28). Com "sim", o campo 28 de cada pessoa sai de contratoCambio, que o Midaz não possui
+          (knownGaps, campos-sem-fonte-no-midaz).
 
   # Uma linha por conta do caso: a do titular (campo 5 = T).
   - name: titulares
@@ -137,7 +138,7 @@ datasets:
                 nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
                 celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
                 dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
-                emailSecundario: first}
+                emailSecundario: first, nomeDocIdentificacao: first, numeroDocIdentificacao: first, codigoCidade: first, dispositivos: first, computadores: first, contratoCambio: first}
     fields:
       - name: contaId
         type: string
@@ -146,9 +147,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
+        pattern: '^[0-9]{1,5}$'
         description: >-
-          Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, TITULARES, campo 2).
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, TITULARES, campo 2).
       - name: numeroConta
         type: string
         required: true
@@ -294,6 +296,49 @@ datasets:
         required: false
         pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: E-mail secundário, unido ao principal por ";" (IN 636, Anexo I, TITULARES, campo 25).
+      - name: nomeDocIdentificacao
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do documento de identificação que não seja CPF ou CNPJ, como RG, CNH, passaporte ou o documento
+          constitutivo da pessoa jurídica (IN 636, Anexo I, TITULARES, campo 10). O Midaz não possui: vem do
+          mapeamento ou de correção. O template o corta em 50 posições.
+      - name: numeroDocIdentificacao
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Número e complemento do documento de identificação, como a instituição registra, com formatação (IN 636,
+          Anexo I, TITULARES, campo 11). O Midaz não possui. O template o corta em 30 posições.
+      - name: codigoCidade
+        type: string
+        required: false
+        pattern: '^[0-9]{7}$'
+        description: >-
+          Código IBGE do município de domicílio de quem mora no Brasil (IN 636, Anexo I, TITULARES, campo 13). O CRM
+          guarda o nome da cidade, sem o código. Quem mora no exterior sai 0000000, qualquer que seja este valor.
+      - name: dispositivos
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula (IN 636, Anexo I,
+          TITULARES, campo 26). O Midaz não possui. O template o corta em 500 posições.
+      - name: computadores
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Computadores cadastrados para o internet banking, separados por ponto e vírgula (IN 636, Anexo I, TITULARES,
+          campo 27). O Midaz não possui. O template o corta em 500 posições.
+      - name: contratoCambio
+        type: string
+        required: false
+        domain: ["0", "1"]
+        description: >-
+          1 se a pessoa firmou contrato de câmbio com a instituição no período, 0 se não (IN 636, Anexo I, TITULARES,
+          campo 28). Só é lido com operaCambio "sim"; com "nao", o campo sai 0 para toda pessoa.
 
   # Uma linha por parte relacionada de cada conta do caso.
   - name: partes
@@ -303,7 +348,7 @@ datasets:
       key: [contaId, parteId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, vinculo: first, documento: first,
-                nome: first, dataInicio: first, dataFim: first}
+                nome: first, dataInicio: first, dataFim: first, contratoCambio: first}
     fields:
       - name: contaId
         type: string
@@ -316,9 +361,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
+        pattern: '^[0-9]{1,5}$'
         description: >-
-          Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, TITULARES, campo 2).
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, TITULARES, campo 2).
       - name: numeroConta
         type: string
         required: true
@@ -366,6 +412,14 @@ datasets:
 
 
   # Uma linha por conta de contraparte: a do titular (campo 5 = T; campo 6 pela pessoa, IN :142).
+      - name: contratoCambio
+        type: string
+        required: false
+        domain: ["0", "1"]
+        description: >-
+          1 se a pessoa firmou contrato de câmbio com a instituição no período, 0 se não (IN 636, Anexo I, TITULARES,
+          campo 28). Só é lido com operaCambio "sim"; com "nao", o campo sai 0 para toda pessoa.
+
   - name: titulares_contraparte
     description: >-
       O titular de cada conta da mesma instituição com que uma conta do caso transacionou no período (CONTAS, campo 7
@@ -378,7 +432,7 @@ datasets:
                 nome: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first, cep: first,
                 celular: first, outroTelefone: first, renda: first, dataRenda: first, moedaRenda: first, faturamento: first,
                 dataFaturamento: first, moedaFaturamento: first, dataInicio: first, dataFim: first, nomeSocial: first, emailPrincipal: first,
-                emailSecundario: first}
+                emailSecundario: first, nomeDocIdentificacao: first, numeroDocIdentificacao: first, codigoCidade: first, dispositivos: first, computadores: first, contratoCambio: first}
     fields:
       - name: contaId
         type: string
@@ -387,9 +441,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
+        pattern: '^[0-9]{1,5}$'
         description: >-
-          Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, TITULARES, campo 2).
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, TITULARES, campo 2).
       - name: numeroConta
         type: string
         required: true
@@ -535,6 +590,49 @@ datasets:
         required: false
         pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: E-mail secundário, unido ao principal por ";" (IN 636, Anexo I, TITULARES, campo 25).
+      - name: nomeDocIdentificacao
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do documento de identificação que não seja CPF ou CNPJ, como RG, CNH, passaporte ou o documento
+          constitutivo da pessoa jurídica (IN 636, Anexo I, TITULARES, campo 10). O Midaz não possui: vem do
+          mapeamento ou de correção. O template o corta em 50 posições.
+      - name: numeroDocIdentificacao
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Número e complemento do documento de identificação, como a instituição registra, com formatação (IN 636,
+          Anexo I, TITULARES, campo 11). O Midaz não possui. O template o corta em 30 posições.
+      - name: codigoCidade
+        type: string
+        required: false
+        pattern: '^[0-9]{7}$'
+        description: >-
+          Código IBGE do município de domicílio de quem mora no Brasil (IN 636, Anexo I, TITULARES, campo 13). O CRM
+          guarda o nome da cidade, sem o código. Quem mora no exterior sai 0000000, qualquer que seja este valor.
+      - name: dispositivos
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula (IN 636, Anexo I,
+          TITULARES, campo 26). O Midaz não possui. O template o corta em 500 posições.
+      - name: computadores
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Computadores cadastrados para o internet banking, separados por ponto e vírgula (IN 636, Anexo I, TITULARES,
+          campo 27). O Midaz não possui. O template o corta em 500 posições.
+      - name: contratoCambio
+        type: string
+        required: false
+        domain: ["0", "1"]
+        description: >-
+          1 se a pessoa firmou contrato de câmbio com a instituição no período, 0 se não (IN 636, Anexo I, TITULARES,
+          campo 28). Só é lido com operaCambio "sim"; com "nao", o campo sai 0 para toda pessoa.
 
   # Uma linha por parte relacionada de cada conta de contraparte (campo 6 pela pessoa, IN :142).
   - name: partes_contraparte
@@ -544,7 +642,7 @@ datasets:
       key: [contaId, parteId]
       whenKeyRepeats: refuse
       columns: {numeroAgencia: first, numeroConta: first, tipoConta: first, vinculo: first, documento: first,
-                nome: first, dataInicio: first, dataFim: first}
+                nome: first, dataInicio: first, dataFim: first, contratoCambio: first}
     fields:
       - name: contaId
         type: string
@@ -557,9 +655,10 @@ datasets:
       - name: numeroAgencia
         type: string
         required: true
-        pattern: '^[0-9]{5}$'
+        pattern: '^[0-9]{1,5}$'
         description: >-
-          Número da agência sem DV, cinco dígitos; 00001 sem agência física (IN 636, Anexo I, TITULARES, campo 2).
+          Número da agência sem DV como o CRM grava (`banking_details.branch`), até cinco dígitos; o template
+          completa com zeros à esquerda (IN 636, Anexo I, TITULARES, campo 2).
       - name: numeroConta
         type: string
         required: true
@@ -608,6 +707,14 @@ datasets:
   # O cadastro das partes relacionadas das contas do caso que tambem sao titulares no CRM, um por documento.
   # Nao gera linha: o template o liga a cada parte pelo documento e escreve os campos 12 a
   # 17 e 24 da parte com ele, e 18, 19 e 25 so do cotitular. Parte sem cadastro sai com esses campos em branco.
+      - name: contratoCambio
+        type: string
+        required: false
+        domain: ["0", "1"]
+        description: >-
+          1 se a pessoa firmou contrato de câmbio com a instituição no período, 0 se não (IN 636, Anexo I, TITULARES,
+          campo 28). Só é lido com operaCambio "sim"; com "nao", o campo sai 0 para toda pessoa.
+
   - name: cadastro_partes
     description: >-
       O cadastro de titulares do CRM das partes relacionadas (cotitular, representante, procurador) das contas do caso, pelo
@@ -619,7 +726,7 @@ datasets:
       columns: {tipoPessoa: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first,
                 cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first,
                 faturamento: first, dataFaturamento: first, nomeSocial: first,
-                emailPrincipal: first, emailSecundario: first}
+                emailPrincipal: first, emailSecundario: first, nomeDocIdentificacao: first, numeroDocIdentificacao: first, codigoCidade: first, dispositivos: first, computadores: first}
     fields:
       - name: documento
         type: string
@@ -726,6 +833,42 @@ datasets:
         required: false
         pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: E-mail secundário, unido ao principal por ";" (IN 636, Anexo I, TITULARES, campo 25).
+      - name: nomeDocIdentificacao
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do documento de identificação que não seja CPF ou CNPJ, como RG, CNH, passaporte ou o documento
+          constitutivo da pessoa jurídica (IN 636, Anexo I, TITULARES, campo 10). O Midaz não possui: vem do
+          mapeamento ou de correção. O template o corta em 50 posições.
+      - name: numeroDocIdentificacao
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Número e complemento do documento de identificação, como a instituição registra, com formatação (IN 636,
+          Anexo I, TITULARES, campo 11). O Midaz não possui. O template o corta em 30 posições.
+      - name: codigoCidade
+        type: string
+        required: false
+        pattern: '^[0-9]{7}$'
+        description: >-
+          Código IBGE do município de domicílio de quem mora no Brasil (IN 636, Anexo I, TITULARES, campo 13). O CRM
+          guarda o nome da cidade, sem o código. Quem mora no exterior sai 0000000, qualquer que seja este valor.
+      - name: dispositivos
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula (IN 636, Anexo I,
+          TITULARES, campo 26). O Midaz não possui. O template o corta em 500 posições.
+      - name: computadores
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Computadores cadastrados para o internet banking, separados por ponto e vírgula (IN 636, Anexo I, TITULARES,
+          campo 27). O Midaz não possui. O template o corta em 500 posições.
 
   # O cadastro das partes relacionadas das contas de contraparte que tambem sao titulares no CRM, um por documento.
   # Nao gera linha: o template o liga a cada parte pelo documento e escreve os campos 12 a
@@ -741,7 +884,7 @@ datasets:
       columns: {tipoPessoa: first, logradouro: first, complemento: first, codigoUf: first, pais: first, nomePais: first,
                 cep: first, celular: first, outroTelefone: first, renda: first, dataRenda: first,
                 faturamento: first, dataFaturamento: first, nomeSocial: first,
-                emailPrincipal: first, emailSecundario: first}
+                emailPrincipal: first, emailSecundario: first, nomeDocIdentificacao: first, numeroDocIdentificacao: first, codigoCidade: first, dispositivos: first, computadores: first}
     fields:
       - name: documento
         type: string
@@ -848,6 +991,42 @@ datasets:
         required: false
         pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
         description: E-mail secundário, unido ao principal por ";" (IN 636, Anexo I, TITULARES, campo 25).
+      - name: nomeDocIdentificacao
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Nome do documento de identificação que não seja CPF ou CNPJ, como RG, CNH, passaporte ou o documento
+          constitutivo da pessoa jurídica (IN 636, Anexo I, TITULARES, campo 10). O Midaz não possui: vem do
+          mapeamento ou de correção. O template o corta em 50 posições.
+      - name: numeroDocIdentificacao
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Número e complemento do documento de identificação, como a instituição registra, com formatação (IN 636,
+          Anexo I, TITULARES, campo 11). O Midaz não possui. O template o corta em 30 posições.
+      - name: codigoCidade
+        type: string
+        required: false
+        pattern: '^[0-9]{7}$'
+        description: >-
+          Código IBGE do município de domicílio de quem mora no Brasil (IN 636, Anexo I, TITULARES, campo 13). O CRM
+          guarda o nome da cidade, sem o código. Quem mora no exterior sai 0000000, qualquer que seja este valor.
+      - name: dispositivos
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula (IN 636, Anexo I,
+          TITULARES, campo 26). O Midaz não possui. O template o corta em 500 posições.
+      - name: computadores
+        type: string
+        required: false
+        pattern: '^[\x20-\x7E\t\r\nªºÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜàáâãäçèéêëìíîïñòóôõöùúûü]*$'
+        description: >-
+          Computadores cadastrados para o internet banking, separados por ponto e vírgula (IN 636, Anexo I, TITULARES,
+          campo 27). O Midaz não possui. O template o corta em 500 posições.
 
   # A moeda da renda de quem a imprime numa linha de parte: o cotitular (campo 5 = 1, 2...), o
   # unico que leva os campos 18 e 19 (renda-e-email-so-do-correntista). Nao gera linha: so as
@@ -1191,20 +1370,20 @@ knownGaps:
     description: >-
       Uma conta apagada do CRM (deleted_at) não entra. Uma conta encerrada (closing_date) entra, com a data no campo
       21 da linha do titular.
-  - id: documento-de-identificacao
+  - id: campos-sem-fonte-no-midaz
     description: >-
-      Campos 10 e 11 (IN 636, Anexo I, TITULARES) sempre em branco: o CRM guarda só CPF/CNPJ, e nenhuma aplicação
-      Lerian registra RG, CTPS, passaporte ou o documento constitutivo da pessoa jurídica. A IN não dá sentinela para
-      esses campos.
-  - id: dispositivos-cadastrados
-    description: >-
-      Campos 26 e 27 (IN 636, Anexo I, TITULARES) sempre em branco: nenhuma aplicação Lerian registra os dispositivos
-      móveis ou os computadores cadastrados do cliente. A IN não dá sentinela para esses campos.
-  - id: cidade-sem-codigo-ibge
-    description: >-
-      Campo 13 (IN 636, Anexo I, TITULARES) em branco para quem mora no Brasil: o CRM guarda o nome da cidade, sem o
-      código IBGE, e a conversão do nome não é confiável. Para quem mora no exterior (país diferente de BR) sai
-      0000000, o código que a IN dá para esse caso; ele não é usado no lugar do código faltante.
+      O Midaz não possui os campos 10 e 11 (documento de identificação que não seja CPF ou CNPJ), 13 (código IBGE da
+      cidade de quem mora no Brasil; o CRM guarda o nome), 26 e 27 (dispositivos e computadores cadastrados) e 28
+      (contrato de câmbio) (IN 636, Anexo I, TITULARES). Cada um é um campo opcional do titular e do cadastro da
+      parte (o 28, na linha da parte), mapeado como manual com o motivo: a instituição o informa por correção no
+      rascunho, linha a linha, ou
+      mapeia o campo para uma base dela (consulta juntada à do conjunto pela conta ou pelo documento). Vazio, o
+      campo sai em branco, como a IN aceita na inexistência da informação (art. 2º, § 1º); quem mora no exterior
+      sai 0000000 no 13. Com operaCambio "nao", o 28 sai 0; com "sim", o 28 sem valor sai em branco e a
+      conferência aponta. Nunca dê a um desses campos um valor fixo no mapeamento: ele se repetiria em toda pessoa.
+      A parte sem cadastro no CRM não tem onde receber 10, 11, 13, 26 e 27 e sai com eles em branco; o 28 é da
+      linha dela, e tem onde receber. Com operaCambio "sim", o 28 vazio não impede a aprovação (o campo é
+      opcional, porque a instituição que não firma câmbio nunca o preenche): a conferência o aponta como erro.
   - id: uf-fora-da-tabela
     description: >-
       O campo 14 converte a sigla da UF do endereço principal do titular para o código IBGE. Quem mora no Brasil (país
@@ -1250,11 +1429,6 @@ knownGaps:
       binding do cliente declara qual código cada papel recebe; papel não declarado recusa a geração. O CRM não define
       RESPONSIBLE_PARTY: o exemplo declara O (outros), e o cliente que o usa para procurador ou representante declara
       P ou R.
-  - id: contrato-de-cambio
-    description: >-
-      Campo 28 (IN 636, Anexo I, TITULARES): nenhuma aplicação Lerian registra contrato de câmbio. O documento serve à
-      instituição que declara não firmar contrato de câmbio (operaCambio "nao": 0 para toda pessoa); com operaCambio
-      "sim", a geração é recusada, porque não há fonte para o 1.
   - id: vinculo-removido
     description: >-
       Uma parte removida do instrumento pela API do CRM sai da lista sem deixar data de fim. O campo 21 só registra o

@@ -7,9 +7,9 @@
 # de onde vem o conjunto de contas do caso e trocar SO essas duas consultas. As
 # demais leem os ids das duas.
 #
-# O NUMERO DA AGENCIA (5 digitos; 00001 sem agencia fisica) sai do cadastro de
-# agencias do tenant, o MESMO `case` do binding do AGENCIAS (valores SINTETICOS
-# aqui: "0001" digital, "0002" fisica ficticia). Agencia fora do cadastro recusa.
+# O NUMERO DA AGENCIA e o `banking_details.branch` do CRM, como esta gravado. O
+# contrato aceita ate 5 digitos (sem DV) e recusa o resto; o template completa com
+# zeros a esquerda ("1" e "0001" saem 00001, IN 636 Anexo I).
 #
 # O TIPO DA CONTA vem de `regulatory_fields.account_type` do CRM, cujos valores o
 # proprio Midaz documenta com os codigos da IN (midaz pkg/mmodel/instrument.go:19).
@@ -79,7 +79,7 @@ apiVersion: reporter.lerian.io/v1alpha1
 kind: DocumentBinding
 
 contract: br.bcb.simba.titulares
-contractVersion: 1.3.0
+contractVersion: 1.4.0
 
 queries:
   - name: declarante
@@ -180,13 +180,6 @@ queries:
       - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: deleted_at, operator: isNull}
     compute:
-      - as: numero_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00001"}
-            "0002": {constant: "00002"}
-          otherwise: refuse
       - as: tipo_conta
         case:
           column: regulatory_fields.account_type
@@ -203,7 +196,7 @@ queries:
         match: {holder_id: _id}
     # Quem junta uma consulta declara o que devolve; o documento e o nome vem do
     # cadastro do titular, e nao do instrumento.
-    select: [account_id, holder_id, numero_agencia, tipo_conta, banking_details.account, banking_details.opening_date, banking_details.closing_date]
+    select: [account_id, holder_id, banking_details.branch, tipo_conta, banking_details.account, banking_details.opening_date, banking_details.closing_date]
 
   # O cadastro do titular de cada conta do caso, pelo documento do instrumento: o da
   # ordem nas contas que o investigado titula (contas_do_caso), e o do titular, que pode
@@ -800,13 +793,6 @@ queries:
       - {field: account_id, operator: in, values: [{query: contas_do_caso, column: account_id}, {query: contas_cotitular, column: account_id}]}
       - {field: deleted_at, operator: isNull}
     compute:
-      - as: numero_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00001"}
-            "0002": {constant: "00002"}
-          otherwise: refuse
       - as: tipo_conta
         case:
           column: regulatory_fields.account_type
@@ -879,13 +865,6 @@ queries:
       - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
       - {field: deleted_at, operator: isNull}
     compute:
-      - as: numero_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00001"}
-            "0002": {constant: "00002"}
-          otherwise: refuse
       - as: tipo_conta
         case:
           column: regulatory_fields.account_type
@@ -902,7 +881,7 @@ queries:
         match: {holder_id: _id}
     # Quem junta uma consulta declara o que devolve; o documento e o nome vem do
     # cadastro do titular, e nao do instrumento.
-    select: [account_id, holder_id, numero_agencia, tipo_conta, banking_details.account, banking_details.opening_date, banking_details.closing_date]
+    select: [account_id, holder_id, banking_details.branch, tipo_conta, banking_details.account, banking_details.opening_date, banking_details.closing_date]
 
   # O titular da conta de contraparte nao e pessoa da ordem: o cadastro sai pelo
   # holder_id do instrumento. Consulta propria porque a origem de um filtro
@@ -1508,13 +1487,6 @@ queries:
       - {field: account_id, operator: in, values: [{query: contas_contraparte, column: account_id}]}
       - {field: deleted_at, operator: isNull}
     compute:
-      - as: numero_agencia
-        case:
-          column: banking_details.branch
-          when:
-            "0001": {constant: "00001"}
-            "0002": {constant: "00002"}
-          otherwise: refuse
       - as: tipo_conta
         case:
           column: regulatory_fields.account_type
@@ -2815,17 +2787,18 @@ datasets:
         from: manual
         pendingReason: "o nome da instituição exatamente como está no Unicad do Banco Central"
       # Declaracao da implantacao: "nao" se a instituicao nao firma contrato de
-      # cambio (campo 28 = 0); "sim" se firma, e a geracao e recusada.
+      # cambio (campo 28 = 0 para toda pessoa); "sim" se firma, e o campo 28 de
+      # cada pessoa sai de contratoCambio.
       operaCambio:
         from: manual
-        pendingReason: '"nao" se a instituição não firma contrato de câmbio (campo 28 = 0); "sim" se firma (nesse caso a geração é recusada)'
+        pendingReason: '"nao" se a instituição não firma contrato de câmbio (campo 28 = 0); "sim" se firma (o campo 28 de cada pessoa sai de contratoCambio)'
 
   titulares:
     from:
       query: titulares_dados
     fields:
       contaId: {from: query, column: account_id}
-      numeroAgencia: {from: query, column: numero_agencia}
+      numeroAgencia: {from: query, column: banking_details.branch}
       numeroConta: {from: query, column: banking_details.account}
       tipoConta: {from: query, column: tipo_conta}
       tipoPessoa: {from: query, column: tipo_pessoa}
@@ -2850,6 +2823,12 @@ datasets:
       nomeSocial: {from: query, column: natural_person.social_name}
       emailPrincipal: {from: query, column: contact.primary_email}
       emailSecundario: {from: query, column: contact.secondary_email}
+      nomeDocIdentificacao: {from: manual, pendingReason: "o nome do documento de identificação da pessoa que não seja CPF ou CNPJ (RG, CNH, passaporte...). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      numeroDocIdentificacao: {from: manual, pendingReason: "o número e o complemento do documento de identificação da pessoa (ex.: RG 123456 SSP/DF). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      codigoCidade: {from: manual, pendingReason: "o código IBGE da cidade de domicílio da pessoa, 7 dígitos (quem mora no exterior sai 0000000 sem ele). O CRM guarda o nome da cidade, não o código: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      dispositivos: {from: manual, pendingReason: "os dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      computadores: {from: manual, pendingReason: "os computadores cadastrados para o internet banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      contratoCambio: {from: manual, pendingReason: "1 se a pessoa firmou contrato de câmbio no período, 0 se não; só é lido com operaCambio sim. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   partes:
     from:
@@ -2857,7 +2836,7 @@ datasets:
     fields:
       contaId: {from: query, column: account_id}
       parteId: {from: query, column: related_parties._id}
-      numeroAgencia: {from: query, column: numero_agencia}
+      numeroAgencia: {from: query, column: banking_details.branch}
       numeroConta: {from: query, column: banking_details.account}
       tipoConta: {from: query, column: tipo_conta}
       vinculo: {from: query, column: vinculo}
@@ -2865,13 +2844,14 @@ datasets:
       nome: {from: query, column: related_parties.name}
       dataInicio: {from: query, column: related_parties.start_date, civilDate: true}
       dataFim: {from: query, column: related_parties.end_date, civilDate: true}
+      contratoCambio: {from: manual, pendingReason: "1 se a pessoa firmou contrato de câmbio no período, 0 se não; só é lido com operaCambio sim. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   titulares_contraparte:
     from:
       query: titulares_contraparte_dados
     fields:
       contaId: {from: query, column: account_id}
-      numeroAgencia: {from: query, column: numero_agencia}
+      numeroAgencia: {from: query, column: banking_details.branch}
       numeroConta: {from: query, column: banking_details.account}
       tipoConta: {from: query, column: tipo_conta}
       tipoPessoa: {from: query, column: tipo_pessoa}
@@ -2896,6 +2876,12 @@ datasets:
       nomeSocial: {from: query, column: natural_person.social_name}
       emailPrincipal: {from: query, column: contact.primary_email}
       emailSecundario: {from: query, column: contact.secondary_email}
+      nomeDocIdentificacao: {from: manual, pendingReason: "o nome do documento de identificação da pessoa que não seja CPF ou CNPJ (RG, CNH, passaporte...). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      numeroDocIdentificacao: {from: manual, pendingReason: "o número e o complemento do documento de identificação da pessoa (ex.: RG 123456 SSP/DF). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      codigoCidade: {from: manual, pendingReason: "o código IBGE da cidade de domicílio da pessoa, 7 dígitos (quem mora no exterior sai 0000000 sem ele). O CRM guarda o nome da cidade, não o código: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      dispositivos: {from: manual, pendingReason: "os dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      computadores: {from: manual, pendingReason: "os computadores cadastrados para o internet banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      contratoCambio: {from: manual, pendingReason: "1 se a pessoa firmou contrato de câmbio no período, 0 se não; só é lido com operaCambio sim. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   partes_contraparte:
     from:
@@ -2903,7 +2889,7 @@ datasets:
     fields:
       contaId: {from: query, column: account_id}
       parteId: {from: query, column: related_parties._id}
-      numeroAgencia: {from: query, column: numero_agencia}
+      numeroAgencia: {from: query, column: banking_details.branch}
       numeroConta: {from: query, column: banking_details.account}
       tipoConta: {from: query, column: tipo_conta}
       vinculo: {from: query, column: vinculo}
@@ -2911,6 +2897,7 @@ datasets:
       nome: {from: query, column: related_parties.name}
       dataInicio: {from: query, column: related_parties.start_date, civilDate: true}
       dataFim: {from: query, column: related_parties.end_date, civilDate: true}
+      contratoCambio: {from: manual, pendingReason: "1 se a pessoa firmou contrato de câmbio no período, 0 se não; só é lido com operaCambio sim. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   cadastro_partes:
     from:
@@ -2933,6 +2920,11 @@ datasets:
       nomeSocial: {from: query, column: natural_person.social_name}
       emailPrincipal: {from: query, column: contact.primary_email}
       emailSecundario: {from: query, column: contact.secondary_email}
+      nomeDocIdentificacao: {from: manual, pendingReason: "o nome do documento de identificação da pessoa que não seja CPF ou CNPJ (RG, CNH, passaporte...). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      numeroDocIdentificacao: {from: manual, pendingReason: "o número e o complemento do documento de identificação da pessoa (ex.: RG 123456 SSP/DF). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      codigoCidade: {from: manual, pendingReason: "o código IBGE da cidade de domicílio da pessoa, 7 dígitos (quem mora no exterior sai 0000000 sem ele). O CRM guarda o nome da cidade, não o código: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      dispositivos: {from: manual, pendingReason: "os dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      computadores: {from: manual, pendingReason: "os computadores cadastrados para o internet banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   cadastro_partes_contraparte:
     from:
@@ -2955,6 +2947,11 @@ datasets:
       nomeSocial: {from: query, column: natural_person.social_name}
       emailPrincipal: {from: query, column: contact.primary_email}
       emailSecundario: {from: query, column: contact.secondary_email}
+      nomeDocIdentificacao: {from: manual, pendingReason: "o nome do documento de identificação da pessoa que não seja CPF ou CNPJ (RG, CNH, passaporte...). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      numeroDocIdentificacao: {from: manual, pendingReason: "o número e o complemento do documento de identificação da pessoa (ex.: RG 123456 SSP/DF). O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      codigoCidade: {from: manual, pendingReason: "o código IBGE da cidade de domicílio da pessoa, 7 dígitos (quem mora no exterior sai 0000000 sem ele). O CRM guarda o nome da cidade, não o código: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      dispositivos: {from: manual, pendingReason: "os dispositivos móveis cadastrados para o mobile banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
+      computadores: {from: manual, pendingReason: "os computadores cadastrados para o internet banking, separados por ponto e vírgula. O Midaz não possui este campo: preencha manualmente no rascunho, linha a linha, ou mapeie para uma base sua"}
 
   renda_cotitulares:
     from:

@@ -424,6 +424,13 @@ def contracts(root: Path) -> dict[str, dict]:
     return found
 
 
+# Campos que o Midaz nao possui e so o ORIGEM-DESTINO escreve (documento da contraparte, boleto e
+# cheque): manuais e opcionais, nao mudam a linha nem a numeracao que o EXTRATO e o OD dividem.
+OD_ONLY_MANUAL = {"nomeDocIdentificacaoOd", "numeroDocIdentificacaoOd", "codigoBarras", "nomeEndossante",
+                  "docEndossante", "beneficiarioBoleto", "pagadorBoleto", "cnpjEmissoraBoleto",
+                  "nomeEmissoraBoleto", "valorNominalBoleto"}
+
+
 def entries_mismatch(found: dict[str, dict]) -> list[str]:
     """Onde o `lancamentos` do ORIGEM-DESTINO deixa de ser o do EXTRATO."""
     def dataset(document: str) -> dict:
@@ -440,6 +447,8 @@ def entries_mismatch(found: dict[str, dict]) -> list[str]:
         problems.append(f"{ENTRIES}: grão {extrato.get('grain')} no EXTRATO e {od.get('grain')} no ORIGEM-DESTINO")
     types = {f.get("name"): f.get("type") for f in extrato.get("fields") or []}
     for f in od.get("fields") or []:
+        if f.get("name") in OD_ONLY_MANUAL and f.get("name") not in types and not f.get("required"):
+            continue
         if types.get(f.get("name")) != f.get("type"):
             problems.append(f"{ENTRIES}.{f.get('name')}: {f.get('type')} no ORIGEM-DESTINO e "
                             f"{types.get(f.get('name'))} no EXTRATO")
@@ -576,12 +585,30 @@ def party_currency_scope_off(found: dict[str, dict], binding: dict) -> list[str]
     return problems
 
 
+def unregistered_agency_allowed(root: Path) -> list[str]:
+    """Os dois laços do AGÊNCIAS recusam a geração quando o cadastro não traz a agência da conta.
+
+    Sem a recusa, a linha sai só com o número e os campos 3 a 10 em branco, e o rascunho é aprovado:
+    o cadastro é do mapeamento, e a aprovação só barra pendência de campo obrigatório. Com o cadastro
+    ainda pendente (rows: []), a guarda não recusa: o rascunho sai e a pendência impede a aprovação.
+    """
+    text = (root / FAMILY / "agencias" / "template.tpl").read_text(encoding="utf-8")
+    if text.count("{% if instituicao.cadastro_agencias and not instituicao.cadastro_agencias|where:kc %}{% fail ") != 2:
+        return ["agencias: agência fora do cadastro de agências não recusa a geração nos dois laços"]
+    return []
+
+
 def exchange_refusal_off(root: Path) -> list[str]:
-    """O TITULARES recusa a geração só com operaCambio "sim": o pendente (vazio) deixa o rascunho sair."""
+    """O campo 28 lê o contratoCambio da pessoa só com operaCambio "sim"; o pendente (vazio) sai 0.
+
+    Seis registros: titular e titular de contraparte, e os dois de parte (cotitular e demais papéis)
+    das contas do caso e das de contraparte. Nenhuma
+    recusa: quem firma câmbio gera o arquivo, e o campo sem valor a conferência aponta.
+    """
     text = (root / FAMILY / "titulares" / "template.tpl").read_text(encoding="utf-8")
     problems = []
-    if '{%- if instituicao.operaCambio == "sim" %}{% fail ' not in text:
-        problems.append('titulares: a recusa do campo 28 não é condicionada a operaCambio == "sim"')
+    if text.count('{% if instituicao.operaCambio == "sim" %}') != 6 or "{% fail " in text:
+        problems.append('titulares: o campo 28 não lê o contratoCambio só com operaCambio == "sim"')
     if "operaCambio !=" in text:
         problems.append("titulares: uma comparação com != recusaria o operaCambio pendente (vazio)")
     return problems
@@ -592,18 +619,23 @@ def exchange_refusal_off(root: Path) -> list[str]:
 # macro não converte recusa a geração. Texto livre (a mensagem do Pix, a descrição do
 # lançamento) fica fora até o Reporter transliterar: um emoji não pode recusar o arquivo.
 ASCII_FIELDS = {
-    "agencias": {(ds, f) for ds in ("agencias_do_caso", "agencias_contraparte")
-                 for f in ("endereco", "nomeAgencia", "pais", "telefone")} | {("instituicao", "nomeUnicad")},
+    "agencias": {("cadastro_agencias", f) for f in ("endereco", "nomeAgencia", "pais", "telefone")}
+                | {("instituicao", "nomeUnicad")},
     "contas": {("instituicao", "nomeUnicad")},
     "titulares": {(ds, f) for ds in ("titulares", "titulares_contraparte", "cadastro_partes", "cadastro_partes_contraparte")
                   for f in ("nome", "nomeSocial", "logradouro", "complemento", "nomePais", "celular",
-                            "outroTelefone", "emailPrincipal", "emailSecundario")
+                            "outroTelefone", "emailPrincipal", "emailSecundario", "nomeDocIdentificacao",
+                            "numeroDocIdentificacao", "dispositivos", "computadores")
                   if not (ds.startswith("cadastro_partes") and f == "nome")}
                  | {("partes", "nome"), ("partes_contraparte", "nome"), ("instituicao", "nomeUnicad")},
-    "extrato": {("instituicao", "nomeUnicad")},
+    "extrato": {("lancamentos", f) for f in ("infoLocal", "ip", "macAddress")}
+               | {("instituicao", "nomeUnicad")},
     "origem-destino": {(ds, "nome") for ds in ("trilho_pix_lerian_envios", "trilho_pix_lerian_recebimentos",
                                                "trilho_pix_jd_envios", "trilho_pix_jd_recebimentos",
                                                "trilho_ted_enviadas", "titulares_od")}
+                      | {("lancamentos", f) for f in ("nomeDocIdentificacaoOd", "numeroDocIdentificacaoOd",
+                                                      "codigoBarras", "nomeEndossante", "docEndossante",
+                                                      "beneficiarioBoleto", "pagadorBoleto", "nomeEmissoraBoleto")}
                       | {("instituicao", "nomeUnicad")},
 }
 # Argumentos do ascii que não são um campo com pattern: o parâmetro do próprio macro (s), os do
@@ -962,7 +994,19 @@ class SimbaBindings(unittest.TestCase):
     def test_periodo_invertido_e_recusado(self) -> None:
         self.assertEqual([], reversed_period_allowed(contracts(ROOT)))
 
-    def test_so_o_cambio_declarado_sim_recusa_a_geracao(self) -> None:
+    def test_agencia_fora_do_cadastro_recusa_a_geracao(self) -> None:
+        self.assertEqual([], unregistered_agency_allowed(ROOT))
+
+    def test_agencia_fora_do_cadastro_sem_recusa_e_pega(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / FAMILY / "agencias"
+            target.mkdir(parents=True)
+            text = (ROOT / FAMILY / "agencias" / "template.tpl").read_text(encoding="utf-8")
+            (target / "template.tpl").write_text(text.replace("{% fail ", "{% comment ", 1), encoding="utf-8")
+            self.assertEqual(["agencias: agência fora do cadastro de agências não recusa a geração nos dois laços"],
+                             unregistered_agency_allowed(Path(tmp)))
+
+    def test_so_o_cambio_declarado_sim_le_o_campo_da_pessoa(self) -> None:
         self.assertEqual([], exchange_refusal_off(ROOT))
 
 
@@ -1159,9 +1203,9 @@ class Mutations(unittest.TestCase):
         found = copy.deepcopy(contracts(ROOT))
         for d in found["agencias"]["datasets"]:
             for f in d.get("fields") or []:
-                if d["name"] == "agencias_do_caso" and f["name"] == "endereco":
+                if d["name"] == "cadastro_agencias" and f["name"] == "endereco":
                     f["pattern"] = "^.*$"
-        self.assertIn("agencias: 'agencias_do_caso.endereco' aceita °’–øß🙏, que o macro não converte",
+        self.assertIn("agencias: 'cadastro_agencias.endereco' aceita °’–øß🙏, que o macro não converte",
                       ascii_fields_off(ROOT, found))
 
     def test_ascii_num_campo_novo_sem_pattern_e_pego(self) -> None:
@@ -1213,7 +1257,7 @@ class Mutations(unittest.TestCase):
             text = (ROOT / FAMILY / "titulares" / "template.tpl").read_text(encoding="utf-8")
             (target / "template.tpl").write_text(
                 text.replace('operaCambio == "sim"', 'operaCambio != "nao"'), encoding="utf-8")
-            self.assertEqual(['titulares: a recusa do campo 28 não é condicionada a operaCambio == "sim"',
+            self.assertEqual(['titulares: o campo 28 não lê o contratoCambio só com operaCambio == "sim"',
                               "titulares: uma comparação com != recusaria o operaCambio pendente (vazio)"],
                              exchange_refusal_off(Path(tmp)))
 

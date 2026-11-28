@@ -1,8 +1,8 @@
-1	1	15000	1	001	1	12345	1	2	AB12CD34000155	Pagadora Exemplo Ltda						0		00000000000191								pagamento exemplo	QRLERIANRECEBIDO2026120201
-2	2	16250	2													0	contraparte nao identificada pelo trilho										
+1	1	15000	1	001	1	12345	1	2	AB12CD34000155	Pagadora Exemplo Ltda	Passaporte	FX123456		Jose Endossante	RG 7654321 SSP/RJ	0		00000000000191								pagamento exemplo	QRLERIANRECEBIDO2026120201
+2	2	16250	2								RG	RG 123456 SSP/DF	23793.38128 60000.000003 00000.000400 1 84340000010000			0	contraparte nao identificada pelo trilho		Empresa Beneficiaria Ltda	Maria Exemplo	60746948000112	BANCO BRADESCO S.A.	10000				
 3	3	1250	3	999												0	tipo de pessoa, CPF/CNPJ, nome, agencia e conta do remetente nao informados: o plugin de TED grava cifrados os dados do remetente; tipo de conta do remetente CG sem codigo correspondente na IN; CNPJ da instituicao da contraparte nao informado: ISPB ausente ou fora da lista de participantes ativos do Pix										
 4	4	2000	4													0	contraparte nao identificada pelo trilho										
-5	5	3000	5	123	00001	7654321	6	1	98765432100	Recebedor Exemplo						0		11222333000181									
+5	5	3000	5	123	00001	7654321	6	1	98765432100	Recebedor Exemplo			34191.79001 01043.510047 91020.150008 8 84340000005000			0		11222333000181					3000				
 6	6	100	6	123	00001			2	11222333000181	INSTITUICAO EXEMPLO DE PAGAMENTO S.A.						0	tarifa da propria instituicao; sem conta de contraparte	11222333000181									
 7	7	001	7													0	contraparte nao identificada pelo trilho										
 8	8	001	8													0	contraparte nao identificada pelo trilho										

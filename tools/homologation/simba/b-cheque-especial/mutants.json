@@ -68,7 +68,7 @@
     "name": "tarifa sem a agencia da instituicao",
     "document": "br/bcb/simba/origem-destino",
     "file": "template.tpl",
-    "old": "{{ instituicao.compe }}\t{{ l.numeroAgencia }}\t",
+    "old": "{{ instituicao.compe }}\t{{ l.numeroAgencia|stringformat:\"%05s\" }}\t",
     "new": "{{ instituicao.compe }}\t\t",
     "count": 1,
     "expect": {
@@ -88,6 +88,19 @@
       "document": "br/bcb/simba/extrato",
       "line": 1,
       "field": 26
+    }
+  },
+  {
+    "name": "CNPJ da instituicao sucedida em branco",
+    "document": "br/bcb/simba/contas",
+    "file": "template.tpl",
+    "old": "\t{{ c.contaIncorporada }}\r\n",
+    "new": "\t\r\n",
+    "count": 1,
+    "expect": {
+      "document": "br/bcb/simba/contas",
+      "line": 1,
+      "field": 12
     }
   }
 ]

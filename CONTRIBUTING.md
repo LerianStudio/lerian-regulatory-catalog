@@ -133,6 +133,24 @@ num conjunto `nonEmpty`, num `singleton` nem num de linhas do catálogo (`rowSet
 conjunto pendurado num conjunto declarado vazio também é declarado vazio. Quem tem o
 dado troca a declaração pela origem dele.
 
+## A versão da fonte (`sourceVersion`)
+
+Uma tabela que a fonte publica por período, em versões (cada linha traz a versão, e o mesmo
+período pode ganhar uma versão nova depois), declara a coluna que a carrega na consulta que a lê:
+
+```yaml
+- name: posicoes
+  dataSource: fonte
+  table: posicoes_correntes
+  sourceVersion: {column: versao, digest: digest_versao}
+```
+
+`column` é obrigatória; `digest` é opcional; nenhuma outra chave existe. Só vale numa consulta
+com `dataSource` e `table`, nunca numa que compõe (`from`). A declaração não muda a leitura: não
+entra em `select`, agrupamento nem filtros. O Reporter lê a versão à parte, com os mesmos filtros,
+guarda o que a remessa leu e a marca quando a fonte passa a mostrar outra versão do mesmo período.
+Toda consulta que lê uma tabela versionada declara.
+
 ## Campo gerado pelo motor (`generate`)
 
 Um campo que o documento exige único e que nenhuma fonte tem (o identificador do
